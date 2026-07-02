@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 import { useAtom, useAtomValue } from "jotai"
 import { ArrowDown, LoaderCircle } from "lucide-react"
@@ -20,8 +20,12 @@ import { MessageActionMenu } from "./actions/MessageActionMenu"
 import { MessageActionDialogs } from "./actions/MessageActionDialogs"
 import { messageTargetAtom, messageActionTargetAtom } from "@utils/channelAtoms"
 import { ScrollViewportContext } from "@hooks/useHasBeenInView"
+import { createDateTracker, DateTrackerContext, FloatingDatePill, type DateOrderEntry } from "./messageDateTracker"
 import { cn } from "@lib/utils"
 import _ from "@lib/translate"
+
+/** Pill stays for this long after the last scroll event, then fades out. */
+const SCROLL_IDLE_MS = 1200
 
 /** How long a navigated-to message stays highlighted. */
 const HIGHLIGHT_DURATION_MS = 4000
@@ -152,112 +156,142 @@ export default function ChatStream({ channelID, pinnedMessagesString }: ChatStre
 
     const showJumpButton = !isLoading && !error && (!isAtBottom || hasNewerMessages)
 
+    // Tracks the date currently under the viewport for the floating pill. Held in a per-stream
+    // store (not React state) so date crossings + scroll activity re-render only the pill, never
+    // the message list. The inline date dividers report their crossings into it.
+    const trackerRef = useRef<ReturnType<typeof createDateTracker> | null>(null)
+    const tracker = (trackerRef.current ??= createDateTracker())
+    const dateOrder = useMemo<DateOrderEntry[]>(
+        () =>
+            blocks
+                .filter((b) => b.message_type === "date")
+                .map((b) => ({ name: b.name, label: b.creation })),
+        [blocks],
+    )
+    useEffect(() => tracker.setOrder(dateOrder), [tracker, dateOrder])
+
+    // The pill shows while scrolling and fades out shortly after the user stops.
+    const scrollIdleTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+    const handleScroll = useCallback(() => {
+        onScroll()
+        tracker.setScrolling(true)
+        clearTimeout(scrollIdleTimer.current)
+        scrollIdleTimer.current = setTimeout(() => tracker.setScrolling(false), SCROLL_IDLE_MS)
+    }, [onScroll, tracker])
+    useEffect(() => () => clearTimeout(scrollIdleTimer.current), [])
+
     return (
         <ScrollViewportContext.Provider value={viewport}>
-        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-            <MessageActionMenu channelID={channelID}>
-                <div
-                    ref={containerRef}
-                    onScroll={onScroll}
-                    className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto [overflow-anchor:none]"
-                >
-                    <div className="flex min-w-0 w-full flex-col px-3 pb-4">
-                        {isLoading ? (
-                            <MessageListSkeleton />
-                        ) : error ? (
-                            <StreamError error={error} onRetry={jumpToLatest} />
-                        ) : blocks.length === 0 ? (
-                            <StreamEmpty />
-                        ) : (
-                            <>
-                                {/* Constant-height row while more history exists: the spinner only ever
+            <DateTrackerContext.Provider value={tracker}>
+                <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+                    <FloatingDatePill />
+                    <MessageActionMenu channelID={channelID}>
+                        <div
+                            ref={containerRef}
+                            onScroll={handleScroll}
+                            // Keep the fade very subtle: a small mask only nibbles the very edge. A
+                            // container mask unavoidably fades ANY content at the edge (incl. images),
+                            // so the smaller the region the less an image visibly dissolves on scroll.
+                            className="dark:scroll-fade [--scroll-fade-t-size:2rem] [--scroll-fade-b-size:2rem] flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto [overflow-anchor:none]"
+                        >
+                            <div className="flex min-w-0 w-full flex-col px-3 pb-4">
+                                {isLoading ? (
+                                    <MessageListSkeleton />
+                                ) : error ? (
+                                    <StreamError error={error} onRetry={jumpToLatest} />
+                                ) : blocks.length === 0 ? (
+                                    <StreamEmpty />
+                                ) : (
+                                    <>
+                                        {/* Constant-height row while more history exists: the spinner only ever
                                 changes pixels, not geometry. Height changes that move content must
                                 land atomically with `blocks` changes for scroll compensation to be exact. */}
-                                {hasOlderMessages && (
-                                    <div className="flex h-10 shrink-0 items-center justify-center">
-                                        {loadingOlder && (
-                                            <LoaderCircle className="h-4 w-4 animate-spin text-ink-gray-5" />
+                                        {hasOlderMessages && (
+                                            <div className="flex h-10 shrink-0 items-center justify-center">
+                                                {loadingOlder && (
+                                                    <LoaderCircle className="h-4 w-4 animate-spin text-ink-gray-5" />
+                                                )}
+                                            </div>
                                         )}
-                                    </div>
-                                )}
-                                {blocks.map((block) =>
-                                    block.message_type === "date" ? (
-                                        <DateSeparator label={block.creation} key={block.name} />
-                                    ) : block.message_type === "unread" ? (
-                                        <UnreadSeparator key={block.name} />
-                                    ) : block.message_type === "batch" ? (
-                                        <div
-                                            key={block.name}
-                                            data-message-id={block.messages[0].name}
-                                            data-batch-root=""
-                                            className={cn(
-                                                "flex flex-col rounded-md transition-colors duration-700",
-                                                block.messages.some((member) => member.name === highlightedID) &&
-                                                "bg-surface-amber-2",
-                                                block.messages.some((member) => member.name === actionTarget?.name) &&
-                                                "bg-surface-gray-2",
-                                            )}
-                                        >
-                                            <BatchMessageItem block={block} onInView={onMessageInView} />
-                                        </div>
-                                    ) : block.message_type === "System" ? (
-                                        <SystemMessage
-                                            message={block.text ?? ""}
-                                            time={block.creation}
-                                            key={block.name}
-                                        />
-                                    ) : (
-                                        <div
-                                            key={block.name}
-                                            data-message-id={block.name}
-                                            // Deliberately NO content-visibility: placeholder estimates change height
-                                            // after paint and break exact scroll compensation on prepend.
-                                            className={cn(
-                                                "flex flex-col rounded-md transition-colors duration-700",
-                                                highlightedID === block.name && "bg-surface-amber-2",
-                                                actionTarget?.name === block.name && "bg-surface-gray-2",
-                                            )}
-                                        >
-                                            <MessageItem message={block} onInView={onMessageInView} />
-                                        </div>
-                                    ),
-                                )}
-                                {/* Same constant-height rule as the top row: while the window is
+                                        {blocks.map((block) =>
+                                            block.message_type === "date" ? (
+                                                <DateSeparator label={block.creation} name={block.name} key={block.name} />
+                                            ) : block.message_type === "unread" ? (
+                                                <UnreadSeparator key={block.name} />
+                                            ) : block.message_type === "batch" ? (
+                                                <div
+                                                    key={block.name}
+                                                    data-message-id={block.messages[0].name}
+                                                    data-batch-root=""
+                                                    className={cn(
+                                                        "flex flex-col rounded-md transition-colors duration-700",
+                                                        block.messages.some((member) => member.name === highlightedID) &&
+                                                        "bg-surface-amber-2",
+                                                        block.messages.some((member) => member.name === actionTarget?.name) &&
+                                                        "bg-surface-gray-2",
+                                                    )}
+                                                >
+                                                    <BatchMessageItem block={block} onInView={onMessageInView} />
+                                                </div>
+                                            ) : block.message_type === "System" ? (
+                                                <SystemMessage
+                                                    message={block.text ?? ""}
+                                                    time={block.creation}
+                                                    key={block.name}
+                                                />
+                                            ) : (
+                                                <div
+                                                    key={block.name}
+                                                    data-message-id={block.name}
+                                                    // Deliberately NO content-visibility: placeholder estimates change height
+                                                    // after paint and break exact scroll compensation on prepend.
+                                                    className={cn(
+                                                        "flex flex-col rounded-md transition-colors duration-700",
+                                                        highlightedID === block.name && "bg-surface-amber-2",
+                                                        actionTarget?.name === block.name && "bg-surface-gray-2",
+                                                    )}
+                                                >
+                                                    <MessageItem message={block} onInView={onMessageInView} />
+                                                </div>
+                                            ),
+                                        )}
+                                        {/* Same constant-height rule as the top row: while the window is
                                 detached, this slot exists whether or not a fetch is running. */}
-                                {hasNewerMessages && (
-                                    <div className="flex h-10 shrink-0 items-center justify-center">
-                                        {loadingNewer && (
-                                            <LoaderCircle className="h-4 w-4 animate-spin text-ink-gray-5" />
+                                        {hasNewerMessages && (
+                                            <div className="flex h-10 shrink-0 items-center justify-center">
+                                                {loadingNewer && (
+                                                    <LoaderCircle className="h-4 w-4 animate-spin text-ink-gray-5" />
+                                                )}
+                                            </div>
                                         )}
-                                    </div>
+                                    </>
                                 )}
-                            </>
-                        )}
-                    </div>
-                </div>
-            </MessageActionMenu>
-            <MessageActionDialogs />
+                            </div>
+                        </div>
+                    </MessageActionMenu>
+                    <MessageActionDialogs />
 
-            {showJumpButton && (
-                <div className="absolute bottom-3 right-4 z-50">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        isIconButton={hasUnseenMessages ? false : true}
-                        onClick={onJumpToPresent}
-                        className="rounded-full shadow"
-                    >
-                        <ArrowDown />
-                        {/* "New messages" only when one actually arrived while scrolled up.
+                    {showJumpButton && (
+                        <div className="absolute bottom-3 right-4 z-50">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                isIconButton={hasUnseenMessages ? false : true}
+                                onClick={onJumpToPresent}
+                                className="rounded-full shadow"
+                            >
+                                <ArrowDown />
+                                {/* "New messages" only when one actually arrived while scrolled up.
                             hasNewerMessages just means the window is detached (e.g. scrolled
                             past the 300 cap, or deep-linked) — that's a plain jump-to-present. */}
-                        {hasUnseenMessages && (
-                            <span>{_("New messages")}</span>
-                        )}
-                    </Button>
+                                {hasUnseenMessages && (
+                                    <span>{_("New messages")}</span>
+                                )}
+                            </Button>
+                        </div>
+                    )}
                 </div>
-            )}
-        </div>
+            </DateTrackerContext.Provider>
         </ScrollViewportContext.Provider>
     )
 }

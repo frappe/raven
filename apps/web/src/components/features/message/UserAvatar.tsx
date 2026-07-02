@@ -20,12 +20,7 @@ interface UserAvatarProps {
 }
 
 const getInitials = (name: string): string => {
-    return name
-        .split(' ')
-        .map(word => word.charAt(0))
-        .join('')
-        .toUpperCase()
-        .slice(0, 1)
+    return name.charAt(0).toLocaleUpperCase()
 }
 
 const generateAvatarColor = (name: string): string => {

@@ -1,5 +1,7 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip";
 import { getDateObject } from "@lib/date";
+import { timeFormatAtom } from "@utils/preferences";
+import { useAtomValue } from "jotai";
 import React, { useMemo } from "react";
 
 interface SystemMessageProps {
@@ -8,13 +10,15 @@ interface SystemMessageProps {
 }
 
 const SystemMessage: React.FC<SystemMessageProps> = ({ message, time }) => {
+    const timeFormat = useAtomValue(timeFormatAtom)
+
 
     const { shortTime, longTime } = useMemo(() => {
         try {
             const dateObj = getDateObject(time)
             return {
-                shortTime: dateObj.format('HH:mm'),
-                longTime: dateObj.format('Do MMMM YYYY, hh:mm A'),
+                shortTime: dateObj.format(timeFormat === "12-hour" ? "hh:mm a" : "HH:mm"),
+                longTime: dateObj.format(timeFormat === "12-hour" ? "Do MMMM YYYY, hh:mm a" : "Do MMMM YYYY, HH:mm"),
             }
         }
         catch (error) {

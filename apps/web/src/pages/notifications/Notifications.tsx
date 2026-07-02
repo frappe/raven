@@ -1,7 +1,8 @@
 import { useState, useCallback } from "react"
 import { Check } from "lucide-react"
 import { Virtuoso } from "react-virtuoso"
-import { useNotifications } from "@hooks/useNotifications"
+import { useNotificationList } from "@stores/notifications/useNotificationList"
+import { useUnreadNotificationsCount } from "@hooks/useNotifications"
 import { useUsersById } from "@hooks/useMessageRowLookups"
 import _ from "@lib/translate"
 import { Label } from "@components/ui/label"
@@ -18,18 +19,6 @@ import { MentionItem, ReactionItem } from "./NotificationItem"
 
 type NotificationTab = "all" | "mentions" | "reactions"
 
-/** Module-level Footer so Virtuoso's component types are stable across renders;
- * an inline arrow would unmount/remount per render. State piggybacks via Virtuoso's
- * `context` prop. Same pattern as DMSidebar. */
-type NotificationListContext = { isLoadingMore: boolean }
-const NotificationListFooter = ({ context }: { context?: NotificationListContext }) =>
-    context?.isLoadingMore ? (
-        <div className="py-4 text-center text-xs text-ink-gray-4">
-            {_("Loading more notifications...")}
-        </div>
-    ) : null
-const notificationListComponents = { Footer: NotificationListFooter }
-
 const TABS: { key: NotificationTab; label: string; type: "mention" | "reaction" | null }[] = [
     { key: "all", label: "All", type: null },
     { key: "mentions", label: "Mentions", type: "mention" },
@@ -43,26 +32,26 @@ export default function Notifications() {
     const hasSelection = !!selected
     const isMobile = useIsMobile()
 
-    const tabType = activeTab === "mentions" ? "mention" : activeTab === "reactions" ? "reaction" : null
+    const tab: "all" | "mention" | "reaction" =
+        activeTab === "mentions" ? "mention" : activeTab === "reactions" ? "reaction" : "all"
 
     const {
-        unreadCount,
-        currentData,
+        rows: currentData,
         isLoading,
-        isReachingEnd,
-        isLoadingMore,
-        setSize,
+        hasMore,
+        loadMore: loadMoreRows,
         markMessageRead,
         markAllRead,
-    } = useNotifications(tabType, showUnread)
+    } = useNotificationList(tab, { unreadOnly: showUnread })
+
+    const { data: unreadCountData } = useUnreadNotificationsCount()
+    const unreadCount = unreadCountData?.message ?? 0
 
     const usersById = useUsersById()
 
     const loadMore = useCallback(() => {
-        if (!isReachingEnd && !isLoadingMore) {
-            setSize((s) => s + 1)
-        }
-    }, [isReachingEnd, isLoadingMore, setSize])
+        if (hasMore) loadMoreRows()
+    }, [hasMore, loadMoreRows])
 
     const onSelect = useCallback((selection: SelectedNotification) => {
         setSelected(selection)
@@ -98,9 +87,9 @@ export default function Notifications() {
                             <div className="shrink-0 px-2 pb-2">
                                 <Tabs value={activeTab} onValueChange={(v) => onTabChange(v as NotificationTab)}>
                                     <TabsList variant="subtle" className="w-full">
-                                        {TABS.map((tab) => (
-                                            <TabsTrigger key={tab.key} value={tab.key} className="flex-1">
-                                                {_(tab.label)}
+                                        {TABS.map((t) => (
+                                            <TabsTrigger key={t.key} value={t.key} className="flex-1">
+                                                {_(t.label)}
                                             </TabsTrigger>
                                         ))}
                                     </TabsList>
@@ -130,7 +119,7 @@ export default function Notifications() {
                             </div>
 
                             <div className="flex min-h-0 flex-1">
-                                {currentData.length === 0 && !isLoading && !isLoadingMore ? (
+                                {currentData.length === 0 && !isLoading ? (
                                     <EmptyState showUnread={showUnread} />
                                 ) : (
                                     <Virtuoso
@@ -140,8 +129,6 @@ export default function Notifications() {
                                         endReached={loadMore}
                                         overscan={200}
                                         defaultItemHeight={80}
-                                        context={{ isLoadingMore }}
-                                        components={notificationListComponents}
                                         computeItemKey={(_index, item) => item.name}
                                         itemContent={(_index, item) =>
                                             item.notification_type === "mention" ? (

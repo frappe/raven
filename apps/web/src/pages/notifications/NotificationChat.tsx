@@ -8,6 +8,7 @@ import { Empty, EmptyHeader, EmptyDescription } from "@components/ui/empty"
 import _ from "@lib/translate"
 import { Island } from "@components/layout/Island"
 import type { UserData } from "@db"
+import ThreadDrawer from "@components/features/message/ThreadDrawer"
 
 /** Right-pane selection on the notifications page. Owned by `Notifications`
  * (useState there) and passed in — cleared automatically when the component unmounts on route change. */
@@ -15,7 +16,8 @@ export type SelectedNotification = {
     channelID: string
     messageID: string
     isDirectMessage: boolean
-    peer?: UserData
+    peer?: UserData,
+    isThread: boolean
 }
 
 export function NotificationsEmptyState() {
@@ -35,6 +37,7 @@ export function NotificationsEmptyState() {
 }
 
 export default function NotificationChat({ selected }: { selected: SelectedNotification | null }) {
+    const isThread = selected?.isThread ?? false
     const channelID = selected?.channelID ?? ""
     const setMessageTarget = useSetAtom(messageTargetAtom(channelID))
 
@@ -47,6 +50,15 @@ export default function NotificationChat({ selected }: { selected: SelectedNotif
     }, [selected, setMessageTarget])
 
     if (!selected) return <NotificationsEmptyState />
+
+    if (isThread) {
+        return <div className="flex min-h-0 min-w-0 flex-1 flex-row gap-1 p-0 md:p-1">
+            {/* Chat island: header + stream + input */}
+            <Island className="flex-1">
+                <ThreadDrawer threadID={selected.channelID} onClose={() => { }} />
+            </Island>
+        </div>
+    }
 
     const header = selected.isDirectMessage
         ? selected.peer

@@ -58,11 +58,12 @@ def get_context(context):
 	if use_website_favicon:
 		favicon = frappe.get_website_settings("favicon")
 
-	context["icon_96"] = favicon or "/assets/raven/manifest/favicon-96x96.png"
-	context["apple_touch_icon"] = favicon or "/assets/raven/manifest/apple-touch-icon.png"
-	context["mask_icon"] = favicon or "/assets/raven/manifest/safari-pinned-tab.svg"
-	context["favicon_svg"] = favicon or "/assets/raven/manifest/favicon.svg"
-	context["favicon_ico"] = favicon or "/assets/raven/manifest/favicon.ico"
+	# TODO: Update all favicons here and delete all v2 icons later
+	context["icon_96"] = favicon or "/assets/raven/icons/icon-96x96.png"
+	context["apple_touch_icon"] = favicon or "/assets/raven/icons/icon-192x192.png"
+	context["mask_icon"] = favicon or "/assets/raven/raven_logo.svg"
+	context["favicon_svg"] = favicon or "/assets/raven/raven_logo.svg"
+	context["favicon_ico"] = favicon or "/assets/raven/favicon.ico"
 	context["sitename"] = boot.get("sitename")
 
 	if frappe.session.user != "Guest":

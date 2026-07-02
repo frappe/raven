@@ -14,6 +14,7 @@ import { useUnreadRealtime } from "@stores/unread/useUnreadRealtime"
 import { useMessageRoomSubscriptions } from "@stores/messages/useMessageRoomSubscriptions"
 import { useMessagesRealtime } from "@stores/messages/useMessagesRealtime"
 import { useReconnectCatchup } from "@stores/messages/useReconnectCatchup"
+import { useActiveSocketConnection } from "@hooks/useActiveSocketConnection"
 import { useOutboxAutoRetry } from "@stores/messages/useOutboxAutoRetry"
 import { useChannelListRealtime } from "@hooks/useChannelListRealtime"
 import { useChannelListSync } from "@stores/channels/useChannelListSync"
@@ -22,6 +23,7 @@ import { usePresenceSync } from "@stores/presence/usePresenceSync"
 import { useLeaveSync } from "@stores/leave/useLeaveSync"
 import { useThreadsRealtime } from "@stores/threads/useThreadsRealtime"
 import { useUnreadThreadsSync } from "@stores/threads/useUnreadThreads"
+import { useNotificationsRealtime } from "@stores/notifications/useNotificationsRealtime"
 import { useReportActiveState } from "@stores/presence/useReportActiveState"
 import DocumentTitle from "./DocumentTitle"
 import RavenSettingsDialog from "@components/features/settings/SettingsDialog"
@@ -91,6 +93,9 @@ const AppListeners = ({ children }: { children: React.ReactNode }) => {
     useMessageRoomSubscriptions()
     // Dispatches those live message events into the message store
     useMessagesRealtime()
+    // Health-checks the socket on focus and force-reconnects a dead one (e.g. after a
+    // backgrounded tab suspended it) — the reconnect then drives useReconnectCatchup
+    useActiveSocketConnection()
     // Backstop: refetch messages missed during a disconnect when the socket reconnects
     useReconnectCatchup()
     // Delivers persisted (pending/failed) sends from the outbox on load + reconnect/online
@@ -113,9 +118,11 @@ const AppListeners = ({ children }: { children: React.ReactNode }) => {
     useThreadsRealtime()
     // Seeds + reconciles the unread-threads set (read via useUnreadThreadsCount)
     useUnreadThreadsSync()
+    // Notifications: reconcile the warm tab windows on new mention/reaction + keep the
+    // unread-count badge live (page + sidebar), even when the Notifications page is closed.
+    useNotificationsRealtime()
     // TODO: Push notification listener
     // TODO: App update listener
-    // TODO: Websocket connection listener
 
     if (!isReady) {
         return <MainPageSkeleton />
@@ -140,7 +147,7 @@ const AppShellLayout = ({ children }: { children: React.ReactNode }) => {
         </div>
     }
 
-    return <div className="flex h-dvh overflow-hidden">
+    return <div className="flex h-dvh overflow-hidden bg-surface-elevation-1">
         <PrimarySidebar />
         <RavenSettingsDialog />
         <main className="flex min-w-0 flex-1 flex-col">

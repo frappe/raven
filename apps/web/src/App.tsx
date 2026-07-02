@@ -7,7 +7,7 @@ import Search from "@pages/search/Search"
 import Threads from "@pages/threads/Threads"
 import DirectMessages, { DirectMessagesIndex } from "@pages/dm-channel/DirectMessages"
 import DirectMessage from "@pages/dm-channel/DirectMessage"
-import ThreadDrawer from "@components/features/message/ThreadDrawer"
+import ThreadDrawerRoute from "@components/features/message/ThreadDrawerRoute"
 import { WorkspaceRedirect } from "@components/workspace-switcher/WorkspaceRedirect"
 import { FrappeProvider } from 'frappe-react-sdk'
 import { initEmojiMart } from '@lib/emojiMart'
@@ -24,6 +24,7 @@ import AppShell from "@components/layout/AppShell"
 import { useAtomValue } from "jotai"
 import { lastChannelAtom, lastWorkspaceAtom } from "@utils/lastVisitedAtoms"
 import { useIsMobile } from "@hooks/use-mobile"
+import { useWorkspaces } from "@hooks/useWorkspaces"
 import WorkspaceLayout from "@pages/workspace/WorkspaceLayout"
 
 /**
@@ -35,14 +36,25 @@ const IndexRedirect = () => {
   const lastWorkspace = useAtomValue(lastWorkspaceAtom)
   const lastChannel = useAtomValue(lastChannelAtom)
   const isMobile = useIsMobile()
+  const { workspaces, isLoading } = useWorkspaces()
 
-  if (!lastWorkspace) return null
-  // Desktop reopens the exact channel; mobile lands on the workspace's
-  // channel list (the channel pair is written together, so it's consistent)
-  if (lastChannel && !isMobile) {
-    return <Navigate to={`/${encodeURIComponent(lastWorkspace)}/${encodeURIComponent(lastChannel)}`} replace />
+  if (lastWorkspace) {
+    // Desktop reopens the exact channel; mobile lands on the workspace's
+    // channel list (the channel pair is written together, so it's consistent)
+    if (lastChannel && !isMobile) {
+      return <Navigate to={`/${encodeURIComponent(lastWorkspace)}/${encodeURIComponent(lastChannel)}`} replace />
+    }
+    return <Navigate to={`/${encodeURIComponent(lastWorkspace)}`} replace />
   }
-  return <Navigate to={`/${encodeURIComponent(lastWorkspace)}`} replace />
+
+  // No remembered workspace — fresh install, or an installed PWA's isolated
+  // storage on first launch. Fall back to the first workspace the user belongs
+  // to instead of rendering nothing: a blank index has no desktop sidebar to
+  // mask it on mobile, so `return null` here shows as a black screen.
+  if (isLoading) return null
+  const fallback = workspaces.find((w) => w.workspace_member_name) ?? workspaces[0]
+  if (!fallback) return null
+  return <Navigate to={`/${encodeURIComponent(fallback.name)}`} replace />
 }
 
 
@@ -87,17 +99,19 @@ function App() {
                 <Route path=":workspaceID" element={<WorkspaceLayout />}>
                   <Route index element={<WorkspaceRedirect />} />
                   <Route path=":id" element={<Channel />}>
-                    <Route path="thread/:threadID" element={<ThreadDrawer />} />
+                    <Route path="thread/:threadID" element={<ThreadDrawerRoute />} />
                   </Route>
                 </Route>
                 <Route path="dm-channel" element={<DirectMessages />}>
                   <Route index element={<DirectMessagesIndex />} />
                   <Route path=":id" element={<DirectMessage />}>
-                    <Route path="thread/:threadID" element={<ThreadDrawer />} />
+                    <Route path="thread/:threadID" element={<ThreadDrawerRoute />} />
                   </Route>
                 </Route>
                 <Route path="notifications" element={<Notifications />} />
-                <Route path="threads" element={<Threads />} />
+                <Route path="threads" element={<Threads />}>
+                  <Route path=":threadID" element={<ThreadDrawerRoute />} />
+                </Route>
                 <Route path="search" element={<SearchLayout />}>
                   <Route index element={<Search />} />
                 </Route>

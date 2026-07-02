@@ -70,6 +70,7 @@ const SearchLinkResults = ({ searchValue, filters, onSelect, selectedID }: Searc
                             messageID: link.id,
                             isDirectMessage: !!dmChannel,
                             peer,
+                            isThread: !!link.is_thread,
                         })}
                     />
                 )
@@ -98,88 +99,88 @@ const LinkResultRowInner = ({ link, user, channel, dmChannel, peer, workspace, o
 
     return (
         <div className="px-2 py-0.5">
-        <div
-            role="button"
-            tabIndex={0}
-            onClick={onClick}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } }}
-            className={cn(
-                "group flex gap-3 px-2 py-3 md:py-2 rounded transition-colors text-left select-none cursor-pointer hover:bg-surface-gray-3 active:bg-surface-gray-3 focus-visible:bg-surface-gray-3 focus-visible:outline-none",
-                className
-            )}
-        >
-            {user && <UserAvatar user={user} size="md" showStatusIndicator={false} />}
-            <div className="flex-1 min-w-0">
-                <div className="flex items-baseline gap-1.5 flex-wrap text-base md:text-sm">
-                    {user && <span className="font-medium text-ink-gray-8 truncate">{user.full_name}</span>}
-                    <span className="shrink-0 text-xs text-ink-gray-4">{relativeDate}</span>
-                    {workspace && (
-                        <>
-                            <span className="text-ink-gray-4 shrink-0">·</span>
-                            <span className="text-ink-gray-4 truncate min-w-0">{workspace.workspace_name}</span>
-                        </>
-                    )}
-                    {channel && (
-                        <>
-                            <span className="text-ink-gray-4 shrink-0">·</span>
-                            <ChannelIcon type={channel.type} className="h-3 w-3 shrink-0 self-center text-ink-gray-4" />
-                            <span className="text-ink-gray-4 truncate min-w-0 -ml-0.5">{channel.channel_name}</span>
-                        </>
-                    )}
-                    {dmChannel && (
-                        <>
-                            <span className="text-ink-gray-4 shrink-0">·</span>
-                            <MessageSquareMore className="h-3 w-3 shrink-0 self-center text-ink-gray-4" />
-                            <span className="text-ink-gray-4 truncate min-w-0 -ml-0.5">{peerName}</span>
-                        </>
-                    )}
-                </div>
+            <div
+                role="button"
+                tabIndex={0}
+                onClick={onClick}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } }}
+                className={cn(
+                    "group flex gap-3 px-2 py-3 md:py-2 rounded transition-colors text-left select-none cursor-pointer hover:bg-surface-gray-3 active:bg-surface-gray-3 focus-visible:bg-surface-gray-3 focus-visible:outline-none",
+                    className
+                )}
+            >
+                {user && <UserAvatar user={user} size="md" showStatusIndicator={false} />}
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-1.5 flex-wrap text-base md:text-sm">
+                        {user && <span className="font-medium text-ink-gray-8 truncate">{user.full_name}</span>}
+                        <span className="shrink-0 text-xs text-ink-gray-4">{relativeDate}</span>
+                        {workspace && (
+                            <>
+                                <span className="text-ink-gray-4 shrink-0">·</span>
+                                <span className="text-ink-gray-4 truncate min-w-0">{workspace.workspace_name}</span>
+                            </>
+                        )}
+                        {channel && (
+                            <>
+                                <span className="text-ink-gray-4 shrink-0">·</span>
+                                <ChannelIcon type={channel.type} className="h-3 w-3 shrink-0 self-center text-ink-gray-4" />
+                                <span className="text-ink-gray-4 truncate min-w-0 -ml-0.5">{channel.channel_name}</span>
+                            </>
+                        )}
+                        {dmChannel && (
+                            <>
+                                <span className="text-ink-gray-4 shrink-0">·</span>
+                                <MessageSquareMore className="h-3 w-3 shrink-0 self-center text-ink-gray-4" />
+                                <span className="text-ink-gray-4 truncate min-w-0 -ml-0.5">{peerName}</span>
+                            </>
+                        )}
+                    </div>
 
-                <div className="flex gap-3 mt-2">
-                    {/* Cascade preview → favicon → FileBox. Both <img> share the same onError swap chain:
+                    <div className="flex gap-3 mt-2">
+                        {/* Cascade preview → favicon → FileBox. Both <img> share the same onError swap chain:
                         - primary image fails → swap to favicon
                         - favicon fails → hide img, the always-rendered FileBox sits behind and shows through. */}
-                    <div className="relative w-20 h-20 rounded-md bg-surface-gray-2 shrink-0 border border-outline-gray-2 overflow-hidden flex items-center justify-center">
-                        <FileBox className="w-8 h-8 text-ink-gray-4" />
-                        <img
-                            src={link.image || faviconUrl}
-                            alt=""
-                            data-fallback={link.image ? faviconUrl : ''}
-                            className={link.image
-                                ? 'absolute inset-0 w-full h-full object-cover'
-                                : 'absolute inset-0 m-auto w-10 h-10'}
-                            onError={(e) => {
-                                const img = e.currentTarget
-                                const fb = img.dataset.fallback
-                                if (fb) {
-                                    img.dataset.fallback = ''
-                                    img.src = fb
-                                    img.className = 'absolute inset-0 m-auto w-10 h-10'
-                                } else {
-                                    img.style.display = 'none'
-                                }
-                            }}
-                        />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                            <h3 className="text-base md:text-sm font-medium text-ink-gray-8 truncate">{link.title || url}</h3>
-                            <ExternalLink
-                                className="h-3 w-3 text-ink-gray-4 opacity-0 group-hover:opacity-100 hover:text-ink-gray-8 transition-opacity shrink-0"
-                                onClick={(e) => { e.stopPropagation(); window.open(url, '_blank', 'noopener,noreferrer') }}
+                        <div className="relative w-20 h-20 rounded-md bg-surface-gray-2 shrink-0 border border-outline-gray-2 overflow-hidden flex items-center justify-center">
+                            <FileBox className="w-8 h-8 text-ink-gray-4" />
+                            <img
+                                src={link.image || faviconUrl}
+                                alt=""
+                                data-fallback={link.image ? faviconUrl : ''}
+                                className={link.image
+                                    ? 'absolute inset-0 w-full h-full object-cover'
+                                    : 'absolute inset-0 m-auto w-10 h-10'}
+                                onError={(e) => {
+                                    const img = e.currentTarget
+                                    const fb = img.dataset.fallback
+                                    if (fb) {
+                                        img.dataset.fallback = ''
+                                        img.src = fb
+                                        img.className = 'absolute inset-0 m-auto w-10 h-10'
+                                    } else {
+                                        img.style.display = 'none'
+                                    }
+                                }}
                             />
                         </div>
-                        <div className="flex items-center gap-1.5 text-xs text-ink-gray-4 mt-0.5">
-                            <img src={faviconUrl} alt="" className="w-3 h-3" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} />
-                            <span className="truncate">{link.site_name || hostname}</span>
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                                <h3 className="text-base md:text-sm font-medium text-ink-gray-8 truncate">{link.title || url}</h3>
+                                <ExternalLink
+                                    className="h-3 w-3 text-ink-gray-4 opacity-0 group-hover:opacity-100 hover:text-ink-gray-8 transition-opacity shrink-0"
+                                    onClick={(e) => { e.stopPropagation(); window.open(url, '_blank', 'noopener,noreferrer') }}
+                                />
+                            </div>
+                            <div className="flex items-center gap-1.5 text-xs text-ink-gray-4 mt-0.5">
+                                <img src={faviconUrl} alt="" className="w-3 h-3" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} />
+                                <span className="truncate">{link.site_name || hostname}</span>
+                            </div>
+                            {link.description && (
+                                <p className="text-xs text-ink-gray-4 mt-1 line-clamp-2">{link.description}</p>
+                            )}
                         </div>
-                        {link.description && (
-                            <p className="text-xs text-ink-gray-4 mt-1 line-clamp-2">{link.description}</p>
-                        )}
                     </div>
                 </div>
             </div>
-        </div>
         </div>
     )
 }

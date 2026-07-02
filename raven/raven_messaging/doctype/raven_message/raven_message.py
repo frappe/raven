@@ -360,7 +360,11 @@ class RavenMessage(Document):
 		return message_details
 
 	def publish_unread_count_event(
-		self, event_type, last_message_details=None, last_message_timestamp=None
+		self,
+		event_type,
+		last_message_details=None,
+		last_message_timestamp=None,
+		last_message_cleared=False,
 	):
 
 		channel_doc = frappe.get_cached_doc("Raven Channel", self.channel_id)
@@ -391,6 +395,7 @@ class RavenMessage(Document):
 							"is_dm_channel": True,
 							"last_message_timestamp": timestamp,
 							"last_message_details": last_message_details,
+							"last_message_cleared": last_message_cleared,
 							"event_type": event_type,
 						},
 						user=peer_user_id,
@@ -407,6 +412,7 @@ class RavenMessage(Document):
 					"sent_by": self.owner,
 					"last_message_timestamp": timestamp,
 					"last_message_details": last_message_details,
+					"last_message_cleared": last_message_cleared,
 					"event_type": event_type,
 				},
 				user=self.owner,
@@ -644,10 +650,14 @@ class RavenMessage(Document):
 				# deleted message; otherwise a plain count ping.
 				recomputed = self.flags.get("recomputed_last_message")
 				if recomputed:
+					details = recomputed.get("details")
 					self.publish_unread_count_event(
 						event_type="message_deleted",
-						last_message_details=recomputed.get("details"),
+						last_message_details=details,
 						last_message_timestamp=recomputed.get("timestamp"),
+						# No previous message → the DM is now empty; tell the client to clear the
+						# lingering teaser (a null details value alone is ambiguous with a non-last delete).
+						last_message_cleared=details is None,
 					)
 				else:
 					self.publish_unread_count_event(event_type="message_deleted")

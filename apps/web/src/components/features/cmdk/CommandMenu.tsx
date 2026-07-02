@@ -2,7 +2,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Drawer, DrawerContent } from '@components/ui/drawer'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@components/ui/command'
 import _ from '@lib/translate'
-import { useDebounce } from '@raven/lib/hooks/useDebounce'
 import { defaultFilter } from 'cmdk'
 import React, { useEffect, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
@@ -70,23 +69,25 @@ const CommandPalette = ({ inDrawer = false }: { inDrawer?: boolean }) => {
     const peerUser = useUser(dmChannel?.peer_user_id || "")
     const isDMRoute = location.pathname.startsWith('/dm-channel') && !channelIDFromURL
 
-    const debouncedText = useDebounce(text, 200)
+    const isMobile = useIsMobile()
 
-    const customFilter = (value: string, search: string, keywords?: string[]) => {
-        const score = defaultFilter ? defaultFilter(value, search, keywords) : 1
-        if (score <= 0.1) return 0
-        return score
-    }
+    // Items set `value` to a UNIQUE id (a channel's "workspaceID-channelName", a user's id, a
+    // "settings-…" slug) and put the human-searchable text in `keywords`. cmdk's default filter
+    // scores value + keywords together, so the id leaks into matching — e.g. in a "Frappe"
+    // workspace every channel id starts with "Frappe-", so searching "frappe" matched them all.
+    // Score against keywords ONLY when present (the name/label), falling back to value for items
+    // that have none (so the global "Search…" item and anything keyword-less still match).
+    const customFilter = (value: string, search: string, keywords?: string[]) =>
+        keywords?.length ? defaultFilter(keywords.join(' '), search) : defaultFilter(value, search)
 
     return (
         <Command
             label="Global Command Menu"
-            // filter={customFilter}
-            // shouldFilter={false}
+            filter={customFilter}
             className={inDrawer ? "flex flex-col flex-1 min-h-0 bg-transparent" : ""}
         >
             <CommandInput
-                autoFocus
+                autoFocus={!isMobile}
                 value={text}
                 onValueChange={(v) => setText(v.slice(0, 140))}
                 maxLength={140}
@@ -94,12 +95,20 @@ const CommandPalette = ({ inDrawer = false }: { inDrawer?: boolean }) => {
             />
             <CommandList className={inDrawer ? "flex-1 overflow-auto max-h-none" : "max-h-105"}>
 
-                <ChannelList text={debouncedText} />
-                <UserList text={debouncedText} />
-                <SettingsList text={debouncedText} />
-                <QuickActions text={debouncedText} />
-                <CommandGroup>
+                <ChannelList text={text} />
+                <UserList text={text} />
+                <SettingsList text={text} />
+                <QuickActions text={text} />
+                <CommandGroup forceMount>
                     <CommandItem
+                        // Fixed value + forceMount: this is the always-available fallback action.
+                        // Its label contains the query, so without a stable non-matching value it
+                        // would out-score partial result matches and steal the default highlight.
+                        // forceMount keeps it visible regardless; the fixed value keeps its score ~0
+                        // so the first real result is auto-selected (and it wins only when nothing
+                        // else matches).
+                        value="raven-global-search"
+                        forceMount
                         onSelect={() => {
                             const params = new URLSearchParams()
                             if (text) params.set('q', text)

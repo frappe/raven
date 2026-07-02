@@ -26,7 +26,7 @@ const ChannelList = ({ text }: { text: string }) => {
             {filteredChannels.map(channel => channel.name && (
                 <CommandItem
                     key={channel.name}
-                    value={channel.channel_name}
+                    value={channel.name}
                     keywords={[channel.channel_name]}
                     onSelect={() => {
                         navigate(`/${channel.workspace}/${channel.name}`)

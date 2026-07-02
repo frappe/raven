@@ -1,5 +1,5 @@
 import { useMemo } from "react"
-import { useSetAtom } from "jotai"
+import { useAtomValue, useSetAtom } from "jotai"
 import { getFileName } from "@raven/lib/utils/operations"
 // EXPERIMENT: grid/carousel layout swapped for the stacked-card layout (ImageStack).
 // Original imports kept (commented) so the previous behaviour is one revert away.
@@ -9,6 +9,7 @@ import { ImageStack } from "./ImageStack"
 import { ReservedImage, fitImageBox } from "./ReservedImage"
 import { attachmentPreviewAtom, messagesToAttachments, type Attachment } from "@utils/attachmentPreview"
 import type { Message } from "@raven/types/common/Message"
+import { imageGroupingLayoutAtom } from "@utils/preferences"
 
 /** A message whose `message_type` is Image — the fields the renderer needs. */
 type ImageLikeMessage = Message & {
@@ -54,6 +55,8 @@ export const MessageImages = ({ messages, attachments }: { messages: Message[]; 
 
     const single = images.length === 1 ? images[0] : null
 
+    const imageGrouping = useAtomValue(imageGroupingLayoutAtom)
+
     return (
         <>
             {single ? (
@@ -74,21 +77,24 @@ export const MessageImages = ({ messages, attachments }: { messages: Message[]; 
                 // Inline media caps at a reading-friendly width by design (the modal
                 // is the big-screen surface); desktops get a modestly higher cap
                 <div data-media-root="" className="max-w-md lg:max-w-lg">
+
                     {/* EXPERIMENT: stacked-card layout replaces the grid/carousel.
                         Original branch preserved below — restore by deleting <ImageStack/>
                         and uncommenting this block. */}
-                    {/* {images.length <= 4 ? (
-                        <ImageGrid images={images} onImageClick={openImage} />
-                    ) : (
-                        <ImageCarousel images={images} onImageClick={openImage} />
-                    )} */}
                     {/* TODO(image-stack): put ImageStack behind a feature flag, and only
                         mount it when the message scrolls into the viewport (IntersectionObserver).
                         Until mounted, render a placeholder sized from the SAME bounding-box
                         aspect ratio ImageStack derives (responsive width + aspectRatio from
                         the cards' stored dims) so the row height is reserved and deterministic
                         — no layout shift when the real stack swaps in. */}
-                    <ImageStack images={images} onImageClick={openImage} />
+                    {imageGrouping === 'grid' ? (
+                        images.length <= 4 ? (
+                            <ImageGrid images={images} onImageClick={openImage} />
+                        ) : (
+                            <ImageCarousel images={images} onImageClick={openImage} />
+                        )) : <ImageStack images={images} onImageClick={openImage} />}
+
+
                 </div>
             )}
         </>

@@ -5,6 +5,8 @@ import type { RavenPoll } from "@raven/types/RavenMessaging/RavenPoll"
 import { getDateObject } from "@lib/date"
 import { HatGlassesIcon, LockIcon } from "lucide-react"
 import _ from "@lib/translate"
+import { timeFormatAtom } from "@utils/preferences"
+import { useAtomValue } from "jotai"
 
 export interface PollQuestionHeaderProps {
     poll: RavenPoll
@@ -15,10 +17,12 @@ export const PollQuestionHeader: React.FC<PollQuestionHeaderProps> = ({ poll, cl
     const isAnonymous = poll.is_anonymous === 1
     const isDisabled = poll.is_disabled === 1
 
+    const timeFormat = useAtomValue(timeFormatAtom)
+
     const formatEndDate = () => {
         if (!poll.end_date) return null
         try {
-            return getDateObject(poll.end_date).format("MMM D, YYYY, hh:mm A")
+            return getDateObject(poll.end_date).format(timeFormat === "12-hour" ? "MMM D, YYYY, h:mma" : "MMM D, YYYY, HH:mm")
         } catch {
             return "a future date"
         }

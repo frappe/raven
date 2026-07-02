@@ -251,7 +251,7 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
     // the hooks order. App-wide write-blocking is a later, broader effort.
     if (isInReadOnlyMode()) {
         return (
-            <div className="p-3 pb-4 w-full">
+            <div className="px-3 pb-4 w-full">
                 <div className="flex items-center justify-center gap-2 rounded-lg border border-outline-gray-2 bg-surface-gray-1 px-3 py-3 text-sm text-ink-gray-6">
                     <Lock className="size-3 shrink-0" />
                     <span>{_("The site is in read-only mode right now. Please wait while the site is being updated.")}</span>
@@ -267,7 +267,7 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                 e.preventDefault()
                 handleSend()
             }}
-            className="p-3 pb-4 w-full flex flex-col gap-2"
+            className="px-3 pb-3 w-full flex flex-col gap-2"
         >
             {/* Warning banner is only shown for primary channels, not DMs, threads in DMs. */}
             {!isDM && mentionedIds.length > 0 && <MentionWarningBanner channelID={parentChannelID ?? channelID} mentionedIds={mentionedIds} isThread={parentChannelID ? true : false} />}
@@ -294,7 +294,7 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                         <div className={EDITOR_MIN_H}>
                             <EditorContent editor={editor} />
                         </div>
-                        <div className="flex items-center gap-1 px-1.5 pb-1.5">
+                        <div className="flex items-center gap-1 px-1 pb-1">
                             {isMobile ? (
                                 // Mobile: secondary actions collapse into a "+" bottom sheet.
                                 <MobileComposerActions channelID={channelID} onToggleFormatting={() => setShowFormatting((v) => !v)} />
@@ -310,7 +310,10 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                                                 isIconButton
                                                 aria-label={_("Formatting")}
                                                 aria-pressed={showFormatting}
-                                                onClick={() => setShowFormatting((v) => !v)}
+                                                onClick={() => {
+                                                    setShowFormatting((v) => !v)
+                                                    editor?.commands.focus()
+                                                }}
                                                 className={cn(showFormatting && "bg-surface-gray-3 text-ink-gray-9")}
                                             >
                                                 <Type />

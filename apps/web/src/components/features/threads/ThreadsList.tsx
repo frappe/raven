@@ -1,21 +1,24 @@
-import { useCallback, useContext, useEffect, useMemo, useRef } from "react"
-import { FrappeConfig, FrappeContext, FrappeError, useSWRInfinite } from "frappe-react-sdk"
+import { memo, useCallback, useContext, useEffect, useMemo, useState } from "react"
+import { FrappeConfig, FrappeContext } from "frappe-react-sdk"
+import { Virtuoso } from "react-virtuoso"
 import { UserData } from "@db"
 import { ThreadPreviewBox } from "./ThreadPreviewBox"
-import { ThreadMessage, GetThreadsReturnType } from "../../../types/ThreadMessage"
+import { ThreadMessage } from "src/types/ThreadMessage"
 import { ChannelIcon } from "@components/common/ChannelIcon/ChannelIcon"
-import { useChannelList } from "@stores/channels/useChannelList"
-import { useUsersById } from "@hooks/useMessageRowLookups"
-import useUnreadThreadsCount from "@hooks/useUnreadThreadsCount"
+import { useMessageRowLookups } from "@hooks/useMessageRowLookups"
+import { useChannelMembers } from "@hooks/useChannelMembers"
+import { ScrollViewportContext, useHasBeenInView } from "@hooks/useHasBeenInView"
+import { useThreadList } from "@stores/threads/useThreadList"
+import { loadThreadDetails, useThreadReplyCount } from "@stores/threads/useThreadMeta"
+import type { ThreadRowData } from "@stores/threads/listSelectors"
 import { MessageListSkeleton } from "@components/features/dm-channel/DirectMessagePageSkeleton"
-import ErrorBanner from "@components/ui/error-banner"
+import type { ChannelListItem, DMChannelListItem } from "@raven/types/common/ChannelListItem"
 import _ from "@lib/translate"
 
 interface ThreadsListProps {
-    threadType?: 'participating' | 'other' | 'ai'
+    threadType?: "participating" | "other" | "ai"
     searchQuery?: string
     channelFilter?: string
-    workspaceID?: string
     onlyShowUnread?: boolean
     onThreadClick?: (thread: ThreadMessage) => void
     /** Active thread ID */
@@ -29,170 +32,147 @@ export type ThreadChannelDetails = {
     participants: UserData[]
 }
 
-const PAGE_SIZE = 10
-
-type SWRKey = [string, {
-    is_ai_thread: 0 | 1
-    workspace?: string
-    content?: string
-    channel_id?: string
-    startAfter: number
-    onlyShowUnread: boolean
-}]
-
-function ThreadPreviewBoxWrapper({
-    thread,
-    usersById,
-    unreadCount,
-    onClick,
-    isActive
-}: {
-    thread: ThreadMessage
+type RowLookups = {
     usersById: Map<string, UserData>
-    unreadCount: number
-    onClick?: () => void
+    channelById: Map<string, ChannelListItem>
+    dmById: Map<string, DMChannelListItem>
+}
+
+/** Module-level Footer so Virtuoso's component types stay stable across renders. */
+type ListContext = { isLoadingMore: boolean }
+const ListFooter = ({ context }: { context?: ListContext }) =>
+    context?.isLoadingMore ? (
+        <div className="py-4 text-center text-xs text-ink-gray-4">{_("Loading more threads...")}</div>
+    ) : null
+const listComponents = { Footer: ListFooter }
+
+const ThreadRow = memo(function ThreadRow({
+    thread,
+    lookups,
+    onSelect,
+    isActive,
+}: {
+    thread: ThreadRowData
+    lookups: RowLookups
+    /** Stable selection handler; bound to this row's thread internally so the row's
+     *  onClick identity stays stable and the memo only re-renders on real prop changes. */
+    onSelect?: (thread: ThreadRowData) => void
     isActive?: boolean
 }) {
-    const { channels, dmChannels } = useChannelList()
+    // Unread flag is baked into the row data (see selectThreadRows): the row object's
+    // identity changes when it flips, so this memo'd row re-renders exactly then.
+    const isUnread = thread._isUnread
+    const { usersById, channelById, dmById } = lookups
+    const onClick = useCallback(() => onSelect?.(thread), [onSelect, thread])
 
-    const dmChannel = dmChannels.find((c) => c.name === thread.channel_id)
-    const channel = channels.find((c) => c.name === thread.channel_id)
+    const dmChannel = dmById.get(thread.channel_id)
+    const channel = channelById.get(thread.channel_id)
     const peer = dmChannel?.peer_user_id ? usersById.get(dmChannel.peer_user_id) : undefined
-
     const user = usersById.get(thread.owner) ?? null
 
-    // Format channel details
-    const channelDetails: ThreadChannelDetails = useMemo(() => {
+    // Members + reply count come from the stores, lazily. A regular channel thread fetches its
+    // details (members + count) ONCE the row actually scrolls into view — gated on
+    // useHasBeenInView (not mere mount), because Virtuoso mounts more rows than are visible, so
+    // mount-gating would over-fetch the whole first page. Warms the same stores the thread pill
+    // + detail use (and loadThreadDetails self-dedupes, so a thread already loaded by a channel
+    // pill isn't refetched). DM/AI threads derive their avatar from the peer/bot — no fetch.
+    const { call } = useContext(FrappeContext) as FrappeConfig
+    const { ref: inViewRef, hasBeenInView } = useHasBeenInView({ rootMargin: "200px" })
+    const isChannelThread = thread.is_dm_thread !== 1 && thread.is_ai_thread !== 1
+    useEffect(() => {
+        if (isChannelThread && hasBeenInView) loadThreadDetails(call, thread.name)
+    }, [call, thread.name, isChannelThread, hasBeenInView])
 
+    // Members from the store (seeded by loadThreadDetails, kept live by channel_members_updated).
+    const { members } = useChannelMembers(thread.name, { autoFetch: false })
+    // Count from threadMetaStore (live via thread_reply); falls back to the row's fetch-time
+    // value until this row's details land.
+    const replyCount = useThreadReplyCount(thread.name) ?? thread.reply_count
+
+    const channelDetails: ThreadChannelDetails = useMemo(() => {
         if (thread.is_dm_thread === 1) {
             return {
                 channelName: `DM with ${peer?.full_name ?? dmChannel?.peer_user_id ?? _("Unknown")}`,
                 channelIcon: undefined,
                 isDirectMessage: true,
-                participants: peer ? [peer] : []
+                participants: peer ? [peer] : [],
             }
         } else if (channel) {
             return {
                 channelName: channel.channel_name || channel.name,
-                channelIcon: <ChannelIcon type={channel.type as 'Public' | 'Private' | 'Open'} className="h-3.5 w-3.5" />,
+                channelIcon: (
+                    <ChannelIcon type={channel.type as "Public" | "Private" | "Open"} className="h-3.5 w-3.5" />
+                ),
                 isDirectMessage: false,
-                participants: thread.participants
-                    .map((p) => usersById.get(p.user_id))
-                    .filter((u): u is UserData => Boolean(u))
+                participants: members,
             }
         }
-        return {
-            channelName: undefined,
-            channelIcon: undefined,
-            isDirectMessage: false,
-            participants: []
-        }
-    }, [channel, dmChannel, usersById, thread.is_dm_thread, thread.participants, peer])
+        return { channelName: undefined, channelIcon: undefined, isDirectMessage: false, participants: [] }
+    }, [channel, dmChannel, members, thread.is_dm_thread, peer])
 
     return (
-        <ThreadPreviewBox
-            user={user}
-            unreadCount={unreadCount}
-            thread={thread}
-            channelDetails={channelDetails}
-            onClick={onClick}
-            isActive={isActive}
-        />
+        <div ref={inViewRef}>
+            <ThreadPreviewBox
+                user={user}
+                isUnread={isUnread}
+                thread={thread}
+                replyCount={replyCount}
+                channelDetails={channelDetails}
+                onClick={onClick}
+                isActive={isActive}
+            />
+        </div>
     )
-}
+})
 
 export default function ThreadsList({
-    threadType = 'participating',
+    threadType = "participating",
     searchQuery,
     channelFilter,
-    workspaceID,
     onlyShowUnread = false,
     onThreadClick,
-    activeThreadID
+    activeThreadID,
 }: ThreadsListProps) {
-    const { call } = useContext(FrappeContext) as FrappeConfig
-    const { data: unreadThreads } = useUnreadThreadsCount(workspaceID)
-    const usersById = useUsersById()
+    const { rows, isLoading, error, hasMore, loadMore } = useThreadList(threadType, {
+        channel: channelFilter,
+        onlyShowUnread,
+        search: searchQuery ?? "",
+    })
 
-    const unreadThreadsMap = useMemo(() => {
-        return unreadThreads?.message.reduce((acc, t) => {
-            acc[t.name] = t.unread_count
-            return acc
-        }, {} as Record<string, number>) ?? {}
-    }, [unreadThreads])
+    const [scroller, setScroller] = useState<HTMLElement | null>(null)
 
-    const endpoint = threadType === 'other'
-        ? 'raven.api.threads.get_other_threads'
-        : 'raven.api.threads.get_all_threads'
-
-    const isAIThread: 0 | 1 = threadType === 'ai' ? 1 : 0
-
-    const channelParam = channelFilter && channelFilter !== '*all' ? channelFilter : undefined
-
-    const { data, size, isLoading, setSize, error } = useSWRInfinite<GetThreadsReturnType, FrappeError>(
-        (pageIndex, previousPageData) => {
-            if (previousPageData && !previousPageData.message.length) return null
-            const startAfter = pageIndex * PAGE_SIZE
-            return [endpoint, {
-                is_ai_thread: isAIThread,
-                workspace: workspaceID,
-                content: searchQuery,
-                channel_id: channelParam,
-                startAfter,
-                onlyShowUnread,
-            }] as SWRKey
-        },
-        (swrKey: SWRKey) => {
-            return call.get<GetThreadsReturnType>(swrKey[0], {
-                is_ai_thread: swrKey[1].is_ai_thread,
-                workspace: swrKey[1].workspace,
-                content: swrKey[1].content,
-                channel_id: swrKey[1].channel_id,
-                start_after: swrKey[1].startAfter,
-                limit: PAGE_SIZE,
-                only_show_unread: swrKey[1].onlyShowUnread,
-            })
-        },
-        {
-            revalidateOnFocus: false,
-            revalidateIfStale: true,
-        },
+    const { usersById, channelById, dmById } = useMessageRowLookups()
+    const lookups = useMemo<RowLookups>(
+        () => ({ usersById, channelById, dmById }),
+        [usersById, channelById, dmById],
     )
 
-    const isEmpty = data?.[0]?.message?.length === 0
-    const isLoadingMore = isLoading || (size > 0 && data && typeof data[size - 1] === 'undefined')
-    const isReachingEnd = isEmpty || (data && data[data.length - 1]?.message?.length < PAGE_SIZE)
+    const endReached = useCallback(() => {
+        if (hasMore) loadMore()
+    }, [hasMore, loadMore])
 
-    const threads = useMemo(
-        () => data?.flatMap((page) => page.message)
-            .sort((a, b) => new Date(b.last_message_timestamp).getTime() - new Date(a.last_message_timestamp).getTime()) ?? [],
-        [data],
+    // Stable context object so Virtuoso doesn't treat every parent render as a context change.
+    const listContext = useMemo<ListContext>(
+        () => ({ isLoadingMore: hasMore && isLoading }),
+        [hasMore, isLoading],
     )
 
-    const observerTarget = useRef<HTMLDivElement>(null)
+    if (error) return <div className="text-sm text-ink-gray-5 text-center py-8">{error}</div>
+    if (isLoading && rows.length === 0) return <MessageListSkeleton />
 
-    const loadMore = useCallback(() => {
-        if (!isReachingEnd && !isLoadingMore) {
-            setSize(size + 1)
+    if (rows.length === 0) {
+        if (searchQuery?.trim()) {
+            return (
+                <div className="flex flex-col items-center justify-center py-16 pr-6">
+                    <p className="text-base font-medium mb-2 text-ink-gray-8 text-center max-w-sm">
+                        {_("No matching threads")}
+                    </p>
+                    <p className="text-xs text-ink-gray-4 text-center max-w-sm">
+                        {_("Try a different search term.")}
+                    </p>
+                </div>
+            )
         }
-    }, [isReachingEnd, isLoadingMore, setSize, size])
-
-    useEffect(() => {
-        const observer = new IntersectionObserver(
-            (entries) => {
-                if (entries[0].isIntersecting) loadMore()
-            },
-            { threshold: 0.1 },
-        )
-        if (observerTarget.current) observer.observe(observerTarget.current)
-        return () => observer.disconnect()
-    }, [loadMore])
-
-    if (error) return <ErrorBanner error={error} />
-
-    if (isLoading && !data) return <MessageListSkeleton />
-
-    if (isEmpty) {
         return (
             <div className="flex flex-col items-center justify-center py-16 pr-6">
                 <p className="text-base font-medium mb-2 text-ink-gray-8 text-center max-w-sm">
@@ -201,30 +181,38 @@ export default function ThreadsList({
                 <p className="text-xs text-ink-gray-4 text-center max-w-sm">
                     {onlyShowUnread
                         ? _("There are no unread threads to show. Clear the filter to see all threads.")
-                        : threadType === 'ai'
-                            ? _("AI threads will appear here when you start conversations with an AI bot.")
-                            : _("Create a thread by right-clicking a message and selecting 'Create Thread'.")}
+                        : threadType === "ai"
+                          ? _("AI threads will appear here when you start conversations with an AI bot.")
+                          : _("Create a thread by right-clicking a message and selecting 'Create Thread'.")}
                 </p>
             </div>
         )
     }
 
     return (
-        <div>
-            {threads.map((thread) => (
-                <ThreadPreviewBoxWrapper
-                    key={thread.name}
-                    thread={thread}
-                    usersById={usersById}
-                    unreadCount={unreadThreadsMap[thread.name] ?? 0}
-                    onClick={() => onThreadClick?.(thread)}
-                    isActive={activeThreadID === thread.name}
-                />
-            ))}
-            <div ref={observerTarget} className="h-4" />
-            {isLoadingMore && (
-                <div className="text-center py-4 text-xs text-ink-gray-4">{_("Loading more threads...")}</div>
-            )}
-        </div>
+        // Root in-view detection at Virtuoso's scroll container so a row fetches its details
+        // only when it's actually near-visible — Virtuoso mounts more rows than are on screen,
+        // so gating on mount would over-fetch (see ThreadRow).
+        <ScrollViewportContext.Provider value={scroller}>
+            <Virtuoso
+                data={rows}
+                style={{ height: "100%" }}
+                scrollerRef={(ref) => setScroller(ref as HTMLElement | null)}
+                endReached={endReached}
+                overscan={200}
+                defaultItemHeight={140}
+                context={listContext}
+                components={listComponents}
+                computeItemKey={(_index, thread) => thread.name}
+                itemContent={(_index, thread) => (
+                    <ThreadRow
+                        thread={thread}
+                        lookups={lookups}
+                        onSelect={onThreadClick}
+                        isActive={activeThreadID === thread.name}
+                    />
+                )}
+            />
+        </ScrollViewportContext.Provider>
     )
 }

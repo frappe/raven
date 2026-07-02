@@ -32,16 +32,16 @@ const ChannelMembersList = ({ members, channelID, allowSettingChange }: { member
     return (
         <div className="flex flex-col h-full min-h-0 gap-2">
             <div className="flex gap-2 px-2 shrink-0">
-                <InputGroup size="sm" variant="outline">
+                <InputGroup size="md" variant="outline">
                     <InputGroupAddon><SearchIcon /></InputGroupAddon>
                     <Input
                         placeholder={_("Search")}
-                        inputSize="sm"
+                        inputSize="md"
                         onChange={(e) => setSearchQuery(e.target.value)}
                     />
                 </InputGroup>
                 {allowSettingChange && (
-                    <Button variant="subtle" size="sm">
+                    <Button variant="subtle" size="md">
                         <PlusIcon />
                         {_("Add")}
                     </Button>

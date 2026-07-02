@@ -29,7 +29,7 @@ class RavenMessageReaction(Document):
 	def after_insert(self):
 		# Update the count for the current reaction
 		calculate_message_reaction(self.message, self.channel_id)
-		message_owner = frappe.db.get_value("Raven Message", self.message, "owner")
+		message_owner = frappe.get_cached_value("Raven Message", self.message, "owner")
 		if message_owner and message_owner != frappe.session.user:
 			frappe.publish_realtime(
 				"raven_reaction_notification",
@@ -40,7 +40,7 @@ class RavenMessageReaction(Document):
 	def after_delete(self):
 		# Update the count for the current reaction
 		calculate_message_reaction(self.message, self.channel_id)
-		message_owner = frappe.db.get_value("Raven Message", self.message, "owner")
+		message_owner = frappe.get_cached_value("Raven Message", self.message, "owner")
 		if message_owner and message_owner != frappe.session.user:
 			frappe.publish_realtime(
 				"raven_reaction_notification",

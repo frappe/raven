@@ -37,7 +37,7 @@ export const PollOptionBar: React.FC<PollOptionBarProps> = ({
                         "relative flex h-7 items-center rounded-full [corner-shape:squircle] overflow-hidden group"
                     )}
                 >
-                    <div className={cn("absolute top-0 left-0 h-full w-full transition-all duration-300 ease-in-out", isCurrentUserVote ? "bg-surface-violet-1" : "bg-surface-gray-1")} />
+                    <div className={cn("absolute top-0 left-0 h-full w-full transition-all duration-300 ease-in-out", isCurrentUserVote ? "bg-surface-violet-1 dark:bg-surface-gray-2" : "bg-surface-gray-2")} />
                     <div
                         className={cn(
                             "absolute top-0 left-0 h-full transition-all duration-300 ease-in-out",

@@ -90,9 +90,15 @@ class RavenSearch(SQLiteSearch):
 		if not document:
 			return None
 
-		is_thread_channel, channel_type, is_direct_message = frappe.db.get_value(
+		channel_values = frappe.db.get_value(
 			"Raven Channel", doc.channel_id, ["is_thread", "type", "is_direct_message"]
 		)
+		if not channel_values:
+			# Channel not resolvable yet (e.g. message indexed mid-insert before its
+			# channel is committed, or channel deleted). Skip indexing rather than
+			# crashing the whole index update for this message.
+			return None
+		is_thread_channel, channel_type, is_direct_message = channel_values
 		document["channel_type"] = channel_type
 		document["is_direct_message"] = is_direct_message
 		document["is_thread_message"] = is_thread_channel
@@ -120,7 +126,7 @@ class RavenSearch(SQLiteSearch):
 		else:
 			document["parent_channel_id"] = doc.channel_id
 
-		if doc.message_type == "File" or doc.message_type == "Image":
+		if (doc.message_type == "File" or doc.message_type == "Image") and doc.file:
 			file_name = doc.file.split("/")[-1]
 			file_type = mimetypes.guess_type(file_name)[0]
 			if file_type:
@@ -476,6 +482,7 @@ def search_links(
 			message.owner.as_("author"),
 			message.content,
 			channel.is_direct_message,
+			channel.is_thread,
 			channel.type.as_("channel_type"),
 			thread_root.channel_id.as_("parent_channel_id"),
 			link_preview.name.as_("url"),

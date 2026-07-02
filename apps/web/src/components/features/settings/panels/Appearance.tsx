@@ -1,14 +1,16 @@
 import { Label } from "@components/ui/label"
 import { Separator } from "@components/ui/separator"
-import { SettingsPanelDescription, SettingsPanelHeader, SettingsPanelTitle, SettingsPanelContent, SettingsFormLabel, SettingsFormDescription } from "@components/ui/settings-dialog"
+import { SettingsPanelDescription, SettingsPanelHeader, SettingsPanelTitle, SettingsPanelContent, SettingsFormLabel, SettingsFormDescription, SettingsFormRow } from "@components/ui/settings-dialog"
 import { useTheme } from "@components/theme-provider"
-import { useSetAtom } from "jotai"
-import { chatStyleAtom, type ChatStyle } from "@utils/preferences"
+import { useAtom, useSetAtom } from "jotai"
+import { chatStyleAtom, imageGroupingLayoutAtom, type ChatStyle } from "@utils/preferences"
 import _ from "@lib/translate"
 import { useFrappePostCall } from "frappe-react-sdk"
 import { toast } from "sonner"
 import useCurrentRavenUser from "@raven/lib/hooks/useCurrentRavenUser"
 import { getErrorMessage } from "@lib/frappe"
+import { Select, SelectItem, SelectValue, SelectTrigger, SelectContent } from "@components/ui/select"
+import { Grid3x2Icon, ImagesIcon, FileStack, LayoutPanelLeftIcon } from "lucide-react"
 
 const Appearance = () => {
 
@@ -29,6 +31,10 @@ const Appearance = () => {
                         <Separator />
 
                         <LeftRightLayoutSwitcher />
+
+                        <Separator />
+
+                        <ImageGroupingBehaviour />
 
                     </div>
                 </div>
@@ -311,6 +317,32 @@ const LeftRightLayoutSwitcher = () => {
         </div>
     </div>
 
+}
+
+const ImageGroupingBehaviour = () => {
+
+    const [imageGrouping, setImageGrouping] = useAtom(imageGroupingLayoutAtom)
+
+
+    return <SettingsFormRow>
+        <div className="flex flex-col">
+            <SettingsFormLabel htmlFor="sort_channels_by">{_("Image group layout")}</SettingsFormLabel>
+            <SettingsFormDescription>
+                {_("Decide how a group of images should appear in the chat stream.")}
+            </SettingsFormDescription>
+        </div>
+        <div className="min-w-40 flex justify-end">
+            <Select onValueChange={(value) => setImageGrouping(value as "stack" | "grid")} value={imageGrouping}>
+                <SelectTrigger id="time_format" className="min-w-32">
+                    <SelectValue placeholder={_("Select sort order")} />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="stack"><ImagesIcon /> {_("Stack")}</SelectItem>
+                    <SelectItem value="grid"><LayoutPanelLeftIcon /> {_("Grid/Carousel")}</SelectItem>
+                </SelectContent>
+            </Select>
+        </div>
+    </SettingsFormRow>
 }
 
 export default Appearance

@@ -123,8 +123,6 @@ const NotificationsLink = () => {
     const { data: unreadCountData } = useUnreadNotificationsCount()
     const unreadCount = unreadCountData?.message ?? 0
 
-    // TODO: Add realtime event listeners here to update the unread count when new notifications are created or read
-
     return <NavLink to="notifications">
         {({ isActive }) => (
             <IconBox isActive={isActive} title={_("Notifications")}>

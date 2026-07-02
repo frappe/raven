@@ -73,7 +73,7 @@ const LoadedPoll = ({ message }: { message: Message }) => {
         "raven.api.raven_poll.get_poll",
         { message_id: message.name },
         ["poll", message.name],
-        { revalidateOnFocus: false },
+        { dedupingInterval: 10000, focusThrottleInterval: 5000 },
     )
     const { call: addVote } = useFrappePostCall("raven.api.raven_poll.add_vote")
     const usersById = useUsersById()

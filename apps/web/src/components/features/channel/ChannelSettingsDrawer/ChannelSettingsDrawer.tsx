@@ -39,7 +39,7 @@ const ChannelSettingsDrawer = ({ peerUser }: ChannelSettingsDrawerProps) => {
 
     return (
         <div className="flex flex-col h-full w-full">
-            <div className='flex justify-between items-center px-2.5 pl-5 h-11 border-b border-outline-gray-2'>
+            <div className='flex justify-between items-center px-2.5 pl-5 h-11 md:border-b border-outline-gray-2'>
                 <span className='text-lg-medium'>{isDM ? _('Profile') : _('About')}</span>
                 <div>
                     <Button
@@ -47,6 +47,7 @@ const ChannelSettingsDrawer = ({ peerUser }: ChannelSettingsDrawerProps) => {
                         onClick={handleClose}
                         isIconButton
                         aria-label="Close drawer"
+                        className='md:inline-flex hidden'
                     >
                         <X />
                     </Button>

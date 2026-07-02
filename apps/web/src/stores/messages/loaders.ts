@@ -1,5 +1,6 @@
 import { channelMessagesStore } from "./store"
 import { channelUnreadStore } from "@stores/unread/store"
+import { channelStore } from "@stores/channels/store"
 import { MessagesPage } from "./types"
 
 const PAGE_SIZE = 30
@@ -51,6 +52,19 @@ export const loadInitialMessages = async (
     } finally {
         inFlight.delete(key)
     }
+}
+
+/**
+ * Hover/highlight prefetch: warms a COLD channel's first page into the same store ChatStream
+ * reads, so opening it skips the loading skeleton. No-op unless the id is a real channel/DM
+ * (so a Command-menu user/settings value is ignored) and its window is still idle — a warm or
+ * loading channel must not be reset. Idempotent via loadInitialMessages' inFlight guard.
+ */
+export const prefetchChannel = (client: FrappeCallClient, channelID: string) => {
+    if (!channelID) return
+    if (!channelStore.getChannel(channelID)) return
+    if (channelMessagesStore.getState(channelID).status !== "idle") return
+    loadInitialMessages(client, channelID)
 }
 
 export const loadOlderMessages = async (client: FrappeCallClient, channelID: string) => {

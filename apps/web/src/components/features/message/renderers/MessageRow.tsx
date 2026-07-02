@@ -22,7 +22,7 @@ export const useMessageTimes = (creation: string) => {
     return useMemo(() => {
         try {
             const dateObject = getDateObject(creation)
-            let format = "hh:mm A"
+            let format = "h:mm a"
             if (timeFormat === "24-hour") {
                 format = "HH:mm"
             }

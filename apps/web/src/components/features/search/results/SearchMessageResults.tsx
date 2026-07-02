@@ -65,6 +65,7 @@ const SearchMessageResults = ({ searchValue, filters, onSelect, selectedID }: Se
                             messageID: r.name,
                             isDirectMessage: !!dmChannel,
                             peer,
+                            isThread: !!r.is_thread,
                         })}
                     />
                 )

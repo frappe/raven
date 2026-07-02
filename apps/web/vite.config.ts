@@ -5,6 +5,7 @@ import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 // @ts-expect-error - proxyOptions is not typed
 import proxyOptions from "./proxyOptions";
 import babel from '@rolldown/plugin-babel';
+import { VitePWA } from "vite-plugin-pwa"
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -14,7 +15,19 @@ export default defineConfig({
       presets: [reactCompilerPreset()]
     }),
     // @ts-ignore - tailwindcss is not typed
-    tailwindcss()],
+    tailwindcss(),
+    VitePWA({
+      strategies: "injectManifest",
+      srcDir: "src",
+      filename: "sw.js",
+      injectRegister: false, // registered manually in main.tsx (Firebase ?config append)
+      manifest: false,       // static manifest + manual <link> (entry is a Frappe Jinja template)
+      injectManifest: {
+        globPatterns: [],    // PRECACHE DISABLED. To enable offline later, set globs here.
+      },
+      devOptions: { enabled: false },
+    }),
+  ],
   resolve: {
     // Force a SINGLE copy of these, resolved from this app's node_modules.
     // Without it the prod build bundles two frappe-react-sdk copies (apps/web

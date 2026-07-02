@@ -17,10 +17,24 @@ class UnreadThreadsStore {
     private listeners = new Set<Listener>()
     /** The thread the user is currently caught up on — events for it don't mark it unread. */
     private activeThreadID: string | null = null
+    /**
+     * Reference-stable immutable view of the unread set, rebuilt (new reference) ONLY when
+     * membership changes — see notify(). This is the useSyncExternalStore snapshot: returning
+     * the same reference between changes is required (a fresh Set every call would loop), and
+     * a new reference on every membership change (including same-size swaps) is what makes
+     * consumers re-render. Size alone is not a safe signal — swapping one unread thread for
+     * another keeps size at 1 — so membership consumers (the dot) read this, not getCount.
+     */
+    private cachedSnapshot: ReadonlySet<string> = new Set()
 
     /** Number of threads with unread messages — primitive snapshot, safe per render. */
     getCount(): number {
         return this.unread.size
+    }
+
+    /** Reference-stable unread-id set for useSyncExternalStore; new ref only on change. */
+    getSnapshot(): ReadonlySet<string> {
+        return this.cachedSnapshot
     }
 
     subscribe(listener: Listener): () => void {
@@ -60,6 +74,8 @@ class UnreadThreadsStore {
     }
 
     private notify() {
+        // Rebuild the stable snapshot BEFORE notifying so consumers read the new membership.
+        this.cachedSnapshot = new Set(this.unread)
         this.listeners.forEach((listener) => listener())
     }
 }

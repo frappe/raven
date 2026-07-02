@@ -31,6 +31,8 @@ import {
 } from "@components/ui/alert-dialog"
 import _ from "@lib/translate"
 import { Separator } from "@components/ui/separator"
+import { useAtomValue } from "jotai"
+import { timeFormatAtom } from "@utils/preferences"
 
 export interface PollDrawerProps {
     user: UserData
@@ -73,6 +75,8 @@ export const PollDrawer: React.FC<PollDrawerProps> = ({
             .catch((e) => toast.error(_("Could not close the poll"), { description: getErrorMessage(e) }))
     }
 
+    const timeFormat = useAtomValue(timeFormatAtom)
+
     const pollStatusBadge: null | { text: string; theme: 'gray' | 'red'; icon?: React.ElementType } = useMemo(() => {
         if (!poll.end_date) {
             // If the poll does not have an end date, it is open indefinitely
@@ -83,7 +87,7 @@ export const PollDrawer: React.FC<PollDrawerProps> = ({
         } else if (poll.end_date) {
             try {
                 const endDateObj = getDateObject(poll.end_date)
-                const formattedDate = endDateObj.format('MMM D, hh:mm A')
+                const formattedDate = endDateObj.format(timeFormat === "12-hour" ? "MMM D, h:mma" : "MMM D, HH:mm")
                 return { text: _("Open until {0}", [formattedDate]), theme: "gray" }
             } catch {
                 return { text: _("Open"), theme: "gray" }
@@ -96,7 +100,7 @@ export const PollDrawer: React.FC<PollDrawerProps> = ({
     return (
         <div className="flex flex-col h-full w-full">
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-2 border-b h-11 shrink-0">
+            <div className="flex items-center justify-between px-4 py-2 md:border-b h-11 shrink-0">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                     <h2 className="text-lg-medium mb-0">Poll</h2>
                     {pollStatusBadge && (
@@ -143,6 +147,7 @@ export const PollDrawer: React.FC<PollDrawerProps> = ({
                         isIconButton
                         onClick={onClose}
                         aria-label="Close drawer"
+                        className="md:inline-flex hidden"
                     >
                         <X />
                     </Button>
@@ -161,7 +166,7 @@ export const PollDrawer: React.FC<PollDrawerProps> = ({
                                 showStatusIndicator={false}
                             />
                             <span>{user?.full_name || user?.name || "User"}</span>
-                            <span className="text-ink-gray-5 text-xs">{getDateObject(poll.creation).format('MMM D, hh:mm A')}</span>
+                            <span className="text-ink-gray-5 text-xs">{getDateObject(poll.creation).format(timeFormat === "12-hour" ? "MMM D, h:mma" : "MMM D, HH:mm")}</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <Badge>
@@ -196,8 +201,8 @@ export const PollDrawer: React.FC<PollDrawerProps> = ({
                                         className={cn(
                                             "p-3 border rounded-lg",
                                             isCurrentUserVote
-                                                ? "border-outline-violet-3 bg-surface-violet-1"
-                                                : "border-outline-gray-2"
+                                                ? "border-outline-violet-3 bg-surface-violet-1 dark:border-outline-gray-3 dark:bg-surface-elevation-2"
+                                                : "border-outline-gray-1"
                                         )}
                                     >
                                         <div className="space-y-3">
@@ -207,7 +212,7 @@ export const PollDrawer: React.FC<PollDrawerProps> = ({
                                                     <span
                                                         className={cn(
                                                             "text-p-sm wrap-break-word min-w-0",
-                                                            isCurrentUserVote ? "text-ink-gray-8 font-medium" : "text-ink-gray-8"
+                                                            isCurrentUserVote ? "text-ink-gray-8 text-p-sm-medium" : "text-ink-gray-8"
                                                         )}
                                                     >
                                                         {option.option}

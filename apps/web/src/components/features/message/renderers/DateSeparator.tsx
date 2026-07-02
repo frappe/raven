@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef } from "react";
 import { Badge } from "@components/ui/badge";
-import { Separator } from "@components/ui/separator";
+import { DateTrackerContext } from "../messageDateTracker";
 
 /** Nearest scrolling ancestor, used as the IntersectionObserver root. */
 function getScrollParent(node: HTMLElement | null): HTMLElement | null {
@@ -13,19 +13,23 @@ function getScrollParent(node: HTMLElement | null): HTMLElement | null {
     return null
 }
 
-// One shared IntersectionObserver per distinct scroll root (in practice, the
-// single ChatStream viewport) so N date separators don't spin up N observers.
-// Reference-counted; the observer is torn down when its last sentinel unmounts.
-const stuckCallbacks = new WeakMap<Element, (stuck: boolean) => void>()
+// One shared IntersectionObserver per distinct scroll root (in practice, the single ChatStream
+// viewport) so N date dividers don't spin up N observers. Reference-counted; torn down when its
+// last sentinel unmounts. The callback reports whether the sentinel has scrolled ABOVE the root's
+// top (distinct from leaving at the bottom) — that's what makes a date the "current" one.
+const callbacks = new WeakMap<Element, (isAbove: boolean) => void>()
 const rootObservers = new Map<Element | null, { observer: IntersectionObserver; refs: number }>()
 
-function observeSentinel(el: HTMLElement, onChange: (stuck: boolean) => void) {
+function observeSentinel(el: HTMLElement, onChange: (isAbove: boolean) => void) {
     const root = getScrollParent(el)
     let entry = rootObservers.get(root)
     if (!entry) {
         const observer = new IntersectionObserver(
             (entries) => {
-                for (const e of entries) stuckCallbacks.get(e.target)?.(!e.isIntersecting)
+                for (const e of entries) {
+                    const isAbove = e.boundingClientRect.top < (e.rootBounds?.top ?? 0)
+                    callbacks.get(e.target)?.(isAbove)
+                }
             },
             { root, threshold: 0 },
         )
@@ -33,13 +37,13 @@ function observeSentinel(el: HTMLElement, onChange: (stuck: boolean) => void) {
         rootObservers.set(root, entry)
     }
     const current = entry
-    stuckCallbacks.set(el, onChange)
+    callbacks.set(el, onChange)
     current.observer.observe(el)
     current.refs++
 
     return () => {
         current.observer.unobserve(el)
-        stuckCallbacks.delete(el)
+        callbacks.delete(el)
         if (--current.refs === 0) {
             current.observer.disconnect()
             rootObservers.delete(root)
@@ -47,33 +51,32 @@ function observeSentinel(el: HTMLElement, onChange: (stuck: boolean) => void) {
     }
 }
 
-export default function DateSeparator({ label }: { label: string }) {
-    // A zero-height marker rendered just above the sticky row. When it scrolls
-    // out of the top of the scroll container, the row is pinned ("stuck"). We
-    // observe the sentinel (not the row) because the row uses `-mx-8` and would
-    // never report a full intersection ratio.
+export default function DateSeparator({ name, label }: { name: string; label: string }) {
+    // A zero-height marker rendered just above the divider. When it scrolls above the viewport's
+    // top, this date becomes the "current" one — reported to the tracker that drives the floating
+    // pill. The dividers themselves are plain inline rows (no longer sticky), so nothing piles at
+    // the top and there's no block to mask.
     const sentinelRef = useRef<HTMLDivElement>(null)
-    const [stuck, setStuck] = useState(false)
+    const tracker = useContext(DateTrackerContext)
 
     useEffect(() => {
         const el = sentinelRef.current
-        if (!el) return
-        return observeSentinel(el, setStuck)
-    }, [])
+        if (!el || !tracker) return
+        return observeSentinel(el, (isAbove) => tracker.report(name, isAbove))
+    }, [name, tracker])
 
     return (
         <>
             <div ref={sentinelRef} aria-hidden className="h-0" />
-            {/* The page-coloured bar keeps newer dates cleanly covering older
-                pinned ones and hides messages scrolling underneath. Only the
-                flanking lines fade out once pinned, leaving just the badge. */}
-            <div
-                data-stuck={stuck}
-                className="group/date sticky top-0 z-40 py-2 -mx-8 px-8 flex items-center bg-surface-base"
-            >
-                <Separator className="flex-1 bg-surface-gray-2 transition-opacity group-data-[stuck=true]/date:opacity-0" />
-                <Badge variant="subtle" theme="gray" size='md'>{label}</Badge>
-                <Separator className="flex-1 bg-surface-gray-2 transition-opacity group-data-[stuck=true]/date:opacity-0" />
+            {/* One full-width line behind the centered badge — a single element, so both visible
+                segments are always identical (no per-side opacity race). The badge's opaque fill
+                breaks the line in the middle. */}
+            <div className="relative flex items-center justify-center py-2">
+                <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-surface-gray-2"
+                />
+                <Badge variant="subtle" theme="gray" size='md' className="relative">{label}</Badge>
             </div>
         </>
     )

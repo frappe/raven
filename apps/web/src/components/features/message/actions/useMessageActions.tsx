@@ -134,7 +134,7 @@ export const useMessageActions = (message: Message | null): MessageAction[][] =>
                 onSelect: () => {
                     const threadID = message.name
                     // Strip any open /thread/... so we navigate from the channel base.
-                    const base = window.location.pathname.split("/thread")[0]
+                    const base = window.location.pathname.split("/thread")[0]?.replace(`/${import.meta.env.VITE_BASE_NAME}`, "")
                     call.post("raven.api.threads.create_thread", { message_id: threadID })
                         .then(() => {
                             // Reflect the new thread on the parent (shows the pill) and seed an

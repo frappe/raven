@@ -1,9 +1,10 @@
 import { useMemo } from 'react'
 import { Virtuoso } from 'react-virtuoso'
-import { useFrappeGetCall } from 'frappe-react-sdk'
+import { useFrappeGetCall, useFrappeEventListener } from 'frappe-react-sdk'
 
 import { Message, BaseMessage } from '@raven/types/common/Message'
 import { useMessageRowLookups } from '@hooks/useMessageRowLookups'
+import { useUserCookieData } from '@hooks/useUserCookieData'
 import { MessageListSkeleton } from '@components/features/dm-channel/DirectMessagePageSkeleton'
 import { MessageResultBlock, RESULT_ROW_ACTIVE_CLASS } from '@components/common/MessageResultBlock/MessageResultBlock'
 import type { SelectedNotification } from '@pages/notifications/NotificationChat'
@@ -24,6 +25,7 @@ type SavedMessageRow = {
     name: string
     owner: string
     creation: string
+    is_thread: 0 | 1
     text?: string
     channel_id: string
     file?: string
@@ -65,15 +67,33 @@ function savedRowToMessage(r: SavedMessageRow): Message {
     return { ...base, message_type: 'Text', text: r.text ?? '' }
 }
 
+type SavedMessagesResponse = { message: SavedMessageRow[] }
+
 const SavedMessagesList = ({ searchQuery, channel, onSelect, selectedID }: SavedMessagesListProps) => {
     const channelParam = channel && channel !== '*all' ? channel : undefined
+    const { name: currentUser } = useUserCookieData()
 
-    const { data, error, isLoading } = useFrappeGetCall<{ message: SavedMessageRow[] }>(
+    const { data, error, isLoading, mutate } = useFrappeGetCall<SavedMessagesResponse>(
         'raven.api.raven_message.get_saved_messages',
         undefined,
         undefined,
-        { revalidateOnFocus: false },
+        { revalidateOnFocus: true },
     )
+
+    // Live reflection of save/unsave done anywhere (the event is user-scoped). Saving is
+    // infrequent, so this stays lightweight: drop the row on unsave with no refetch; on a
+    // new save, revalidate once to pull the row. `revalidateOnFocus` is the drift backstop.
+    useFrappeEventListener('message_saved', (event: { channel_id: string; message_id: string; liked_by: string }) => {
+        const stillSaved = (JSON.parse(event.liked_by || '[]') as string[]).includes(currentUser)
+        if (!stillSaved) {
+            mutate(
+                (prev) => prev && { message: prev.message.filter((r) => r.name !== event.message_id) },
+                { revalidate: false },
+            )
+        } else {
+            mutate()
+        }
+    })
 
     const { usersById, channelById, dmById, workspaceById } = useMessageRowLookups()
 
@@ -124,6 +144,7 @@ const SavedMessagesList = ({ searchQuery, channel, onSelect, selectedID }: Saved
                             messageID: r.name,
                             isDirectMessage: !!dmChannel,
                             peer,
+                            isThread: !!r.is_thread,
                         })}
                     />
                 )

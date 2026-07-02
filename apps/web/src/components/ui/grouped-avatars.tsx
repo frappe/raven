@@ -59,11 +59,7 @@ export function GroupedAvatars({
                 >
                     <AvatarImage src={user.user_image} alt={user.full_name} />
                     <AvatarFallback>
-                        {user.full_name
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")
-                            .toUpperCase()}
+                        {user.full_name.charAt(0).toLocaleUpperCase()}
                     </AvatarFallback>
                 </Avatar>
             ))}

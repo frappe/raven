@@ -59,8 +59,8 @@ export type ComposerGate = ReturnType<typeof useComposerGate>
 
 /** Placeholder while we work out whether you can post — keeps the refresh from flashing. */
 const ComposerSkeleton = () => (
-    <div className="p-3 pb-4 w-full">
-        <div className="h-24 w-full animate-pulse rounded-lg border border-outline-gray-2 bg-surface-gray-1" />
+    <div className="px-3 pb-4 w-full">
+        <div className="md:h-[98px] h-24 w-full animate-pulse rounded-lg border border-outline-gray-2 bg-surface-gray-1" />
     </div>
 )
 
@@ -95,14 +95,13 @@ const ComposerBlockedBanner = ({
 
     }, [archived, onJoin, joining, isThread])
 
-    return <div className="p-3 pb-4 w-full">
-        <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-outline-gray-2 bg-surface-gray-1 px-3 py-4 text-sm text-ink-gray-6">
-            {archived ? <Archive className="size-5 shrink-0" /> : <UserRoundX className="size-5 shrink-0" />}
-            <span>
+    return <div className="px-3 pb-4 w-full">
+        <div className="flex md:min-h-[98px] min-h-24 flex-col items-center justify-center gap-2 rounded-lg border border-outline-gray-2 bg-surface-gray-1 px-3 py-4 text-sm text-ink-gray-6">
+            <span className="text-p-base">
                 {message}
             </span>
             {!archived && onJoin && (
-                <Button size="xs" loading={joining} variant="outline" loadingText={_("Joining…")} onClick={onJoin}>
+                <Button size="sm" loading={joining} variant="outline" loadingText={_("Joining…")} onClick={onJoin}>
                     {_("Join")}
                 </Button>
             )}

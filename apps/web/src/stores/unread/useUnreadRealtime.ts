@@ -16,6 +16,8 @@ type UnreadChannelEvent = {
     last_message_timestamp?: string
     /** JSON string of the new last message — present on DM message events. */
     last_message_details?: string
+    /** True when a DM's last message was deleted and none remain — clear the lingering teaser. */
+    last_message_cleared?: boolean
     is_dm_channel?: boolean
     is_thread?: boolean
     play_sound?: boolean
@@ -122,6 +124,14 @@ export const useUnreadRealtime = () => {
                 ...(event.last_message_timestamp
                     ? { last_message_timestamp: event.last_message_timestamp }
                     : {}),
+            })
+        } else if (event.last_message_cleared) {
+            // A DM's last (only) message was deleted and none remain — clear the lingering
+            // preview + sort key live (the backend flags this explicitly because a null
+            // details value alone is ambiguous with a non-last delete, which must NOT clear).
+            channelStore.patchChannel(event.channel_id, {
+                last_message_details: null,
+                last_message_timestamp: undefined,
             })
         } else {
             // A regular channel's unread_channel_count_updated event will not have the last_message_details to prevent leaking messages to all users

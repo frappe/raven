@@ -35,7 +35,7 @@ export const ThreadButton = ({ participants, messageCount, threadID }: ThreadBut
     const content = (
         <>
             <GroupedAvatars users={participants} max={4} size="xs" />
-            <span className="text-sm">{_("{0} replies", [String(messageCount)])}</span>
+            <span className="text-sm">{messageCount === 1 ? _("1 reply") : _("{0} replies", [String(messageCount)])}</span>
         </>
     )
     const className = "flex w-fit ml-11 mt-2 items-center gap-2 text-ink-gray-6 transition-colors duration-200 hover:text-ink-gray-8"
@@ -43,6 +43,7 @@ export const ThreadButton = ({ participants, messageCount, threadID }: ThreadBut
     // No threadID → render non-interactive (shouldn't happen for a real pill).
     if (!threadID) return <div className={cn("ml-11 mt-2", className)}>{content}</div>
 
+    // TODO: Handle routing when this is clicked on the notifications/search page since we need to then go to the channel's thread route.
     // Thread route is sibling to the channel: strip any open `/thread/...` to get the
     // channel base, then point at this thread. `replace` so the back button still exits
     // the channel rather than cycling threads. Closing the channel drawer is a click

@@ -1,7 +1,7 @@
 import { Fragment, memo } from "react"
 import { MessageSquare } from "lucide-react"
 import { cn } from "@lib/utils"
-import { type NotificationObject } from "@hooks/useNotifications"
+import { type NotificationObject } from "@stores/notifications/reducers"
 import { UserAvatar } from "@components/features/message/UserAvatar"
 import { ChannelIcon } from "@components/common/ChannelIcon/ChannelIcon"
 import { formatRelativeDate } from "@lib/date"
@@ -159,6 +159,7 @@ export const MentionItem = memo(({
         onSelect({
             channelID: notification.channel_id,
             messageID: notification.message_id,
+            isThread: !!notification.is_thread,
             isDirectMessage: !!notification.is_direct_message,
             peer: notification.is_direct_message ? sender : undefined,
         })
@@ -214,6 +215,7 @@ export const ReactionItem = memo(({
             messageID: notification.message_id,
             isDirectMessage: !!notification.is_direct_message,
             peer: notification.is_direct_message ? reactorsData[0] : undefined,
+            isThread: !!notification.is_thread,
         })
     }
 

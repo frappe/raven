@@ -21,7 +21,7 @@ const registerServiceWorker = () => {
   if ("serviceWorker" in navigator) {
     // @ts-expect-error - frappePushNotification is not defined
     window.frappePushNotification
-      .appendConfigToServiceWorkerURL("/assets/raven/raven/sw.js")
+      .appendConfigToServiceWorkerURL("/assets/raven/raven_v3/sw.js")
       .then((url: string) => {
         navigator.serviceWorker
           .register(url, {

@@ -1,6 +1,7 @@
 import { useFrappeEventListener } from "frappe-react-sdk"
 import useCurrentRavenUser from "@raven/lib/hooks/useCurrentRavenUser"
 import { threadMetaStore } from "@stores/threads/store"
+import { threadListStore } from "@stores/threads/listStore"
 import { unreadThreadsStore } from "@stores/threads/unreadStore"
 import { useUserCookieData } from "@hooks/useUserCookieData"
 
@@ -36,7 +37,9 @@ export const useThreadsRealtime = () => {
     // Broadcast to everyone — keeps the "N replies" pill live for all channel members.
     useFrappeEventListener("thread_reply", (event: ThreadReplyEvent) => {
         if (!event?.channel_id) return
+        // Count → threadMetaStore (the list + pill read it there); order → list windows.
         threadMetaStore.patch(event.channel_id, event.number_of_replies, event.last_message_timestamp)
+        threadListStore.bump(event.channel_id, event.last_message_timestamp)
     })
 
     // Scoped to the thread's participants — marks a thread unread for the sidebar badge.

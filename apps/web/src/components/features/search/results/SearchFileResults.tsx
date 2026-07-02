@@ -74,6 +74,7 @@ const SearchFileResults = ({ searchValue, filters, onSelect, selectedID }: Searc
                             messageID: file.name,
                             isDirectMessage: !!dmChannel,
                             peer,
+                            isThread: !!file.is_thread,
                         })}
                     />
                 )
@@ -102,65 +103,65 @@ const FileResultRowInner = ({ file, user, channel, dmChannel, peer, workspace, o
 
     return (
         <div className="px-2 py-0.5">
-        <div
-            role="button"
-            tabIndex={0}
-            onClick={onClick}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } }}
-            className={cn(
-                "group flex gap-3 px-2 py-3 md:py-2 rounded transition-colors text-left select-none cursor-pointer hover:bg-surface-gray-3 active:bg-surface-gray-3 focus-visible:bg-surface-gray-3 focus-visible:outline-none",
-                className
-            )}
-        >
-            {user && <UserAvatar user={user} size="md" showStatusIndicator={false} />}
-            <div className="flex-1 min-w-0">
-                <div className="flex items-baseline gap-1.5 flex-wrap text-base md:text-sm">
-                    {user && <span className="font-medium text-ink-gray-8 truncate">{user.full_name}</span>}
-                    <span className="shrink-0 text-xs text-ink-gray-4">{relativeDate}</span>
-                    {workspace && (
-                        <>
-                            <span className="text-ink-gray-4 shrink-0">·</span>
-                            <span className="text-ink-gray-4 truncate min-w-0">{workspace.workspace_name}</span>
-                        </>
-                    )}
-                    {channel && (
-                        <>
-                            <span className="text-ink-gray-4 shrink-0">·</span>
-                            <ChannelIcon type={channel.type} className="h-3 w-3 shrink-0 self-center text-ink-gray-4" />
-                            <span className="text-ink-gray-4 truncate min-w-0 -ml-0.5">{channel.channel_name}</span>
-                        </>
-                    )}
-                    {dmChannel && (
-                        <>
-                            <span className="text-ink-gray-4 shrink-0">·</span>
-                            <MessageSquareMore className="h-3 w-3 shrink-0 self-center text-ink-gray-4" />
-                            <span className="text-ink-gray-4 truncate min-w-0 -ml-0.5">{peerName}</span>
-                        </>
-                    )}
-                </div>
+            <div
+                role="button"
+                tabIndex={0}
+                onClick={onClick}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } }}
+                className={cn(
+                    "group flex gap-3 px-2 py-3 md:py-2 rounded transition-colors text-left select-none cursor-pointer hover:bg-surface-gray-3 active:bg-surface-gray-3 focus-visible:bg-surface-gray-3 focus-visible:outline-none",
+                    className
+                )}
+            >
+                {user && <UserAvatar user={user} size="md" showStatusIndicator={false} />}
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-1.5 flex-wrap text-base md:text-sm">
+                        {user && <span className="font-medium text-ink-gray-8 truncate">{user.full_name}</span>}
+                        <span className="shrink-0 text-xs text-ink-gray-4">{relativeDate}</span>
+                        {workspace && (
+                            <>
+                                <span className="text-ink-gray-4 shrink-0">·</span>
+                                <span className="text-ink-gray-4 truncate min-w-0">{workspace.workspace_name}</span>
+                            </>
+                        )}
+                        {channel && (
+                            <>
+                                <span className="text-ink-gray-4 shrink-0">·</span>
+                                <ChannelIcon type={channel.type} className="h-3 w-3 shrink-0 self-center text-ink-gray-4" />
+                                <span className="text-ink-gray-4 truncate min-w-0 -ml-0.5">{channel.channel_name}</span>
+                            </>
+                        )}
+                        {dmChannel && (
+                            <>
+                                <span className="text-ink-gray-4 shrink-0">·</span>
+                                <MessageSquareMore className="h-3 w-3 shrink-0 self-center text-ink-gray-4" />
+                                <span className="text-ink-gray-4 truncate min-w-0 -ml-0.5">{peerName}</span>
+                            </>
+                        )}
+                    </div>
 
-                <div className="flex gap-3 mt-2">
-                    {isImage && file.internal_link ? (
-                        <img
-                            src={file.internal_link}
-                            alt={file.title ?? ''}
-                            className="w-20 h-20 object-cover rounded-md border border-outline-gray-2 shrink-0 bg-surface-gray-2"
-                            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
-                        />
-                    ) : (
-                        <FileTypeIcon fileType={ext} size="4xl" />
-                    )}
-                    <div className="flex-1 min-w-0">
-                        <h3 className="text-base md:text-sm font-medium text-ink-gray-8 truncate">{file.title || _('Untitled')}</h3>
-                        <div className="flex items-center gap-1.5 text-xs text-ink-gray-4 mt-0.5">
-                            {ext && <span className="uppercase">{ext}</span>}
-                            {ext && sizeLabel && <span>·</span>}
-                            {sizeLabel && <span>{sizeLabel}</span>}
+                    <div className="flex gap-3 mt-2">
+                        {isImage && file.internal_link ? (
+                            <img
+                                src={file.internal_link}
+                                alt={file.title ?? ''}
+                                className="w-20 h-20 object-cover rounded-md border border-outline-gray-2 shrink-0 bg-surface-gray-2"
+                                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+                            />
+                        ) : (
+                            <FileTypeIcon fileType={ext} size="4xl" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                            <h3 className="text-base md:text-sm font-medium text-ink-gray-8 truncate">{file.title || _('Untitled')}</h3>
+                            <div className="flex items-center gap-1.5 text-xs text-ink-gray-4 mt-0.5">
+                                {ext && <span className="uppercase">{ext}</span>}
+                                {ext && sizeLabel && <span>·</span>}
+                                {sizeLabel && <span>{sizeLabel}</span>}
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
         </div>
     )
 }

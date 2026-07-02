@@ -65,6 +65,7 @@ const SearchPollResults = ({ searchValue, filters, onSelect, selectedID }: Searc
                             messageID: r.name,
                             isDirectMessage: !!dmChannel,
                             peer,
+                            isThread: !!r.is_thread,
                         })}
                     />
                 )

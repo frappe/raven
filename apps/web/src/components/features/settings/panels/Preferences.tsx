@@ -102,7 +102,7 @@ const Preferences = () => {
                             </div>
                             <div className="min-w-40 flex justify-end">
                                 <Select onValueChange={(value) => updateValue('sort_channels_by', value as "Alphabetical Order" | "Recent Activity" | "Unreads First")} value={myProfile?.sort_channels_by ? myProfile.sort_channels_by : "Recent Activity"}>
-                                    <SelectTrigger id="time_format" className="min-w-32">
+                                    <SelectTrigger id="sort_channels_by" className="min-w-32">
                                         <SelectValue placeholder={_("Select sort order")} />
                                     </SelectTrigger>
                                     <SelectContent>

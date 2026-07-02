@@ -3,6 +3,7 @@ import { useCallback, useContext } from 'react'
 
 export type UnreadThread = { name: string, unread_count: number }
 
+// TODO: Deprecate this hook in favor of store
 const useUnreadThreadsCount = (workspaceID?: string) => {
     return useFrappeGetCall<{ message: UnreadThread[] }>('raven.api.threads.get_unread_threads', {
         workspace: workspaceID

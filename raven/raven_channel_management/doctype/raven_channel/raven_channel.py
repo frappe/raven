@@ -44,6 +44,8 @@ class RavenChannel(Document):
 	# end: auto-generated types
 
 	def on_trash(self):
+
+		# TODO: Delete all threads and polls inside this channel
 		# delete all members when channel is deleted
 		frappe.db.delete("Raven Channel Member", {"channel_id": self.name})
 

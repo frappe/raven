@@ -34,10 +34,12 @@ export const MentionWarningBanner = ({ channelID, mentionedIds, isThread = false
     if (warnings.length === 0) return null
 
     return (
-        <div className="flex flex-col gap-1 rounded-md bg-surface-amber-2 px-3 py-2">
-            {warnings.map((w) => (
-                <MentionWarningRow key={w.id} userID={w.id} onLeave={w.onLeave} notMember={w.notMember} isThread={isThread} />
-            ))}
+        <div className="pt-2">
+            <div className="flex flex-col gap-1 rounded-md bg-surface-amber-2 px-3 py-2">
+                {warnings.map((w) => (
+                    <MentionWarningRow key={w.id} userID={w.id} onLeave={w.onLeave} notMember={w.notMember} isThread={isThread} />
+                ))}
+            </div>
         </div>
     )
 }

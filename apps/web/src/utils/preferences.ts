@@ -18,6 +18,9 @@ export const chatStyleAtom = atom<ChatStyle>((window.frappe?.boot?.chat_style as
  */
 export const timeFormatAtom = atom<TimeFormat>((window.frappe?.boot?.time_format as TimeFormat | undefined) ?? "12-hour")
 
+
+export const imageGroupingLayoutAtom = atomWithStorage<"stack" | "grid">("raven-image-grouping-layout", "stack")
+
 export type EnterKeyBehaviour = "new-line" | "send-message"
 
 /**
