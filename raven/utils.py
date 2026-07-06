@@ -17,6 +17,9 @@ def track_channel_visit(channel_id, user=None, commit=False, publish_event_for_u
 	If the user is not a member of the channel, create a new member record
 	"""
 
+	if frappe.flags.read_only:
+		return
+
 	if not user:
 		user = frappe.session.user
 

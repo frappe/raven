@@ -215,7 +215,7 @@ def get_unread_threads(workspace: str = None, thread_id: str = None):
 
 	query = (
 		frappe.qb.from_(channel)
-		.select(channel.name, Count(message.name).as_("unread_count"))
+		.select(channel.name, channel.workspace, Count(message.name).as_("unread_count"))
 		.left_join(channel_member)
 		.on(
 			(channel.name == channel_member.channel_id) & (channel_member.user_id == frappe.session.user)

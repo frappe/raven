@@ -177,6 +177,7 @@ export const ThreadMessages = ({ threadMessage }: { threadMessage: Message }) =>
                     replyToMessage={handleReplyAction}
                     showThreadButton={false}
                     onModalClose={onModalClose}
+                    isChannelReadOnly={!isUserInChannel}
                 />
                 <AIEvent channelID={threadID ?? ''} />
 

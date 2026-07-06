@@ -13,12 +13,16 @@ import { getInitials } from '@/components/common/UserAvatar'
 import { useSetAtom } from 'jotai'
 import { lastChannelAtom, lastWorkspaceAtom } from '@/utils/lastVisitedAtoms'
 import { useResetAtom } from 'jotai/utils'
+import useUnreadThreadsCount from '@/hooks/useUnreadThreadsCount'
 
 const WorkspacesSidebar = () => {
 
     const { data } = useFetchWorkspaces()
 
     const { unread_count } = useUnreadMessageCount()
+    const { data: unreadThreads } = useUnreadThreadsCount()
+
+    console.log("Unread threads", unreadThreads?.message)
     const { channels } = useContext(ChannelListContext) as ChannelListContextType
 
     const myWorkspaces: (WorkspaceFields & { unread_count: number })[] = useMemo(() => {
@@ -34,6 +38,13 @@ const WorkspacesSidebar = () => {
             }
         })
 
+        // Loop over all unread threads and add it to the workspace_unread_counts object
+        unreadThreads?.message.forEach((thread) => {
+            if (thread.workspace) {
+                workspace_unread_counts[thread.workspace] = (workspace_unread_counts?.[thread.workspace] || 0) + thread.unread_count
+            }
+        })
+
         const myWorkspacesWithUnreadCounts = myWorkspaces.map((workspace) => {
             return {
                 ...workspace,
@@ -42,7 +53,7 @@ const WorkspacesSidebar = () => {
         })
 
         return myWorkspacesWithUnreadCounts
-    }, [data, channels, unread_count])
+    }, [data, channels, unread_count, unreadThreads])
 
     return (
         <Stack className='w-20 p-0 pb-4 border-r border-gray-4 dark:border-gray-6 h-screen' justify='between'>
@@ -102,8 +113,8 @@ const WorkspaceItem = ({ workspace }: { workspace: WorkspaceFields & { unread_co
             </Tooltip>
         </Flex>
         {workspace.unread_count > 0 &&
-            <Box className='rounded-full absolute -right-2 -bottom-1 bg-red-11 dark:bg-red-9 text-white w-4 h-4 flex items-center justify-center'>
-                <Text as='span' size='1' weight='medium'>{workspace.unread_count}</Text>
+            <Box className='rounded-lg absolute -right-2 -bottom-1 bg-red-11 dark:bg-red-9 text-white min-w-4 p-0.5 h-4 flex items-center justify-center'>
+                <Text as='span' size='1' weight='medium'>{workspace.unread_count > 99 ? '99+' : workspace.unread_count}</Text>
             </Box>
         }
     </HStack>

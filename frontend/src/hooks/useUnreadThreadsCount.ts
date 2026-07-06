@@ -1,15 +1,10 @@
 import { FrappeConfig, FrappeContext, useFrappeGetCall, useSWRConfig } from 'frappe-react-sdk'
 import { useCallback, useContext } from 'react'
-import { useParams } from 'react-router-dom'
 
-export type UnreadThread = { name: string, unread_count: number }
+export type UnreadThread = { name: string, workspace?: string, unread_count: number }
 const useUnreadThreadsCount = () => {
 
-    const { workspaceID } = useParams()
-
-    return useFrappeGetCall<{ message: UnreadThread[] }>('raven.api.threads.get_unread_threads', {
-        workspace: workspaceID
-    }, ["unread_thread_count", workspaceID])
+    return useFrappeGetCall<{ message: UnreadThread[] }>('raven.api.threads.get_unread_threads', undefined, ["unread_thread_count"])
 
 }
 
@@ -18,8 +13,6 @@ const useUnreadThreadsCount = () => {
  */
 export const useUnreadThreadsCountEventListener = () => {
 
-    const { workspaceID } = useParams()
-
     const { call } = useContext(FrappeContext) as FrappeConfig
 
     const { mutate } = useSWRConfig()
@@ -27,10 +20,10 @@ export const useUnreadThreadsCountEventListener = () => {
     const onThreadReplyEvent = useCallback((threadID: string) => {
         // Whenever a thread reply event is received, we should call the get_unread_threads endpoint to get the unread thread count for the thread
         // This endpoint will only return the count for that thread
-        mutate(["unread_thread_count", workspaceID], async (data?: { message: UnreadThread[] }) => {
+        mutate(["unread_thread_count"], async (data?: { message: UnreadThread[] }) => {
 
             return call.get<{ message: UnreadThread[] }>('raven.api.threads.get_unread_threads', {
-                workspace: workspaceID,
+                // workspace: workspaceID,
                 thread_id: threadID
             }).then((res) => {
                 // Update the unread thread count for the thread
@@ -52,6 +45,7 @@ export const useUnreadThreadsCountEventListener = () => {
                                 // Update the count
                                 return {
                                     ...thread,
+                                    workspace: res.message[0].workspace,
                                     unread_count: res.message[0].unread_count
                                 }
                             })
@@ -60,6 +54,7 @@ export const useUnreadThreadsCountEventListener = () => {
                         return {
                             message: [...existingCounts, {
                                 name: threadID,
+                                workspace: res.message[0].workspace,
                                 unread_count: res.message[0].unread_count
                             }]
                         }
@@ -76,7 +71,7 @@ export const useUnreadThreadsCountEventListener = () => {
             revalidate: false
         })
 
-    }, [workspaceID])
+    }, [])
 
     return onThreadReplyEvent
 

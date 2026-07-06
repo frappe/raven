@@ -3,7 +3,6 @@ import { ChannelListItem } from "@/utils/channel/ChannelListProvider"
 import { useFrappeCreateDoc, useSWRConfig } from "frappe-react-sdk"
 import { Box, Flex, Text, Button } from "@radix-ui/themes"
 import { Loader } from "@/components/common/Loader"
-import { ChannelMembers } from "@/hooks/fetchers/useFetchChannelMembers"
 import { useParams } from "react-router-dom"
 interface JoinChannelBoxProps {
     channelData?: ChannelListItem,

@@ -21,21 +21,25 @@ try {
     }
 
     onBackgroundMessage(messaging, (payload) => {
-        const notificationTitle = payload.notification.title
+        const data = payload.data || {}
+        const notification = payload.notification || {}
+
+        const notificationTitle = data.title || notification.title
         let notificationOptions = {
-            body: payload.notification.body || "",
-        }
-        if (payload.data.image) {
-            notificationOptions["icon"] = payload.data.image
+            body: data.body || notification.body || "",
         }
 
-        if (payload.data.creation) {
-            notificationOptions["timestamp"] = payload.data.creation
+        if (data.image) {
+            notificationOptions["icon"] = data.image
         }
-        let url = `${payload.data.base_url}/raven/channel/${payload.data.channel_id}`
 
-        if (payload.data.message_url) {
-            url = payload.data.message_url
+        if (data.creation) {
+            notificationOptions["timestamp"] = data.creation
+        }
+        let url = `${data.base_url}/raven/channel/${data.channel_id}`
+
+        if (data.message_url) {
+            url = data.message_url
         }
 
         if (isChrome()) {

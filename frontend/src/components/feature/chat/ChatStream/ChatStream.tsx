@@ -70,10 +70,11 @@ type Props = {
     showThreadButton?: boolean,
     scrollRef: MutableRefObject<HTMLDivElement | null>,
     pinnedMessagesString?: string,
-    onModalClose?: () => void
+    onModalClose?: () => void,
+    isChannelReadOnly?: boolean,
 }
 
-const ChatStream = forwardRef(({ channelID, replyToMessage, showThreadButton = true, pinnedMessagesString, scrollRef, onModalClose }: Props, ref) => {
+const ChatStream = forwardRef(({ channelID, replyToMessage, showThreadButton = true, pinnedMessagesString, scrollRef, onModalClose, isChannelReadOnly = false }: Props, ref) => {
 
     const { messages, hasOlderMessages, loadOlderMessages, goToLatestMessages, hasNewMessages, error, loadNewerMessages, isLoading, highlightedMessage, scrollToMessage } = useChatStream(channelID, scrollRef, pinnedMessagesString)
     const { setDeleteMessage, ...deleteProps } = useDeleteMessage(onModalClose)
@@ -184,6 +185,7 @@ const ChatStream = forwardRef(({ channelID, replyToMessage, showThreadButton = t
                                     onAttachDocument={setAttachDocument}
                                     setDeleteMessage={setDeleteMessage}
                                     setReactionMessage={setReactionMessage}
+                                    isChannelReadOnly={isChannelReadOnly}
                                 />
                             </div>
                         </div>

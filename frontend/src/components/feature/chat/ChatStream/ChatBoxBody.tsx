@@ -8,7 +8,7 @@ import useFileUpload from "../ChatInput/FileInput/useFileUpload"
 import { CustomFile, FileDrop } from "../../file-upload/FileDrop"
 import { FileListItem } from "../../file-upload/FileListItem"
 import { useSendMessage } from "../ChatInput/useSendMessage"
-import { Flex, Box, IconButton, Checkbox } from "@radix-ui/themes"
+import { Flex, Box, IconButton, Checkbox, Text } from "@radix-ui/themes"
 import { ReplyMessageBox } from "../ChatMessage/ReplyMessageBox/ReplyMessageBox"
 import { BiX } from "react-icons/bi"
 import ChatStream from "./ChatStream"
@@ -26,6 +26,7 @@ import { GetMessagesResponse } from "./useChatStream"
 import { useIsMobile } from "@/hooks/useMediaQuery"
 import { getFileType } from "@/utils/layout/FileExtIcon"
 import { getFileExtension } from "@/utils/operations"
+import { useIsSiteInReadOnlyMode } from "@/hooks/useIsSiteInReadOnlyMode"
 
 const COOL_PLACEHOLDERS = [
     "Delivering messages atop dragons 🐉 is available on a chargeable basis.",
@@ -219,6 +220,8 @@ export const ChatBoxBody = ({ channelData }: ChatBoxBodyProps) => {
         return getFileType(getFileExtension(file.name)) === 'image'
     }, [files])
 
+    const isSiteInReadOnlyMode = useIsSiteInReadOnlyMode()
+
     return (
         <ChatBoxBodyContainer>
             <FileDrop
@@ -235,37 +238,45 @@ export const ChatBoxBody = ({ channelData }: ChatBoxBodyProps) => {
                     onModalClose={onModalClose}
                     pinnedMessagesString={channelData.pinned_messages_string}
                     replyToMessage={handleReplyAction}
+                    isChannelReadOnly={!channelMemberProfile}
                 />
                 {canUserSendMessage &&
                     <Stack>
                         <TypingIndicator channel={channelData.name} />
-                        <Tiptap
-                            key={channelData.name}
-                            channelID={channelData.name}
-                            fileProps={{
-                                fileInputRef,
-                                addFile
-                            }}
-                            ref={tiptapRef}
-                            onUpArrow={onUpArrowPressed}
-                            clearReplyMessage={clearSelectedMessage}
-                            channelMembers={channelMembers}
-                            onUserType={onUserType}
-                            // placeholder={randomPlaceholder}
-                            replyMessage={selectedMessage}
-                            sessionStorageKey={`tiptap-${channelData.name}`}
-                            onMessageSend={sendMessage}
-                            messageSending={loading}
-                            slotBefore={<Flex direction='column' justify='center' hidden={!selectedMessage && !files.length}>
-                                {selectedMessage && <PreviousMessagePreview selectedMessage={selectedMessage} />}
-                                {files && files.length > 0 && <Flex gap='2' width='100%' align='stretch' px='2' p='2' wrap='wrap'>
-                                    {files.map((f: CustomFile) => <Box className="grow-0" key={f.fileID}><FileListItem file={f} uploadProgress={fileUploadProgress} removeFile={() => removeFile(f.fileID)} /></Box>)}
+                        {isSiteInReadOnlyMode ? <Box p='3' className="border border-gray-6 rounded-md bg-slate-1 animate-fadein text-center">
+                            <Text as='span' size='2' weight='regular' color='gray'>
+                                The site is in read-only mode. Please wait while the site is being updated.
+                            </Text>
+                        </Box> :
+                            <Tiptap
+                                key={channelData.name}
+                                channelID={channelData.name}
+                                fileProps={{
+                                    fileInputRef,
+                                    addFile
+                                }}
+                                ref={tiptapRef}
+                                onUpArrow={onUpArrowPressed}
+                                clearReplyMessage={clearSelectedMessage}
+                                channelMembers={channelMembers}
+                                onUserType={onUserType}
+                                // placeholder={randomPlaceholder}
+                                replyMessage={selectedMessage}
+                                sessionStorageKey={`tiptap-${channelData.name}`}
+                                onMessageSend={sendMessage}
+                                messageSending={loading}
+                                slotBefore={<Flex direction='column' justify='center' hidden={!selectedMessage && !files.length}>
+                                    {selectedMessage && <PreviousMessagePreview selectedMessage={selectedMessage} />}
+                                    {files && files.length > 0 && <Flex gap='2' width='100%' align='stretch' px='2' p='2' wrap='wrap'>
+                                        {files.map((f: CustomFile) => <Box className="grow-0" key={f.fileID}><FileListItem file={f} uploadProgress={fileUploadProgress} removeFile={() => removeFile(f.fileID)} /></Box>)}
+                                    </Flex>}
+                                    {files.length !== 0 && files.some((f: CustomFile) => isImageFile(f)) && <CompressImageCheckbox compressImages={compressImages} setCompressImages={setCompressImages} />}
                                 </Flex>}
-                                {files.length !== 0 && files.some((f: CustomFile) => isImageFile(f)) && <CompressImageCheckbox compressImages={compressImages} setCompressImages={setCompressImages} />}
-                            </Flex>}
-                        />
+                            />
+                        }
                     </Stack>
                 }
+
                 {shouldShowJoinBox ?
                     <JoinChannelBox
                         channelData={channelData}

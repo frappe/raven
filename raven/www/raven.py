@@ -52,7 +52,11 @@ def get_context(context):
 	else:
 		context["app_name"] = "Raven"
 
-	favicon = frappe.get_website_settings("favicon")
+	use_website_favicon = frappe.db.get_single_value("Raven Settings", "use_website_favicon")
+
+	favicon = None
+	if use_website_favicon:
+		favicon = frappe.get_website_settings("favicon")
 
 	context["icon_96"] = favicon or "/assets/raven/manifest/favicon-96x96.png"
 	context["apple_touch_icon"] = favicon or "/assets/raven/manifest/apple-touch-icon.png"

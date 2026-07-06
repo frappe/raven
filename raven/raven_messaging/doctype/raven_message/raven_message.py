@@ -10,7 +10,6 @@ from frappe.model.document import Document
 from frappe.utils import get_datetime, get_system_timezone
 from pytz import timezone, utc
 
-from raven.ai.ai import handle_ai_thread_message, handle_bot_dm
 from raven.api.raven_channel import get_peer_user
 from raven.notification import (
 	send_notification_for_message,
@@ -231,6 +230,8 @@ class RavenMessage(Document):
 		is_ai_thread = channel_doc.is_ai_thread
 
 		if is_ai_thread:
+			from raven.ai.ai import handle_ai_thread_message
+
 			frappe.enqueue(
 				method=handle_ai_thread_message,
 				message=self,
@@ -267,6 +268,8 @@ class RavenMessage(Document):
 
 		if not bot.is_ai_bot:
 			return
+
+		from raven.ai.ai import handle_bot_dm
 
 		frappe.enqueue(
 			method=handle_bot_dm,

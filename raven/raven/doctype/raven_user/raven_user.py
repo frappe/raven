@@ -4,6 +4,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
+from frappe.utils.data import get_url
 
 
 class RavenUser(Document):
@@ -92,18 +93,25 @@ class RavenUser(Document):
 		and Frappe creates a duplicate file in the system (that is public) but does not update the URL in the field.
 		"""
 		user_image = frappe.db.get_value("User", self.user, "user_image")
-		if user_image and not self.user_image:
-			image_file = frappe.get_doc(
-				{
-					"doctype": "File",
-					"file_url": user_image,
-					"attached_to_doctype": "Raven User",
-					"attached_to_name": self.user,
-					"attached_to_field": "user_image",
-					"is_private": 1,
-				}
-			).insert(ignore_permissions=True)
-			self.user_image = image_file.file_url
+
+		if isinstance(user_image, str) and user_image.startswith("/"):
+			user_image = get_url(user_image)
+
+		try:
+			if user_image and not self.user_image:
+				image_file = frappe.get_doc(
+					{
+						"doctype": "File",
+						"file_url": user_image,
+						"attached_to_doctype": "Raven User",
+						"attached_to_name": self.user,
+						"attached_to_field": "user_image",
+						"is_private": 1,
+					}
+				).insert(ignore_permissions=True)
+				self.user_image = image_file.file_url
+		except Exception:
+			pass
 
 
 def add_user_to_raven(doc, method):
@@ -123,14 +131,20 @@ def add_user_to_raven(doc, method):
 
 			if has_raven_role:
 				raven_user = frappe.get_doc("Raven User", {"user": doc.name})
-				raven_user.full_name = doc.full_name or doc.first_name
-				raven_user.first_name = doc.first_name
+				if not raven_user.full_name:
+					raven_user.full_name = doc.full_name or doc.first_name
+
+				if not raven_user.first_name:
+					raven_user.first_name = doc.first_name
 				raven_user.enabled = doc.enabled
 				raven_user.save(ignore_permissions=True)
 			else:
 				raven_user = frappe.get_doc("Raven User", {"user": doc.name})
-				raven_user.full_name = doc.full_name or doc.first_name
-				raven_user.first_name = doc.first_name
+				if not raven_user.full_name:
+					raven_user.full_name = doc.full_name or doc.first_name
+
+				if not raven_user.first_name:
+					raven_user.first_name = doc.first_name
 				raven_user.enabled = 0
 				raven_user.save(ignore_permissions=True)
 		else:

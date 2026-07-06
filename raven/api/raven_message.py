@@ -108,9 +108,9 @@ def save_message(message_id: str, add: str | bool = False):
 	"""
 	Save the message as a bookmark
 	"""
-
-	if isinstance(add, str):
-		add = add.lower() == "yes" or add == "1"
+	# no need to check if arg add is string, as Yes is being passed, which is what is expected by toggle_like
+	if isinstance(add, bool):
+		add = "Yes" if add else "No"
 
 	if not frappe.has_permission(doctype="Raven Message", doc=message_id, ptype="read"):
 		frappe.throw(_("You don't have permission to save this message"), frappe.PermissionError)
@@ -585,6 +585,7 @@ def add_forwarded_message_to_channel(channel_id: str, forwarded_message: dict):
 			"is_thread": 0,
 			"replied_message_details": None,
 			"message_reactions": None,
+			"linked_message": None,
 		}
 	)
 	doc.insert()

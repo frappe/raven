@@ -1,3 +1,4 @@
+import { useIsSiteInReadOnlyMode } from "@/hooks/useIsSiteInReadOnlyMode"
 import { Flex, Text, FlexProps } from "@radix-ui/themes"
 import clsx from "clsx"
 import { forwardRef, useImperativeHandle, useState } from "react"
@@ -35,6 +36,8 @@ export type FileDropProps = FlexProps & {
  */
 export const FileDrop = forwardRef((props: FileDropProps, ref) => {
 
+    const isSiteInReadOnlyMode = useIsSiteInReadOnlyMode()
+
     const { files, onFileChange, maxFiles, accept, maxFileSize, children, height, width, areaHeight, ...compProps } = props
 
     const [onDragEnter, setOnDragEnter] = useState(false)
@@ -50,6 +53,7 @@ export const FileDrop = forwardRef((props: FileDropProps, ref) => {
     }
 
     const { getRootProps, getInputProps, open } = useDropzone({
+        disabled: isSiteInReadOnlyMode,
         onDrop: (receivedFiles, fileRejections) => {
             onFileChange([...files, ...receivedFiles.map((file) => Object.assign(file, {
                 fileID: file.name + Date.now(),

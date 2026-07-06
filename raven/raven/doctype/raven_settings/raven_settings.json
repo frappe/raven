@@ -9,6 +9,7 @@
  "field_order": [
   "auto_add_system_users",
   "show_raven_on_desk",
+  "use_website_favicon",
   "integrations_tab",
   "integrations_section",
   "tenor_api_key",
@@ -317,14 +318,20 @@
    "fieldtype": "Password",
    "label": "LiveKit API Secret",
    "mandatory_depends_on": "eval: doc.enable_video_calling_via_livekit;"
+  },
+  {
+   "default": "0",
+   "fieldname": "use_website_favicon",
+   "fieldtype": "Check",
+   "label": "Use Website Favicon"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-01-31 18:49:12.757755",
- "modified_by": "Administrator",
+ "modified": "2026-05-13 17:11:18.615394",
+ "modified_by": "aditya.p@frappe.io",
  "module": "Raven",
  "name": "Raven Settings",
  "owner": "Administrator",

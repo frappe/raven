@@ -15,11 +15,13 @@ $(document).on('app_ready', function () {
 
                 channels.message.forEach((channel) => {
                   if (channel.is_direct_message) {
-                    dm_list.push(channel.full_name);
-                    channel_id.push({
-                      value: channel.name,
-                      name: channel.full_name,
-                    });
+                    if (channel.full_name) {
+                      dm_list.push(channel.full_name);
+                      channel_id.push({
+                        value: channel.name,
+                        name: channel.full_name,
+                      });
+                    }
                   } else {
                     channel_list.push(channel.channel_name);
                     channel_id.push({

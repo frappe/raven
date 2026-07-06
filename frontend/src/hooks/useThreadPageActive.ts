@@ -1,14 +1,11 @@
 import { useSWRConfig } from 'frappe-react-sdk'
 import { useEffect } from 'react'
-import { useParams } from 'react-router-dom'
 import { UnreadThread } from './useUnreadThreadsCount'
 
 /** Whenever a thread is opened/closed, this hook will reset it's unread count to 0 */
 const useThreadPageActive = (threadID?: string) => {
 
     const { mutate } = useSWRConfig()
-
-    const { workspaceID } = useParams()
 
     /** Update the thread count to 0 when joining the thread + when the thread is closed */
     useEffect(() => {
@@ -17,7 +14,7 @@ const useThreadPageActive = (threadID?: string) => {
             if (!threadID) return
 
             // We need to reset the count to 0 for the particular thread only when the thread changes - not the workspace
-            mutate(["unread_thread_count", workspaceID], (data?: { message: UnreadThread[] }) => {
+            mutate(["unread_thread_count"], (data?: { message: UnreadThread[] }) => {
                 if (data && data.message) {
 
                     const unreadThreads = [...data.message]
@@ -45,7 +42,7 @@ const useThreadPageActive = (threadID?: string) => {
             updateThreadCountToZero(threadID)
         }
 
-    }, [threadID, workspaceID])
+    }, [threadID])
 }
 
 export default useThreadPageActive

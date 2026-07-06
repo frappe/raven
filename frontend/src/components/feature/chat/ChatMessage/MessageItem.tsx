@@ -46,10 +46,11 @@ interface MessageBlockProps {
     onAttachDocument: (message: Message) => void,
     isHighlighted?: boolean,
     setReactionMessage: (message: Message) => void,
-    showThreadButton?: boolean
+    showThreadButton?: boolean,
+    isChannelReadOnly?: boolean,
 }
 
-export const MessageItem = ({ message, setDeleteMessage, isHighlighted, onReplyMessageClick, setEditMessage, replyToMessage, forwardMessage, onAttachDocument, setReactionMessage, showThreadButton = true }: MessageBlockProps) => {
+export const MessageItem = ({ message, setDeleteMessage, isHighlighted, onReplyMessageClick, setEditMessage, replyToMessage, forwardMessage, onAttachDocument, setReactionMessage, showThreadButton = true, isChannelReadOnly = false }: MessageBlockProps) => {
 
     const { name, owner: userID, is_bot_message, bot, creation: timestamp, message_reactions, is_continuation, linked_message, replied_message_details } = message
 
@@ -215,6 +216,7 @@ export const MessageItem = ({ message, setDeleteMessage, isHighlighted, onReplyM
                                     <MessageContent
                                         message={message}
                                         user={user}
+                                        isChannelReadOnly={isChannelReadOnly}
                                     />
 
                                     {message.link_doctype && message.link_document && <Box className={clsx(message.is_continuation ? 'ml-0.5' : '-ml-0.5')}>
@@ -382,7 +384,8 @@ export const UserHoverCard = memo(({ user, userID, isActive }: UserProps) => {
 type MessageContentProps = BoxProps & {
     user?: UserFields
     message: Message,
-    forceHideLinkPreview?: boolean
+    forceHideLinkPreview?: boolean,
+    isChannelReadOnly?: boolean,
 }
 
 const StartDMButton = ({ userID }: { userID: string }) => {
@@ -413,7 +416,7 @@ const StartDMButton = ({ userID }: { userID: string }) => {
     </Button>
 
 }
-export const MessageContent = ({ message, user, forceHideLinkPreview = false, ...props }: MessageContentProps) => {
+export const MessageContent = ({ message, user, forceHideLinkPreview = false, isChannelReadOnly = false, ...props }: MessageContentProps) => {
 
     return <Box className='flex flex-col gap-1' {...props}>
         {message.message_type === 'Image' && <ImageMessageBlock message={message} user={user} />}
@@ -422,6 +425,6 @@ export const MessageContent = ({ message, user, forceHideLinkPreview = false, ..
             ...message,
             message_type: 'Text'
         }} user={user} showLinkPreview={forceHideLinkPreview ? false : message.hide_link_preview ? false : true} /> : null}
-        {message.message_type === 'Poll' && <PollMessageBlock message={message} user={user} />}
+        {message.message_type === 'Poll' && <PollMessageBlock message={message} user={user} isChannelReadOnly={isChannelReadOnly} />}
     </Box>
 }

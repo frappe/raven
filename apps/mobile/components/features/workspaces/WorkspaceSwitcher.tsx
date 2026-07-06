@@ -15,6 +15,10 @@ import SiteSwitcher from '../auth/SiteSwitcher'
 import { getSiteNameFromUrl } from '@raven/lib/utils/operations'
 import ServerIcon from '@assets/icons/ServerIcon.svg'
 import AddSite from '../auth/AddSite'
+import { FrappeError, useFrappePostCall, useSWRConfig } from 'frappe-react-sdk'
+import { toast } from 'sonner-native'
+import { getErrorMessage } from '@components/common/ErrorBanner'
+import { ActivityIndicator } from '@components/nativewindui/ActivityIndicator'
 
 const WorkspaceSwitcher = ({ workspace, setWorkspace }: { workspace: string, setWorkspace: (workspace: string) => Promise<void> }) => {
 
@@ -108,6 +112,9 @@ interface SelectWorkspaceSheetProps {
 
 const SelectWorkspaceSheet = ({ selectedWorkspace, workspaces, setWorkspace }: SelectWorkspaceSheetProps) => {
 
+    const { call: joinWorkspace, loading: joiningWorkspace } = useFrappePostCall('raven.api.workspaces.join_workspace')
+    const { mutate } = useSWRConfig()
+
     const { myWorkspaces, otherWorkspaces } = useMemo(() => {
         const myWorkspaces: Workspace[] = []
         const otherWorkspaces: Workspace[] = []
@@ -126,6 +133,26 @@ const SelectWorkspaceSheet = ({ selectedWorkspace, workspaces, setWorkspace }: S
         }
         return { myWorkspaces, otherWorkspaces }
     }, [workspaces, selectedWorkspace])
+
+    const handleJoinOtherWorkspace = useCallback(
+        (workspaceName: string) => {
+            const displayName =
+                workspaces.find((w) => w.name === workspaceName)?.workspace_name ?? workspaceName
+
+            joinWorkspace({ workspace: workspaceName })
+                .then(() => Promise.all([mutate('workspaces_list'), mutate('channel_list')]))
+                .then(() => setWorkspace(workspaceName))
+                .then(() => {
+                    toast.success(`You have joined ${displayName}.`)
+                })
+                .catch((error: unknown) => {
+                    toast.error(
+                        getErrorMessage(error as FrappeError) || 'Failed to join the workspace.'
+                    )
+                })
+        },
+        [joinWorkspace, setWorkspace, workspaces]
+    )
 
     const siteInfo = useSiteContext()
 
@@ -163,6 +190,8 @@ const SelectWorkspaceSheet = ({ selectedWorkspace, workspaces, setWorkspace }: S
                                 workspace={workspace}
                                 setWorkspace={setWorkspace}
                                 isOtherWorkspace
+                                isJoining={joiningWorkspace}
+                                onJoinOtherWorkspace={handleJoinOtherWorkspace}
                                 isLast={index === otherWorkspaces.length - 1}
                             />
                         ))}
@@ -173,18 +202,45 @@ const SelectWorkspaceSheet = ({ selectedWorkspace, workspaces, setWorkspace }: S
     )
 }
 
-const WorkspaceRow = ({ workspace, isLast, setWorkspace, isOtherWorkspace = false }: { workspace: Workspace, isLast: boolean, setWorkspace: (workspace: string) => Promise<void>, isOtherWorkspace?: boolean }) => {
+type WorkspaceRowProps = {
+    workspace: Workspace
+    isLast: boolean
+    setWorkspace: (workspace: string) => Promise<void>
+    isOtherWorkspace?: boolean
+    /** True while this row's join request is in flight */
+    isJoining?: boolean
+    onJoinOtherWorkspace?: (workspaceName: string) => void
+}
+
+const WorkspaceRow = ({
+    workspace,
+    isLast,
+    setWorkspace,
+    isOtherWorkspace = false,
+    isJoining = false,
+    onJoinOtherWorkspace,
+}: WorkspaceRowProps) => {
     const { colors } = useColorScheme()
 
-    const onClick = () => {
+    const onPress = () => {
+        if (isOtherWorkspace && onJoinOtherWorkspace) {
+            void onJoinOtherWorkspace(workspace.name)
+            return
+        }
         if (!isOtherWorkspace) {
-            setWorkspace(workspace.name)
+            void setWorkspace(workspace.name)
         }
     }
 
+    const disabled = isOtherWorkspace && isJoining
+
     return (
-        <Pressable className='flex flex-col gap-2' onPress={onClick}>
-            <View className='flex-row items-center gap-2'>
+        <Pressable
+            className='flex flex-col gap-2'
+            onPress={onPress}
+            disabled={disabled}
+        >
+            <View className={`flex-row items-center gap-2 ${disabled ? 'opacity-60' : ''}`}>
                 <UserAvatar
                     alt={workspace.workspace_name}
                     src={getLogo(workspace)}
@@ -194,11 +250,13 @@ const WorkspaceRow = ({ workspace, isLast, setWorkspace, isOtherWorkspace = fals
                     <Text className='text-sm font-semibold'>{workspace.workspace_name}</Text>
                     <Text className='text-sm text-gray-500'>{workspace.type}</Text>
                 </View>
-                {workspace.isSelected &&
+                {isJoining ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                ) : workspace.isSelected ? (
                     <View className='mr-2'>
                         <CheckFilledIcon fill={colors.primary} height={20} width={20} />
                     </View>
-                }
+                ) : null}
             </View>
             {!isLast && <Divider className='mx-0' />}
         </Pressable>

@@ -39,7 +39,7 @@ const ReplyMessageBox = ({ message, onPress }: ReplyMessageBoxProps) => {
                 return (
                     <View className="flex-row items-start gap-1">
                         <BarChart width={18} height={18} fill={colors.icon} />
-                        <Text className="text-[15px] line-clamp-2 text-ellipsis overflow-hidden">
+                        <Text className="text-[15px] line-clamp-2 text-ellipsis overflow-hidden flex-1" numberOfLines={2} ellipsizeMode="tail">
                             Poll: {replyMessageDetails.content?.split("\n")?.[0]}
                         </Text>
                     </View>
@@ -49,7 +49,7 @@ const ReplyMessageBox = ({ message, onPress }: ReplyMessageBoxProps) => {
                 return <ImageFileReplyBlock file={replyMessageDetails.file} messageType={replyMessageDetails.message_type} owner={replyMessageDetails.owner} />
 
             default:
-                return <Text className="text-base text-foreground line-clamp-2 text-ellipsis overflow-hidden">
+                return <Text className="text-base text-foreground line-clamp-2 text-ellipsis overflow-hidden flex-1" numberOfLines={2} ellipsizeMode="tail">
                     {replyMessageDetails.content}
                 </Text>
         }
