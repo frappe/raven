@@ -26,6 +26,19 @@ describe("channelUnreadStore.markUnread", () => {
 		expect(channelUnreadStore.getState(ch).count).toBe(2)
 	})
 
+	it("rolls the server watermark BASELINE back with it", () => {
+		const ch = "ch-markunread-baseline"
+		// Channel load recorded the server's last_visit (high — user was caught up).
+		channelUnreadStore.setServerWatermark(ch, "2026-06-10 12:00:00.000000")
+
+		channelUnreadStore.markUnread(ch, "2026-06-10 11:00:00.000000", 2)
+
+		// The read tracker seeds its don't-re-post guard from this baseline: if it
+		// stayed at 12:00, re-reading up to 11:30 would post nothing and the
+		// channel would stay unread on the server (badge back on refresh).
+		expect(channelUnreadStore.getServerWatermark(ch)).toBe("2026-06-10 11:00:00.000000")
+	})
+
 	it("notifies that channel's subscribers", () => {
 		const ch = "ch-markunread-3"
 		let calls = 0

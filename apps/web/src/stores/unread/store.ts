@@ -133,6 +133,14 @@ class ChannelUnreadStore {
      */
     markUnread(channelID: string, watermark: string, count: number) {
         this.update(channelID, { count, lastSeen: watermark })
+        // Roll the PRISTINE server baseline back too — the server's last_visit
+        // just moved backward, and the read tracker seeds its "don't re-post"
+        // guard from this map. Left at the old (higher) value, re-reading the
+        // channel would post nothing (watermark <= baseline → skip), the server
+        // would keep it unread, and the badge would come back on refresh. Only
+        // a fresh get_messages response would otherwise overwrite it — which a
+        // warm re-entry never triggers.
+        this.serverWatermarks.set(channelID, watermark)
     }
 
     /** Register the channel open at the live edge (or null). It won't accumulate increments. */
