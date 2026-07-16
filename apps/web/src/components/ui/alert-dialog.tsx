@@ -4,6 +4,13 @@ import { AlertDialog as AlertDialogPrimitive } from "radix-ui"
 import { cn } from "@lib/utils"
 import { Button } from "@components/ui/button"
 
+/**
+ * Confirmation dialog — one size, styled to MIRROR ui/dialog. The deliberate
+ * differences from Dialog: no X close button (a confirmation must be answered,
+ * not dismissed), and the footer is a 50/50 button pair on mobile (the iOS
+ * alert convention) instead of stacked.
+ */
+
 function AlertDialog({
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Root>) {
@@ -44,19 +51,15 @@ function AlertDialogOverlay({
 
 function AlertDialogContent({
   className,
-  size = "default",
   ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Content> & {
-  size?: "default" | "sm"
-}) {
+}: React.ComponentProps<typeof AlertDialogPrimitive.Content>) {
   return (
     <AlertDialogPortal>
       <AlertDialogOverlay />
       <AlertDialogPrimitive.Content
         data-slot="alert-dialog-content"
-        data-size={size}
         className={cn(
-          "bg-surface-elevation-1 shadow-xl rounded-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 group/alert-dialog-content fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 p-6 duration-200 data-[size=sm]:max-w-xs data-[size=default]:sm:max-w-lg",
+          "bg-surface-elevation-1 shadow-xl rounded-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 p-6 duration-200 outline-none sm:max-w-lg max-h-[90vh] overflow-y-auto",
           className
         )}
         {...props}
@@ -72,10 +75,7 @@ function AlertDialogHeader({
   return (
     <div
       data-slot="alert-dialog-header"
-      className={cn(
-        "grid grid-rows-[auto_1fr] place-items-center gap-1.5 has-data-[slot=alert-dialog-media]:grid-rows-[auto_auto_1fr] has-data-[slot=alert-dialog-media]:gap-x-6 sm:group-data-[size=default]/alert-dialog-content:place-items-start sm:group-data-[size=default]/alert-dialog-content:text-start sm:group-data-[size=default]/alert-dialog-content:has-data-[slot=alert-dialog-media]:grid-rows-[auto_1fr]",
-        className
-      )}
+      className={cn("flex flex-col gap-2 text-start", className)}
       {...props}
     />
   )
@@ -89,7 +89,10 @@ function AlertDialogFooter({
     <div
       data-slot="alert-dialog-footer"
       className={cn(
-        "flex flex-col-reverse gap-2 group-data-[size=sm]/alert-dialog-content:grid group-data-[size=sm]/alert-dialog-content:grid-cols-2 sm:flex-row sm:justify-end",
+        // Mobile: side-by-side 50/50 (the iOS alert convention — Cancel left,
+        // action right); a lone action spans the full width. Desktop:
+        // right-aligned row, same as DialogFooter.
+        "grid grid-cols-2 gap-2 [&>*:only-child]:col-span-2 sm:flex sm:flex-row sm:justify-end",
         className
       )}
       {...props}
@@ -104,10 +107,7 @@ function AlertDialogTitle({
   return (
     <AlertDialogPrimitive.Title
       data-slot="alert-dialog-title"
-      className={cn(
-        "text-4xl-semibold leading-6 text-ink-gray-9 sm:group-data-[size=default]/alert-dialog-content:group-has-data-[slot=alert-dialog-media]/alert-dialog-content:col-start-2",
-        className
-      )}
+      className={cn("text-4xl-semibold leading-6 text-ink-gray-9", className)}
       {...props}
     />
   )
@@ -121,22 +121,6 @@ function AlertDialogDescription({
     <AlertDialogPrimitive.Description
       data-slot="alert-dialog-description"
       className={cn("text-ink-gray-7 text-p-base", className)}
-      {...props}
-    />
-  )
-}
-
-function AlertDialogMedia({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="alert-dialog-media"
-      className={cn(
-        "bg-surface-gray-1 mb-2 inline-flex size-16 items-center justify-center rounded-md sm:group-data-[size=default]/alert-dialog-content:row-span-2 *:[svg:not([class*='size-'])]:size-8",
-        className
-      )}
       {...props}
     />
   )
@@ -188,7 +172,6 @@ export {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogMedia,
   AlertDialogOverlay,
   AlertDialogPortal,
   AlertDialogTitle,

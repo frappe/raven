@@ -1,4 +1,5 @@
 import { useRef, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { useFrappePostCall, useFrappeDeleteDoc } from "frappe-react-sdk"
 import { useHotkeys } from "react-hotkeys-hook"
 import { useAtom } from "jotai"
@@ -26,8 +27,8 @@ import { useUserCookieData } from "@hooks/useUserCookieData"
 import { unreadThreadsStore } from "@stores/threads/unreadStore"
 import { threadListStore } from "@stores/threads/listStore"
 import { pollDrawerAtom } from "@utils/channelAtoms"
-import { getErrorMessage } from "@lib/frappe"
 import _ from "@lib/translate"
+import { errorResponseToast } from "@components/ui/error-banner"
 
 /**
  * The thread view: header + root message + replies stream + composer. Router-agnostic —
@@ -44,13 +45,37 @@ export default function ThreadDrawer({
     threadID,
     parentChannelID,
     onClose,
+    initialMessageID,
+    showOpenChannel = false,
 }: {
     threadID: string
     parentChannelID?: string
     onClose: () => void
+    /** Center the thread's first fetch on this message (notification click into a thread) —
+     *  see ChatStreamProps.initialMessageID. */
+    initialMessageID?: string | null
+    /** Show the header's "Open channel" button. Only for hosts where the parent channel
+     *  is NOT already visible beside the thread (threads page, notification/search panes) —
+     *  redundant on the channel/DM routes. */
+    showOpenChannel?: boolean
 }) {
-    const parentIsDM = useChannelById(parentChannelID ?? "")?.is_direct_message === 1
+    const parentChannel = useChannelById(parentChannelID ?? "")
+    const parentIsDM = parentChannel?.is_direct_message === 1
     const threadInputRef = useRef<HTMLFormElement>(null)
+
+    // "Open channel": go to the parent channel with this thread still open and the
+    // thread's ROOT message selected there (the thread id IS the root message id).
+    // Unavailable until the parent channel is known (e.g. a cold deep-link still resolving).
+    const navigate = useNavigate()
+    const onOpenChannel =
+        parentChannelID && (parentIsDM || parentChannel?.workspace)
+            ? () => {
+                const base = parentIsDM
+                    ? `/dm-channel/${encodeURIComponent(parentChannelID)}`
+                    : `/${encodeURIComponent(parentChannel?.workspace ?? "")}/${encodeURIComponent(parentChannelID)}`
+                navigate(`${base}/thread/${encodeURIComponent(threadID)}?message_id=${encodeURIComponent(threadID)}`)
+            }
+            : undefined
 
     // Gate the actions by your membership in the thread (already in the members store, seeded by
     // the pill / get_thread_details). Only members can leave; only thread admins can delete.
@@ -60,8 +85,11 @@ export default function ThreadDrawer({
     const isMember = !!me
     const isAdmin = me?.is_admin === 1
 
-    // Same composer gate as channels — a non-participant sees the not-member banner + Join.
-    const composerGate = useComposerGate(threadID ?? "")
+    // Same composer gate as channels — a non-participant sees the not-member banner.
+    // isThread + parent: Join is only offered when the user is a member of the
+    // PARENT channel (a non-member of a public channel can view its threads but
+    // not join them).
+    const composerGate = useComposerGate(threadID ?? "", { isThread: true, parentChannelID })
 
     // A poll inside the thread opens its detail drawer keyed by the THREAD's id — the thread
     // occupies the only rail slot, so we host the drawer here (overlaying the thread), mirroring
@@ -83,7 +111,7 @@ export default function ThreadDrawer({
                 toast.success(_("You left the thread"))
                 onClose()
             })
-            .catch((e) => toast.error(_("Could not leave the thread"), { description: getErrorMessage(e) }))
+            .catch((e) => errorResponseToast(_("Could not leave the thread"), e))
     }
 
     const { deleteDoc, loading: deleting } = useFrappeDeleteDoc()
@@ -98,7 +126,7 @@ export default function ThreadDrawer({
                 toast.success(_("Thread deleted"))
                 onClose()
             })
-            .catch((e) => toast.error(_("Could not delete the thread"), { description: getErrorMessage(e) }))
+            .catch((e) => errorResponseToast(_("Could not delete the thread"), e))
     }
 
     // Esc closes the thread's poll drawer first, then the thread. enableOnContentEditable because
@@ -116,11 +144,9 @@ export default function ThreadDrawer({
     // A poll in this thread takes over the rail (its detail drawer overlays the thread).
     if (threadPoll) {
         return (
-            <div className="flex flex-col h-full">
+            <div className="flex flex-col h-full w-full">
                 <PollDrawer
-                    user={threadPoll.user}
-                    poll={threadPoll.poll}
-                    currentUserVotes={threadPoll.currentUserVotes}
+                    messageID={threadPoll.messageID}
                     onClose={() => setThreadPoll(null)}
                 />
             </div>
@@ -134,6 +160,7 @@ export default function ThreadDrawer({
             <FileDropZone channelID={threadID ?? ""} disabled={composerGate.state !== "composer"}>
                 <ThreadHeader
                     onClose={onClose}
+                    onOpenChannel={showOpenChannel ? onOpenChannel : undefined}
                     onLeave={onLeaveThread}
                     onRequestDelete={() => setConfirmDelete(true)}
                     leaving={leaving}
@@ -145,8 +172,19 @@ export default function ThreadDrawer({
                     Keyed by thread so its expand state resets when you switch threads. */}
                 <ThreadRootMessage key={threadID} threadID={threadID ?? ""} parentID={parentChannelID} />
 
-                {/* Thread messages — ChatStream owns its own scroll/virtualization */}
-                {threadID && <ChatStream channelID={threadID} />}
+                {/* Thread messages — ChatStream owns its own scroll/virtualization.
+                    disableURLTarget: the URL's ?message_id belongs to the CHANNEL's stream
+                    (a channel + thread can be open together) — never to the thread's.
+                    canInteract: thread PARTICIPANTS only (the composer gate reads the
+                    thread's member store) — non-participants can view but not reply/pin. */}
+                {threadID && (
+                    <ChatStream
+                        channelID={threadID}
+                        initialMessageID={initialMessageID}
+                        disableURLTarget
+                        canInteract={composerGate.state === "composer"}
+                    />
+                )}
 
                 {/* Message input — posts into the thread channel (or skeleton / not-member banner) */}
                 <div className="shrink-0">

@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router";
-import { Loader2, User } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@components/ui/button";
 import {
@@ -19,6 +19,7 @@ import {
   ChannelListItem,
 } from "@raven/types/common/ChannelListItem";
 import { ChannelIcon } from "@components/common/ChannelIcon/ChannelIcon";
+import { PrefActionRow } from "@components/features/profile/PrefRows";
 import { useLeaveChannel } from "@hooks/useLeaveChannel";
 
 export interface LeaveChannelButtonProps {
@@ -39,15 +40,16 @@ export function LeaveChannelButton({ channel }: LeaveChannelButtonProps) {
 
   return (
     <AlertDialog>
-      <AlertDialogTrigger asChild className="w-full">
-        <button className="w-full flex justify-start p-3 h-auto cursor-pointer font-normal bg-transparent border border-outline-gray-2/70 rounded-lg hover:bg-red-200/20 transition-colors">
-          <div className="flex items-center gap-3">
-            <User className="w-4 h-4 text-ink-red-3" />
-            <span className="text-sm text-ink-red-3">
-              {_("Leave channel")}
-            </span>
-          </div>
-        </button>
+      <AlertDialogTrigger asChild>
+        <PrefActionRow
+          label={_("Leave channel")}
+          description={
+            channel.type === "Private"
+              ? _("You'll need an invite to rejoin this channel")
+              : _("You can rejoin this channel at any time")
+          }
+          destructive
+        />
       </AlertDialogTrigger>
       <AlertDialogContent className="sm:max-w-xl">
         <AlertDialogHeader>
@@ -62,16 +64,16 @@ export function LeaveChannelButton({ channel }: LeaveChannelButtonProps) {
             </span>
           </AlertDialogTitle>
           <AlertDialogDescription asChild>
-            <div className="space-y-4 text-left text-ink-gray-8 pt-1">
+            <div className="space-y-4 pt-1">
               {error ? <ErrorBanner error={error} /> : null}
               {channel.type === "Private" ? (
-                <p className="text-sm text-ink-gray-8/80">
+                <p>
                   {_(
                     "When you leave this channel, you’ll no longer be able to see any of its messages. To rejoin, you’ll need to be invited.",
                   )}
                 </p>
               ) : (
-                <p className="text-sm text-ink-gray-8/80">
+                <p>
                   {_(
                     "When you leave this channel, you’ll no longer be able to send anymore messages, you will have to rejoin the channel to continue participation.",
                   )}

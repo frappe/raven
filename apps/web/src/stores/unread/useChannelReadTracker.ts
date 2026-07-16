@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useRef } from "react"
-import { useFrappePostCall } from "frappe-react-sdk"
+import { useCallback, useContext, useEffect, useRef } from "react"
+import { FrappeConfig, FrappeContext } from "frappe-react-sdk"
 import { useDebounceCallback } from "usehooks-ts"
 import type { Message } from "@raven/types/common/Message"
 import { channelUnreadStore } from "./store"
+import { sendOrQueueVisit } from "./visitOutbox"
 import { unreadThreadsStore } from "@stores/threads/unreadStore"
+import { markNotificationsReadOnView } from "@stores/notifications/unreadStore"
 
 /** How long after the last in-view message before we flush the watermark to the server. */
 const FLUSH_DELAY = 1500
@@ -27,20 +29,31 @@ export const useChannelReadTracker = (
     channelID: string,
     { isAtBottom, hasNewerMessages }: { isAtBottom: boolean; hasNewerMessages: boolean },
 ) => {
-    const { call: trackVisit } = useFrappePostCall("raven.api.raven_channel_member.track_visit")
+    const { call } = useContext(FrappeContext) as FrappeConfig
 
     /** Newest message creation seen this session (forward-only). */
     const watermarkRef = useRef<string | null>(null)
-    /** Last watermark actually sent — avoids re-posting an unchanged value. */
+    /** Last watermark handed to sendOrQueueVisit — avoids re-sending an unchanged value.
+     *  Safe to advance eagerly: a failed post is queued durably (visit outbox), so
+     *  delivery is guaranteed either way. */
     const sentRef = useRef<string | null>(null)
     /** Live-edge state read at flush time (caught up = reached the bottom). */
     const caughtUpRef = useRef(false)
-    // Hold the latest post fn in a ref so `flush` stays referentially stable —
-    // otherwise a new debounced fn each render would reset the pending timer.
-    const trackVisitRef = useRef(trackVisit)
+
+    // These refs hold PER-CHANNEL state, but the hook instance survives channel
+    // switches (ChatStream isn't remounted per channel) — without a reset, the
+    // previous channel's newer watermark blocks every onMessageInView advance in
+    // the next channel, the local badge is zeroed with a foreign timestamp, and
+    // track_visit never fires — so the unread count comes back on refresh.
+    // Deliberately an EFFECT, not a render-time reset: the previous channel's
+    // pending debounce is force-flushed in an effect CLEANUP below, and that
+    // flush reads watermarkRef — cleanups run before effects, so the old channel
+    // still sees its own watermark; then this wipes the slate for the new one.
     useEffect(() => {
-        trackVisitRef.current = trackVisit
-    }, [trackVisit])
+        watermarkRef.current = null
+        sentRef.current = null
+        caughtUpRef.current = false
+    }, [channelID])
 
     const flush = useCallback(() => {
         const watermark = watermarkRef.current
@@ -58,22 +71,25 @@ export const useChannelReadTracker = (
         channelUnreadStore.markRead(channelID, watermark, caughtUpRef.current)
         // If this is a thread, clear it from the unread-threads badge (no-op for channels).
         unreadThreadsStore.remove(channelID)
-        trackVisitRef.current({ channel_id: channelID, last_visit: watermark }).catch(() => {
-            // Best effort: a dropped flush is recovered by the next flush or the
-            // focus/reconnect reconcile in useUnreadSync.
-        })
-    }, [channelID])
+        // Delivered now, or queued durably and replayed on reconnect (visit outbox) —
+        // a failed post can no longer strand the server's last_visit in the past.
+        sendOrQueueVisit(call, channelID, watermark)
+    }, [channelID, call])
 
     const debouncedFlush = useDebounceCallback(flush, FLUSH_DELAY)
 
     const onMessageInView = useCallback(
         (message: Message) => {
+            // Viewing a message with an unread notification (a mention of you / a reaction on
+            // your message) marks it read — O(1) no-op for everything else. Deliberately NOT
+            // forward-only like the watermark: scrolling UP to an older mention clears it too.
+            markNotificationsReadOnView(call, message.name)
             if (!watermarkRef.current || message.creation > watermarkRef.current) {
                 watermarkRef.current = message.creation
                 debouncedFlush()
             }
         },
-        [debouncedFlush],
+        [call, debouncedFlush],
     )
 
     // Register the active-read channel and hold its badge at zero while the user
@@ -105,9 +121,18 @@ export const useChannelReadTracker = (
         document.addEventListener("visibilitychange", onVisibility)
         return () => {
             document.removeEventListener("visibilitychange", onVisibility)
-            debouncedFlush.flush()
+            // Call flush DIRECTLY, not debouncedFlush.flush(): on unmount,
+            // useDebounceCallback's own cleanup runs first (declared earlier) and
+            // cancels the pending invocation, so .flush() would find nothing and
+            // silently drop the last ~1.5s of reading (mobile back-swipe, opening
+            // the Threads/Notifications page). The raw call doesn't care about the
+            // timer, and re-posting is impossible — an unchanged watermark is a
+            // no-op via sentRef. The cancel just clears any still-armed timer on a
+            // channel switch (its late fire would also have been a no-op).
+            flush()
+            debouncedFlush.cancel()
         }
-    }, [channelID, debouncedFlush])
+    }, [channelID, debouncedFlush, flush])
 
     return { onMessageInView }
 }

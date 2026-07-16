@@ -18,6 +18,7 @@ import type { SelectedNotification } from '@pages/notifications/NotificationChat
 import { RESULT_ROW_ACTIVE_CLASS } from '@components/common/MessageResultBlock/MessageResultBlock'
 import { cn } from '@lib/utils'
 import { SearchFilters } from '../types'
+import { SearchNoResults } from './SearchNoResults'
 
 interface SearchFileResultsProps {
     searchValue?: string
@@ -39,13 +40,7 @@ const SearchFileResults = ({ searchValue, filters, onSelect, selectedID }: Searc
 
     if (error) return <ErrorBanner error={error} />
     if (isLoading || !results) return <MessageListSkeleton />
-    if (results.length === 0) {
-        return (
-            <div className="text-sm text-ink-gray-4 text-center py-8">
-                {_('No files found.')}
-            </div>
-        )
-    }
+    if (results.length === 0) return <SearchNoResults title={_('No files found')} />
 
     return (
         <Virtuoso
@@ -115,7 +110,7 @@ const FileResultRowInner = ({ file, user, channel, dmChannel, peer, workspace, o
             >
                 {user && <UserAvatar user={user} size="md" showStatusIndicator={false} />}
                 <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline gap-1.5 flex-wrap text-base md:text-sm">
+                    <div className="flex items-baseline gap-1.5 flex-wrap text-content">
                         {user && <span className="font-medium text-ink-gray-8 truncate">{user.full_name}</span>}
                         <span className="shrink-0 text-xs text-ink-gray-4">{relativeDate}</span>
                         {workspace && (
@@ -152,7 +147,7 @@ const FileResultRowInner = ({ file, user, channel, dmChannel, peer, workspace, o
                             <FileTypeIcon fileType={ext} size="4xl" />
                         )}
                         <div className="flex-1 min-w-0">
-                            <h3 className="text-base md:text-sm font-medium text-ink-gray-8 truncate">{file.title || _('Untitled')}</h3>
+                            <h3 className="text-content font-medium text-ink-gray-8 truncate">{file.title || _('Untitled')}</h3>
                             <div className="flex items-center gap-1.5 text-xs text-ink-gray-4 mt-0.5">
                                 {ext && <span className="uppercase">{ext}</span>}
                                 {ext && sizeLabel && <span>·</span>}

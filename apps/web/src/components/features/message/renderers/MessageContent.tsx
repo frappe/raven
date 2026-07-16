@@ -11,6 +11,7 @@ import { MessageFiles } from "./MessageFiles"
 import { MessageVideo } from "./MessageVideo"
 import { MessageAudio } from "./MessageAudio"
 import RichTextRenderer from "./RichTextRenderer"
+import { MessageLinkPreview } from "./LinkPreview"
 import { PollMessageContent } from "./PollMessageContent"
 import SearchTextRenderer from "./SearchTextRenderer"
 import { MessageReactionsRow } from "./MessageReactions"
@@ -28,7 +29,9 @@ export const MessageBody = ({ content }: { content?: string | null }) => {
     if (!content) return null
     const trimmed = content.trim()
     if (!trimmed) return null
-    if (trimmed.startsWith('<') && !trimmed.startsWith('<mark')) return <RichTextRenderer html={trimmed} />
+    // jumbomoji: emoji-only messages render big in the stream (not in compact
+    // contexts like notifications, which use RichTextRenderer directly).
+    if (trimmed.startsWith('<') && !trimmed.startsWith('<mark')) return <RichTextRenderer html={trimmed} jumbomoji />
     return <SearchTextRenderer content={trimmed} />
 }
 
@@ -89,7 +92,7 @@ const MessageMedia = ({ message, fileUrl }: { message: Message; fileUrl: string 
     }
 }
 
-export const MessageContent = ({ message }: { message: Message }) => {
+export const MessageContent = ({ message, showLinkPreview = true }: { message: Message, showLinkPreview?: boolean }) => {
     const messageFile = "file" in message ? (message.file as string | undefined) : undefined
 
     const repliedMessageDetails = useMemo(() => {
@@ -132,6 +135,9 @@ export const MessageContent = ({ message }: { message: Message }) => {
                 // latter is the backend's derived plain-text (search/teasers).
                 <EditableMessageBody message={message} />
             )}
+
+            {/* Preview for the first link in the body (YouTube embed for now) */}
+            {showLinkPreview && <MessageLinkPreview message={message} />}
 
             <MessageReactionsRow message={message} />
         </div>

@@ -17,7 +17,10 @@
  */
 
 .tiptap {
-  @apply text-p-base text-ink-gray-7 break-words;
+  /* Reading tier: larger on mobile (16px) than desktop (14px) using the existing
+     paragraph tokens — no --text-* overrides. Covers BOTH surfaces this class styles:
+     the message body and the composer (16px input also dodges iOS focus-zoom). */
+  @apply text-p-lg md:text-p-base text-ink-gray-8 break-words;
 }
 
 /* Spacing model mirrors the editor (frappe-ui v3 / ProseMirror): paragraphs
@@ -415,6 +418,16 @@
   @apply my-0 inline-block h-[1.4em] w-auto rounded-none object-contain align-text-bottom;
 }
 
+/* Jumbomoji — a message that is ONLY emojis (≤4; RichTextRenderer decides)
+   renders them big, Slack/iMessage-style. One rule covers both kinds: native
+   emojis scale with font-size, and custom emojis (.emoji) are em-sized (1.4em)
+   so they follow along. The class is computed synchronously from the stored
+   HTML, so row height stays deterministic for the scroll engine. */
+.tiptap--jumbomoji p {
+  font-size: 2rem;
+  line-height: 1.25;
+}
+
 /* Tables — framed and horizontally scrollable, matching the ui/ Table look
    (rounded outline frame, gray header, row dividers; see ui/table.tsx). The frame
    lives on a wrapper, not the table, so it can scroll wide tables instead of
@@ -439,7 +452,7 @@
 
 /* The wrapper supplies the bottom frame — drop the last row's divider so the two
    don't double up into a thick edge. */
-.tiptap tr:last-child > td {
+.tiptap tr:last-child>td {
   @apply border-b-0;
 }
 

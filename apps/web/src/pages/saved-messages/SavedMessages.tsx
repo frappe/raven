@@ -8,6 +8,7 @@ import SavedMessagesList from "@components/features/saved-messages/SavedMessages
 import { PageHeader } from "@components/layout/PageHeader"
 import NotificationChat, { type SelectedNotification } from "@pages/notifications/NotificationChat"
 import { Input } from "@components/ui/input"
+import { useIsMobile } from "@hooks/use-mobile"
 import { useChannelList } from "@stores/channels/useChannelList"
 import { useLiveQuery } from "dexie-react-hooks"
 import { db } from "@db"
@@ -31,6 +32,7 @@ const SavedMessages = () => {
     const { channels, dmChannels } = useChannelList()
     const users = useLiveQuery(() => db.users.toArray(), [])
     const hasSelection = !!selected
+    const isMobile = useIsMobile()
 
     // Clicking the open row again collapses the pane back to a full-width list.
     const onSelect = useCallback((selection: SelectedNotification) => {
@@ -47,7 +49,7 @@ const SavedMessages = () => {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={_('Search saved messages')}
-                className={cn("pl-9 pr-9 h-8 text-base",
+                className={cn("pl-9 pr-9 h-9 md:h-8 text-xl md:text-base",
                     hasSelection && "bg-surface-gray-3 hover:bg-surface-gray-4"
                 )}
                 autoFocus
@@ -72,16 +74,18 @@ const SavedMessages = () => {
         )}>
             <div className="flex flex-1 overflow-hidden">
                 {/* Left pane: full width by default; exact half once a row is selected (no divider — the
-                    right pane's gray canvas separates them). */}
+                    right pane's gray canvas separates them). On mobile a selection takes over the whole
+                    screen, so the list pane is hidden (mirrors notifications / search). */}
                 <div className={cn(
-                    "flex flex-col min-w-0",
-                    hasSelection ? "w-1/2 shrink-0" : "flex-1"
+                    "relative flex flex-col min-w-0",
+                    hasSelection ? "w-1/2 shrink-0" : "flex-1",
+                    isMobile && hasSelection && "hidden"
                 )}>
                     <PageHeader title={_('Saved Messages')} />
 
-                    <div className="shrink-0 px-2 pt-2 pb-3 space-y-2">
+                    <div className="shrink-0 px-2 pt-2 pb-2 space-y-2">
                         {searchInput}
-                        <div className="mt-4 flex items-center gap-2">
+                        <div className="mt-3 flex items-center gap-2">
                             {/* --- Reminders: tabs + add-reminder button (commented until backend support) --- */}
                             {/* <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as SavedMessageStatus)}>
                                 <TabsList variant="subtle" size="sm">
@@ -103,7 +107,8 @@ const SavedMessages = () => {
                                 size="sm"
                                 showLabel={false}
                                 dropdownClassName="w-68"
-                                triggerClassName="w-40"
+                                className={isMobile ? "w-full min-w-0" : undefined}
+                                triggerClassName={"w-40"}
                             />
                             {/* <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setReminderDialogOpen(true)}>
                                 <Plus className="h-3.5 w-3.5 mr-1.5" />
@@ -123,7 +128,10 @@ const SavedMessages = () => {
                 </div>
 
                 {selected && (
-                    <div className="w-1/2 shrink-0 flex flex-col min-h-0 bg-surface-gray-0">
+                    <div className={cn(
+                        "shrink-0 flex flex-col min-h-0 bg-surface-gray-0",
+                        isMobile ? "w-full" : "w-1/2"
+                    )}>
                         <NotificationChat selected={selected} />
                     </div>
                 )}

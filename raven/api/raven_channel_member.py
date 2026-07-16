@@ -1,7 +1,11 @@
 import frappe
 from frappe import _
 
-from raven.utils import delete_channel_members_cache, get_channel_member
+from raven.utils import (
+	create_members_added_system_message,
+	delete_channel_members_cache,
+	get_channel_member,
+)
 from raven.utils import get_channel_members as get_channel_members_util
 from raven.utils import get_workspace_members, set_channel_unread, track_channel_visit
 
@@ -31,7 +35,17 @@ def track_visit(channel_id: str, last_visit: str = None):
 
 	Publishes to the user's other sessions so reading on one device clears the
 	unread badge on the rest.
+
+	Returns True when the visit was recorded, False when the site is in read-only
+	mode (the write would fail). The client's boot.read_only flag is a page-load
+	snapshot, so this response is its only LIVE signal — a False tells it to queue
+	the watermark (visit outbox) and replay it after maintenance ends.
 	"""
+
+	# Read-only mode (maintenance with reads allowed): decline cleanly instead of
+	# letting the write below blow up against the read-only connection.
+	if frappe.flags.read_only:
+		return False
 
 	# On v3, the client sends the last_visit only on the basis of viewing a more reecent message and hence this needs to be broadcasted back to the user.
 	# On v2, this is called when the user enters/exists a channel, without the timestamp - should not be published to the user.
@@ -71,10 +85,19 @@ def add_channel_members(channel_id: str, members: list[str]):
 			{"doctype": "Raven Channel Member", "channel_id": channel_id, "user_id": member}
 		)
 		member_doc.flags.ignore_cache_invalidation = True
+		# One combined system message for the whole batch is sent below —
+		# per-member messages would flood the channel ("added X" ten times).
+		member_doc.flags.ignore_system_message = True
 		member_doc.insert()
 
 	if not members:
 		return True
+
+	# ONE "A added B, C and n others" message for the whole action. Same
+	# visibility rule as single additions: no system messages in DMs or Open channels.
+	channel = frappe.get_cached_doc("Raven Channel", channel_id)
+	if not channel.is_direct_message and channel.type != "Open":
+		create_members_added_system_message(channel_id, members)
 
 	delete_channel_members_cache(channel_id)
 	return True

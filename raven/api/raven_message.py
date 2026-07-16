@@ -543,6 +543,9 @@ def get_unread_count_for_channels():
 
 @frappe.whitelist()
 def get_unread_count_for_channel(channel_id: str):
+	"""
+	Deprecated - not used in v3
+	"""
 	channel_member = get_channel_member(channel_id=channel_id)
 	if channel_member:
 		last_timestamp = frappe.get_cached_value(

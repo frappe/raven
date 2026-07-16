@@ -1,4 +1,4 @@
-import { memo, useCallback, useContext, useEffect, useMemo, useState } from "react"
+import { memo, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
 import { FrappeConfig, FrappeContext } from "frappe-react-sdk"
 import { Virtuoso } from "react-virtuoso"
 import { UserData } from "@db"
@@ -12,6 +12,8 @@ import { useThreadList } from "@stores/threads/useThreadList"
 import { loadThreadDetails, useThreadReplyCount } from "@stores/threads/useThreadMeta"
 import type { ThreadRowData } from "@stores/threads/listSelectors"
 import { MessageListSkeleton } from "@components/features/dm-channel/DirectMessagePageSkeleton"
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@components/ui/empty"
+import { Bot, CheckCheck, MessagesSquare, Search, TriangleAlert } from "lucide-react"
 import type { ChannelListItem, DMChannelListItem } from "@raven/types/common/ChannelListItem"
 import _ from "@lib/translate"
 
@@ -40,11 +42,25 @@ type RowLookups = {
 
 /** Module-level Footer so Virtuoso's component types stay stable across renders. */
 type ListContext = { isLoadingMore: boolean }
-const ListFooter = ({ context }: { context?: ListContext }) =>
-    context?.isLoadingMore ? (
-        <div className="py-4 text-center text-xs text-ink-gray-4">{_("Loading more threads...")}</div>
-    ) : null
+const ListFooter = ({ context }: { context?: ListContext }) => (
+    <>
+        {context?.isLoadingMore && (
+            <div className="py-4 text-center text-xs text-ink-gray-4">{_("Loading more threads...")}</div>
+        )}
+        {/* Mobile: small breathing pad above the tab bar. */}
+        <div className="h-2 md:h-0" aria-hidden="true" />
+    </>
+)
 const listComponents = { Footer: ListFooter }
+
+/** Centers the empty state over the whole left column (absolute) so it lands at the same height
+ *  as the thread pane's empty state, not offset below the search/tabs/filter stack. Relies on the
+ *  list column in Threads.tsx being `relative`. pointer-events-none keeps the toolbar clickable. */
+const EmptyOverlay = ({ children }: { children: ReactNode }) => (
+    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+        {children}
+    </div>
+)
 
 const ThreadRow = memo(function ThreadRow({
     thread,
@@ -157,35 +173,53 @@ export default function ThreadsList({
         [hasMore, isLoading],
     )
 
-    if (error) return <div className="text-sm text-ink-gray-5 text-center py-8">{error}</div>
+    if (error) {
+        return (
+            <EmptyOverlay>
+                <Empty>
+                    <EmptyMedia><TriangleAlert /></EmptyMedia>
+                    <EmptyHeader>
+                        <EmptyTitle>{_("Couldn't load threads")}</EmptyTitle>
+                        <EmptyDescription>{error}</EmptyDescription>
+                    </EmptyHeader>
+                </Empty>
+            </EmptyOverlay>
+        )
+    }
     if (isLoading && rows.length === 0) return <MessageListSkeleton />
 
     if (rows.length === 0) {
         if (searchQuery?.trim()) {
             return (
-                <div className="flex flex-col items-center justify-center py-16 pr-6">
-                    <p className="text-base font-medium mb-2 text-ink-gray-8 text-center max-w-sm">
-                        {_("No matching threads")}
-                    </p>
-                    <p className="text-xs text-ink-gray-4 text-center max-w-sm">
-                        {_("Try a different search term.")}
-                    </p>
-                </div>
+                <EmptyOverlay>
+                    <Empty>
+                        <EmptyMedia><Search /></EmptyMedia>
+                        <EmptyHeader>
+                            <EmptyTitle>{_("No matching threads")}</EmptyTitle>
+                            <EmptyDescription>{_("Try a different search term.")}</EmptyDescription>
+                        </EmptyHeader>
+                    </Empty>
+                </EmptyOverlay>
             )
         }
         return (
-            <div className="flex flex-col items-center justify-center py-16 pr-6">
-                <p className="text-base font-medium mb-2 text-ink-gray-8 text-center max-w-sm">
-                    {onlyShowUnread ? _("You're all caught up") : _("No threads yet")}
-                </p>
-                <p className="text-xs text-ink-gray-4 text-center max-w-sm">
-                    {onlyShowUnread
-                        ? _("There are no unread threads to show. Clear the filter to see all threads.")
-                        : threadType === "ai"
-                          ? _("AI threads will appear here when you start conversations with an AI bot.")
-                          : _("Create a thread by right-clicking a message and selecting 'Create Thread'.")}
-                </p>
-            </div>
+            <EmptyOverlay>
+                <Empty>
+                    <EmptyMedia>
+                        {onlyShowUnread ? <CheckCheck /> : threadType === "ai" ? <Bot /> : <MessagesSquare />}
+                    </EmptyMedia>
+                    <EmptyHeader>
+                        <EmptyTitle>{onlyShowUnread ? _("You're all caught up") : _("No threads yet")}</EmptyTitle>
+                        <EmptyDescription>
+                            {onlyShowUnread
+                                ? _("There are no unread threads to show. Clear the filter to see all threads.")
+                                : threadType === "ai"
+                                  ? _("AI threads will appear here when you start conversations with an AI bot.")
+                                  : _("Create a thread by right-clicking a message and selecting 'Create Thread'.")}
+                        </EmptyDescription>
+                    </EmptyHeader>
+                </Empty>
+            </EmptyOverlay>
         )
     }
 

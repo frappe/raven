@@ -1,13 +1,31 @@
 import { ReactRenderer } from "@tiptap/react"
 import type { ComponentType, ReactNode } from "react"
 import type { PluginKey } from "@tiptap/pm/state"
-import type { SuggestionOptions } from "@tiptap/suggestion"
+import { findSuggestionMatch, type SuggestionMatch, type SuggestionOptions, type Trigger } from "@tiptap/suggestion"
 import type { MentionNodeAttrs } from "@tiptap/extension-mention"
 import { SuggestionList, type SuggestionListProps } from "./SuggestionList"
 import { setSuggestionPopupVisible } from "./suggestion"
 
 /** Node attrs we insert — kept compatible with Tiptap's MentionNodeAttrs (id/label `string | null`). */
 export type MentionAttrs = MentionNodeAttrs
+
+/**
+ * Stock suggestion matcher with a smarter prefix rule. The default only fires
+ * after a SPACE (or at block start), so "(@user", "[@user", quotes and dashes
+ * never opened the popup. Instead: run the stock matcher with its prefix check
+ * off, then reject only when the character right before the trigger is a word
+ * character — which is exactly what keeps emails ("nikhil@frappe…") and URLs
+ * ("https://…" for the ":" trigger) from popping the list mid-word.
+ */
+export const findSuggestionMatchAfterNonWord = (config: Trigger): SuggestionMatch => {
+    const match = findSuggestionMatch({ ...config, allowedPrefixes: null })
+    if (!match) return null
+    const from = match.range.from
+    // Char immediately before the trigger. Leaf nodes (emojis, mentions) read as
+    // "\0" and block boundaries as "" — both non-word, so both allow the trigger.
+    const before = config.$position.doc.textBetween(Math.max(0, from - 1), from, "\0", "\0")
+    return /[\p{L}\p{N}_]/u.test(before) ? null : match
+}
 
 interface SuggestionRenderConfig<T, A> {
     /** Row contents for an item. */
@@ -126,6 +144,7 @@ export function createMentionSuggestion<T>(
     return {
         char: config.char,
         pluginKey: config.pluginKey,
+        findSuggestionMatch: findSuggestionMatchAfterNonWord,
         items: ({ query }) => config.getItems(query),
         command: ({ editor, range, props }) => {
             editor

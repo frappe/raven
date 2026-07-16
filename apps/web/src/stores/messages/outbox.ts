@@ -33,9 +33,32 @@ export const removeOutbox = (clientID: string) => {
         .finally(() => settling.delete(clientID))
 }
 
-/** Change a record's status (between "sending" and "failed") as its send plays out. */
+/** Change a record's status ("sending" / "failed" / "rejected") as its send plays out. */
 export const setOutboxStatus = (clientID: string, status: OutboxMessage["status"]) =>
     db.outbox.update(clientID, { status }).catch((error) => console.error("outbox update failed", error))
+
+/** How long an unconfirmed send stays retryable/visible: 7 days. Long enough that a
+ *  send queued offline over a weekend still goes out; short enough that a resurrected
+ *  week-old message doesn't read as a glitch to the recipient. */
+const OUTBOX_TTL_MS = 7 * 24 * 60 * 60 * 1000
+
+/**
+ * Drop records older than the TTL — called at the start of every auto-retry flush,
+ * BEFORE anything is injected or re-sent. Auto-sending a week-late message into a
+ * conversation that moved on is worse than losing it, and failed sends the user
+ * hasn't dealt with in a week are abandoned. A cheap range delete (queued_at is
+ * indexed); Dexie live queries (useChannelOutbox) see the deletion, so no stale
+ * bubbles are left on screen.
+ */
+export const purgeExpiredOutbox = () =>
+    db.outbox
+        .where("queued_at")
+        .below(Date.now() - OUTBOX_TTL_MS)
+        .delete()
+        .then((count) => {
+            if (count > 0) console.info(`outbox: dropped ${count} expired send(s) older than 7 days`)
+        })
+        .catch((error) => console.error("outbox purge failed", error))
 
 /** Every saved send, oldest first — used to restore them on app start and retry in order. */
 export const getAllOutbox = (): Promise<OutboxMessage[]> =>

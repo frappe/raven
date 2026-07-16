@@ -92,16 +92,18 @@ export const MessageSenderLayout = ({
 
     return (
         <div className="flex items-start gap-3">
-            {user ? (
-                <UserAvatar user={user} size="md" />
-            ) : (
-                <div className="h-8 w-8 shrink-0 rounded-full bg-surface-gray-2 flex items-center justify-center text-xs font-medium text-ink-gray-4">
-                    {displayName.slice(0, 2).toUpperCase()}
-                </div>
-            )}
+            <div className="mt-0.5">
+                {user ? (
+                    <UserAvatar user={user} size="md" />
+                ) : (
+                    <div className="h-8 w-8 shrink-0 rounded-full bg-surface-gray-2 flex items-center justify-center text-xs-medium text-ink-gray-4">
+                        {displayName.slice(0, 2).toUpperCase()}
+                    </div>
+                )}
+            </div>
             <div className="flex-1 min-w-0">
                 <div className="flex items-baseline gap-1">
-                    <span className="font-medium text-sm text-ink-gray-6">{displayName}</span>
+                    <span className="font-medium text-content text-ink-gray-6 dark:text-ink-gray-7">{displayName}</span>
                     <Tooltip delayDuration={300}>
                         <TooltipTrigger asChild>
                             <span className="text-xs text-ink-gray-5">· {shortTime}</span>

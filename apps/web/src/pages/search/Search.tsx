@@ -12,12 +12,14 @@ import SearchLinkResults from '@components/features/search/results/SearchLinkRes
 import SearchPollResults from '@components/features/search/results/SearchPollResults'
 import NotificationChat, { type SelectedNotification } from '@pages/notifications/NotificationChat'
 import { PageHeader } from '@components/layout/PageHeader'
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@components/ui/empty'
 import { SearchFilters } from '@components/features/search/types'
 
 import { useChannelList } from "@stores/channels/useChannelList"
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@db'
 import { Input } from '@components/ui/input'
+import { useIsMobile } from '@hooks/use-mobile'
 import { cn } from '@lib/utils'
 import _ from '@lib/translate'
 
@@ -46,6 +48,7 @@ export default function Search() {
     const [activeTab, setActiveTab] = useState<SearchTab>(tabFromURL)
     const [selected, setSelected] = useState<SelectedNotification | null>(null)
     const hasSelection = !!selected
+    const isMobile = useIsMobile()
 
     // Clicking the open row again collapses the pane back to a full-width list.
     const onSelect = useCallback((selection: SelectedNotification) => {
@@ -73,6 +76,22 @@ export default function Search() {
 
     const { channels, dmChannels } = useChannelList()
     const users = useLiveQuery(() => db.users.toArray(), [])
+
+    // Don't fetch until there's something to search for — an empty query with no filters would
+    // otherwise pull the whole corpus. Gating the render here means the result components (and
+    // their fetch hooks) never mount, so no request fires.
+    const hasActiveSearch =
+        (filters.query ?? '').trim().length > 0 ||
+        !!filters.channel_id ||
+        !!filters.owner ||
+        (filters.file_type?.length ?? 0) > 0 ||
+        !!filters.channel_type ||
+        filters.is_direct_message != null ||
+        filters.saved != null ||
+        filters.is_pinned != null ||
+        filters.is_thread_message != null ||
+        filters.has_reactions != null ||
+        filters.mentions_me != null
 
     const onTabChange = (tab: SearchTab) => {
         setActiveTab(tab)
@@ -105,7 +124,7 @@ export default function Search() {
                 value={searchValue}
                 onChange={(e) => setSearchValue(e.target.value)}
                 placeholder={_('Search messages, files, links, polls')}
-                className={cn("pl-9 pr-9 h-8 text-base",
+                className={cn("pl-9 pr-9 h-9 md:h-8 text-xl md:text-base",
                     hasSelection && "bg-surface-gray-3 hover:bg-surface-gray-4"
                 )}
                 autoFocus
@@ -124,31 +143,33 @@ export default function Search() {
     )
 
 
-    // TODO: Add mobile search layout
     return (
         <div className={cn(
             "flex flex-row h-full overflow-hidden",
             hasSelection && "bg-surface-gray-1"
         )}>
             {/* Left pane: full width by default; exact half once a result is selected (no divider —
-                the right pane's gray canvas separates them). */}
+                the right pane's gray canvas separates them). On mobile a selection takes over the
+                whole screen, so the list pane is hidden (mirrors the notifications page). */}
             <div className={cn(
-                "flex flex-col overflow-hidden min-w-0",
-                hasSelection ? "w-1/2 shrink-0" : "flex-1"
+                "relative flex flex-col overflow-hidden min-w-0",
+                hasSelection ? "w-1/2 shrink-0" : "flex-1",
+                isMobile && hasSelection && "hidden"
             )}>
                 <PageHeader title={_('Search')} />
                 <div className="shrink-0">
-                    <div className="mx-auto w-full px-2 pt-2 space-y-3">
+                    <div className="mx-auto w-full px-2 pt-2 space-y-2">
                         {searchInput}
-                        <div className="mt-4 flex items-center gap-3 flex-wrap">
-                            <SearchTabsBar activeTab={activeTab} setActiveTab={onTabChange} />
-                            <div className="ml-auto">
+                        <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-center md:flex-wrap">
+                            <SearchTabsBar activeTab={activeTab} setActiveTab={onTabChange} fullWidth={isMobile} />
+                            <div className="md:ml-auto">
                                 <SearchFiltersBar
                                     filters={filters}
                                     channels={channels}
                                     dmChannels={dmChannels}
                                     onChannelChange={setChannelFilter}
                                     onUserChange={setUserFilter}
+                                    isMobile={isMobile}
                                 />
                             </div>
                         </div>
@@ -161,18 +182,40 @@ export default function Search() {
                     </div>
                 </div>
 
+                {/* Empty prompt centers over the whole pane (absolute) so it lands at the same
+                    height as the right pane's empty state, not offset below the header/tabs/filters.
+                    pointer-events-none keeps the search input + filters clickable underneath. */}
+                {!hasActiveSearch && (
+                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                        <Empty>
+                            <EmptyMedia><SearchIcon /></EmptyMedia>
+                            <EmptyHeader>
+                                <EmptyTitle>{_('Search Raven')}</EmptyTitle>
+                                <EmptyDescription>{_('Find messages, files, links and polls. Type a query or pick a filter to start.')}</EmptyDescription>
+                            </EmptyHeader>
+                        </Empty>
+                    </div>
+                )}
+
                 <div className="flex-1 min-h-0 px-3 md:px-0 pb-2">
                     <div className="mx-auto w-full h-full">
-                        {activeTab === 'messages' && <SearchMessageResults searchValue={filters.query} filters={filters} onSelect={onSelect} selectedID={selected?.messageID} />}
-                        {activeTab === 'files' && <SearchFileResults searchValue={filters.query} filters={filters} onSelect={onSelect} selectedID={selected?.messageID} />}
-                        {activeTab === 'links' && <SearchLinkResults searchValue={filters.query} filters={filters} onSelect={onSelect} selectedID={selected?.messageID} />}
-                        {activeTab === 'polls' && <SearchPollResults searchValue={filters.query} filters={filters} onSelect={onSelect} selectedID={selected?.messageID} />}
+                        {hasActiveSearch && (
+                            <>
+                                {activeTab === 'messages' && <SearchMessageResults searchValue={filters.query} filters={filters} onSelect={onSelect} selectedID={selected?.messageID} />}
+                                {activeTab === 'files' && <SearchFileResults searchValue={filters.query} filters={filters} onSelect={onSelect} selectedID={selected?.messageID} />}
+                                {activeTab === 'links' && <SearchLinkResults searchValue={filters.query} filters={filters} onSelect={onSelect} selectedID={selected?.messageID} />}
+                                {activeTab === 'polls' && <SearchPollResults searchValue={filters.query} filters={filters} onSelect={onSelect} selectedID={selected?.messageID} />}
+                            </>
+                        )}
                     </div>
                 </div>
             </div>
 
             {selected && (
-                <div className="w-1/2 shrink-0 flex flex-col min-h-0 bg-surface-gray-0">
+                <div className={cn(
+                    "shrink-0 flex flex-col min-h-0 bg-surface-gray-0",
+                    isMobile ? "w-full" : "w-1/2"
+                )}>
                     <NotificationChat selected={selected} />
                 </div>
             )}

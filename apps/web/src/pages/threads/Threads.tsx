@@ -1,9 +1,10 @@
 import { useCallback, useMemo, useState } from "react"
 import { Outlet, useLocation, useNavigate, useParams } from "react-router-dom"
 import { Search, X } from "lucide-react"
+import { Input } from "@components/ui/input"
 import { Switch } from "@components/ui/switch"
 import { Label } from "@components/ui/label"
-import { Input } from "@components/ui/input"
+import { UnreadFilterPill } from "@components/common/UnreadFilterPill"
 import { Tabs, TabsList, TabsTrigger } from "@components/ui/tabs"
 import { Empty, EmptyHeader, EmptyDescription } from "@components/ui/empty"
 import { ChannelSelect } from "@components/common/ChannelSelect/ChannelSelect"
@@ -13,6 +14,7 @@ import { useChannelList } from "@stores/channels/useChannelList"
 import { unreadThreadsStore } from "@stores/threads/unreadStore"
 import { useIsMobile } from "@hooks/use-mobile"
 import _ from "@lib/translate"
+import { cn } from "@lib/utils"
 import { useUsersById } from "@hooks/useMessageRowLookups"
 import { PageHeader } from "@components/layout/PageHeader"
 import AppMobileFooter from "@components/features/header/AppMobileFooter"
@@ -60,18 +62,29 @@ export default function Threads() {
     }, [navigate])
 
     const list = (
-        <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-            <PageHeader title={_("Threads")} />
+        <div className="relative flex flex-col flex-1 min-h-0 overflow-hidden">
+            <PageHeader title={_("Threads")}>
+                <div className="ml-auto hidden md:flex items-center gap-2 px-1">
+                    <Label htmlFor="unread-toggle" className="text-xs font-medium text-ink-gray-4 cursor-pointer">
+                        {_("Unread only")}
+                    </Label>
+                    <Switch
+                        id="unread-toggle"
+                        checked={onlyShowUnread}
+                        onCheckedChange={setOnlyShowUnread}
+                    />
+                </div>
+            </PageHeader>
             <div className="flex flex-col flex-1 overflow-hidden">
-                <div className="px-2 pt-2 pb-3 shrink-0 space-y-4 z-0">
+                <div className="p-2 shrink-0 space-y-3 z-0">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-gray-4 pointer-events-none" />
                         <Input
                             placeholder={_("Search threads...")}
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="pl-9 pr-9 h-8 text-base"
-                            autoFocus
+                            className="pl-9 pr-9 h-9 md:h-8 text-xl md:text-base"
+                            autoFocus={!isMobile}
                         />
                         {search && (
                             <button
@@ -84,9 +97,9 @@ export default function Threads() {
                             </button>
                         )}
                     </div>
-                    <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ThreadTab)}>
-                            <TabsList variant="subtle" size="sm">
+                    <div className="flex flex-row items-center gap-1 md:justify-between">
+                        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ThreadTab)} className="min-w-0 shrink-0">
+                            <TabsList variant="subtle" size="md">
                                 {TABS.map(tab => (
                                     <TabsTrigger key={tab.key} value={tab.key}>
                                         {_(tab.label)}
@@ -94,17 +107,7 @@ export default function Threads() {
                                 ))}
                             </TabsList>
                         </Tabs>
-                        <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-2">
-                                <Label htmlFor="unread-toggle" className="text-xs font-medium text-ink-gray-4 cursor-pointer">
-                                    {_("Unread only")}
-                                </Label>
-                                <Switch
-                                    id="unread-toggle"
-                                    checked={onlyShowUnread}
-                                    onCheckedChange={setOnlyShowUnread}
-                                />
-                            </div>
+                        <div className="flex items-center gap-1 min-w-0 flex-1 md:flex-none">
                             <ChannelSelect
                                 channels={channels}
                                 dmChannels={dmChannels}
@@ -117,8 +120,9 @@ export default function Threads() {
                                 searchable
                                 size="sm"
                                 showLabel={false}
-                                dropdownClassName="w-68"
-                                triggerClassName="w-40"
+                                className="w-full min-w-0"
+                                dropdownClassName="max-w-68"
+                                triggerClassName="w-full max-w-40 md:w-fit"
                             />
                         </div>
                     </div>
@@ -135,17 +139,38 @@ export default function Threads() {
                     />
                 </div>
             </div>
+            <UnreadFilterPill active={onlyShowUnread} onToggle={setOnlyShowUnread} />
         </div>
     )
 
-    // Mobile: a single full-bleed pane — the open thread takes over, else the list.
+    // Mobile is STACKED navigation (same as WorkspaceLayout/DirectMessages): the list is
+    // the page, and an open thread renders as a full-screen layer on top of it. The list
+    // stays mounted underneath, so going back — chevron or iOS back-swipe — reveals it
+    // instantly at the same scroll position instead of rebuilding it (which flashed).
     if (isMobile) {
         return (
-            <div className="flex flex-col h-screen overflow-hidden">
+            // relative on the OUTER column: the thread layer covers list + footer,
+            // sliding over the tab bar like a native detail page. The footer stays
+            // MOUNTED — unmounting it resized the list row, which clamped the list's
+            // scroll position at the bottom.
+            <div className="relative flex flex-col h-screen overflow-hidden">
                 <div className="flex flex-1 overflow-hidden">
-                    {hasThread ? <Outlet context={{ parentChannelID }} /> : list}
+                    <div
+                        className="flex w-full min-h-0 flex-col"
+                        // While covered by the thread layer, keep the list out of
+                        // focus / accessibility order.
+                        inert={hasThread ? true : undefined}
+                    >
+                        {list}
+                    </div>
+                    {/* The Outlet is null when no thread route is open — hide the empty
+                        layer then, so it can't sit over the list and eat taps. Covers
+                        the footer too (inset-0 of the outer column). */}
+                    <div className={cn("absolute inset-0 z-20 flex flex-col bg-surface-base animate-layer-in", !hasThread && "hidden")}>
+                        <Outlet context={{ parentChannelID, showOpenChannel: true }} />
+                    </div>
                 </div>
-                {hasThread ? null : <AppMobileFooter />}
+                <AppMobileFooter inert={hasThread ? true : undefined} />
             </div>
         )
     }
@@ -161,7 +186,7 @@ export default function Threads() {
                     <Island className="w-full h-full shrink-0">
                         <div className="flex flex-col flex-1 min-h-0">
                             {hasThread ? (
-                                <Outlet context={{ parentChannelID }} />
+                                <Outlet context={{ parentChannelID, showOpenChannel: true }} />
                             ) : (
                                 <Empty className="h-full">
                                     <EmptyHeader>

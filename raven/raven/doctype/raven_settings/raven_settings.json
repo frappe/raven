@@ -44,12 +44,8 @@
   "push_notification_api_secret",
   "config",
   "vapid_public_key",
-  "video_calling_tab",
-  "livekit_settings_section",
-  "enable_video_calling_via_livekit",
-  "livekit_url",
-  "livekit_api_key",
-  "livekit_api_secret"
+  "frappe_integrations_tab",
+  "frappe_meet_hosted_urls"
  ],
  "fields": [
   {
@@ -282,56 +278,29 @@
    "length": 800
   },
   {
-   "fieldname": "video_calling_tab",
-   "fieldtype": "Tab Break",
-   "label": "Video Calling"
-  },
-  {
-   "fieldname": "livekit_settings_section",
-   "fieldtype": "Section Break",
-   "label": "LiveKit Settings"
-  },
-  {
-   "default": "0",
-   "fieldname": "enable_video_calling_via_livekit",
-   "fieldtype": "Check",
-   "label": "Enable Video Calling via LiveKit"
-  },
-  {
-   "depends_on": "eval: doc.enable_video_calling_via_livekit;",
-   "fieldname": "livekit_url",
-   "fieldtype": "Data",
-   "label": "LiveKit URL",
-   "length": 300,
-   "mandatory_depends_on": "eval: doc.enable_video_calling_via_livekit;"
-  },
-  {
-   "depends_on": "eval: doc.enable_video_calling_via_livekit;",
-   "fieldname": "livekit_api_key",
-   "fieldtype": "Data",
-   "label": "LiveKit API Key",
-   "mandatory_depends_on": "eval: doc.enable_video_calling_via_livekit;"
-  },
-  {
-   "depends_on": "eval: doc.enable_video_calling_via_livekit;",
-   "fieldname": "livekit_api_secret",
-   "fieldtype": "Password",
-   "label": "LiveKit API Secret",
-   "mandatory_depends_on": "eval: doc.enable_video_calling_via_livekit;"
-  },
-  {
    "default": "0",
    "fieldname": "use_website_favicon",
    "fieldtype": "Check",
    "label": "Use Website Favicon"
+  },
+  {
+   "fieldname": "frappe_integrations_tab",
+   "fieldtype": "Tab Break",
+   "label": "Frappe Integrations"
+  },
+  {
+   "description": "Site URLs of where Frappe Meet is hosted to show previews of meeting links. Separated by newline characters.",
+   "fieldname": "frappe_meet_hosted_urls",
+   "fieldtype": "Small Text",
+   "label": "Frappe Meet Hosted URLs"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-05-13 17:11:18.615394",
- "modified_by": "aditya.p@frappe.io",
+ "modified": "2026-07-05 06:01:58.752266",
+ "modified_by": "Administrator",
  "module": "Raven",
  "name": "Raven Settings",
  "owner": "Administrator",

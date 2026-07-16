@@ -13,6 +13,7 @@ import dayjs from "dayjs"
 import { Textarea } from "./textarea"
 import LinkFieldCombobox, { LinkFieldComboboxProps } from "@components/common/LinkFieldComboBox/LinkFieldCombobox"
 import { Select, SelectContent, SelectTrigger, SelectValue } from "./select"
+import { Switch } from "./switch"
 
 interface FormElementProps {
     name: string,
@@ -234,6 +235,44 @@ export const LinkFormField = ({ name, rules, label, isRequired, formDescription,
                 <LinkFieldCombobox {...inputProps} value={field.value} onChange={field.onChange} useInForm disabled={disabled} readOnly={readOnly} />
                 {formDescription && <FormDescription>{formDescription}</FormDescription>}
                 <FormMessage />
+            </FormItem>
+        )}
+    />
+}
+
+interface SwitchFieldProps extends Omit<FormElementProps, "isRequired"> {
+    /** Stored as Frappe's 0 | 1 (not boolean). */
+    intValue?: boolean
+}
+
+/**
+ * A labelled switch row (label + description on the left, Switch on the right) —
+ * the standard on/off settings control. `intValue` stores Frappe's 0 | 1 rather
+ * than a boolean (the shape Raven Settings and most doctypes use).
+ */
+export const SwitchFormField = ({ name, rules, label, formDescription, disabled, readOnly, intValue = true }: SwitchFieldProps) => {
+
+    const { control } = useFormContext()
+
+    return <FormField
+        control={control}
+        name={name}
+        disabled={disabled}
+        rules={rules}
+        render={({ field }) => (
+            <FormItem className="flex flex-row items-center justify-between gap-4">
+                <div className="space-y-0.5">
+                    <FormLabel>{label}</FormLabel>
+                    {formDescription && <FormDescription>{formDescription}</FormDescription>}
+                </div>
+                <FormControl>
+                    <Switch
+                        size="md"
+                        checked={intValue ? Boolean(field.value) : field.value}
+                        disabled={disabled || readOnly}
+                        onCheckedChange={(checked) => field.onChange(intValue ? (checked ? 1 : 0) : checked)}
+                    />
+                </FormControl>
             </FormItem>
         )}
     />

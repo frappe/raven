@@ -7,11 +7,18 @@ def boot_session(bootinfo):
 
 	bootinfo.show_raven_chat_on_desk = raven_settings.show_raven_on_desk
 
+	if raven_settings.frappe_meet_hosted_urls:
+		bootinfo.frappe_meet_hosted_urls = raven_settings.frappe_meet_hosted_urls
+
 	tenor_api_key = raven_settings.tenor_api_key
 
 	document_link_override = frappe.get_hooks("raven_document_link_override")
 
-	if frappe.session.user and frappe.session.user != "Guest":
+	if (
+		frappe.session.user
+		and frappe.session.user != "Guest"
+		and frappe.db.exists("Raven User", frappe.session.user)
+	):
 		chat_style, time_format = frappe.db.get_value(
 			"Raven User", frappe.session.user, ["chat_style", "time_format"]
 		)

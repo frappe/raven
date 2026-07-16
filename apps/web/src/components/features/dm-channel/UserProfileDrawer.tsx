@@ -34,7 +34,7 @@ export function UserProfileDrawer({ user }: UserProfileDrawerProps) {
                     />
                 </div>
                 <div className="flex flex-col self-center gap-1 justify-between">
-                    <span className="text-2xl-medium">
+                    <span className="text-2xl-medium text-ink-gray-9">
                         {displayName} {name === user.name ? <span className="text-base text-ink-gray-6">({_("You")})</span> : ""}
                     </span>
                     {customStatus && (

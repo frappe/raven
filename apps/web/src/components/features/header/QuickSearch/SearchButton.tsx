@@ -35,7 +35,7 @@ export const MobileSearchButton = () => {
     const setOpen = useSetAtom(commandMenuOpenAtom)
     return <div className="md:hidden flex items-center justify-center"><Button
         variant="ghost"
-        size="sm"
+        size="lg"
         isIconButton
         onClick={() => setOpen(true)}
         aria-label={_("Command Menu")}

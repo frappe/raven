@@ -40,13 +40,6 @@ export const MessageFiles = ({ messages, attachments }: { messages: Message[]; a
             // file_size is denormalized onto the message at send (send_message_with_attachments).
             fileSize: message.file_size ? formatBytes(message.file_size) : undefined,
             onOpen: () => {
-                // Tapping a PDF on mobile goes straight to the OS viewer (new
-                // tab) — best reading experience; it's still in the set, so you
-                // can also swipe to it (as a card) when paging a batch.
-                if (isMobile && getAttachmentKind(url) === "pdf") {
-                    window.open(new URL(url, window.location.origin).href, "_blank", "noopener")
-                    return
-                }
                 const index = previewSet.findIndex((attachment) => attachment.id === message.name)
                 if (index !== -1) setPreview({ attachments: previewSet, index })
             },

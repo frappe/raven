@@ -52,6 +52,9 @@ interface ChannelSelectProps {
     label?: string
     /** Use searchable combobox (better for long lists) */
     searchable?: boolean
+    /** Extra classes for the component root wrapper — e.g. width / shrink control so the
+     *  select can flex down instead of overflowing when sharing a row. */
+    className?: string
 }
 
 export function ChannelSelect({
@@ -69,6 +72,7 @@ export function ChannelSelect({
     showLabel = false,
     label = "Channel",
     searchable = false,
+    className,
 }: ChannelSelectProps) {
 
     const selectedChannel = useMemo(() => {
@@ -156,12 +160,13 @@ export function ChannelSelect({
                 triggerClassName={triggerClassName}
                 triggerSizeClass={triggerSizeClass}
                 paddingClass={paddingClass}
+                className={className}
             />
         )
     }
 
     return (
-        <div className="shrink-0">
+        <div className={cn("shrink-0", className)}>
             {showLabel && (
                 <Label className="mb-1 block text-xs text-ink-gray-4">{label}</Label>
             )}
@@ -247,6 +252,7 @@ function ChannelSelectCombobox({
     triggerClassName,
     triggerSizeClass,
     paddingClass,
+    className,
 }: Omit<ChannelSelectProps, "size"> & {
     triggerSizeClass: string
     paddingClass: string
@@ -284,7 +290,7 @@ function ChannelSelectCombobox({
     )
 
     return (
-        <div className="shrink-0">
+        <div className={cn("shrink-0", className)}>
             {showLabel && (
                 <Label className="mb-1 block text-xs text-ink-gray-4">{label}</Label>
             )}
@@ -308,7 +314,7 @@ function ChannelSelectCombobox({
                 <PopoverContent
                     side="bottom"
                     align="start"
-                    className={cn("w-(--radix-popover-trigger-width) min-w-(--radix-popover-trigger-width) max-h-100 p-0 flex flex-col", dropdownClassName)}
+                    className={cn("w-fit min-w-(--radix-popover-trigger-width) max-h-100 p-0 flex flex-col", dropdownClassName)}
                 >
                     <Command shouldFilter={true} className="flex-1 min-h-0">
                         <CommandInput placeholder="Search channels and DMs..." className="focus:ring-0 border-0 bg-transparent" />

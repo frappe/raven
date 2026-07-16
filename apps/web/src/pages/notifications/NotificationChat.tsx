@@ -1,14 +1,19 @@
 import { useEffect } from "react"
+import { useNavigate } from "react-router-dom"
+import { useFrappeGetDoc } from "frappe-react-sdk"
 import { useSetAtom } from "jotai"
+import type { Message } from "@raven/types/common/Message"
+import { useChannelById } from "@stores/channels/useChannelList"
 import ChannelHeader from "@components/features/channel/ChannelHeader/ChannelHeader"
 import { DMChannelHeader } from "@components/features/dm-channel/DMChannelHeader"
 import { ChatContentView } from "@components/features/message/ChatContentView"
-import { messageTargetAtom } from "@utils/channelAtoms"
-import { Empty, EmptyHeader, EmptyDescription } from "@components/ui/empty"
+import { messageTargetAtom, makeMessageTarget } from "@utils/channelAtoms"
+import { Empty, EmptyHeader, EmptyDescription, EmptyMedia } from "@components/ui/empty"
 import _ from "@lib/translate"
 import { Island } from "@components/layout/Island"
 import type { UserData } from "@db"
 import ThreadDrawer from "@components/features/message/ThreadDrawer"
+import { MessageCircleIcon } from "lucide-react"
 
 /** Right-pane selection on the notifications page. Owned by `Notifications`
  * (useState there) and passed in — cleared automatically when the component unmounts on route change. */
@@ -25,9 +30,12 @@ export function NotificationsEmptyState() {
         <div className="h-full p-0 md:p-1">
             <Island className="h-full">
                 <Empty>
+                    <EmptyMedia>
+                        <MessageCircleIcon />
+                    </EmptyMedia>
                     <EmptyHeader>
                         <EmptyDescription>
-                            {_("Select a notification to view the details.")}
+                            {_("Select a notification to view the message.")}
                         </EmptyDescription>
                     </EmptyHeader>
                 </Empty>
@@ -36,40 +44,109 @@ export function NotificationsEmptyState() {
     )
 }
 
-export default function NotificationChat({ selected }: { selected: SelectedNotification | null }) {
-    const isThread = selected?.isThread ?? false
-    const channelID = selected?.channelID ?? ""
-    const setMessageTarget = useSetAtom(messageTargetAtom(channelID))
+/**
+ * The chat pane a notification opens: a thread island for thread notifications,
+ * otherwise the channel/DM header + chat. Shared by the state-driven pages
+ * (Search / Saved Messages via NotificationChat below) and the notifications
+ * page's route (NotificationChatRoute).
+ */
+export function NotificationPane({
+    channelID,
+    isThread,
+    isDirectMessage,
+    peer,
+    initialMessageID,
+    onCloseThread,
+}: {
+    channelID: string
+    isThread: boolean
+    isDirectMessage: boolean
+    peer?: UserData
+    /** Open the chat already centered on this message (see ChatStreamProps). */
+    initialMessageID?: string | null
+    /** Close handler for the thread pane's X/Esc — omit where closing isn't meaningful. */
+    onCloseThread?: () => void
+}) {
+    const navigate = useNavigate()
+    const channel = useChannelById(channelID)
 
-    // Seed the per-channel target atom so ChatStream/useStreamScroll jumps to
-    // the notification's message. ChatStream resets the atom after settling,
-    // so a fresh notification click always re-fires this effect.
-    useEffect(() => {
-        if (!selected) return
-        setMessageTarget(selected.messageID)
-    }, [selected, setMessageTarget])
-
-    if (!selected) return <NotificationsEmptyState />
+    // Thread pane: resolve the parent channel from the thread's root message (a thread's
+    // id IS its root message's id). Same SWR key as ThreadRootMessage, so this dedupes
+    // with the fetch the drawer makes anyway. Gives the drawer its parent context —
+    // which also enables its "Open channel" button.
+    const { data: rootMessage } = useFrappeGetDoc<Message>(
+        "Raven Message",
+        isThread ? channelID : "",
+        isThread ? `raven_message:${channelID}` : null,
+    )
 
     if (isThread) {
         return <div className="flex min-h-0 min-w-0 flex-1 flex-row gap-1 p-0 md:p-1">
             {/* Chat island: header + stream + input */}
             <Island className="flex-1">
-                <ThreadDrawer threadID={selected.channelID} onClose={() => { }} />
+                <ThreadDrawer
+                    threadID={channelID}
+                    parentChannelID={rootMessage?.channel_id}
+                    showOpenChannel
+                    onClose={onCloseThread ?? (() => { })}
+                    initialMessageID={initialMessageID}
+                />
             </Island>
         </div>
     }
 
-    const header = selected.isDirectMessage
-        ? selected.peer
-            ? <DMChannelHeader peer={selected.peer} channelID={selected.channelID} />
+    // "Open channel": leave the pane for the channel's full page, landing on the same
+    // message. Channels need their workspace for the URL — wait for the store if needed.
+    const openChannel = () => {
+        const base = isDirectMessage
+            ? `/dm-channel/${encodeURIComponent(channelID)}`
+            : `/${encodeURIComponent(channel?.workspace ?? "")}/${encodeURIComponent(channelID)}`
+        navigate(initialMessageID ? `${base}?message_id=${encodeURIComponent(initialMessageID)}` : base)
+    }
+    const canOpenChannel = isDirectMessage || !!channel?.workspace
+
+    // showActions={false} trims the header for the narrow desktop pane (no room for
+    // the drawer rail). The headers themselves keep the actions on MOBILE regardless —
+    // drawers are bottom sheets there (no space cost, correctly keyed via
+    // CurrentChannelContext) — so no breakpoint handling is needed here.
+    const header = isDirectMessage
+        ? peer
+            ? <DMChannelHeader peer={peer} channelID={channelID} showActions={false} onOpenChannel={openChannel} />
             : null
-        : <ChannelHeader channelID={selected.channelID} />
+        : <ChannelHeader channelID={channelID} showActions={false} onOpenChannel={canOpenChannel ? openChannel : undefined} />
 
     return (
         <ChatContentView
-            channelID={selected.channelID}
+            channelID={channelID}
             header={header}
+            // Open the channel already centered on the notification's message (one fetch,
+            // no race with a plain "latest messages" load).
+            initialMessageID={initialMessageID}
+        />
+    )
+}
+
+export default function NotificationChat({ selected }: { selected: SelectedNotification | null }) {
+    const channelID = selected?.channelID ?? ""
+    const setMessageTarget = useSetAtom(messageTargetAtom(channelID))
+
+    // Tell the chat stream to scroll to the notification's message. makeMessageTarget
+    // creates a fresh request object each time, so clicking the same notification again
+    // still re-triggers the jump (a plain id would be ignored as an unchanged value).
+    useEffect(() => {
+        if (!selected) return
+        setMessageTarget(makeMessageTarget(selected.messageID))
+    }, [selected, setMessageTarget])
+
+    if (!selected) return <NotificationsEmptyState />
+
+    return (
+        <NotificationPane
+            channelID={selected.channelID}
+            isThread={selected.isThread}
+            isDirectMessage={selected.isDirectMessage}
+            peer={selected.peer}
+            initialMessageID={selected.messageID}
         />
     )
 }

@@ -3,7 +3,7 @@ from datetime import timedelta
 import frappe
 from frappe import _
 from frappe.query_builder import Order
-from frappe.query_builder.functions import Coalesce
+from frappe.query_builder.functions import Coalesce, Count
 
 
 def get_raven_room():
@@ -344,26 +344,78 @@ def get_raven_user(user_id: str) -> str:
 	return result[0] if result else None
 
 
+def create_members_added_system_message(channel_id: str, member_ids: list[str]):
+	"""
+	ONE system message for one member-addition ACTION — single or bulk (adding 10
+	people must not produce 10 messages).
+
+	The structured payload goes in the message's `json` field so clients can render
+	a translated string with live user names. `text` still carries a plain-English
+	summary ("A added B, C, D and 2 others.") for clients that only render the bare
+	string (v2 compatibility).
+	"""
+	added_by = frappe.session.user
+	added_by_name = frappe.get_cached_value("Raven User", added_by, "full_name")
+	# The text summary only ever SHOWS the first 3 names — don't resolve the rest
+	# (a 200-member bulk add shouldn't do 200 lookups for a teaser). Clients render
+	# the full list from the ids in the payload.
+	teaser_names = [
+		frappe.get_cached_value("Raven User", member_id, "full_name") for member_id in member_ids[:3]
+	]
+
+	if len(member_ids) == 1:
+		summary = f"{added_by_name} added {teaser_names[0]}."
+	elif len(member_ids) <= 3:
+		summary = f"{added_by_name} added {', '.join(teaser_names[:-1])} and {teaser_names[-1]}."
+	else:
+		summary = f"{added_by_name} added {', '.join(teaser_names)} and {len(member_ids) - 3} others."
+
+	frappe.get_doc(
+		{
+			"doctype": "Raven Message",
+			"channel_id": channel_id,
+			"message_type": "System",
+			"text": summary,
+			"json": frappe.as_json({"event": "members_added", "added_by": added_by, "members": member_ids}),
+		}
+	).insert(ignore_permissions=True)
+
+
+def count_thread_replies(thread_id: str) -> int:
+	"""
+	Count the replies in a thread, where a BATCH send (multiple attachments + an
+	optional caption sharing one message_batch_id) counts as ONE reply — it's a
+	single logical message stored as several rows. Standalone messages (no batch
+	id) count individually; System messages don't count at all. Same batch
+	collapsing as the unread counts (get_unread_count_for_channels).
+	"""
+	message = frappe.qb.DocType("Raven Message")
+	result = (
+		frappe.qb.from_(message)
+		.select(Count(Coalesce(message.message_batch_id, message.name)).distinct())
+		.where(message.channel_id == thread_id)
+		.where(message.message_type != "System")
+		.run()
+	)
+	return result[0][0] if result else 0
+
+
 def get_thread_reply_count(thread_id: str) -> int:
 	"""
-	Get the number of replies in a thread
+	Get the number of replies in a thread (a batch = one reply), cached.
 	"""
 	return frappe.cache().hget(
 		"raven:thread_reply_count",
 		thread_id,
-		lambda: frappe.db.count(
-			"Raven Message", {"channel_id": thread_id, "message_type": ["!=", "System"]}
-		),
+		lambda: count_thread_replies(thread_id),
 	)
 
 
 def refresh_thread_reply_count(thread_id: str):
 	"""
-	Refresh the thread reply count
+	Refresh the thread reply count (a batch = one reply)
 	"""
-	new_count = frappe.db.count(
-		"Raven Message", {"channel_id": thread_id, "message_type": ["!=", "System"]}
-	)
+	new_count = count_thread_replies(thread_id)
 	frappe.cache().hset("raven:thread_reply_count", thread_id, new_count)
 
 	return new_count

@@ -42,7 +42,10 @@ const toImageFile = (message: ImageLikeMessage): ImageFile => ({
  * standalone image message — it builds its own single-album set.
  */
 export const MessageImages = ({ messages, attachments }: { messages: Message[]; attachments?: Attachment[] }) => {
-    const images = messages.map((message) => toImageFile(message as ImageLikeMessage))
+    // Memoised on the messages array (reference-stable from the store while the
+    // batch is unchanged) — a stable `images` also keeps ImageStack/Grid props
+    // stable, so unrelated row re-renders don't re-derive per-image objects.
+    const images = useMemo(() => messages.map((message) => toImageFile(message as ImageLikeMessage)), [messages])
     const setPreview = useSetAtom(attachmentPreviewAtom)
 
     const ownSet = useMemo(() => messagesToAttachments(messages), [messages])
@@ -78,21 +81,23 @@ export const MessageImages = ({ messages, attachments }: { messages: Message[]; 
                 // is the big-screen surface); desktops get a modestly higher cap
                 <div data-media-root="" className="max-w-md lg:max-w-lg">
 
-                    {/* EXPERIMENT: stacked-card layout replaces the grid/carousel.
-                        Original branch preserved below — restore by deleting <ImageStack/>
-                        and uncommenting this block. */}
-                    {/* TODO(image-stack): put ImageStack behind a feature flag, and only
-                        mount it when the message scrolls into the viewport (IntersectionObserver).
-                        Until mounted, render a placeholder sized from the SAME bounding-box
-                        aspect ratio ImageStack derives (responsive width + aspectRatio from
-                        the cards' stored dims) so the row height is reserved and deterministic
-                        — no layout shift when the real stack swaps in. */}
-                    {imageGrouping === 'grid' ? (
-                        images.length <= 4 ? (
-                            <ImageGrid images={images} onImageClick={openImage} />
-                        ) : (
-                            <ImageCarousel images={images} onImageClick={openImage} />
-                        )) : <ImageStack images={images} onImageClick={openImage} />}
+                    {/* image-stack: only mount ImageStack when the message scrolls
+                        into the viewport (IntersectionObserver). Until mounted, render a
+                        placeholder sized from the SAME bounding-box aspect ratio ImageStack
+                        derives (responsive width + aspectRatio from the cards' stored dims)
+                        so the row height is reserved and deterministic — no layout shift
+                        when the real stack swaps in. */}
+                    {/* 5+ images always use the carousel — a stack that hides most of a
+                        big album behind a "+N" (or a grid that tiles it tiny) serves it
+                        worse than paging. The layout preference only decides how SMALL
+                        albums (2-4) render: classic grid or the stacked pile. */}
+                    {images.length > 4 ? (
+                        <ImageCarousel images={images} onImageClick={openImage} />
+                    ) : imageGrouping === "grid" ? (
+                        <ImageGrid images={images} onImageClick={openImage} />
+                    ) : (
+                        <ImageStack images={images} onImageClick={openImage} />
+                    )}
 
 
                 </div>

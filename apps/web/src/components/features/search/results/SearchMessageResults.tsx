@@ -8,6 +8,7 @@ import { searchResultToMessage } from '@components/common/MessageResultBlock/sea
 import { useMessageRowLookups } from '@hooks/useMessageRowLookups'
 import type { SelectedNotification } from '@pages/notifications/NotificationChat'
 import { SearchFilters } from '../types'
+import { SearchNoResults } from './SearchNoResults'
 
 interface SearchMessageResultsProps {
     searchValue?: string
@@ -30,13 +31,7 @@ const SearchMessageResults = ({ searchValue, filters, onSelect, selectedID }: Se
 
     if (error) return <ErrorBanner error={error} />
     if (isLoading || !results) return <MessageListSkeleton />
-    if (results.length === 0) {
-        return (
-            <div className="text-sm text-ink-gray-4 text-center py-8">
-                {_('No messages found.')}
-            </div>
-        )
-    }
+    if (results.length === 0) return <SearchNoResults title={_('No messages found')} />
 
     return (
         <Virtuoso

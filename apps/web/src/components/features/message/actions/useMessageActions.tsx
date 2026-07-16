@@ -1,6 +1,6 @@
 import { useContext, useMemo } from "react"
 import { getDefaultStore, useSetAtom } from "jotai"
-import { useNavigate, useParams } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 import { FrappeConfig, FrappeContext } from "frappe-react-sdk"
 import { toast } from "sonner"
 import {
@@ -10,7 +10,7 @@ import {
     Link,
     LucideIcon,
     MessageSquareText,
-    Pencil,
+    Edit3Icon,
     Pin,
     PinOff,
     Reply,
@@ -18,16 +18,17 @@ import {
     Trash2,
 } from "lucide-react"
 import { editingMessageAtom, messageDialogAtom, replyToMessageAtom } from "@utils/channelAtoms"
+import { focusComposer } from "@components/features/ChatInput/composerFocus"
 import { resolveEditTarget } from "./editTarget"
 import { channelMessagesStore } from "@stores/messages/store"
 import { parsePinnedIds } from "@stores/messages/selectors"
 import { channelStore } from "@stores/channels/store"
 import { useChannelPinnedString } from "@stores/channels/useChannelList"
 import { seedThreadMeta } from "@stores/threads/useThreadMeta"
-import { getErrorMessage } from "@lib/frappe"
 import _ from "@lib/translate"
 import type { Message } from "@raven/types/common/Message"
 import { useUserCookieData } from "@hooks/useUserCookieData"
+import { errorResponseToast } from "@components/ui/error-banner"
 
 export type MessageAction = {
     id: string
@@ -91,59 +92,92 @@ const selectionWithinMessage = (messageID: string): string => {
  * resync the channel window and toast. The store's idempotent, monotonic
  * upserts make resync a safe universal rollback.
  */
-export const useMessageActions = (message: Message | null): MessageAction[][] => {
+export const useMessageActions = (
+    message: Message | null,
+    options?: {
+        /** Whether the user can INTERACT with this channel/thread (reply, create
+         *  thread, pin). Comes from the host's composer gate — membership +
+         *  not-archived — which, unlike the channel store, also knows THREAD
+         *  membership. Defaults to true for callers without a gate. */
+        canInteract?: boolean
+    },
+): {
+    /** Action groups (visual sections) — menus/sheets/toolbar all render from these. */
+    groups: MessageAction[][]
+    /** The current user sent this message (and it's not a bot message) — exposed so
+     *  consumers with owner-dependent PRESENTATION (the toolbar hides quick-Reply on
+     *  own messages) don't re-derive the rule. */
+    isOwner: boolean
+} => {
+    const canInteract = options?.canInteract ?? true
     const { name: currentUser } = useUserCookieData()
     const setDialog = useSetAtom(messageDialogAtom)
     const navigate = useNavigate()
     const { call } = useContext(FrappeContext) as FrappeConfig
-    // A thread is itself a channel whose id === the parent message id, so a thread
-    // reply's channel_id equals the route's threadID. react-router scopes this param
-    // to the thread route's subtree, so the channel stream never sees it — letting us
-    // tell "inside a thread" apart from "inside a channel" without prop-drilling.
-    const { threadID } = useParams()
     // Pinned state lives on the channel, and pinning doesn't change the message object —
     // so subscribe to the channel's pinned string here. Without this, reopening the menu
     // on the same (unchanged) message would return the memo's stale "Pin" label.
     const pinnedString = useChannelPinnedString(message?.channel_id ?? "")
 
     return useMemo(() => {
-        if (!message) return []
+        if (!message) return { groups: [], isOwner: false }
 
         const isOwner = currentUser === message.owner && !message.is_bot_message
         const hasReactions = Object.keys(JSON.parse(message.message_reactions || "{}")).length > 0
-        const inThread = message.channel_id === threadID
 
-        // Respond: reply + thread creation (join/mute need membership context we don't load here)
-        const respond: MessageAction[] = [
-            {
+        // Respond: reply + thread creation — members only (see canInteract above)
+        const respond: MessageAction[] = []
+        if (canInteract) {
+            respond.push({
                 id: "reply",
                 label: _("Reply"),
                 icon: Reply,
-                // Set the channel's reply target; the composer reads it and shows the banner.
-                onSelect: () => getDefaultStore().set(replyToMessageAtom(message.channel_id), message),
-            },
-        ]
+                // Set the channel's reply target; the composer reads it and shows the
+                // banner. focusComposer here (inside the select gesture) is what opens
+                // the keyboard on iOS — a post-render effect can't. The mobile action
+                // sheet's onCloseAutoFocus is prevented so its close doesn't steal
+                // the focus right back.
+                onSelect: () => {
+                    getDefaultStore().set(replyToMessageAtom(message.channel_id), message)
+                    focusComposer(message.channel_id)
+                },
+            })
+        }
         // Create thread only inside a channel: not on a message that already has one
-        // (is_thread), and not on a thread reply (inThread). The thread's id IS the
-        // message id; a batch threads off its last/newest member (already this target).
-        if (!message.is_thread && !inThread) {
+        // (is_thread), only when the message's channel is a real channel/DM in the
+        // store, and only for MEMBERS. The store check is what excludes thread replies
+        // EVERYWHERE (channel thread route, threads page, notification/search panes):
+        // a thread is a channel the channel store never holds, so an unknown
+        // channel_id means "inside a thread". The thread's id IS the message id; a
+        // batch threads off its newest member.
+        const parentChannel = channelStore.getChannel(message.channel_id)
+        if (!message.is_thread && parentChannel && canInteract) {
             respond.push({
                 id: "create-thread",
                 label: _("Create thread"),
                 icon: MessageSquareText,
                 onSelect: () => {
                     const threadID = message.name
-                    // Strip any open /thread/... so we navigate from the channel base.
-                    const base = window.location.pathname.split("/thread")[0]?.replace(`/${import.meta.env.VITE_BASE_NAME}`, "")
+                    // Thread route under the message's REAL channel — the current path is
+                    // useless in panes (notifications/search/saved carry no channel base).
+                    const base = parentChannel.is_direct_message === 1
+                        ? `/dm-channel/${encodeURIComponent(parentChannel.name)}`
+                        : `/${encodeURIComponent(parentChannel.workspace ?? "")}/${encodeURIComponent(parentChannel.name)}`
+                    // Coming from elsewhere (a pane)? The channel opens fresh — also select
+                    // the new thread's root message in it (same rule as the thread pill).
+                    const pathname = window.location.pathname.replace(`/${import.meta.env.VITE_BASE_NAME}`, "")
+                    const target = pathname.startsWith(base)
+                        ? `${base}/thread/${threadID}`
+                        : `${base}/thread/${threadID}?message_id=${encodeURIComponent(threadID)}`
                     call.post("raven.api.threads.create_thread", { message_id: threadID })
                         .then(() => {
                             // Reflect the new thread on the parent (shows the pill) and seed an
                             // empty reply count, then open it.
                             channelMessagesStore.messageEdited(message.channel_id, threadID, { is_thread: 1 })
                             seedThreadMeta(threadID, 0)
-                            navigate(`${base}/thread/${threadID}`)
+                            navigate(target)
                         })
-                        .catch((e) => toast.error(_("Could not create thread"), { description: getErrorMessage(e) }))
+                        .catch((e) => errorResponseToast(_("Could not create thread"), e))
                 },
             })
         }
@@ -176,7 +210,13 @@ export const useMessageActions = (message: Message | null): MessageAction[][] =>
             label: _("Copy message link"),
             icon: Link,
             onSelect: () => {
-                const url = `${window.location.origin}${window.location.pathname}?message_id=${encodeURIComponent(message.name)}`
+                // One canonical shape for EVERY message — the /message resolver route
+                // redirects it to the right place (channel, DM, or thread reply).
+                // Pathname-based links broke inside threads (?message_id belongs to
+                // the channel's stream) and in the notification/search panes (no
+                // channel in the URL at all).
+                const base = import.meta.env.VITE_BASE_NAME ? `/${import.meta.env.VITE_BASE_NAME}` : ""
+                const url = `${window.location.origin}${base}/message/${encodeURIComponent(message.name)}`
                 navigator.clipboard.writeText(url)
                 toast.success(_("Link copied"))
             },
@@ -195,8 +235,13 @@ export const useMessageActions = (message: Message | null): MessageAction[][] =>
         // mechanism, reused for bookmarks).
         const isSaved = (JSON.parse(message._liked_by || "[]") as string[]).includes(currentUser)
 
-        const organize: MessageAction[] = [
-            {
+        const organize: MessageAction[] = []
+        // Pinning is a channel mutation — members only (same rule as reply/thread),
+        // and CHANNELS only: pins live on the channel doc and render in the channel's
+        // pinned bar, which threads don't have — so no Pin on thread messages
+        // (parentChannel is undefined there; threads never enter the channel store).
+        if (canInteract && parentChannel) {
+            organize.push({
                 id: "pin",
                 label: isPinned ? _("Unpin") : _("Pin"),
                 icon: isPinned ? PinOff : Pin,
@@ -213,10 +258,12 @@ export const useMessageActions = (message: Message | null): MessageAction[][] =>
                         message_id: message.name,
                     }).catch((e) => {
                         channelStore.patchChannel(message.channel_id, { pinned_messages_string: prev })
-                        toast.error(isPinned ? _("Could not unpin message") : _("Could not pin message"), { description: getErrorMessage(e) })
+                        errorResponseToast(isPinned ? _("Could not unpin message") : _("Could not pin message"), e)
                     })
                 },
-            },
+            })
+        }
+        organize.push(
             {
                 id: "save",
                 label: isSaved ? _("Unsave") : _("Save"),
@@ -231,11 +278,11 @@ export const useMessageActions = (message: Message | null): MessageAction[][] =>
                     channelMessagesStore.savedUpdated(message.channel_id, message.name, JSON.stringify(nextLiked))
                     call.post("raven.api.raven_message.save_message", { message_id: message.name, add: !currentlySaved }).catch((e) => {
                         channelMessagesStore.savedUpdated(message.channel_id, message.name, prevLiked)
-                        toast.error(currentlySaved ? _("Could not unsave message") : _("Could not save message"), { description: getErrorMessage(e) })
+                        errorResponseToast(currentlySaved ? _("Could not unsave message") : _("Could not save message"), e)
                     })
                 },
             },
-        ]
+        )
         if (hasReactions) {
             organize.push({
                 id: "reactions",
@@ -256,7 +303,7 @@ export const useMessageActions = (message: Message | null): MessageAction[][] =>
                 owner.push({
                     id: "edit",
                     label: _("Edit"),
-                    icon: Pencil,
+                    icon: Edit3Icon,
                     onSelect: () => getDefaultStore().set(editingMessageAtom(editTarget.channel_id), editTarget.name),
                 })
             }
@@ -269,6 +316,6 @@ export const useMessageActions = (message: Message | null): MessageAction[][] =>
             })
         }
 
-        return [respond, clipboard, organize, owner].filter((group) => group.length > 0)
-    }, [message, currentUser, setDialog, navigate, call, threadID, pinnedString])
+        return { groups: [respond, clipboard, organize, owner].filter((group) => group.length > 0), isOwner }
+    }, [message, currentUser, setDialog, navigate, call, pinnedString, canInteract])
 }

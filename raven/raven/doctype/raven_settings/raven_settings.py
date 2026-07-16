@@ -28,13 +28,10 @@ class RavenSettings(Document):
 		enable_google_apis: DF.Check
 		enable_local_llm: DF.Check
 		enable_openai_services: DF.Check
-		enable_video_calling_via_livekit: DF.Check
+		frappe_meet_hosted_urls: DF.SmallText | None
 		google_processor_location: DF.Literal["us", "eu"]
 		google_project_id: DF.Data | None
 		google_service_account_json_key: DF.Password | None
-		livekit_api_key: DF.Data | None
-		livekit_api_secret: DF.Password | None
-		livekit_url: DF.Data | None
 		local_llm_api_url: DF.Data | None
 		local_llm_provider: DF.Literal["LM Studio", "Ollama", "LocalAI", "OpenAI Compatible"]
 		oauth_client: DF.Link | None

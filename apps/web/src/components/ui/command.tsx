@@ -71,7 +71,7 @@ function CommandInput({
       <CommandPrimitive.Input
         data-slot="command-input"
         className={cn(
-          "flex w-full bg-transparent outline-hidden text-base placeholder:text-ink-gray-4",
+          "flex w-full bg-transparent outline-hidden text-xl md:text-base placeholder:text-ink-gray-4",
           className
         )}
         {...props}
@@ -102,7 +102,7 @@ function CommandEmpty({
   return (
     <CommandPrimitive.Empty
       data-slot="command-empty"
-      className="py-6 text-center text-sm"
+      className="py-6 text-center text-content"
       {...props}
     />
   )
@@ -116,7 +116,7 @@ function CommandGroup({
     <CommandPrimitive.Group
       data-slot="command-group"
       className={cn(
-        "text-ink-gray-6 [&_[cmdk-group-heading]]:text-ink-gray-4 overflow-hidden p-1 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-sm [&_[cmdk-group-heading]]:font-medium",
+        "text-ink-gray-6 [&_[cmdk-group-heading]]:text-ink-gray-4 overflow-hidden p-1 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-base [&_[cmdk-group-heading]]:md:text-sm [&_[cmdk-group-heading]]:font-medium",
         className
       )}
       {...props}
@@ -145,7 +145,7 @@ function CommandItem({
     <CommandPrimitive.Item
       data-slot="command-item"
       className={cn(
-        "py-2.5 md:py-1.5 px-2 flex cursor-pointer text-ink-gray-7 items-center gap-2 rounded text-base md:text-sm relative outline-hidden select-none",
+        "py-2.5 md:py-1.5 px-2 flex cursor-pointer text-ink-gray-7 items-center gap-2 rounded text-content relative outline-hidden select-none",
         "data-[selected=true]:bg-surface-gray-2 [&_svg:not([class*='text-'])]:text-ink-gray-6 data-[disabled=true]:pointer-events-none data-[disabled=true]:cursor-not-allowed data-[disabled=true]:text-ink-gray-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className
       )}

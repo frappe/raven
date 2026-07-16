@@ -79,6 +79,6 @@ export function SearchFiltersPopoverContent({ filters }: SearchFiltersPopoverCon
 const CheckboxRow = ({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) => (
     <div className="flex items-center gap-2">
         <Checkbox checked={checked} onCheckedChange={(v) => onChange(v === true)} />
-        <Label className="font-normal text-base md:text-sm">{label}</Label>
+        <Label className="font-normal text-content">{label}</Label>
     </div>
 )

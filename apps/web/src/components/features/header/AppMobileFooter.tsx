@@ -4,10 +4,14 @@ import { cn } from '@lib/utils'
 import useCurrentRavenUser from '@raven/lib/hooks/useCurrentRavenUser'
 import { useUnreadThreadsCount } from '@stores/threads/useUnreadThreads'
 import { useWorkspaces } from '@hooks/useWorkspaces'
-import { useDMUnread } from '@stores/unread/useChannelUnread'
+import { useDMUnread, useHasUnreadChannels } from '@stores/unread/useChannelUnread'
 import { BellIcon, HomeIcon, MessageSquareTextIcon, SearchIcon, UsersRoundIcon } from 'lucide-react'
 import { CircleUserRoundIcon } from "lucide-react"
 import { NavLink, useMatch } from 'react-router'
+import { useRef } from 'react'
+import { HomeWorkspacesDrawer, workspacesDrawerAtom } from './HomeWorkspacesDrawer'
+import { hapticTick } from '@utils/haptics'
+import { useAtom } from 'jotai'
 
 const FOOTER_LINKS = [
     {
@@ -37,10 +41,15 @@ const FOOTER_LINKS = [
     }
 ]
 
-const AppMobileFooter = () => {
+/**
+ * `inert`: set while a detail layer covers the footer (stacked navigation). The footer
+ * must stay MOUNTED then — unmounting it changes the list row's height, which clamps the
+ * list's scroll position when it was at the bottom (the "list moved after back" bug) —
+ * so hosts cover it with a z-20 layer and inert it instead of removing it.
+ */
+const AppMobileFooter = ({ inert }: { inert?: boolean }) => {
     return (
-        // Add a height to the container to avoid adding padding on every page
-        <AppMobileFooterContainer className='h-16'>
+        <AppMobileFooterContainer inert={inert}>
             <HomeLink />
             <DirectMessageLink />
             <ThreadsLink />
@@ -62,27 +71,33 @@ export const AppMobileFooterSkeleton = () => {
     </AppMobileFooterContainer>
 }
 
-const AppMobileFooterContainer = ({ children, className }: { children: React.ReactNode, className?: string }) => {
+// In-flow (NOT position: fixed): the bar takes its real height in the host's flex
+// column, so the content above always ends exactly at the bar. The old fixed bar
+// needed an h-16 spacer to reserve space, and any mismatch (standalone:pb-4, content
+// a few px over 64) made the bar overhang the bottom of every list.
+const AppMobileFooterContainer = ({ children, className, inert }: { children: React.ReactNode, className?: string, inert?: boolean }) => {
 
-    return <div className={cn("md:hidden", className)}>
-        <div className="grid grid-cols-5 shrink-0 bg-surface-elevation-2 border-t border-outline-gray-2 standalone:pb-4 fixed bottom-0 w-screen z-10">
-            {children}
-        </div></div>
+    return <div className={cn("md:hidden grid grid-cols-5 shrink-0 bg-surface-elevation-2 border-t border-outline-gray-2 standalone:pb-4", className)} inert={inert}>
+        {children}
+    </div>
 }
 
-const AppMobileFooterButton = ({ icon, title, isActive, badgeCount }: { icon: React.ReactNode, title: string, isActive: boolean, badgeCount?: number }) => {
+const AppMobileFooterButton = ({ icon, title, isActive, badgeCount, showDot }: { icon: React.ReactNode, title: string, isActive: boolean, badgeCount?: number, showDot?: boolean }) => {
 
     return <div data-active={isActive} title={title} className={cn(
-        "flex items-center flex-col py-3 justify-center overflow-hidden text-ink-gray-4 active:scale-95 data-active:text-ink-gray-9 [&>svg]:size-6 data-active:[&>svg]:text-ink-gray-7"
+        "flex min-h-14 flex-col items-center justify-center py-3 gap-2 overflow-hidden text-ink-gray-5 active:scale-95 data-active:text-ink-gray-8 [&>svg]:size-6 [&>svg]:text-ink-gray-5 data-active:[&>svg]:text-ink-gray-8"
     )}>
-        <div className='flex flex-col items-center justify-center gap-2'>
-            <div className='relative'>
-                {icon}
-                <UnreadBadge count={badgeCount} />
-            </div>
-            <span className='text-2xs-medium text-center'>{title}</span>
+        <div className='relative'>
+            {icon}
+            <UnreadBadge count={badgeCount} />
+            {/* Activity dot (no number) — Home uses it for channel unreads:
+                    channels are ambient, not an inbox, so "there's activity" is
+                    the honest signal; counts stay on the personal queues. */}
+            {showDot && !badgeCount && (
+                <span className="absolute -top-1 -right-2 size-2 rounded-full bg-surface-red-6" aria-hidden="true" />
+            )}
         </div>
-
+        <span className='text-xs-medium text-center'>{title}</span>
     </div>
 }
 
@@ -93,7 +108,7 @@ const UnreadBadge = ({ count }: { count?: number }) => {
     // Pill, not a fixed circle: a single digit stays circular (min-w == height),
     // but "9+" / two digits grow horizontally with px-1 so the glyphs aren't
     // crushed against the boundary. h-4 keeps the cap height stable either way.
-    return <span className="absolute -top-2 -right-4 h-4 min-w-4 px-1 flex items-center justify-center rounded-full bg-surface-red-6 dark:bg-surface-red-6 text-ink-base dark:text-ink-red-1 text-[10px] leading-none">
+    return <span className="absolute -top-1.5 -right-3 h-4 min-w-4 px-1 flex items-center justify-center rounded-full bg-surface-red-6 dark:bg-surface-red-6 text-ink-base dark:text-ink-red-1 text-[10px] leading-none">
         {count > 9 ? "9+" : count}
     </span>
 
@@ -111,10 +126,8 @@ const DirectMessageLink = () => {
 }
 
 const NotificationsLink = () => {
-    const { data: unreadCountData } = useUnreadNotificationsCount()
-    const unreadCount = unreadCountData?.message ?? 0
-
-    // TODO: Add realtime event listeners here to update the unread count when new notifications are created or read
+    // Store-derived (unread-id set size); kept live globally by useNotificationsRealtime.
+    const unreadCount = useUnreadNotificationsCount()
 
     return <FooterNavLink
         icon={<BellIcon />}
@@ -148,6 +161,13 @@ const FooterNavLinkSkeleton = ({ title, icon }: { title: string, icon: React.Rea
     return <AppMobileFooterButton icon={icon} title={title} isActive={false} />
 }
 
+/** Hold Home this long (touch) to open the catch-up drawer instead of navigating. */
+const LONG_PRESS_MS = 450
+/** Finger drift beyond this cancels the long-press — it's a scroll, not a hold. */
+const LONG_PRESS_SLOP_PX = 10
+/** Suppress the synthetic click (and its navigation) after the long-press fires. */
+const LONG_PRESS_CLICK_GUARD_MS = 500
+
 const HomeLink = () => {
     // Home is active on a workspace route (`/:workspaceID` or a channel/thread under it) and on
     // the index. The catch: `/:workspaceID` is a single dynamic segment, so it also matches the
@@ -160,16 +180,80 @@ const HomeLink = () => {
     const ws = wsMatch?.params.workspaceID
     const isWorkspaceRoute = !!ws && workspaces.some((w) => w.name === ws)
 
+    // Channel unreads get a DOT, not a count — channels are ambient (curated
+    // sidebar, not an inbox); the numeric badges stay on the personal queues.
+    const hasUnreadChannels = useHasUnreadChannels()
+
+    // Long-press → catch-up drawer (unread channels across workspaces + switcher).
+    // Same touch detector as the reaction pills / message rows: timer + drift
+    // slop, then a click guard so finger-lift doesn't ALSO navigate home.
+    // iOS never fires contextmenu, so a timer is the only reliable trigger; the
+    // touch-callout suppression below stops iOS's link preview from competing.
+    // Shared with the sidebar's workspace switcher (its mobile tap opens this too).
+    const [drawerOpen, setDrawerOpen] = useAtom(workspacesDrawerAtom)
+    const pressRef = useRef<{ timer: number; x: number; y: number } | null>(null)
+    const suppressClickUntilRef = useRef(0)
+
+    const cancelPress = () => {
+        if (!pressRef.current) return
+        window.clearTimeout(pressRef.current.timer)
+        pressRef.current = null
+    }
+
+    const onPointerDown = (event: React.PointerEvent) => {
+        if (event.pointerType !== "touch") return
+        cancelPress()
+        const timer = window.setTimeout(() => {
+            pressRef.current = null
+            suppressClickUntilRef.current = performance.now() + LONG_PRESS_CLICK_GUARD_MS
+            hapticTick()
+            setDrawerOpen(true)
+        }, LONG_PRESS_MS)
+        pressRef.current = { timer, x: event.clientX, y: event.clientY }
+    }
+
+    const onPointerMove = (event: React.PointerEvent) => {
+        const press = pressRef.current
+        if (!press) return
+        if (Math.abs(event.clientX - press.x) > LONG_PRESS_SLOP_PX || Math.abs(event.clientY - press.y) > LONG_PRESS_SLOP_PX) {
+            cancelPress()
+        }
+    }
+
+    const onClick = (event: React.MouseEvent) => {
+        if (performance.now() < suppressClickUntilRef.current) {
+            suppressClickUntilRef.current = 0
+            event.preventDefault()
+            event.stopPropagation()
+        }
+    }
+
     return (
-        <NavLink to="/">
-            {() => (
-                <AppMobileFooterButton
-                    icon={<HomeIcon />}
-                    title={_("Home")}
-                    isActive={isIndex || isWorkspaceRoute}
-                />
-            )}
-        </NavLink>
+        <>
+            <NavLink
+                to="/"
+                onPointerDown={onPointerDown}
+                onPointerMove={onPointerMove}
+                onPointerUp={cancelPress}
+                onPointerCancel={cancelPress}
+                onClick={onClick}
+                // Android long-presses a link into a context menu; iOS shows a
+                // link preview via touch-callout. Both would race our timer.
+                onContextMenu={(event) => event.preventDefault()}
+                className="select-none [-webkit-touch-callout:none]"
+                draggable={false}
+            >
+                {() => (
+                    <AppMobileFooterButton
+                        icon={<HomeIcon />}
+                        title={_("Home")}
+                        isActive={isIndex || isWorkspaceRoute}
+                        showDot={hasUnreadChannels}
+                    />
+                )}
+            </NavLink>
+            <HomeWorkspacesDrawer open={drawerOpen} onOpenChange={setDrawerOpen} />
+        </>
     )
 }
 

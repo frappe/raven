@@ -1,6 +1,7 @@
 import { useEffect } from "react"
 import { useFrappeGetCall } from "frappe-react-sdk"
 import { channelUnreadStore } from "./store"
+import { markUnreadSeeded } from "@hooks/useClearReadNotifications"
 
 type UnreadCountRow = { name: string; is_direct_message: 0 | 1; unread_count: number }
 
@@ -26,5 +27,8 @@ export const useUnreadSync = () => {
         const counts = new Map<string, number>()
         for (const row of data.message) counts.set(row.name, Number(row.unread_count) || 0)
         channelUnreadStore.reconcile(counts)
+        // The store now holds the server's full truth — stale tray notifications
+        // (for channels read on other devices) can be swept safely.
+        markUnreadSeeded("channels")
     }, [data])
 }

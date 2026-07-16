@@ -1,15 +1,14 @@
 import dayjs from "dayjs"
-import { toast } from "sonner"
 import type { FrappeError } from "frappe-react-sdk"
 import type { Message } from "@raven/types/common/Message"
 import type { OutboxMessage } from "@db"
 import { getAttachmentKind } from "@utils/attachmentPreview"
-import { getErrorMessage } from "@lib/frappe"
 import _ from "@lib/translate"
 import { channelMessagesStore } from "./store"
 import { channelUnreadStore } from "@stores/unread/store"
 import { putOutbox, removeOutbox, setOutboxStatus, isSettling } from "./outbox"
 import type { OptimisticMessage } from "./types"
+import { errorResponseToast } from "@components/ui/error-banner"
 
 /** Minimal Frappe client — `call` from FrappeContext. */
 export type PostClient = {
@@ -143,6 +142,11 @@ const inFlight = new Set<string>()
  *  - Any other failure: mark it failed (shows Retry / Discard) and show an error.
  * Reuses `batchId` (= client_id) so a retry counts as the same message — the server
  * recognises it and won't create a duplicate.
+ *
+ * `silent` skips the failure toast: the automatic outbox flush passes it because a
+ * flush can fail many messages at once (server down, read-only window) and the user
+ * didn't just act — the failed bubbles (Retry / Discard) are the right signal there.
+ * Interactive sends (send button, manual Retry) keep the toast.
  */
 export const submitSend = (
     client: PostClient,
@@ -151,6 +155,7 @@ export const submitSend = (
     content: string,
     files: OutgoingFile[],
     linkedMessage?: string,
+    opts?: { silent?: boolean },
 ) => {
     inFlight.add(batchId)
     return client
@@ -173,14 +178,17 @@ export const submitSend = (
             if (!navigator.onLine) return
 
             channelMessagesStore.failOptimisticSend(channelID, batchId)
-            setOutboxStatus(batchId, "failed")
+            // A permission error is PERMANENT (removed from the channel, lost create
+            // rights): no amount of retrying fixes it, so mark the record "rejected" —
+            // the auto-flush skips those. Manual Retry still works (access may have
+            // been restored) and re-runs this same classification.
+            const isPermissionError = error?.exc_type === "PermissionError" || error?.httpStatus === 403
+            setOutboxStatus(batchId, isPermissionError ? "rejected" : "failed")
+            if (opts?.silent) return
             // One shared id means many failures at once show a single error, not a
             // pile of them. (The failed message on screen is the main signal; this
             // error also covers sends the user has scrolled past.)
-            toast.error(_("Could not send your message"), {
-                id: "message-send-failed",
-                description: getErrorMessage(error),
-            })
+            errorResponseToast(_("Could not send your message"), error)
         })
         .finally(() => inFlight.delete(batchId))
 }
@@ -231,7 +239,8 @@ export const injectOutboxRecord = (record: OutboxMessage) => {
         record.linked_message ? { linkedMessage: record.linked_message, repliedMessageDetails: record.replied_message_details } : undefined,
     )
     channelMessagesStore.addOptimisticMessages(record.channel_id, record.client_id, placeholders)
-    if (record.status === "failed") channelMessagesStore.failOptimisticSend(record.channel_id, record.client_id)
+    // failed AND rejected both render as a failed bubble (Retry / Discard).
+    if (record.status !== "sending") channelMessagesStore.failOptimisticSend(record.channel_id, record.client_id)
 }
 
 /**
@@ -259,5 +268,6 @@ export const retryOutboxRecord = (client: PostClient, record: OutboxMessage): Pr
     }
 
     setOutboxStatus(record.client_id, "sending")
-    return submitSend(client, record.channel_id, record.client_id, record.content, record.files, record.linked_message)
+    // silent: an automatic flush shouldn't toast — see submitSend.
+    return submitSend(client, record.channel_id, record.client_id, record.content, record.files, record.linked_message, { silent: true })
 }

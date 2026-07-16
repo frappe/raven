@@ -14,6 +14,7 @@ import { useCurrentChannelID } from '@hooks/useCurrentChannelID';
 import type { UserData } from '@db';
 import _ from '@lib/translate'
 import { Separator } from '@components/ui/separator';
+import ChannelSettingsTab from './ChannelSettingsTab';
 
 interface ChannelSettingsDrawerProps {
     peerUser?: UserData
@@ -54,7 +55,7 @@ const ChannelSettingsDrawer = ({ peerUser }: ChannelSettingsDrawerProps) => {
                 </div>
             </div>
 
-            <div>
+            <div className="shrink-0">
                 {peerUser ? (
                     <UserProfileDrawer user={peerUser} />
                 ) : (
@@ -62,41 +63,51 @@ const ChannelSettingsDrawer = ({ peerUser }: ChannelSettingsDrawerProps) => {
                 )}
             </div>
 
+            {/* min-h-0 chain: Tabs fills the leftover height, and the div below the
+                trigger row is the ONE scroll container — without min-h-0 at each flex
+                level the panels size to their content and the whole drawer overflows
+                instead of the panel scrolling. */}
+            <Tabs value={drawerType} onValueChange={onTabChange} className="flex-1 min-h-0 px-3">
 
-            <div className="flex-1 overflow-hidden px-3">
-                <Tabs value={drawerType} onValueChange={onTabChange}>
+                <TabsList variant="subtle" className="shrink-0">
+                    <TabsTrigger value="files">{_('Files')}</TabsTrigger>
+                    <TabsTrigger value="links">{_('Links')}</TabsTrigger>
+                    <TabsTrigger value="threads">{_('Threads')}</TabsTrigger>
+                    <TabsTrigger value="pins">{_('Pins')}</TabsTrigger>
+                    {!isDM && <TabsTrigger value="settings">{_('Settings')}</TabsTrigger>}
+                </TabsList>
 
-                    <TabsList variant="subtle">
-                        <TabsTrigger value="files">{_('Files')}</TabsTrigger>
-                        <TabsTrigger value="links">{_('Links')}</TabsTrigger>
-                        <TabsTrigger value="threads">{_('Threads')}</TabsTrigger>
-                        <TabsTrigger value="pins">{_('Pins')}</TabsTrigger>
-                        {!isDM && <TabsTrigger value="settings">{_('Settings')}</TabsTrigger>}
-                    </TabsList>
-
-                    <div className="flex-1 overflow-y-auto overflow-x-hidden">
+                {/* data-vaul-no-drag: on mobile this drawer lives inside a vaul bottom
+                    sheet, which claims vertical touch drags as sheet gestures — this
+                    hands them back to the scroller. (DrawerContent itself pads past the
+                    home-indicator safe area.) */}
+                <div
+                    className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-2"
+                    data-vaul-no-drag
+                >
+                    {!isDM && (
                         <TabsContent value="settings">
-
+                            <ChannelSettingsTab channelID={channelID} />
                         </TabsContent>
+                    )}
 
-                        <TabsContent value="threads">
-                            <ChannelThreads channelID={channelID} />
-                        </TabsContent>
+                    <TabsContent value="threads">
+                        <ChannelThreads channelID={channelID} />
+                    </TabsContent>
 
-                        <TabsContent value="files">
-                            <ChannelFiles channelID={channelID} />
-                        </TabsContent>
+                    <TabsContent value="files">
+                        <ChannelFiles channelID={channelID} />
+                    </TabsContent>
 
-                        <TabsContent value="links">
-                            <ChannelLinks channelID={channelID} />
-                        </TabsContent>
+                    <TabsContent value="links">
+                        <ChannelLinks channelID={channelID} />
+                    </TabsContent>
 
-                        <TabsContent value="pins">
-                            <ChannelPins channelID={channelID} />
-                        </TabsContent>
-                    </div>
-                </Tabs>
-            </div>
+                    <TabsContent value="pins">
+                        <ChannelPins channelID={channelID} />
+                    </TabsContent>
+                </div>
+            </Tabs>
         </div>
     )
 }

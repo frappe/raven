@@ -7020,11 +7020,6 @@ react-hotkeys-hook@^5.3.2:
   resolved "https://registry.yarnpkg.com/react-hotkeys-hook/-/react-hotkeys-hook-5.3.2.tgz#7715fcc43dc4be6efefe04eca22f8faa0f799567"
   integrity sha512-DDDy9xK6mbTQ6aPlQvIl0dA/a90T/AWml4Rm21JXFDLlRHalIg4/Rv3equUQYs5xPTWq+oEl6RD7mi/nBpU3Uw==
 
-react-icons@^5.6.0:
-  version "5.6.0"
-  resolved "https://registry.yarnpkg.com/react-icons/-/react-icons-5.6.0.tgz#27bcc4acbc836e762548d76041cf9b9fef4e3837"
-  integrity sha512-RH93p5ki6LfOiIt0UtDyNg/cee+HLVR6cHHtW3wALfo+eOHTp8RnU2kRkI6E+H19zMIs03DyxUG/GfZMOGvmiA==
-
 react-intersection-observer@^10.0.3:
   version "10.0.3"
   resolved "https://registry.yarnpkg.com/react-intersection-observer/-/react-intersection-observer-10.0.3.tgz#58b2c0406f71cfb5981afb8a5ee7f4eb06512479"
@@ -8462,7 +8457,7 @@ workbox-core@7.4.1:
   resolved "https://registry.yarnpkg.com/workbox-core/-/workbox-core-7.4.1.tgz#5a8811ba5d25a2049821a7b66f63ee9b204dc691"
   integrity sha512-DT+vu46eh/2vRsSHTY4Xmc32Z1rr9PRlQUXr1Dx30ZuXRWwOsvZgGgcwxcasubQLQmbTNYZjv44LkBAQ4tT5tQ==
 
-workbox-expiration@7.4.1:
+workbox-expiration@7.4.1, workbox-expiration@^7.4.1:
   version "7.4.1"
   resolved "https://registry.yarnpkg.com/workbox-expiration/-/workbox-expiration-7.4.1.tgz#24d234859d2b19604827b30f0de3458e72e0c51a"
   integrity sha512-lRKUF7b+OGbeXkQk1s6MHXOa3d7Xxf7Of31W6c6hCfipfIyrtdWZ89stq21AHZMaoG7VNFoHply4Ox+rU31TWg==
@@ -8487,7 +8482,7 @@ workbox-navigation-preload@7.4.1:
   dependencies:
     workbox-core "7.4.1"
 
-workbox-precaching@7.4.1:
+workbox-precaching@7.4.1, workbox-precaching@^7.4.1:
   version "7.4.1"
   resolved "https://registry.yarnpkg.com/workbox-precaching/-/workbox-precaching-7.4.1.tgz#059a88c092e762c341cf080ab88b4e8568af21ae"
   integrity sha512-cdr/9qByww7yzEp7zg/qI4ukUrrNjQLgN+ONQRpjy/VqGQXwkgHwr00KksGJK8v0VifwDXBb8a4cWNZH71jn3Q==
@@ -8515,14 +8510,14 @@ workbox-recipes@7.4.1:
     workbox-routing "7.4.1"
     workbox-strategies "7.4.1"
 
-workbox-routing@7.4.1:
+workbox-routing@7.4.1, workbox-routing@^7.4.1:
   version "7.4.1"
   resolved "https://registry.yarnpkg.com/workbox-routing/-/workbox-routing-7.4.1.tgz#159fdd88260fce25f8ab15b46674852ad8aa48eb"
   integrity sha512-yubJGErZOusuidAenaL5ypfhQOa7urxP/f8E0ws7FPb4039RiWXUWBAyUkmUoOL/BcQGen3h0J8872d51IYxtA==
   dependencies:
     workbox-core "7.4.1"
 
-workbox-strategies@7.4.1:
+workbox-strategies@7.4.1, workbox-strategies@^7.4.1:
   version "7.4.1"
   resolved "https://registry.yarnpkg.com/workbox-strategies/-/workbox-strategies-7.4.1.tgz#6efe950e9d434b5d70a6277c4bdcdc5be4dfc8e5"
   integrity sha512-GZxpaw9NbmOelj7667uZ2kpk5BFpOGbO4X0qjwh5ls8XQ8C+Lha5LQchTiUzsTFSS+NlUpftYAyOVXvQUrcqOQ==

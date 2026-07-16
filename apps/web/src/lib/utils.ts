@@ -15,6 +15,10 @@ const twMerge = extendTailwindMerge({
         {
           text: [
             "p-base", "p-2xs", "p-xs", "p-sm", "p-lg", "p-xl", "p-2xl", "p-3xl",
+            // App custom responsive font-size utility (src/index.css @utility).
+            // Register it here too, else tailwind-merge reads `text-content` as a
+            // text-color and drops it when a `text-ink-*` sits in the same cn() call.
+            "content",
             isTextStyleClass,
           ],
         },

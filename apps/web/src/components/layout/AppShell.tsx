@@ -13,7 +13,7 @@ import { useUnreadSync } from "@stores/unread/useUnreadSync"
 import { useUnreadRealtime } from "@stores/unread/useUnreadRealtime"
 import { useMessageRoomSubscriptions } from "@stores/messages/useMessageRoomSubscriptions"
 import { useMessagesRealtime } from "@stores/messages/useMessagesRealtime"
-import { useReconnectCatchup } from "@stores/messages/useReconnectCatchup"
+import { useConnectionFreshness } from "@hooks/useConnectionFreshness"
 import { useActiveSocketConnection } from "@hooks/useActiveSocketConnection"
 import { useOutboxAutoRetry } from "@stores/messages/useOutboxAutoRetry"
 import { useChannelListRealtime } from "@hooks/useChannelListRealtime"
@@ -24,9 +24,15 @@ import { useLeaveSync } from "@stores/leave/useLeaveSync"
 import { useThreadsRealtime } from "@stores/threads/useThreadsRealtime"
 import { useUnreadThreadsSync } from "@stores/threads/useUnreadThreads"
 import { useNotificationsRealtime } from "@stores/notifications/useNotificationsRealtime"
+import { useUnreadNotificationsSync } from "@hooks/useNotifications"
 import { useReportActiveState } from "@stores/presence/useReportActiveState"
+import { usePushNotificationNavigation } from "@hooks/usePushNotificationNavigation"
+import { useAppBadge } from "@hooks/useAppBadge"
+import { useClearReadNotifications } from "@hooks/useClearReadNotifications"
 import DocumentTitle from "./DocumentTitle"
+import { AppUpdateAlert } from "./AppUpdateAlert"
 import RavenSettingsDialog from "@components/features/settings/SettingsDialog"
+import { MessageActionDialogs } from "@components/features/message/actions/MessageActionDialogs"
 
 /**
  * The AppShell is used to wrap the entire application and provide all the utilities
@@ -52,6 +58,11 @@ const AppShell = () => {
                 <AppShellLayout>
                     <Outlet />
                 </AppShellLayout>
+                {/* SINGLE host for the message dialogs (delete/reactions/forward).
+                    They're driven by the global messageDialogAtom and fully derive
+                    from dialog.message — hosting them per ChatStream double-rendered
+                    every dialog when two streams were mounted (channel + thread). */}
+                <MessageActionDialogs />
             </AppListeners>
         </ProtectedRoute>
     )
@@ -94,10 +105,12 @@ const AppListeners = ({ children }: { children: React.ReactNode }) => {
     // Dispatches those live message events into the message store
     useMessagesRealtime()
     // Health-checks the socket on focus and force-reconnects a dead one (e.g. after a
-    // backgrounded tab suspended it) — the reconnect then drives useReconnectCatchup
+    // backgrounded tab suspended it) — the reconnect then bumps the connection epoch
     useActiveSocketConnection()
-    // Backstop: refetch messages missed during a disconnect when the socket reconnects
-    useReconnectCatchup()
+    // Notes a "break" whenever the realtime connection drops (reconnect / offline /
+    // the phone froze the app). Channels in memory then refetch on their next open —
+    // and the one currently on screen refetches immediately (useChannelMessages)
+    useConnectionFreshness()
     // Delivers persisted (pending/failed) sends from the outbox on load + reconnect/online
     useOutboxAutoRetry()
     // Keeps the sidebar channel list + member lists fresh on create/archive/join/leave
@@ -119,10 +132,20 @@ const AppListeners = ({ children }: { children: React.ReactNode }) => {
     // Seeds + reconciles the unread-threads set (read via useUnreadThreadsCount)
     useUnreadThreadsSync()
     // Notifications: reconcile the warm tab windows on new mention/reaction + keep the
-    // unread-count badge live (page + sidebar), even when the Notifications page is closed.
+    // unread-id set live (page + sidebar badge), even when the Notifications page is closed.
     useNotificationsRealtime()
-    // TODO: Push notification listener
-    // TODO: App update listener
+    // Seeds + reconciles the unread-notification id set (badge = set size; ids are marked
+    // read as their messages scroll into view — markNotificationsReadOnView)
+    useUnreadNotificationsSync()
+    // Focus-and-route when a push notification is clicked while a window exists
+    // (sw.js posts the target URL instead of opening a duplicate tab)
+    usePushNotificationNavigation()
+    // Mirrors the unread total onto the PWA's app-icon badge (Badging API)
+    useAppBadge()
+    // Sweeps tray notifications for channels/threads that are no longer unread
+    useClearReadNotifications()
+
+    // TODO: Session broadcast listener
 
     if (!isReady) {
         return <MainPageSkeleton />
@@ -133,6 +156,8 @@ const AppListeners = ({ children }: { children: React.ReactNode }) => {
         {children}
         <CommandMenu />
         <AttachmentPreviewModal />
+        {/* "App was updated — refresh" prompt (chunk failures, deploys, SW updates) */}
+        <AppUpdateAlert />
     </>
 }
 

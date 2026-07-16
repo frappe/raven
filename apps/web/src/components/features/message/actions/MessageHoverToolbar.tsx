@@ -10,13 +10,15 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@components/ui/dropdown-menu"
-import { messageActionTargetAtom, replyToMessageAtom } from "@utils/channelAtoms"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@components/ui/tooltip"
+import { messageActionTargetAtom } from "@utils/channelAtoms"
 import _ from "@lib/translate"
 import { useMessageActions } from "./useMessageActions"
 import { useToggleReaction } from "./useToggleReaction"
 import { ReactionPicker } from "./ReactionPicker"
 import type { Message } from "@raven/types/common/Message"
 import { QuickEmojisAtom } from "@utils/preferences"
+import { useIsMobile } from "@hooks/use-mobile"
 
 /**
  * The floating quick-action toolbar — ONE instance per stream, positioned over
@@ -29,22 +31,36 @@ import { QuickEmojisAtom } from "@utils/preferences"
 export const MessageHoverToolbar = ({
     message,
     top,
+    canInteract = true,
     onMenuOpenChange,
     onOpenFullMenu,
 }: {
     message: Message
     /** Offset from the stream wrapper's top, computed at hover time. */
     top: number
+    /** From the host's composer gate — see MessageActionMenu. */
+    canInteract?: boolean
     /** Lets the hover tracker keep the toolbar mounted while the menu is open. */
     onMenuOpenChange: (open: boolean) => void
     /** Mobile: the ellipsis opens the action bottom sheet instead of an inline dropdown. */
     onOpenFullMenu?: () => void
 }) => {
-    const actionGroups = useMessageActions(message)
+    const { groups: actionGroups, isOwner } = useMessageActions(message, { canInteract })
+    // Promoted to toolbar icons (v2 parity). Their availability rules live in
+    // useMessageActions — reply/create-thread only for channel MEMBERS, edit only
+    // for the owner's own non-bot messages — so absence from the groups means
+    // "don't show", no duplicated conditions here.
+    const flatActions = actionGroups.flat()
+    const createThreadAction = flatActions.find((action) => action.id === "create-thread")
+    const editAction = flatActions.find((action) => action.id === "edit")
+    // One toolbar-only rule: no quick Reply on your OWN messages (Edit sits in that
+    // slot instead). Replying to yourself stays possible via the full menu — which
+    // is why this is a presentation filter here, using the hook's own isOwner.
+    const replyAction = isOwner ? undefined : flatActions.find((action) => action.id === "reply")
     const setActionTarget = useSetAtom(messageActionTargetAtom)
-    const setReplyTo = useSetAtom(replyToMessageAtom(message.channel_id))
     const toggleReaction = useToggleReaction()
     const [menuOpen, setMenuOpen] = useState(false)
+    const isMobile = useIsMobile()
 
     /** The ellipsis menu marks the message as the action target, like right-click does. */
     const handleMenuOpenChange = (open: boolean) => {
@@ -63,64 +79,120 @@ export const MessageHoverToolbar = ({
             className="absolute right-4 z-40 flex items-center gap-0.5 rounded-md border border-outline-gray-2 bg-surface-base p-0.5 shadow-xs"
             style={{ top }}
         >
-            {quickEmojis.map((emoji) => (
-                <Button
-                    key={emoji.id}
-                    variant="ghost"
-                    size="md"
-                    isIconButton
-                    aria-label={`${_("React with")} ${emoji}`}
-                    onClick={() => toggleReaction(message, emoji.native ? emoji.native : emoji.src ?? "", emoji.src ? true : false, emoji.id)}
-                >
-                    {emoji.src ? (
-                        <img
-                            src={emoji.src}
-                            alt={emoji.id}
-                            loading="lazy"
-                            className="h-4.5 w-4.5 object-contain"
-                            aria-hidden="true"
-                        />
-                    ) : (
-                        // em-emoji renders from the Apple set (initialized in
-                        // App.tsx) so reactions look the same on every platform
-                        <span className="flex h-4.5 w-4.5 items-center justify-center" aria-hidden="true">
-                            <em-emoji native={emoji.native} set="apple" size="1.1em" fallback={emoji.id} />
-                        </span>
-                    )}
-                </Button>
-            ))}
-            <ReactionPicker message={message} tooltip={_("Add reaction")} side="bottom" align="end" onOpenChange={onMenuOpenChange}>
-                <Button variant="ghost" size="md" isIconButton aria-label={_("Add reaction")}>
-                    <SmilePlus />
-                </Button>
-            </ReactionPicker>
-            <Button
-                variant="ghost"
-                size="md"
-                isIconButton
-                aria-label={_("Reply")}
-                onClick={() => setReplyTo(message)}
-            >
-                <Reply />
-            </Button>
+            {/* One provider for the whole toolbar: after the first tooltip shows,
+                moving across the icons shows the next ones instantly (skip delay) —
+                the standard toolbar feel. */}
+            <TooltipProvider delayDuration={400}>
+                {/* No tooltips on the quick emojis — the emoji IS the label. */}
+                {quickEmojis.slice(0, 4).map((emoji) => (
+                    <Button
+                        key={emoji.id}
+                        variant="ghost"
+                        size={isMobile ? "lg" : "md"}
+                        isIconButton
+                        aria-label={`${_("React with {0}", [emoji.native ? emoji.native : emoji.id ?? ""])}`}
+                        onClick={() => toggleReaction(message, emoji.native ? emoji.native : emoji.src ?? "", emoji.src ? true : false, emoji.id)}
+                    >
+                        {emoji.src ? (
+                            <img
+                                src={emoji.src}
+                                alt={emoji.id}
+                                loading="lazy"
+                                className="md:h-4.5 md:w-4.5 h-5 w-5 object-contain"
+                                aria-hidden="true"
+                            />
+                        ) : (
+                            // em-emoji renders from the Apple set (initialized in
+                            // App.tsx) so reactions look the same on every platform
+                            <span className="flex md:h-4.5 md:w-4.5 h-5 w-5 items-center justify-center" aria-hidden="true">
+                                <em-emoji native={emoji.native} set="native" size="1.1em" fallback={emoji.id} />
+                            </span>
+                        )}
+                    </Button>
+                ))}
+                <ReactionPicker message={message} tooltip={_("Add reaction")} side="bottom" align="end" onOpenChange={onMenuOpenChange}>
+                    <Button variant="ghost" size={isMobile ? "lg" : "md"} isIconButton aria-label={_("Add reaction")}>
+                        <SmilePlus />
+                    </Button>
+                </ReactionPicker>
+                {replyAction && (
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size={isMobile ? "lg" : "md"}
+                                isIconButton
+                                aria-label={replyAction.label}
+                                onClick={replyAction.onSelect}
+                            >
+                                <replyAction.icon />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{replyAction.label}</TooltipContent>
+                    </Tooltip>
+                )}
 
-            {onOpenFullMenu ? (
-                <Button
-                    variant="ghost"
-                    size="md"
-                    isIconButton
-                    aria-label={_("More actions")}
-                    onClick={onOpenFullMenu}
-                >
-                    <MoreHorizontal />
-                </Button>
-            ) : (
-                <DropdownMenu open={menuOpen} onOpenChange={handleMenuOpenChange}>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="md" isIconButton aria-label={_("More actions")}>
-                            <MoreHorizontal />
-                        </Button>
-                    </DropdownMenuTrigger>
+                {createThreadAction && (
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size={isMobile ? "lg" : "md"}
+                                isIconButton
+                                aria-label={createThreadAction.label}
+                                onClick={createThreadAction.onSelect}
+                            >
+                                <createThreadAction.icon />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{createThreadAction.label}</TooltipContent>
+                    </Tooltip>
+                )}
+
+                {editAction && (
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size={isMobile ? "lg" : "md"}
+                                isIconButton
+                                aria-label={editAction.label}
+                                onClick={editAction.onSelect}
+                            >
+                                <editAction.icon />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{editAction.label}</TooltipContent>
+                    </Tooltip>
+                )}
+
+                {onOpenFullMenu ? (
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size={isMobile ? "lg" : "md"}
+                                isIconButton
+                                aria-label={_("More actions")}
+                                onClick={onOpenFullMenu}
+                            >
+                                <MoreHorizontal />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{_("More actions")}</TooltipContent>
+                    </Tooltip>
+                ) : (
+                    <DropdownMenu open={menuOpen} onOpenChange={handleMenuOpenChange}>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size={isMobile ? "lg" : "md"} isIconButton aria-label={_("More actions")}>
+                                        <MoreHorizontal />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                            </TooltipTrigger>
+                            <TooltipContent>{_("More actions")}</TooltipContent>
+                        </Tooltip>
                     <DropdownMenuContent align="end" className="w-56">
                         {actionGroups.map((group, index) => (
                             <Fragment key={index}>
@@ -139,9 +211,10 @@ export const MessageHoverToolbar = ({
                                 </DropdownMenuGroup>
                             </Fragment>
                         ))}
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                )}
+            </TooltipProvider>
         </div>
     )
 }

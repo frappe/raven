@@ -4,14 +4,21 @@ import { RavenChannel } from '@raven/types/RavenChannelManagement/RavenChannel'
 import { ChannelIcon } from '@components/common/ChannelIcon/ChannelIcon'
 import _ from '@lib/translate'
 
-interface ChannelNameInputProps {
+interface ChannelNameInputProps extends Omit<React.ComponentProps<typeof Input>, 'value' | 'onChange'> {
     value: string
     onChange: (value: string) => void
     channelType: RavenChannel['type']
-    disabled?: boolean
 }
 
-export const ChannelNameInput = ({ value, onChange, channelType, disabled }: ChannelNameInputProps) => {
+/**
+ * The channel name input — custom for the type-icon prefix, the live character
+ * counter, and lowercase/hyphen normalisation. Everything else spreads through
+ * to the underlying Input: that's what lets the form stack's FormControl reach
+ * it (`aria-invalid` → the input's red error border, `id` + `aria-describedby`
+ * → the label/description/error wiring). Without the spread, those props died
+ * on this wrapper and the field showed the error text but never highlighted.
+ */
+export const ChannelNameInput = ({ value, onChange, channelType, 'aria-describedby': ariaDescribedBy, ...inputProps }: ChannelNameInputProps) => {
     const handleChange = useCallback(
         (event: React.ChangeEvent<HTMLInputElement>) => {
             // Convert to lowercase and replace spaces with hyphens
@@ -27,14 +34,17 @@ export const ChannelNameInput = ({ value, onChange, channelType, disabled }: Cha
                 <ChannelIcon type={channelType} className="h-4 w-4" />
             </div>
             <Input
+                {...inputProps}
                 value={value}
                 onChange={handleChange}
                 maxLength={50}
-                placeholder="e.g. marketing, design-team, project-alpha"
+                placeholder={_('e.g. marketing, design-team, project-alpha')}
                 className="pl-9 pr-12"
-                autoFocus
-                disabled={disabled}
-                aria-describedby="channel-name-counter"
+                // No autoFocus attribute — the form is lazy-loaded, so the attribute
+                // fires too late on a cold open; CreateChannelForm focuses via ref
+                // in a mount effect instead (desktop only).
+                // The form's description/error ids (from FormControl) + our counter.
+                aria-describedby={[ariaDescribedBy, 'channel-name-counter'].filter(Boolean).join(' ')}
                 aria-label={_('Channel name')}
             />
             <div
@@ -49,4 +59,3 @@ export const ChannelNameInput = ({ value, onChange, channelType, disabled }: Cha
         </div>
     )
 }
-

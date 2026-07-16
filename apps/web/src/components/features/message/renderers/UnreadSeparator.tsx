@@ -10,9 +10,11 @@ import _ from "@lib/translate"
 export default function UnreadSeparator() {
     return (
         // data-unread-divider is REQUIRED — the scroll engine queries it to land here on entry.
+        // No z-index: it's a plain inline row. (It used to carry one from its sticky
+        // days — which made it paint straight through the mobile thread layer.)
         <div
             data-unread-divider
-            className="z-40 py-2 -mx-8 px-8 flex items-center bg-surface-base"
+            className="py-2 -mx-8 px-8 flex items-center bg-surface-base"
         >
             <Separator className="flex-1 bg-surface-blue-2" />
             <Badge variant="subtle" theme="blue" size='md'>{_("New messages")}</Badge>

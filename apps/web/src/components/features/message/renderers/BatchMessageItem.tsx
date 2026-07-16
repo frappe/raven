@@ -5,6 +5,7 @@ import { MessageFiles } from "./MessageFiles"
 import { MessageVideo } from "./MessageVideo"
 import { MessageAudio } from "./MessageAudio"
 import { EditableMessageBody } from "./MessageContent"
+import { MessageLinkPreview } from "./LinkPreview"
 import { MessageReactionsRow } from "./MessageReactions"
 import { MessageRow, MessageSenderLayout } from "./MessageRow"
 import { MessageThreadPill } from "./ThreadMessage"
@@ -107,6 +108,9 @@ export const BatchMessageItem = ({
             {audios.length > 0 && <MessageAudio messages={audios} />}
             {docs.length > 0 && <MessageFiles messages={docs} attachments={attachments} />}
             {captionMember && <EditableMessageBody message={captionMember} />}
+            {/* Links live on the caption member (the server extracts them from its
+                text), so that's where the first-link preview hangs off a batch too. */}
+            {captionMember && <MessageLinkPreview message={captionMember} />}
             <OptimisticStatus message={head} />
             {memberReactions}
         </div>
@@ -123,7 +127,7 @@ export const BatchMessageItem = ({
                 {content}
             </MessageSenderLayout>
 
-            {threadMember && <MessageThreadPill threadID={threadMember.name} />}
+            {threadMember && <MessageThreadPill threadID={threadMember.name} channelID={threadMember.channel_id} />}
         </MessageRow>
     )
 }

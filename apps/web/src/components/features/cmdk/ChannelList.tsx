@@ -4,20 +4,37 @@ import { useNavigate } from 'react-router-dom'
 import { useSetAtom } from 'jotai'
 import { commandMenuOpenAtom } from './atoms'
 import { useMemo } from 'react'
+import { defaultFilter } from 'cmdk'
 import _ from '@lib/translate'
 import { Badge } from '@components/ui/badge'
-import { useChannelList } from "@stores/channels/useChannelList"
+import { useChannels } from "@stores/channels/useChannelList"
+import { useIsMobile } from '@hooks/use-mobile'
+
+/** Cap on candidates handed to cmdk: it scores + React reconciles every item per keystroke,
+ *  so an unbounded list janks at thousands of channels. Nobody scrolls past ~50 results. */
+const MAX_RESULTS = 50
 
 const ChannelList = ({ text }: { text: string }) => {
-    const { channels } = useChannelList()
+    const { channels } = useChannels()
     const navigate = useNavigate()
     const setOpen = useSetAtom(commandMenuOpenAtom)
+    const isMobile = useIsMobile()
 
     const filteredChannels = useMemo(() => {
         // TODO: If there's no text, then by default show the recently visited channels here
-        if (!text) return channels.filter(c => !c.is_archived).slice(0, 3)
+        if (!text) return channels.filter(c => !c.is_archived).slice(0, isMobile ? 6 : 4)
+        // Pre-rank with the SAME scorer cmdk applies (the palette's customFilter scores
+        // keywords = channel_name), then cap. Anything we keep that cmdk scores 0 is hidden
+        // by cmdk anyway, so the visible set is identical to the uncapped version — minus
+        // only low-scoring tails past the cap. Using defaultFilter (not `includes`) keeps
+        // fuzzy matches ("gnrl" → "general") working.
         return channels
-    }, [channels, text])
+            .map((c) => ({ c, score: defaultFilter(c.channel_name, text) }))
+            .filter((x) => x.score > 0)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, MAX_RESULTS)
+            .map((x) => x.c)
+    }, [channels, text, isMobile])
 
     if (!filteredChannels.length) return null
 
@@ -35,7 +52,7 @@ const ChannelList = ({ text }: { text: string }) => {
                     className='cursor-pointer'
                 >
                     <ChannelIcon type={channel.type} className="h-4 w-4 shrink-0" />
-                    <span className="truncate">{channel.channel_name}</span>
+                    <span className="truncate text-base">{channel.channel_name}</span>
                     <div className='flex items-center gap-1 ml-auto'>
                         {channel.is_archived ? (
                             <Badge variant="subtle" size='sm'>

@@ -39,6 +39,8 @@ def _message_columns(message):
 		message.is_thread,
 		message.blurhash,
 		message.message_batch_id,
+		message.links,
+		message.json,
 	)
 
 

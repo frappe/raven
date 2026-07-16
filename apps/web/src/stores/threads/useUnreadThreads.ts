@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useSyncExternalStore } from "react"
 import { useFrappeGetCall } from "frappe-react-sdk"
 import { unreadThreadsStore } from "@stores/threads/unreadStore"
+import { markUnreadSeeded } from "@hooks/useClearReadNotifications"
 
 type UnreadThreadRow = { name: string; unread_count: number }
 
@@ -29,5 +30,8 @@ export const useUnreadThreadsSync = () => {
     useEffect(() => {
         if (!data?.message) return
         unreadThreadsStore.reconcile(data.message.map((row) => row.name))
+        // The store now holds the server's full truth — stale tray notifications
+        // (for threads read on other devices) can be swept safely.
+        markUnreadSeeded("threads")
     }, [data])
 }

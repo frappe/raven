@@ -111,7 +111,7 @@ function SettingsTabGroup({
     return (
         <div data-slot="settings-tab-group" className={className} {...props}>
             {header && (
-                <div className="h-7.5 px-2 py-[7px] my-[3px] flex cursor-default gap-1.5 text-xs-medium text-ink-gray-5 transition-all duration-300 ease-in-out sticky top-0 z-10 bg-surface-sidebar">
+                <div className="h-7.5 px-2 py-[7px] my-[3px] flex cursor-default gap-1.5 text-xs-medium text-ink-gray-5 transition-all duration-300 ease-in-out sticky top-0 z-10 bg-surface-sidebar dark:bg-surface-elevation-1">
                     <span>{header}</span>
                 </div>
             )}

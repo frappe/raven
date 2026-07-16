@@ -1,9 +1,9 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
-import Profile from "./pages/settings/Profile"
+import { createBrowserRouter, createRoutesFromElements, RouterProvider, Route, Navigate } from "react-router-dom"
 import Channel from "@pages/workspace/Channel"
 import Notifications from "@pages/notifications/Notifications"
-import SavedMessages from "@pages/saved-messages/SavedMessages"
-import Search from "@pages/search/Search"
+import NotificationChatRoute from "@pages/notifications/NotificationChatRoute"
+import { MessagePermalinkSkeleton } from "@pages/message/MessagePermalinkSkeleton"
+import ErrorPage from "@pages/ErrorPage"
 import Threads from "@pages/threads/Threads"
 import DirectMessages, { DirectMessagesIndex } from "@pages/dm-channel/DirectMessages"
 import DirectMessage from "@pages/dm-channel/DirectMessage"
@@ -12,20 +12,31 @@ import { WorkspaceRedirect } from "@components/workspace-switcher/WorkspaceRedir
 import { FrappeProvider } from 'frappe-react-sdk'
 import { initEmojiMart } from '@lib/emojiMart'
 import Cookies from 'js-cookie'
-import WorkspaceList from "@pages/settings/Workspaces/WorkspaceList"
 import { SearchLayout } from "@components/layout/SearchLayout"
-import CustomEmojiList from "@pages/settings/CustomEmojiList/CustomEmojiList"
-import { ManageChannels } from "@pages/settings/Channels/ManageChannels"
 import { Toaster } from "@components/ui/sonner"
 import { TooltipProvider } from "@radix-ui/react-tooltip"
 import { LucideProvider } from "lucide-react"
-import { useEffect } from "react"
+import { lazy, Suspense, useEffect } from "react"
 import AppShell from "@components/layout/AppShell"
 import { useAtomValue } from "jotai"
 import { lastChannelAtom, lastWorkspaceAtom } from "@utils/lastVisitedAtoms"
 import { useIsMobile } from "@hooks/use-mobile"
 import { useWorkspaces } from "@hooks/useWorkspaces"
 import WorkspaceLayout from "@pages/workspace/WorkspaceLayout"
+
+// Code-split the rarely-visited pages out of the main bundle. React.lazy +
+// Suspense (not the data router's route.lazy) on purpose: route.lazy blocks
+// rendering the route until its module resolves — a blank screen on the COLD
+// entries these pages mostly get (shared links, the OS share sheet) — while
+// Suspense paints the app shell + fallback immediately.
+// TODO: review the Suspense fallbacks/skeletons for these routes as a set —
+// most are `null` today; each page should get a silhouette of its own layout
+// (like MessagePermalinkSkeleton) so chunk-load never flashes blank.
+const MessagePermalink = lazy(() => import("@pages/message/MessagePermalink"))
+const ShareTarget = lazy(() => import("@pages/share/ShareTarget"))
+const SavedMessages = lazy(() => import("@pages/saved-messages/SavedMessages"))
+const MobileProfile = lazy(() => import("@pages/profile/Profile"))
+const Search = lazy(() => import("@pages/search/Search"))
 
 /**
  * Home ("/") redirect, evaluated at RENDER time — module-scope reads froze
@@ -57,6 +68,78 @@ const IndexRedirect = () => {
   return <Navigate to={`/${encodeURIComponent(fallback.name)}`} replace />
 }
 
+
+/**
+ * Data router (createBrowserRouter) rather than the declarative <BrowserRouter>:
+ * React Router's View Transitions integration (`viewTransition` on links/navigate,
+ * used for the desktop content cross-fade) only runs in data mode — declarative mode
+ * silently ignores it. Same route tree; a data router must be created ONCE at module
+ * scope, not per render.
+ */
+const router = createBrowserRouter(
+  createRoutesFromElements(
+    // errorElement: the last-resort boundary for uncaught render/route errors
+    // anywhere in the tree (incl. stale-chunk failures after a deploy) — the
+    // router swaps the view for ErrorPage instead of white-screening.
+    <Route path="/" element={<AppShell />} errorElement={<ErrorPage />}>
+      <Route index element={<IndexRedirect />} />
+      {/* Workspace: channels and settings only; search is global at /search above */}
+      <Route path=":workspaceID" element={<WorkspaceLayout />}>
+        <Route index element={<WorkspaceRedirect />} />
+        <Route path=":id" element={<Channel />}>
+          <Route path="thread/:threadID" element={<ThreadDrawerRoute />} />
+        </Route>
+      </Route>
+      <Route path="dm-channel" element={<DirectMessages />}>
+        <Route index element={<DirectMessagesIndex />} />
+        <Route path=":id" element={<DirectMessage />}>
+          <Route path="thread/:threadID" element={<ThreadDrawerRoute />} />
+        </Route>
+      </Route>
+      <Route path="notifications" element={<Notifications />}>
+        <Route path=":channelID/:messageID?" element={<NotificationChatRoute />} />
+      </Route>
+      <Route path="threads" element={<Threads />}>
+        <Route path=":threadID" element={<ThreadDrawerRoute />} />
+      </Route>
+      <Route path="search" element={<SearchLayout />}>
+        <Route index element={<Suspense fallback={null}><Search /></Suspense>} />
+      </Route>
+      <Route path="saved-messages" element={<Suspense fallback={null}><SavedMessages /></Suspense>} />
+      <Route path="profile" element={<Suspense fallback={null}><MobileProfile /></Suspense>} />
+      {/* OS share sheet lands here (manifest share_target) — conversation picker */}
+      <Route path="share-target" element={<Suspense fallback={null}><ShareTarget /></Suspense>} />
+      {/* Permalink resolver — "Copy message link" always produces this route; it
+          redirects to the message's real home (channel, DM, or thread). The
+          fallback is the SAME skeleton the page renders while resolving, so
+          chunk-load and data-load read as one continuous state. */}
+      <Route
+        path="message/:messageID"
+        element={
+          <Suspense fallback={<MessagePermalinkSkeleton />}>
+            <MessagePermalink />
+          </Suspense>
+        }
+      />
+      {/* Catch-all 404. route.lazy (not React.lazy) is fine here — the brief
+          blank-while-loading tradeoff doesn't matter for a page nobody lands
+          on intentionally, and it keeps the chunk out of the main bundle. */}
+      <Route path="*" lazy={() => import("@pages/NotFound")} />
+      {/* TODO: when these settings routes come back, re-add their page imports as
+          lazy() consts in the code-split block above — their old EAGER imports were
+          removed (they sat in the main bundle for routes that didn't exist). */}
+      {/* <Route path="settings" element={<AppSettings />}>
+        <Route index element={<Navigate to="profile" replace />} />
+        <Route path="profile" element={<Profile />} />
+        <Route path="preferences" element={<Preferences />} />
+        <Route path="workspaces" element={<WorkspaceList />} />
+        <Route path="channels" element={<ManageChannels />} />
+        <Route path="emojis" element={<CustomEmojiList />} />
+      </Route> */}
+    </Route>,
+  ),
+  { basename: import.meta.env.VITE_BASE_NAME },
+)
 
 function App() {
 
@@ -91,43 +174,8 @@ function App() {
           }}
           siteName={getSiteName()}
         >
-          <BrowserRouter basename={import.meta.env.VITE_BASE_NAME}>
-            <Routes>
-              <Route path="/" element={<AppShell />}>
-                <Route index element={<IndexRedirect />} />
-                {/* Workspace: channels and settings only; search is global at /search above */}
-                <Route path=":workspaceID" element={<WorkspaceLayout />}>
-                  <Route index element={<WorkspaceRedirect />} />
-                  <Route path=":id" element={<Channel />}>
-                    <Route path="thread/:threadID" element={<ThreadDrawerRoute />} />
-                  </Route>
-                </Route>
-                <Route path="dm-channel" element={<DirectMessages />}>
-                  <Route index element={<DirectMessagesIndex />} />
-                  <Route path=":id" element={<DirectMessage />}>
-                    <Route path="thread/:threadID" element={<ThreadDrawerRoute />} />
-                  </Route>
-                </Route>
-                <Route path="notifications" element={<Notifications />} />
-                <Route path="threads" element={<Threads />}>
-                  <Route path=":threadID" element={<ThreadDrawerRoute />} />
-                </Route>
-                <Route path="search" element={<SearchLayout />}>
-                  <Route index element={<Search />} />
-                </Route>
-                <Route path="saved-messages" element={<SavedMessages />} />
-                {/* <Route path="settings" element={<AppSettings />}>
-                  <Route index element={<Navigate to="profile" replace />} />
-                  <Route path="profile" element={<Profile />} />
-                  <Route path="preferences" element={<Preferences />} />
-                  <Route path="workspaces" element={<WorkspaceList />} />
-                  <Route path="channels" element={<ManageChannels />} />
-                  <Route path="emojis" element={<CustomEmojiList />} />
-                </Route> */}
-              </Route>
-            </Routes>
-            <Toaster />
-          </BrowserRouter>
+          <RouterProvider router={router} />
+          <Toaster />
         </FrappeProvider>
       </TooltipProvider>
     </LucideProvider>

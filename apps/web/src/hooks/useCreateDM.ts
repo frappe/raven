@@ -1,17 +1,16 @@
 import { useCallback } from "react"
 import { useNavigate } from "react-router-dom"
 import { useFrappePostCall, useSWRConfig } from "frappe-react-sdk"
-import { toast } from "sonner"
-import { useChannelList } from "@stores/channels/useChannelList"
-import { getErrorMessage } from "@lib/frappe"
+import { useDMChannels } from "@stores/channels/useChannelList"
 import _ from "@lib/translate"
+import { errorResponseToast } from "@components/ui/error-banner"
 
 /**
  * Open the direct-message channel with a user, creating it only if needed.
  * Shared by every "message this person" affordance — the mention hover card,
  * the command menu, the DM sidebar — so the behaviour is identical everywhere.
  *
- * Fast path: the client already holds every DM channel (`useChannelList`), so if a
+ * Fast path: the client already holds every DM channel (`useDMChannels`), so if a
  * DM with this peer exists we just route to it — NO API call. The endpoint is
  * hit only to create a DM that doesn't exist yet.
  *
@@ -22,7 +21,7 @@ import _ from "@lib/translate"
 export const useCreateDM = () => {
     const navigate = useNavigate()
     const { mutate } = useSWRConfig()
-    const { dmChannels } = useChannelList()
+    const { dmChannels } = useDMChannels()
     const { call, loading } = useFrappePostCall<{ message: string }>(
         "raven.api.raven_channel.create_direct_message_channel",
     )
@@ -51,7 +50,7 @@ export const useCreateDM = () => {
                     return channelID
                 })
                 .catch((err) => {
-                    toast.error(_("Could not create a DM channel"), { description: getErrorMessage(err) })
+                    errorResponseToast(_("Could not create a DM channel"), err)
                     return undefined
                 })
         },

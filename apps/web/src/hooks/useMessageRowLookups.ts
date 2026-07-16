@@ -1,5 +1,5 @@
 import { useMemo, useSyncExternalStore } from 'react'
-import { useChannelList } from "@stores/channels/useChannelList"
+import { channelStore } from "@stores/channels/store"
 import { useWorkspaces, WorkspaceFields } from '@hooks/useWorkspaces'
 import { usersStore } from '@stores/usersStore'
 import { UserData } from '@db'
@@ -18,23 +18,14 @@ import { ChannelListItem, DMChannelListItem } from '@raven/types/common/ChannelL
 export const useUsersById = (): Map<string, UserData> =>
     useSyncExternalStore(usersStore.subscribe, usersStore.getSnapshot)
 
-export const useChannelsById = (): Map<string, ChannelListItem> => {
-    const { channels } = useChannelList()
-    return useMemo(() => {
-        const m = new Map<string, ChannelListItem>()
-        for (const c of channels) m.set(c.name, c)
-        return m
-    }, [channels])
-}
+/** Store-backed snapshot: ONE Map build per actual channel-list change, shared by all
+ *  consumers (no per-consumer rebuilds), and ref-stable across DM-only writes. */
+export const useChannelsById = (): Map<string, ChannelListItem> =>
+    useSyncExternalStore(channelStore.subscribe, channelStore.getChannelsById)
 
-export const useDMsById = (): Map<string, DMChannelListItem> => {
-    const { dmChannels } = useChannelList()
-    return useMemo(() => {
-        const m = new Map<string, DMChannelListItem>()
-        for (const c of dmChannels) m.set(c.name, c)
-        return m
-    }, [dmChannels])
-}
+/** Mirror of useChannelsById for DMs — ref-stable across channel-only writes. */
+export const useDMsById = (): Map<string, DMChannelListItem> =>
+    useSyncExternalStore(channelStore.subscribe, channelStore.getDMsById)
 
 export const useWorkspacesById = (): Map<string, WorkspaceFields> => {
     const { workspaces } = useWorkspaces()

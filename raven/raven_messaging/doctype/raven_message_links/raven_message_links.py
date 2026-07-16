@@ -17,7 +17,7 @@ class RavenMessageLinks(Document):
 		parent: DF.Data
 		parentfield: DF.Data
 		parenttype: DF.Data
-		url: DF.Data
+		url: DF.SmallText
 	# end: auto-generated types
 
 	_DOCTYPE_NAME = "Raven Message Links"

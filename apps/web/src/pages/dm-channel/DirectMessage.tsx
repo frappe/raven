@@ -39,7 +39,6 @@ export default function DirectMessage() {
         <ChatContentView
             channelID={channelID}
             header={<DMChannelHeader peer={peerUser} channelID={channelID} />}
-            pinnedMessagesString={dmChannel?.pinned_messages_string}
         />
     )
 }

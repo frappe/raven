@@ -8,12 +8,17 @@ type Options = {
     channelFilter?: string
     onlyShowUnread: boolean
     unreadSet: ReadonlySet<string>
+    /** Session-sticky rows: threads that survive the unread filter even once read — a thread
+     *  the user is looking at (they clicked it; its pane is open) must not vanish from the
+     *  list; it stays, rendered as read. The unread filter applies to what ENTERS the view. */
+    keepIds?: ReadonlySet<string>
 }
 
 type CacheEntry = {
     channelFilter?: string
     onlyShowUnread: boolean
     unreadSet: ReadonlySet<string>
+    keepIds?: ReadonlySet<string>
     rows: ThreadRowData[]
 }
 
@@ -48,13 +53,14 @@ const decorate = (thread: ThreadMessage, isUnread: boolean): ThreadRowData => {
  * and the unread set live in stores, so this stays live without a refetch.
  */
 export const selectThreadRows = (state: ThreadListState, opts: Options): ThreadRowData[] => {
-    const { channelFilter, onlyShowUnread, unreadSet } = opts
+    const { channelFilter, onlyShowUnread, unreadSet, keepIds } = opts
     const cached = cache.get(state)
     if (
         cached &&
         cached.channelFilter === channelFilter &&
         cached.onlyShowUnread === onlyShowUnread &&
-        cached.unreadSet === unreadSet
+        cached.unreadSet === unreadSet &&
+        cached.keepIds === keepIds
     ) {
         return cached.rows
     }
@@ -64,9 +70,9 @@ export const selectThreadRows = (state: ThreadListState, opts: Options): ThreadR
         if (!row) continue
         if (channelFilter && channelFilter !== "*all" && row.channel_id !== channelFilter) continue
         const isUnread = unreadSet.has(id)
-        if (onlyShowUnread && !isUnread) continue
+        if (onlyShowUnread && !isUnread && keepIds?.has(id) !== true) continue
         rows.push(decorate(row, isUnread))
     }
-    cache.set(state, { channelFilter, onlyShowUnread, unreadSet, rows })
+    cache.set(state, { channelFilter, onlyShowUnread, unreadSet, keepIds, rows })
     return rows
 }

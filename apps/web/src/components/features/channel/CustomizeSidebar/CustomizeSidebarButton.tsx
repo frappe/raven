@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { FilterIcon, MoreVertical, PlusIcon, SidebarIcon } from 'lucide-react'
 import { Button } from '@components/ui/button'
+import { Spinner } from '@components/ui/spinner'
 import {
     Dialog,
     DialogContent,
@@ -16,13 +17,20 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@components/ui/dropdown-menu'
-import { CustomizeSidebarDialog } from './CustomizeSidebarDialog'
 import { CreateChannelDialog } from '@components/features/channel/CreateChannel/CreateChannelButton'
 import _ from "@lib/translate"
 import { useIsMobile } from '@hooks/use-mobile'
 import { useSetAtom } from 'jotai'
 import { settingsDialogOpenTab } from '@components/features/settings/SettingsDialog'
 import { Hash } from '@components/common/ChannelIcon/ChannelIcon'
+
+// Lazy for the same reason the settings dialog lazies its panels: this is the
+// OTHER importer of CustomizeSidebarDialog, and one eager import anywhere would
+// pull the module back into the main bundle for both. Radix only renders
+// Dialog/Drawer content while open, so the chunk loads on first open.
+const CustomizeSidebarDialog = lazy(() =>
+    import('./CustomizeSidebarDialog').then((m) => ({ default: m.CustomizeSidebarDialog })),
+)
 
 /** The channel sidebar's overflow menu — create channel + sidebar view options. */
 export const CustomizeSidebarButton = () => {
@@ -32,7 +40,11 @@ export const CustomizeSidebarButton = () => {
     const setSettingsDialogAtom = useSetAtom(settingsDialogOpenTab)
     const isMobile = useIsMobile()
 
-    const content = <CustomizeSidebarDialog onClose={() => setIsOpen(false)} />
+    const content = (
+        <Suspense fallback={<div className="flex h-full items-center justify-center"><Spinner /></div>}>
+            <CustomizeSidebarDialog onClose={() => setIsOpen(false)} />
+        </Suspense>
+    )
 
     return (
         <>
@@ -56,7 +68,7 @@ export const CustomizeSidebarButton = () => {
                 <DropdownMenuTrigger asChild>
                     <Button
                         variant="ghost"
-                        size="sm"
+                        size={isMobile ? "lg" : "sm"}
                         isIconButton
                         aria-label={_("Channel options")}
                     >
@@ -64,16 +76,16 @@ export const CustomizeSidebarButton = () => {
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" side="bottom" className="min-w-64">
-                    <DropdownMenuItem onClick={() => setSettingsDialogAtom('preferences')}>
-                        <FilterIcon />{_("Filter and sort channels")}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setSettingsDialogAtom('sidebar')}>
-                        <SidebarIcon />{_("Customize my sidebar")}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setSettingsDialogAtom('channels')}>
-                        <Hash />{_("Manage channels")}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
+                    {!isMobile && <DropdownMenuItem onClick={() => setSettingsDialogAtom('preferences')}>
+                        <FilterIcon />{_("Filter and Sort")}
+                    </DropdownMenuItem>}
+                    {!isMobile && <DropdownMenuItem onClick={() => setSettingsDialogAtom('sidebar')}>
+                        <SidebarIcon />{_("Customize Sidebar")}
+                    </DropdownMenuItem>}
+                    {!isMobile && <DropdownMenuItem onClick={() => setSettingsDialogAtom('channels')}>
+                        <Hash />{_("Manage Channels")}
+                    </DropdownMenuItem>}
+                    {!isMobile && <DropdownMenuSeparator />}
                     <DropdownMenuItem onClick={() => setCreateOpen(true)}>
                         <PlusIcon />{_("Create a new channel")}
                     </DropdownMenuItem>

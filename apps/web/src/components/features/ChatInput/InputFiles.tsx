@@ -11,6 +11,7 @@ import { attachmentPreviewAtom, stagedFilesToAttachments, getAttachmentKind } fr
 import { useUserCookieData } from '@hooks/useUserCookieData'
 import { cn } from '@lib/utils'
 import _ from '@lib/translate'
+import { useIsMobile } from '@hooks/use-mobile'
 
 type InputFilesProps = {
     channelID: string
@@ -53,7 +54,7 @@ export const InputFileList = ({ channelID }: InputFilesProps) => {
     if (files.length === 0) return null
 
     return (
-        <div className='flex gap-2 flex-wrap px-2 pt-2'>
+        <div className='flex gap-2 flex-wrap px-2 md:pt-2 pt-0 pb-2 md:pb-0'>
             {files.map((file) => (
                 <FileItem key={file.id} file={file} onRemove={onRemove} onPreview={onPreview} />
             ))}
@@ -64,6 +65,8 @@ export const InputFileList = ({ channelID }: InputFilesProps) => {
 const FileItem = ({ file, onRemove, onPreview }: { file: FileItemType, onRemove: (file: FileItemType) => void, onPreview: (file: FileItemType) => void }) => {
 
     const extension = getFileExtension(file.fileName)
+
+    const isMobile = useIsMobile()
     // Uploaded files can be opened in the viewer; uploading/errored can't.
     const canPreview = file.status === 'uploaded'
     // Show the real image for uploaded image files instead of a generic file icon.
@@ -75,7 +78,7 @@ const FileItem = ({ file, onRemove, onPreview }: { file: FileItemType, onRemove:
     }
 
     return <div
-        className={cn("rounded-md border border-outline-gray-2 w-64", canPreview && "cursor-pointer hover:bg-surface-gray-1")}
+        className={cn("rounded-md border border-outline-gray-2 md:w-64 w-full", canPreview && "cursor-pointer hover:bg-surface-gray-1")}
         onClick={canPreview ? () => onPreview(file) : undefined}
         role={canPreview ? "button" : undefined}
         title={canPreview ? _("Click to preview") : undefined}
@@ -85,14 +88,14 @@ const FileItem = ({ file, onRemove, onPreview }: { file: FileItemType, onRemove:
                 {showImageThumb ? (
                     <img src={file.fileURL} alt={file.fileName} className="size-7 rounded-3 object-contain bg-surface-gray-1 object-center" />
                 ) : (
-                    <FileTypeIcon fileType={extension} size="lg" />
+                    <FileTypeIcon fileType={extension} size={isMobile ? "xl" : "lg"} />
                 )}
             </div>
             <div className="flex-1 min-w-0">
-                <h4 className="text-xs font-medium text-ink-gray-8 truncate">
+                <h4 className="md:text-xs-medium mb-0.5 text-sm-medium text-ink-gray-8 truncate">
                     {file.fileName}
                 </h4>
-                <p className="text-xs text-ink-gray-5">
+                <p className="md:text-xs text-sm text-ink-gray-5">
                     {formatBytes(file.size)}
                 </p>
             </div>
@@ -105,7 +108,7 @@ const FileItem = ({ file, onRemove, onPreview }: { file: FileItemType, onRemove:
                 {file.status === 'uploaded' && (
                     <Button
                         variant="ghost"
-                        size="sm"
+                        size={isMobile ? "lg" : "sm"}
                         isIconButton
                         onClick={onRemoveClick}
                         title={_("Remove file")}
@@ -116,7 +119,7 @@ const FileItem = ({ file, onRemove, onPreview }: { file: FileItemType, onRemove:
                 {file.status === 'error' && (
                     <Button
                         variant="ghost"
-                        size="sm"
+                        size={isMobile ? "lg" : "sm"}
                         isIconButton
                         theme="red"
                         onClick={onRemoveClick}

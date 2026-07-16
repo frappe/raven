@@ -12,7 +12,7 @@
  "fields": [
   {
    "fieldname": "url",
-   "fieldtype": "Data",
+   "fieldtype": "Small Text",
    "in_list_view": 1,
    "label": "URL",
    "reqd": 1
@@ -22,7 +22,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-06-21 02:17:40.712146",
+ "modified": "2026-07-04 18:55:29.312914",
  "modified_by": "Administrator",
  "module": "Raven Messaging",
  "name": "Raven Message Links",

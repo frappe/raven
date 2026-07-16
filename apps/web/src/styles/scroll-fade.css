@@ -1,0 +1,182 @@
+/* Scroll-edge fade masks for scroll containers, in both axes:
+   - `scroll-fade`   — block axis (the chat stream)
+   - `scroll-fade-x` — inline axis (the lightbox filmstrip)
+   Imported by index.css; Tailwind processes @utility in imported files the same
+   as in the entry (rich-text.css uses @apply the same way). */
+
+/* scroll-fade (from shadcn): masks a scroll container's edges so content fades out at the
+   top/bottom instead of cutting off hard. The scroll-timeline keyframes reveal each edge's
+   fade only when there's content to scroll in that direction — no fade on the first row when
+   scrolled to the top, none on the last when at the bottom. @property makes the fade animate
+   smoothly; without scroll-timeline support it falls back to a static fade on both edges. */
+@property --scroll-fade-t {
+  /* length-percentage, NOT length: the fade size is min(12%, …) — a percentage. A <length>
+     property rejects that value and reverts to initial-value (0px), zeroing the fade. */
+  syntax: "<length-percentage>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --scroll-fade-b {
+  syntax: "<length-percentage>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+@keyframes scroll-fade-reveal-t {
+  from {
+    --scroll-fade-t: 0px;
+  }
+
+  to {
+    --scroll-fade-t: var(--_scroll-fade-size-t);
+  }
+}
+
+@keyframes scroll-fade-reveal-b {
+  from {
+    --scroll-fade-b: var(--_scroll-fade-size-b);
+  }
+
+  to {
+    --scroll-fade-b: 0px;
+  }
+}
+
+@utility scroll-fade {
+  --_scroll-fade-size-t: var(--scroll-fade-t-size,
+      var(--scroll-fade-size, min(12%, calc(var(--spacing) * 10))));
+  --_scroll-fade-size-b: var(--scroll-fade-b-size,
+      var(--scroll-fade-size, min(12%, calc(var(--spacing) * 10))));
+  /* Eased (smoothstep) alpha ramp, sampled finely so it reads as a smooth curve, NOT fading all
+     the way to transparent: the edge floors at 0.25 (content dims, never vanishes — softer, and
+     images don't disappear), ramping up to a full 1 for the message body. The opaque end MUST be
+     1 or every message would be permanently dimmed. Stops collapse to the edge when the size
+     animates to 0 (reveal preserved: no dimming of the true first/last message at rest). Tune the
+     floor — higher (≈0.4) = subtler dim, lower (≈0.1) = stronger fade. */
+  --scroll-fade-block: linear-gradient(to bottom,
+      rgba(0, 0, 0, 0.25) 0,
+      rgba(0, 0, 0, 0.282) calc(var(--scroll-fade-t, 0px) * 0.125),
+      rgba(0, 0, 0, 0.367) calc(var(--scroll-fade-t, 0px) * 0.25),
+      rgba(0, 0, 0, 0.487) calc(var(--scroll-fade-t, 0px) * 0.375),
+      rgba(0, 0, 0, 0.625) calc(var(--scroll-fade-t, 0px) * 0.5),
+      rgba(0, 0, 0, 0.763) calc(var(--scroll-fade-t, 0px) * 0.625),
+      rgba(0, 0, 0, 0.883) calc(var(--scroll-fade-t, 0px) * 0.75),
+      rgba(0, 0, 0, 0.968) calc(var(--scroll-fade-t, 0px) * 0.875),
+      rgba(0, 0, 0, 1) var(--scroll-fade-t, 0px),
+      rgba(0, 0, 0, 1) calc(100% - var(--scroll-fade-b, 0px)),
+      rgba(0, 0, 0, 0.968) calc(100% - var(--scroll-fade-b, 0px) * 0.875),
+      rgba(0, 0, 0, 0.883) calc(100% - var(--scroll-fade-b, 0px) * 0.75),
+      rgba(0, 0, 0, 0.763) calc(100% - var(--scroll-fade-b, 0px) * 0.625),
+      rgba(0, 0, 0, 0.625) calc(100% - var(--scroll-fade-b, 0px) * 0.5),
+      rgba(0, 0, 0, 0.487) calc(100% - var(--scroll-fade-b, 0px) * 0.375),
+      rgba(0, 0, 0, 0.367) calc(100% - var(--scroll-fade-b, 0px) * 0.25),
+      rgba(0, 0, 0, 0.282) calc(100% - var(--scroll-fade-b, 0px) * 0.125),
+      rgba(0, 0, 0, 0.25) 100%);
+  -webkit-mask-image: var(--scroll-fade-mask, var(--scroll-fade-block));
+  mask-image: var(--scroll-fade-mask, var(--scroll-fade-block));
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+
+  @supports (animation-timeline: scroll()) {
+    animation:
+      scroll-fade-reveal-t 1ms ease-in-out,
+      scroll-fade-reveal-b 1ms ease-in-out;
+    animation-timeline: scroll(self y), scroll(self y);
+    animation-range:
+      0 var(--scroll-fade-reveal, calc(var(--spacing) * 24)),
+      calc(100% - var(--scroll-fade-reveal, calc(var(--spacing) * 24))) 100%;
+    animation-fill-mode: both;
+  }
+
+  @supports not (animation-timeline: scroll()) {
+    --scroll-fade-t: var(--_scroll-fade-size-t);
+    --scroll-fade-b: var(--_scroll-fade-size-b);
+  }
+}
+
+/* scroll-fade-x: the HORIZONTAL twin of scroll-fade, for inline scrollers (the
+   lightbox filmstrip). Identical mechanics — smoothstep alpha ramp floored at
+   0.25, scroll-timeline reveal per edge, static-fade fallback — rotated to the
+   x axis (gradient to right, scroll(self x)). */
+@property --scroll-fade-l {
+  syntax: "<length-percentage>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --scroll-fade-r {
+  syntax: "<length-percentage>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+@keyframes scroll-fade-reveal-l {
+  from {
+    --scroll-fade-l: 0px;
+  }
+
+  to {
+    --scroll-fade-l: var(--_scroll-fade-size-l);
+  }
+}
+
+@keyframes scroll-fade-reveal-r {
+  from {
+    --scroll-fade-r: var(--_scroll-fade-size-r);
+  }
+
+  to {
+    --scroll-fade-r: 0px;
+  }
+}
+
+@utility scroll-fade-x {
+  --_scroll-fade-size-l: var(--scroll-fade-l-size,
+      var(--scroll-fade-size, min(12%, calc(var(--spacing) * 10))));
+  --_scroll-fade-size-r: var(--scroll-fade-r-size,
+      var(--scroll-fade-size, min(12%, calc(var(--spacing) * 10))));
+  --scroll-fade-inline: linear-gradient(to right,
+      rgba(0, 0, 0, 0.25) 0,
+      rgba(0, 0, 0, 0.282) calc(var(--scroll-fade-l, 0px) * 0.125),
+      rgba(0, 0, 0, 0.367) calc(var(--scroll-fade-l, 0px) * 0.25),
+      rgba(0, 0, 0, 0.487) calc(var(--scroll-fade-l, 0px) * 0.375),
+      rgba(0, 0, 0, 0.625) calc(var(--scroll-fade-l, 0px) * 0.5),
+      rgba(0, 0, 0, 0.763) calc(var(--scroll-fade-l, 0px) * 0.625),
+      rgba(0, 0, 0, 0.883) calc(var(--scroll-fade-l, 0px) * 0.75),
+      rgba(0, 0, 0, 0.968) calc(var(--scroll-fade-l, 0px) * 0.875),
+      rgba(0, 0, 0, 1) var(--scroll-fade-l, 0px),
+      rgba(0, 0, 0, 1) calc(100% - var(--scroll-fade-r, 0px)),
+      rgba(0, 0, 0, 0.968) calc(100% - var(--scroll-fade-r, 0px) * 0.875),
+      rgba(0, 0, 0, 0.883) calc(100% - var(--scroll-fade-r, 0px) * 0.75),
+      rgba(0, 0, 0, 0.763) calc(100% - var(--scroll-fade-r, 0px) * 0.625),
+      rgba(0, 0, 0, 0.625) calc(100% - var(--scroll-fade-r, 0px) * 0.5),
+      rgba(0, 0, 0, 0.487) calc(100% - var(--scroll-fade-r, 0px) * 0.375),
+      rgba(0, 0, 0, 0.367) calc(100% - var(--scroll-fade-r, 0px) * 0.25),
+      rgba(0, 0, 0, 0.282) calc(100% - var(--scroll-fade-r, 0px) * 0.125),
+      rgba(0, 0, 0, 0.25) 100%);
+  -webkit-mask-image: var(--scroll-fade-mask, var(--scroll-fade-inline));
+  mask-image: var(--scroll-fade-mask, var(--scroll-fade-inline));
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+
+  @supports (animation-timeline: scroll()) {
+    animation:
+      scroll-fade-reveal-l 1ms ease-in-out,
+      scroll-fade-reveal-r 1ms ease-in-out;
+    animation-timeline: scroll(self x), scroll(self x);
+    animation-range:
+      0 var(--scroll-fade-reveal, calc(var(--spacing) * 24)),
+      calc(100% - var(--scroll-fade-reveal, calc(var(--spacing) * 24))) 100%;
+    animation-fill-mode: both;
+  }
+
+  @supports not (animation-timeline: scroll()) {
+    --scroll-fade-l: var(--_scroll-fade-size-l);
+    --scroll-fade-r: var(--_scroll-fade-size-r);
+  }
+}

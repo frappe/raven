@@ -126,15 +126,16 @@ def send_push_notification_via_raven_cloud(message, raven_settings):
 		workspace = "" if channel_doc.is_dm_thread else channel_doc.workspace
 
 		url = frappe.utils.get_url() + "/raven/"
-		if workspace:
+		if channel_doc.is_direct_message:
+			url += "dm-channel/"
+		elif workspace and not channel_doc.is_thread:
 			url += f"{workspace}/"
+		elif channel_doc.is_thread:
+			url += "threads/"
 		else:
-			url += "channels/"
+			url += "notifications/"
 
-		if channel_doc.is_thread:
-			url += f"thread/{channel_doc.name}/"
-		else:
-			url += f"{channel_doc.name}/"
+		url += f"{channel_doc.name}/"
 
 		image = get_image_absolute_url(message_owner_image)
 
@@ -248,9 +249,13 @@ def send_notification_to_user(user_id, title, message, data=None, user_image_pat
 
 		if push_notification.is_enabled():
 			icon_url = get_image_absolute_url(user_image_path)
+			# v3 has no /channel/:id route — link to the message permalink
+			# (client resolves its real home) or fall back to the app root.
 			link = None
-			if data.get("channel_id"):
-				link = frappe.utils.get_url() + "/raven/channel/" + data.get("channel_id", "")
+			if data.get("message_id"):
+				link = frappe.utils.get_url() + "/raven/message/" + data.get("message_id")
+			elif data.get("channel_id"):
+				link = frappe.utils.get_url() + "/raven"
 			push_notification.send_notification_to_user(
 				user_id=user_id,
 				title=title,
@@ -284,9 +289,13 @@ def send_notification_to_topic(channel_id, title, message, data=None, user_image
 
 		if push_notification.is_enabled():
 			icon_url = get_image_absolute_url(user_image_path)
+			# v3 has no /channel/:id route — link to the message permalink
+			# (client resolves its real home) or fall back to the app root.
 			link = None
-			if data.get("channel_id"):
-				link = frappe.utils.get_url() + "/raven/channel/" + data.get("channel_id", "")
+			if data.get("message_id"):
+				link = frappe.utils.get_url() + "/raven/message/" + data.get("message_id")
+			elif data.get("channel_id"):
+				link = frappe.utils.get_url() + "/raven"
 			push_notification.send_notification_to_topic(
 				topic_name=channel_id,
 				title=title,

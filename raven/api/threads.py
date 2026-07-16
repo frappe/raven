@@ -4,7 +4,11 @@ from frappe.query_builder import Order
 from frappe.query_builder.functions import Coalesce, Count
 
 from raven.api.raven_channel import get_peer_user_id_from_dm_users, is_channel_member
-from raven.utils import get_channel_members, get_thread_reply_count
+from raven.utils import (
+	create_members_added_system_message,
+	get_channel_members,
+	get_thread_reply_count,
+)
 
 
 @frappe.whitelist(methods=["GET"])
@@ -298,9 +302,12 @@ def create_thread(message_id: str):
 	creator = thread_message.owner
 
 	if creator != frappe.session.user:
-		frappe.get_doc(
+		creator_member = frappe.get_doc(
 			{"doctype": "Raven Channel Member", "channel_id": thread_channel.name, "user_id": creator}
-		).insert(ignore_permissions=True)
+		)
+		# One combined system message for everyone added is sent below.
+		creator_member.flags.ignore_system_message = True
+		creator_member.insert(ignore_permissions=True)
 		users_added_to_thread.append(creator)
 
 	else:
@@ -314,13 +321,15 @@ def create_thread(message_id: str):
 			peer_user_id = get_peer_user_id_from_dm_users(channel_doc)
 
 			if peer_user_id:
-				frappe.get_doc(
+				peer_member = frappe.get_doc(
 					{
 						"doctype": "Raven Channel Member",
 						"channel_id": thread_channel.name,
 						"user_id": peer_user_id,
 					}
-				).insert(ignore_permissions=True)
+				)
+				peer_member.flags.ignore_system_message = True
+				peer_member.insert(ignore_permissions=True)
 				users_added_to_thread.append(peer_user_id)
 
 	# In the original message, any mentioned users should also be added as participants
@@ -329,16 +338,24 @@ def create_thread(message_id: str):
 			try:
 				# Check if this user is a member of the parent channel
 				if is_channel_member(channel_doc.name, mention.user):
-					frappe.get_doc(
+					mention_member = frappe.get_doc(
 						{
 							"doctype": "Raven Channel Member",
 							"channel_id": thread_channel.name,
 							"user_id": mention.user,
 						}
-					).insert(ignore_permissions=True)
+					)
+					mention_member.flags.ignore_system_message = True
+					mention_member.insert(ignore_permissions=True)
 					users_added_to_thread.append(mention.user)
 			except Exception:
 				pass
+
+	# ONE combined "added A, B and n others" system message for everyone pulled into
+	# the thread (original author, DM peer, mentioned users) — per-member messages
+	# are suppressed on each insert above.
+	if users_added_to_thread:
+		create_members_added_system_message(thread_channel.name, users_added_to_thread)
 
 	# Update the message to mark it as a thread
 	thread_message.is_thread = 1

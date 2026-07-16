@@ -21,6 +21,7 @@ import { getFileName } from "@raven/lib/utils/operations"
 import _ from "@lib/translate"
 import type { Message } from "@raven/types/common/Message"
 import FileTypeIcon from "@components/common/FileIcons/FileTypeIcon"
+import { errorResponseToast } from "@components/ui/error-banner"
 
 type MediaMessage = Message & { file?: string; file_thumbnail?: string; file_size?: number }
 
@@ -159,7 +160,7 @@ export const DeleteMessageDialog = ({
         ids.forEach((id) => channelMessagesStore.messageDeleted(channelID, id))
         onClose()
         deleteMessages({ message_ids: ids }).catch((e) => {
-            toast.error(_("Could not delete message"), { description: getErrorMessage(e) })
+            errorResponseToast(_("Could not delete message"), e)
             // The server didn't delete (so there's no realtime echo) — restore what we removed.
             channelMessagesStore.messagesRestored(channelID, snapshot)
         })

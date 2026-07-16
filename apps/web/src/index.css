@@ -5,6 +5,7 @@
 @import "./styles/espresso-typography.css";
 @import "./styles/espresso-effects.css";
 @import "./styles/rich-text.css";
+@import "./styles/scroll-fade.css";
 
 @font-face {
   font-family: InterVariable;
@@ -26,91 +27,91 @@
 
 @custom-variant standalone (@media (display-mode: standalone));
 
-/* scroll-fade (from shadcn): masks a scroll container's edges so content fades out at the
-   top/bottom instead of cutting off hard. The scroll-timeline keyframes reveal each edge's
-   fade only when there's content to scroll in that direction — no fade on the first row when
-   scrolled to the top, none on the last when at the bottom. @property makes the fade animate
-   smoothly; without scroll-timeline support it falls back to a static fade on both edges. */
-@property --scroll-fade-t {
-  /* length-percentage, NOT length: the fade size is min(12%, …) — a percentage. A <length>
-     property rejects that value and reverts to initial-value (0px), zeroing the fade. */
-  syntax: "<length-percentage>";
-  inherits: false;
-  initial-value: 0px;
-}
-@property --scroll-fade-b {
-  syntax: "<length-percentage>";
-  inherits: false;
-  initial-value: 0px;
+/* Reading/content tier for names + list-row labels: larger on mobile (15px) than
+   desktop (13px), built ONLY from existing Espresso tokens (no --text-* overrides).
+   Single source of truth — apply to sender names, thread row labels, CommandMenu
+   items, search result rows. Message body + composer scale a step above via .tiptap.
+
+   NOTE: the breakpoint is an explicit nested @media, NOT `@apply text-lg md:text-sm`.
+   A responsive `md:` variant inside @apply-in-@utility gets flattened to an
+   unconditional rule (always desktop size) — so we set font-size directly. */
+@utility text-content {
+  font-size: var(--text-base);
+  /* mobile 14px */
+  @media (width >=48rem) {
+    font-size: var(--text-sm);
+    /* desktop 13px */
+  }
 }
 
-@keyframes scroll-fade-reveal-t {
-  from { --scroll-fade-t: 0px; }
-  to { --scroll-fade-t: var(--_scroll-fade-size-t); }
-}
-@keyframes scroll-fade-reveal-b {
-  from { --scroll-fade-b: var(--_scroll-fade-size-b); }
-  to { --scroll-fade-b: 0px; }
+/* Mobile page-stack transition: a stacked layer (an open chat/thread over its list)
+   slides in from the right like a native push. The layers stay mounted and toggle
+   `hidden` — browsers restart CSS animations when display flips from none, so the
+   slide re-plays on every open with no JS. Desktop (md+) never animates these, and
+   going BACK is deliberately instant: the iOS back-swipe is already animated by the
+   OS, and our first live frame must simply match its snapshot. */
+@utility animate-layer-in {
+  @media (width < 48rem) and (prefers-reduced-motion: no-preference) {
+    animation: layer-slide-in 220ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
 }
 
-@utility scroll-fade {
-  --_scroll-fade-size-t: var(
-    --scroll-fade-t-size,
-    var(--scroll-fade-size, min(12%, calc(var(--spacing) * 10)))
-  );
-  --_scroll-fade-size-b: var(
-    --scroll-fade-b-size,
-    var(--scroll-fade-size, min(12%, calc(var(--spacing) * 10)))
-  );
-  /* Eased (smoothstep) alpha ramp, sampled finely so it reads as a smooth curve, NOT fading all
-     the way to transparent: the edge floors at 0.25 (content dims, never vanishes — softer, and
-     images don't disappear), ramping up to a full 1 for the message body. The opaque end MUST be
-     1 or every message would be permanently dimmed. Stops collapse to the edge when the size
-     animates to 0 (reveal preserved: no dimming of the true first/last message at rest). Tune the
-     floor — higher (≈0.4) = subtler dim, lower (≈0.1) = stronger fade. */
-  --scroll-fade-block: linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 0.25) 0,
-    rgba(0, 0, 0, 0.282) calc(var(--scroll-fade-t, 0px) * 0.125),
-    rgba(0, 0, 0, 0.367) calc(var(--scroll-fade-t, 0px) * 0.25),
-    rgba(0, 0, 0, 0.487) calc(var(--scroll-fade-t, 0px) * 0.375),
-    rgba(0, 0, 0, 0.625) calc(var(--scroll-fade-t, 0px) * 0.5),
-    rgba(0, 0, 0, 0.763) calc(var(--scroll-fade-t, 0px) * 0.625),
-    rgba(0, 0, 0, 0.883) calc(var(--scroll-fade-t, 0px) * 0.75),
-    rgba(0, 0, 0, 0.968) calc(var(--scroll-fade-t, 0px) * 0.875),
-    rgba(0, 0, 0, 1) var(--scroll-fade-t, 0px),
-    rgba(0, 0, 0, 1) calc(100% - var(--scroll-fade-b, 0px)),
-    rgba(0, 0, 0, 0.968) calc(100% - var(--scroll-fade-b, 0px) * 0.875),
-    rgba(0, 0, 0, 0.883) calc(100% - var(--scroll-fade-b, 0px) * 0.75),
-    rgba(0, 0, 0, 0.763) calc(100% - var(--scroll-fade-b, 0px) * 0.625),
-    rgba(0, 0, 0, 0.625) calc(100% - var(--scroll-fade-b, 0px) * 0.5),
-    rgba(0, 0, 0, 0.487) calc(100% - var(--scroll-fade-b, 0px) * 0.375),
-    rgba(0, 0, 0, 0.367) calc(100% - var(--scroll-fade-b, 0px) * 0.25),
-    rgba(0, 0, 0, 0.282) calc(100% - var(--scroll-fade-b, 0px) * 0.125),
-    rgba(0, 0, 0, 0.25) 100%
-  );
-  -webkit-mask-image: var(--scroll-fade-mask, var(--scroll-fade-block));
-  mask-image: var(--scroll-fade-mask, var(--scroll-fade-block));
-  -webkit-mask-composite: source-in;
-  mask-composite: intersect;
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-
-  @supports (animation-timeline: scroll()) {
-    animation:
-      scroll-fade-reveal-t 1ms ease-in-out,
-      scroll-fade-reveal-b 1ms ease-in-out;
-    animation-timeline: scroll(self y), scroll(self y);
-    animation-range:
-      0 var(--scroll-fade-reveal, calc(var(--spacing) * 24)),
-      calc(100% - var(--scroll-fade-reveal, calc(var(--spacing) * 24))) 100%;
-    animation-fill-mode: both;
+@keyframes layer-slide-in {
+  from {
+    transform: translateX(100%);
   }
 
-  @supports not (animation-timeline: scroll()) {
-    --scroll-fade-t: var(--_scroll-fade-size-t);
-    --scroll-fade-b: var(--_scroll-fade-size-b);
+  to {
+    transform: translateX(0);
   }
+}
+
+/* Typing-indicator dots: a gentle lift + fade wave, staggered per dot via
+   [animation-delay:…]. Tailwind's animate-bounce throws the dot half its own
+   height — far too loud next to 12px text. */
+@keyframes typing-dot {
+
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.35;
+  }
+
+  30% {
+    transform: translateY(-2px);
+    opacity: 1;
+  }
+}
+
+@utility animate-typing-dot {
+  animation: typing-dot 1.2s ease-in-out infinite;
+}
+
+/* AI-event text shimmer (shadcn-style): a highlight sweeping across muted text
+   via background-clip. Built from ink tokens so it works in both themes. */
+@keyframes text-shimmer {
+  from {
+    background-position: 150% center;
+  }
+
+  to {
+    background-position: -50% center;
+  }
+}
+
+@utility text-shimmer {
+  background: linear-gradient(90deg,
+      var(--color-ink-gray-5) 0%,
+      var(--color-ink-gray-5) 40%,
+      var(--color-ink-gray-9) 50%,
+      var(--color-ink-gray-5) 60%,
+      var(--color-ink-gray-5) 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: text-shimmer 1.8s linear infinite;
 }
 
 /* Tokens synced from frappe-ui are generated into styles/espresso-*.css:
@@ -130,48 +131,48 @@
 
   /** ----- Espresso Design System ----- **/
   --font-sans: "InterVariable",
-  ui-sans-serif,
-  system-ui,
-  sans-serif,
-  "Apple Color Emoji",
-  "Segoe UI Emoji",
-  "Segoe UI Symbol",
-  "Noto Color Emoji";
+    ui-sans-serif,
+    system-ui,
+    sans-serif,
+    "Apple Color Emoji",
+    "Segoe UI Emoji",
+    "Segoe UI Symbol",
+    "Noto Color Emoji";
   --font-sans--font-optical-sizing: auto;
   --font-sans--font-variation-settings: "opsz" 24;
   --font-numeric: "InterVariable",
-  ui-monospace,
-  SFMono-Regular,
-  Menlo,
-  Monaco,
-  Consolas,
-  "Liberation Mono",
-  "Courier New",
-  monospace;
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    "Liberation Mono",
+    "Courier New",
+    monospace;
   --font-numeric--font-feature-settings: "calt",
-  "cv01",
-  "cv03",
-  "cv04",
-  "cv09",
-  "cv11",
-  "zero";
+    "cv01",
+    "cv03",
+    "cv04",
+    "cv09",
+    "cv11",
+    "zero";
   --font-numeric--font-optical-sizing: auto;
   --font-numeric--font-variation-settings: "opsz" 24;
 
   --font-mono: ui-monospace,
-  Menlo,
-  Monaco,
-  'Cascadia Mono',
-  'Segoe UI Mono',
-  'Roboto Mono',
-  'Oxygen Mono',
-  'Ubuntu Mono',
-  'Source Code Pro',
-  'Fira Mono',
-  'Droid Sans Mono',
-  'Consolas',
-  'Courier New',
-  monospace;
+    Menlo,
+    Monaco,
+    'Cascadia Mono',
+    'Segoe UI Mono',
+    'Roboto Mono',
+    'Oxygen Mono',
+    'Ubuntu Mono',
+    'Source Code Pro',
+    'Fira Mono',
+    'Droid Sans Mono',
+    'Consolas',
+    'Courier New',
+    monospace;
 
 
   /** Type scale (--text-* / --text-p-* + font weights) is generated into
@@ -186,11 +187,11 @@
       are generated into styles/espresso-effects.css. These are app-specific. **/
   --shadow-switch: 0px 3px 3px 0px rgba(0, 0, 0, 0.05);
   --shadow-checkbox-hover: 0px 1px 2px 0px rgba(0, 0, 0, 0.06),
-  0px 1px 3px 0px rgba(0, 0, 0, 0.1);
+    0px 1px 3px 0px rgba(0, 0, 0, 0.1);
 
   --shadow-textarea-active: 0px 1px 4px 0px rgba(0, 0, 0, 0.1);
   --shadow-chat-area: 0px 0px 4px 0px rgba(0, 0, 0, 0.08),
-  0px 0.25px 1px 0px rgba(0, 0, 0, 0.25);
+    0px 0.25px 1px 0px rgba(0, 0, 0, 0.25);
 
   /** Spacing **/
   --spacing-4.5: 1.125rem;
@@ -217,11 +218,79 @@
   body {
     @apply bg-surface-base text-ink-gray-8;
   }
+
+  /* The app is a fixed viewport with INNER scrollers (message stream, lists) —
+     the document itself must never scroll. Without this, anything that nudges
+     the document (iOS scrolling the page to reveal a focused input, a stray
+     overflowing element, rubber-band drag) shifts the whole app — seen as "the
+     footer rides up and the body pans". html AND body both need the clamp: on
+     iOS, overflow on body alone doesn't stop document touch-scrolling.
+     overscroll-behavior kills the rubber-band at the document level (inner
+     scrollers keep their own bounce). */
+  html,
+  body,
+  #root {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    overscroll-behavior: none;
+  }
+
+  /* Native scrollbars, app-wide — everything that isn't the <ScrollArea>
+     component (which draws its own overlay bar in the same colors). Thin bar,
+     rounded thumb on a transparent track; the thumb matches frappe-ui's
+     ScrollArea: gray-400 in light mode, gray-700 in dark (surface-gray-5 /
+     surface-gray-2 in Espresso terms — no single semantic token flips to both,
+     hence the dedicated variable below).
+
+     Deliberately ONLY the standard properties (Chrome/Edge 121+, Firefox), NOT
+     ::-webkit-scrollbar: the webkit pseudos force always-visible chunky bars on
+     macOS, where the native overlay bars already look right. These two
+     properties fix exactly the ugly case — Windows — and leave macOS alone.
+
+     In @layer base so the `no-scrollbar` utility still wins. `scrollbar-color`
+     would inherit from :root, but `scrollbar-width` doesn't — hence `*`. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
+}
+
+:root {
+  --scrollbar-thumb: var(--surface-gray-5);
+}
+
+.dark {
+  --scrollbar-thumb: var(--surface-gray-2);
 }
 
 body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Touch devices: nothing is finger-selectable except text-entry surfaces — the
+   app behaves like a native one (long-press = message actions; copy lives in
+   the action sheet). This must be GLOBAL, not per-region: when only a subtree
+   is select-none, iOS long-press starts a selection just OUTSIDE it (WebKit
+   walks to the nearest selectable ancestor) — observed as "the whole screen
+   gets selected", or the open drawer's contents on a longer hold. */
+@media (pointer: coarse) {
+  body {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  input,
+  textarea,
+  [contenteditable="true"],
+  [contenteditable=""] {
+    -webkit-user-select: text;
+    user-select: text;
+  }
 }
 
 .lucide {

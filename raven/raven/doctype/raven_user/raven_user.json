@@ -21,6 +21,7 @@
   "contact_number",
   "channels_section",
   "pinned_channels",
+  "pinned_workspaces",
   "channel_groups",
   "grouped_channels",
   "user_status_section",
@@ -111,6 +112,12 @@
    "options": "Raven Pinned Channels"
   },
   {
+   "fieldname": "pinned_workspaces",
+   "fieldtype": "Table",
+   "label": "Pinned Workspaces",
+   "options": "Raven User Pinned Workspaces"
+  },
+  {
    "fieldname": "availability_status",
    "fieldtype": "Select",
    "label": "Availability Status",
@@ -199,7 +206,7 @@
  "grid_page_length": 50,
  "image_field": "user_image",
  "links": [],
- "modified": "2026-06-24 12:28:47.461186",
+ "modified": "2026-07-10 12:28:47.461186",
  "modified_by": "Administrator",
  "module": "Raven",
  "name": "Raven User",

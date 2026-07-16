@@ -9,6 +9,8 @@ import { MessageListSkeleton } from '@components/features/dm-channel/DirectMessa
 import { MessageResultBlock, RESULT_ROW_ACTIVE_CLASS } from '@components/common/MessageResultBlock/MessageResultBlock'
 import type { SelectedNotification } from '@pages/notifications/NotificationChat'
 import ErrorBanner from '@components/ui/error-banner'
+import { Bookmark } from 'lucide-react'
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@components/ui/empty'
 import _ from '@lib/translate'
 
 interface SavedMessagesListProps {
@@ -110,9 +112,17 @@ const SavedMessagesList = ({ searchQuery, channel, onSelect, selectedID }: Saved
     if (error) return <ErrorBanner error={error} />
     if (isLoading) return <MessageListSkeleton />
     if (results.length === 0) {
+        // Absolute overlay centers over the whole pane (SavedMessages left pane is `relative`),
+        // matching the notifications / threads / search empty states.
         return (
-            <div className="text-sm text-ink-gray-4 text-center py-8">
-                {_('No saved messages found.')}
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                <Empty>
+                    <EmptyMedia><Bookmark /></EmptyMedia>
+                    <EmptyHeader>
+                        <EmptyTitle>{_('No saved messages')}</EmptyTitle>
+                        <EmptyDescription>{_('Save a message to find it here, or adjust your search.')}</EmptyDescription>
+                    </EmptyHeader>
+                </Empty>
             </div>
         )
     }

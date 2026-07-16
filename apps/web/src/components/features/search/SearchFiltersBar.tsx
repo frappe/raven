@@ -52,38 +52,47 @@ export function SearchFiltersBar({ filters, channels, dmChannels, isMobile, onCh
     const hasFilters = filters.channel_id !== '' || filters.owner !== '' || moreFiltersCount > 0
 
     return (
-        <div className="flex flex-row items-start gap-2 flex-wrap">
+        <div className="flex flex-row items-center gap-2 md:items-start md:flex-wrap">
             {!isMobile && hasFilters && <ClearFiltersButton />}
-            <UserFilter
-                filters={filters}
-                users={userFilterOptions}
-                onValueChange={(value) => onUserChange?.(value)}
-                showLabel={false}
-                size="sm"
-                dropdownClassName="w-60"
-                triggerClassName="w-40"
-            />
-            <ChannelSelect
-                channels={channels}
-                dmChannels={dmChannels}
-                users={users}
-                value={filters.channel_id || ""}
-                onValueChange={(value) => onChannelChange?.(value)}
-                placeholder="In"
-                allowAll
-                allLabel={_("In Any Channel")}
-                size="sm"
-                dropdownClassName="w-68"
-                triggerClassName="w-40"
-                showLabel={false}
-                label="Channel"
-                searchable
-            />
+            {/* On mobile each select sits in a flex-1 wrapper so it shrinks to share the row
+                (trigger goes w-full + truncates); on desktop the wrapper is content-width and
+                the trigger keeps its fixed w-40 — unchanged. */}
+            <div className="flex-1 min-w-0 md:flex-none">
+                <UserFilter
+                    filters={filters}
+                    users={userFilterOptions}
+                    onValueChange={(value) => onUserChange?.(value)}
+                    showLabel={false}
+                    size="sm"
+                    dropdownClassName="w-60"
+                    triggerClassName={isMobile ? "w-full" : "w-40"}
+                    className={isMobile ? "w-full min-w-0" : undefined}
+                />
+            </div>
+            <div className="flex-1 min-w-0 md:flex-none">
+                <ChannelSelect
+                    channels={channels}
+                    dmChannels={dmChannels}
+                    users={users}
+                    value={filters.channel_id || ""}
+                    onValueChange={(value) => onChannelChange?.(value)}
+                    placeholder="In"
+                    allowAll
+                    allLabel={_("In Any Channel")}
+                    size="sm"
+                    dropdownClassName="w-68"
+                    triggerClassName={isMobile ? "w-full" : "w-40"}
+                    className={isMobile ? "w-full min-w-0" : undefined}
+                    showLabel={false}
+                    label="Channel"
+                    searchable
+                />
+            </div>
             {/* TODO: Add date range filter capability to sqlite search, either Frappe side or override in Raven */}
 
             <Popover>
                 {isMobile ? (
-                    <div className="ml-auto inline-flex h-7 items-stretch rounded border border-outline-gray-2 bg-surface-base divide-x divide-outline-gray-2">
+                    <div className="shrink-0 inline-flex h-7 items-stretch rounded border border-outline-gray-2 bg-surface-base divide-x divide-outline-gray-2">
                         <PopoverTrigger asChild>
                             <button
                                 type="button"

@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react"
-import { Check } from "lucide-react"
+import { Outlet, useMatch, useNavigate } from "react-router-dom"
+import { BellCheckIcon, Check, CheckCheckIcon, Inbox, MoreVertical } from "lucide-react"
 import { Virtuoso } from "react-virtuoso"
 import { useNotificationList } from "@stores/notifications/useNotificationList"
 import { useUnreadNotificationsCount } from "@hooks/useNotifications"
@@ -8,14 +9,18 @@ import _ from "@lib/translate"
 import { Label } from "@components/ui/label"
 import { Switch } from "@components/ui/switch"
 import { Tabs, TabsList, TabsTrigger } from "@components/ui/tabs"
+import { UnreadFilterPill } from "@components/common/UnreadFilterPill"
 import { Button } from "@components/ui/button"
 import { Badge } from "@components/ui/badge"
-import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from "@components/ui/empty"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@components/ui/dropdown-menu"
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@components/ui/empty"
+import { Skeleton } from "@components/ui/skeleton"
 import { useIsMobile } from "@hooks/use-mobile"
 import { PageHeader } from "@components/layout/PageHeader"
 import AppMobileFooter from "@components/features/header/AppMobileFooter"
-import NotificationChat, { type SelectedNotification } from "./NotificationChat"
+import { NotificationsEmptyState, type SelectedNotification } from "./NotificationChat"
 import { MentionItem, ReactionItem } from "./NotificationItem"
+import { cn } from "@lib/utils"
 
 type NotificationTab = "all" | "mentions" | "reactions"
 
@@ -25,12 +30,24 @@ const TABS: { key: NotificationTab; label: string; type: "mention" | "reaction" 
     { key: "reactions", label: "Reactions", type: "reaction" },
 ]
 
+/** Module-level Footer so Virtuoso's component type stays stable across renders.
+ *  Mobile: small breathing pad above the tab bar. */
+const NotificationsListFooter = () => <div className="h-2 md:h-0" aria-hidden="true" />
+const notificationsListComponents = { Footer: NotificationsListFooter }
+
 export default function Notifications() {
     const [activeTab, setActiveTab] = useState<NotificationTab>("all")
     const [showUnread, setShowUnread] = useState(true)
-    const [selected, setSelected] = useState<SelectedNotification | null>(null)
-    const hasSelection = !!selected
     const isMobile = useIsMobile()
+
+    // The open notification is route-driven: `/notifications/:channelID/:messageID`
+    // renders NotificationChatRoute in the Outlet. Being in history means the mobile
+    // back-swipe closes the chat (instead of leaving the page) and refresh restores it.
+    // This layout mounts above the child route, so useParams can't see its params —
+    // match the path instead.
+    const navigate = useNavigate()
+    const selectedMessageID = useMatch("/notifications/:channelID/:messageID")?.params.messageID
+    const hasSelection = !!selectedMessageID
 
     const tab: "all" | "mention" | "reaction" =
         activeTab === "mentions" ? "mention" : activeTab === "reactions" ? "reaction" : "all"
@@ -44,8 +61,7 @@ export default function Notifications() {
         markAllRead,
     } = useNotificationList(tab, { unreadOnly: showUnread })
 
-    const { data: unreadCountData } = useUnreadNotificationsCount()
-    const unreadCount = unreadCountData?.message ?? 0
+    const unreadCount = useUnreadNotificationsCount()
 
     const usersById = useUsersById()
 
@@ -54,54 +70,60 @@ export default function Notifications() {
     }, [hasMore, loadMoreRows])
 
     const onSelect = useCallback((selection: SelectedNotification) => {
-        setSelected(selection)
         markMessageRead(selection.messageID)
-    }, [setSelected, markMessageRead])
+        navigate(
+            `/notifications/${encodeURIComponent(selection.channelID)}/${encodeURIComponent(selection.messageID)}`,
+            {
+                // Thread/DM context for the pane — a cold deep-link derives it instead.
+                state: {
+                    isThread: selection.isThread,
+                    isDirectMessage: selection.isDirectMessage,
+                    peerID: selection.peer?.name,
+                },
+                // First open pushes (one back closes the chat); switching between
+                // notifications replaces, so back never walks through every chat viewed.
+                replace: hasSelection,
+            },
+        )
+    }, [markMessageRead, navigate, hasSelection])
 
     const onShowUnreadChange = useCallback((checked: boolean) => {
         setShowUnread(checked)
-        setSelected(null)
-    }, [setSelected])
+        if (hasSelection) navigate("/notifications", { replace: true })
+    }, [hasSelection, navigate])
 
     const onTabChange = useCallback((tab: NotificationTab) => {
         setActiveTab(tab)
-        setSelected(null)
-    }, [setSelected])
-
-    const shouldShowSidebar = !isMobile || !hasSelection
+        if (hasSelection) navigate("/notifications", { replace: true })
+    }, [hasSelection, navigate])
 
     return (
-        <div className="flex flex-col h-full min-h-0 w-full">
+        // relative on the OUTER column: the mobile chat layer covers list + footer,
+        // sliding over the tab bar like a native detail page. The footer stays MOUNTED —
+        // unmounting it resized the list row, which clamped the list's scroll position
+        // at the bottom.
+        <div className="relative flex flex-col h-full min-h-0 w-full">
+            {/* Mobile is STACKED navigation (same as WorkspaceLayout): the list is the page
+                and the open notification's chat is a full-screen layer on top of it. The
+                list stays mounted underneath, so going back — chevron or iOS back-swipe —
+                reveals it instantly at the same scroll position. */}
             <div className="flex min-h-0 flex-1">
-                {shouldShowSidebar && (
-                    <div className="md:w-(--notifications-sidebar-width) w-full shrink-0 min-h-0">
-                        <nav className="flex h-full w-full flex-col bg-surface-base md:bg-surface-sidebar">
-                            <PageHeader title={_("Notifications")}>
-                                {unreadCount > 0 && (
-                                    <Badge variant="subtle" size="sm" theme="gray">
-                                        {unreadCount > 99 ? "99+" : unreadCount}
-                                    </Badge>
-                                )}
-                            </PageHeader>
-
-                            <div className="shrink-0 px-2 pb-2">
-                                <Tabs value={activeTab} onValueChange={(v) => onTabChange(v as NotificationTab)}>
-                                    <TabsList variant="subtle" className="w-full">
-                                        {TABS.map((t) => (
-                                            <TabsTrigger key={t.key} value={t.key} className="flex-1">
-                                                {_(t.label)}
-                                            </TabsTrigger>
-                                        ))}
-                                    </TabsList>
-                                </Tabs>
-                            </div>
-
-                            <div className="flex shrink-0 items-center justify-between gap-2 px-3 pb-2">
-                                <div className="flex items-center gap-2">
-                                    <Label
-                                        htmlFor="unread-toggle"
-                                        className="cursor-pointer text-xs font-medium text-ink-gray-4"
-                                    >
+                <div
+                    className="md:w-(--notifications-sidebar-width) w-full shrink-0 min-h-0"
+                    // While covered by the chat layer on mobile, keep the list out of
+                    // focus / accessibility order.
+                    inert={isMobile && hasSelection ? true : undefined}
+                >
+                    <nav className="relative flex h-full w-full flex-col bg-surface-base md:bg-surface-sidebar">
+                        <PageHeader title={_("Notifications")}>
+                            {unreadCount > 0 && (
+                                <Badge variant="subtle" size="sm" theme="gray">
+                                    {unreadCount > 99 ? "99+" : unreadCount}
+                                </Badge>
+                            )}
+                            <div className="ml-auto flex items-center gap-2">
+                                <div className="hidden md:flex items-center gap-2 px-1">
+                                    <Label htmlFor="unread-toggle" className="text-xs-medium text-ink-gray-6 cursor-pointer">
                                         {_("Unread only")}
                                     </Label>
                                     <Switch
@@ -111,59 +133,112 @@ export default function Notifications() {
                                     />
                                 </div>
                                 {unreadCount > 0 && (
-                                    <Button variant="ghost" size="sm" onClick={markAllRead}>
-                                        <Check />
+                                    <Button variant="subtle" size={isMobile ? "lg" : "sm"} onClick={markAllRead} aria-label={_("Mark all as read")}>
+                                        <CheckCheckIcon />
                                         {_("Mark all as read")}
                                     </Button>
                                 )}
                             </div>
+                        </PageHeader>
 
-                            <div className="flex min-h-0 flex-1">
-                                {currentData.length === 0 && !isLoading ? (
-                                    <EmptyState showUnread={showUnread} />
-                                ) : (
-                                    <Virtuoso
-                                        className="flex-1 min-h-0"
-                                        style={{ height: "100%" }}
-                                        data={currentData}
-                                        endReached={loadMore}
-                                        overscan={200}
-                                        defaultItemHeight={80}
-                                        computeItemKey={(_index, item) => item.name}
-                                        itemContent={(_index, item) =>
-                                            item.notification_type === "mention" ? (
-                                                <MentionItem
-                                                    notification={item}
-                                                    sender={usersById.get(item.owner)}
-                                                    isActive={selected?.messageID === item.message_id}
-                                                    onSelect={onSelect}
-                                                />
-                                            ) : (
-                                                <ReactionItem
-                                                    notification={item}
-                                                    usersById={usersById}
-                                                    isActive={selected?.messageID === item.message_id}
-                                                    onSelect={onSelect}
-                                                />
-                                            )
-                                        }
-                                    />
-                                )}
+                        <div className="shrink-0 px-2 p-2">
+                            <Tabs value={activeTab} onValueChange={(v) => onTabChange(v as NotificationTab)}>
+                                <TabsList variant="subtle" className="w-full">
+                                    {TABS.map((t) => (
+                                        <TabsTrigger key={t.key} value={t.key} className="flex-1">
+                                            {_(t.label)}
+                                        </TabsTrigger>
+                                    ))}
+                                </TabsList>
+                            </Tabs>
+                        </div>
+
+                        {/* Empty state centers over the whole nav (absolute) so it lands at the
+                                same height as the right pane's empty state, not offset below the
+                                header + tabs. pointer-events-none keeps those clickable. */}
+                        {currentData.length === 0 && !isLoading && (
+                            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                                <EmptyState showUnread={showUnread} />
                             </div>
-                        </nav>
-                    </div>
-                )}
-                <div className="flex min-w-0 min-h-0 flex-1 flex-col bg-surface-gray-1">
-                    <NotificationChat selected={selected} />
+                        )}
+                        <div className="flex min-h-0 flex-1">
+                            {currentData.length === 0 && isLoading && <NotificationListSkeleton />}
+                            {currentData.length > 0 && (
+                                <Virtuoso
+                                    className="flex-1 min-h-0"
+                                    style={{ height: "100%" }}
+                                    data={currentData}
+                                    endReached={loadMore}
+                                    overscan={200}
+                                    components={notificationsListComponents}
+                                    defaultItemHeight={80}
+                                    computeItemKey={(_index, item) => item.name}
+                                    itemContent={(_index, item) =>
+                                        item.notification_type === "mention" ? (
+                                            <MentionItem
+                                                notification={item}
+                                                sender={usersById.get(item.owner)}
+                                                isActive={selectedMessageID === item.message_id}
+                                                onSelect={onSelect}
+                                            />
+                                        ) : (
+                                            <ReactionItem
+                                                notification={item}
+                                                usersById={usersById}
+                                                isActive={selectedMessageID === item.message_id}
+                                                onSelect={onSelect}
+                                            />
+                                        )
+                                    }
+                                />
+                            )}
+                        </div>
+                        <UnreadFilterPill active={showUnread} onToggle={onShowUnreadChange} />
+                    </nav>
+                </div>
+                {/* Mobile: full-screen chat layer above the list while a notification is
+                    open, hidden when none is. Covers the footer too (inset-0 of the
+                    outer column). Desktop: a normal column beside the list. */}
+                <div className={cn(
+                    "flex min-w-0 min-h-0 flex-col bg-surface-gray-1",
+                    "max-md:absolute max-md:inset-0 max-md:z-20 animate-layer-in",
+                    !hasSelection && "max-md:hidden",
+                    "md:flex-1",
+                )}>
+                    {hasSelection ? <Outlet /> : <NotificationsEmptyState />}
                 </div>
             </div>
-            {!hasSelection && <AppMobileFooter />}
+            <AppMobileFooter inert={isMobile && hasSelection ? true : undefined} />
         </div>
     )
 }
 
+/** Loading placeholder for the notifications list — mirrors the row anatomy
+ * (avatar · name + relative date · channel context · two body lines) so the
+ * real rows land without a layout jump. Width variance keeps it organic. */
+const NotificationListSkeleton = () => (
+    <div className="flex-1 overflow-hidden px-2 py-0.5" aria-hidden="true">
+        {[56, 40, 64, 48, 72, 44, 60, 52].map((nameWidth, i) => (
+            <div key={i} className="flex w-full items-start gap-3 px-2 py-3 md:py-2">
+                <Skeleton className="size-9 shrink-0 rounded-full" />
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-2">
+                        <Skeleton className="h-2.5" style={{ width: nameWidth * 2 }} />
+                        <Skeleton className="h-2 w-10" />
+                    </div>
+                    <div className="pt-1.5 space-y-1.5">
+                        <Skeleton className="h-2.5" style={{ width: `${nameWidth + 20}%` }} />
+                        <Skeleton className="h-4" style={{ width: `${nameWidth}%` }} />
+                    </div>
+                </div>
+            </div>
+        ))}
+    </div>
+)
+
 const EmptyState = ({ showUnread }: { showUnread: boolean }) => (
     <Empty>
+        <EmptyMedia>{showUnread ? <BellCheckIcon /> : <Inbox />}</EmptyMedia>
         <EmptyHeader>
             <EmptyTitle>{showUnread ? _("You're all caught up") : _("No notifications yet")}</EmptyTitle>
             <EmptyDescription>

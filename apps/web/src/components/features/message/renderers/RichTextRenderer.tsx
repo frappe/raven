@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import parse, { Element, domToReact, type DOMNode, type HTMLReactParserOptions } from "html-react-parser"
+import { Element, Text, domToReact, htmlToDOM, type DOMNode, type HTMLReactParserOptions } from "html-react-parser"
 import { UserMention, ChannelMention } from "./MessageMention"
 import { CodeBlock } from "./MessageCodeBlock"
 import { cn } from "@lib/utils"
@@ -141,9 +141,87 @@ const options: HTMLReactParserOptions = {
     },
 }
 
-export const RichTextRenderer = ({ html }: { html: string }) => {
-    const tree = useMemo(() => parse(html, options), [html])
-    return <div className="tiptap">{tree}</div>
+/* ------------------------------ Jumbomoji ------------------------------ */
+
+const JUMBOMOJI_MAX = 4
+
+/** A jumbo candidate is short by construction — skip the walk for real messages. */
+const JUMBOMOJI_HTML_MAX_LENGTH = 800
+
+/**
+ * Keycap sequences (1️⃣ #️⃣) — their base [0-9#*] chars carry Emoji_Component,
+ * so strip whole keycaps first; any digit/#/* left after that is real text.
+ */
+const KEYCAP_RE = /[0-9#*]\uFE0F?\u20E3/gu
+
+/** Everything an emoji sequence may contain: pictographic bases + components
+ * (skin tones, regional indicators, keycaps) + ZWJ + VS16 + whitespace. */
+const EMOJI_ONLY_RE = /^[\p{Extended_Pictographic}\p{Emoji_Component}\u200D\uFE0F\s]*$/u
+
+// Not in the tsconfig lib yet — minimal local shape (Safari 14.1+/Chrome 87+ at runtime).
+type GraphemeSegmenter = { segment: (input: string) => Iterable<unknown> }
+type GraphemeSegmenterCtor = new (locale?: string, options?: { granularity: "grapheme" }) => GraphemeSegmenter
+
+const SegmenterCtor = (Intl as unknown as { Segmenter?: GraphemeSegmenterCtor }).Segmenter
+const GRAPHEME_SEGMENTER = SegmenterCtor ? new SegmenterCtor(undefined, { granularity: "grapheme" }) : null
+
+/** Emoji count of a text run, or null if it contains anything that isn't emoji/whitespace. */
+const countEmojiGraphemes = (raw: string): number | null => {
+    const text = raw.replace(/\s+/g, "")
+    if (!text) return 0
+    const withoutKeycaps = text.replace(KEYCAP_RE, "")
+    if (/[0-9#*]/.test(withoutKeycaps)) return null
+    if (!EMOJI_ONLY_RE.test(withoutKeycaps)) return null
+    if (GRAPHEME_SEGMENTER) {
+        let count = 0
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        for (const _segment of GRAPHEME_SEGMENTER.segment(text)) count++
+        return count
+    }
+    // No Segmenter (old WebKit): code points over-count ZWJ sequences, which can
+    // only FAIL the ≤ max gate — messages render normal-sized, never wrongly huge.
+    return Array.from(text).length
+}
+
+/**
+ * True when the message is ONLY emojis — 1 to 4 of them, native and/or custom —
+ * so the stream can render them big (Slack/iMessage-style). Structure must be a
+ * single <p> whose children are emoji text runs and customEmoji <img>s; anything
+ * else (marks, mentions, links, more blocks) disqualifies.
+ */
+const isJumbomoji = (html: string, dom: DOMNode[]): boolean => {
+    if (html.length > JUMBOMOJI_HTML_MAX_LENGTH) return false
+    const blocks = dom.filter((node) => !(node instanceof Text && !node.data.trim()))
+    if (blocks.length !== 1) return false
+    const paragraph = blocks[0]
+    if (!(paragraph instanceof Element) || paragraph.name !== "p") return false
+
+    let count = 0
+    for (const child of paragraph.children as DOMNode[]) {
+        if (child instanceof Text) {
+            const n = countEmojiGraphemes(child.data)
+            if (n === null) return false
+            count += n
+        } else if (child instanceof Element && child.name === "img" && child.attribs?.["data-type"] === "customEmoji") {
+            count += 1
+        } else {
+            return false
+        }
+    }
+    return count >= 1 && count <= JUMBOMOJI_MAX
+}
+
+export const RichTextRenderer = ({ html, jumbomoji = false }: { html: string; jumbomoji?: boolean }) => {
+    const { tree, jumbo } = useMemo(() => {
+        // Same two steps parse() runs internally, split so ONE parsed DOM feeds
+        // both the React conversion and the jumbomoji check (no second parse).
+        const dom = htmlToDOM(html, { lowerCaseAttributeNames: false })
+        return {
+            tree: domToReact(dom, options),
+            jumbo: jumbomoji && isJumbomoji(html, dom),
+        }
+    }, [html, jumbomoji])
+    return <div className={cn("tiptap", jumbo && "tiptap--jumbomoji")}>{tree}</div>
 }
 
 export default RichTextRenderer

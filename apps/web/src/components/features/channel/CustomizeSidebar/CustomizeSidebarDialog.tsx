@@ -1,8 +1,7 @@
 import { Button } from "@components/ui/button"
-import { DialogDescription, DialogHeader, DialogTitle } from "@components/ui/dialog"
 import { SidebarPreview } from "./SidebarPreview"
 import { useGroupedChannels } from "@raven/lib/hooks/useGroupedChannels"
-import { useChannelList } from "@stores/channels/useChannelList"
+import { useChannels } from "@stores/channels/useChannelList"
 import useCurrentRavenUser from "@raven/lib/hooks/useCurrentRavenUser"
 import { useState } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs"
@@ -16,10 +15,11 @@ import { GroupDnd } from "./GroupDnd"
 import { useParams } from "react-router"
 import { H3 } from "@components/ui/typography"
 import { SettingsPanelContent, SettingsPanelDescription, SettingsPanelHeader, SettingsPanelTitle } from "@components/ui/settings-dialog"
+import { errorResponseToast } from "@components/ui/error-banner"
 
 export const CustomizeSidebarDialog = ({ onClose }: { onClose?: () => void }) => {
 
-    const { channels } = useChannelList()
+    const { channels } = useChannels()
     const { myProfile, mutate } = useCurrentRavenUser()
     const [activeTab, setActiveTab] = useState('channels')
 
@@ -45,8 +45,8 @@ export const CustomizeSidebarDialog = ({ onClose }: { onClose?: () => void }) =>
                 toast.success(_("Sidebar updated"))
                 mutate()
                 onClose?.()
-            }).catch(() => {
-                toast.error(_("Failed to update sidebar"))
+            }).catch((error) => {
+                errorResponseToast(_("Failed to update sidebar"), error)
             })
         }
     }

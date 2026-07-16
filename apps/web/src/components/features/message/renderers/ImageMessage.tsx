@@ -40,6 +40,27 @@ export const ImageCarousel = ({ images, onImageClick }: { images: ImageFile[], o
     useHotkeys("left", prevImage, { enabled: isHovered, preventDefault: true })
     useHotkeys("right", nextImage, { enabled: isHovered, preventDefault: true })
 
+    // Touch swipe to page — same discrete start/end delta as the lightbox (two
+    // events per swipe, nothing per-frame). Horizontal-dominant only, so normal
+    // vertical stream scrolling over the carousel is untouched.
+    const touchStart = useRef<{ x: number; y: number } | null>(null)
+    const onTouchStart = (event: React.TouchEvent) => {
+        const touch = event.touches[0]
+        touchStart.current = { x: touch.clientX, y: touch.clientY }
+    }
+    const onTouchEnd = (event: React.TouchEvent) => {
+        const start = touchStart.current
+        touchStart.current = null
+        if (!start) return
+        const touch = event.changedTouches[0]
+        const dx = touch.clientX - start.x
+        const dy = touch.clientY - start.y
+        if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+            if (dx < 0) nextImage()
+            else prevImage()
+        }
+    }
+
     const currentImage = images[currentIndex]
 
     return (
@@ -52,6 +73,8 @@ export const ImageCarousel = ({ images, onImageClick }: { images: ImageFile[], o
             aria-live="polite"
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
+            onTouchStart={onTouchStart}
+            onTouchEnd={onTouchEnd}
         >
             {/* Main Image — fixed 3:2 box so the carousel never resizes between slides.
                 Slides are a VIEWING surface: object-contain shows the whole image,

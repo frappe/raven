@@ -19,7 +19,7 @@ export function PageHeader({ title, children, className }: PageHeaderProps) {
             "flex h-11 md:h-auto shrink-0 items-center gap-2 border-b md:border-b-0 px-2 py-2",
             className
         )}>
-            <span className="px-1 py-1 text-base font-medium text-ink-gray-8">{title}</span>
+            <span className="px-1 py-1 md:text-base-medium text-xl-medium text-ink-gray-8">{title}</span>
             {children}
         </div>
     )

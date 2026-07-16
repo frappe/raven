@@ -5,7 +5,11 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
-from raven.utils import delete_channel_members_cache, get_raven_room
+from raven.utils import (
+	create_members_added_system_message,
+	delete_channel_members_cache,
+	get_raven_room,
+)
 
 
 class RavenChannel(Document):
@@ -137,14 +141,49 @@ class RavenChannel(Document):
 				self.add_members(unique_raven_users)
 			else:
 				# Can ignore permissions here because the user who creates the channel should be an admin of the channel
-				frappe.get_doc(
+				creator_member = frappe.get_doc(
 					{
 						"doctype": "Raven Channel Member",
 						"channel_id": self.name,
 						"user_id": frappe.session.user,
 						"is_admin": 1,
 					}
-				).insert(ignore_permissions=True)
+				)
+				# The member's own "X joined." message is replaced by the dedicated
+				# "created" message below.
+				creator_member.flags.ignore_system_message = True
+				creator_member.insert(ignore_permissions=True)
+
+				creator_name = frappe.get_cached_value("Raven User", frappe.session.user, "full_name")
+				if self.is_thread:
+					# Threads get their own creation message (not the channel one).
+					frappe.get_doc(
+						{
+							"doctype": "Raven Message",
+							"channel_id": self.name,
+							"message_type": "System",
+							"text": f"{creator_name} created this thread.",
+							"json": frappe.as_json({"event": "thread_created", "user": frappe.session.user}),
+						}
+					).insert(ignore_permissions=True)
+				elif self.type != "Open":
+					# "X created <channel>" — not for Open channels (no membership
+					# system messages there, same as joins/adds).
+					frappe.get_doc(
+						{
+							"doctype": "Raven Message",
+							"channel_id": self.name,
+							"message_type": "System",
+							"text": f"{creator_name} created {self.channel_name}.",
+							"json": frappe.as_json(
+								{
+									"event": "channel_created",
+									"user": frappe.session.user,
+									"channel_name": self.channel_name,
+								}
+							),
+						}
+					).insert(ignore_permissions=True)
 
 	def validate(self):
 		# If the user trying to modify the channel is not the owner or channel member, then don't allow
@@ -236,6 +275,7 @@ class RavenChannel(Document):
 
 	def add_members(self, members, is_admin=0):
 		# members is a list of Raven User IDs
+		added = []
 		for member in members:
 			doc = frappe.db.exists(
 				"Raven Channel Member",
@@ -252,7 +292,17 @@ class RavenChannel(Document):
 						"is_admin": is_admin,
 					}
 				)
+				# One combined system message for the whole batch is sent below —
+				# per-member messages would flood the channel.
+				channel_member.flags.ignore_system_message = True
 				channel_member.insert(ignore_permissions=True)
+				added.append(member)
+
+		# ONE "A added B, C and n others" message for the whole action, listing only
+		# the members actually added (existing ones are skipped above). Same
+		# visibility rule as single additions: no system messages in DMs or Open channels.
+		if added and not self.is_direct_message and self.type != "Open":
+			create_members_added_system_message(self.name, added)
 
 	def autoname(self):
 		if self.is_direct_message == 0 and self.is_thread == 0:

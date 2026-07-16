@@ -20,9 +20,11 @@ interface UserFilterProps {
     dropdownClassName?: string
     /** Width of the trigger button. Defaults to dropdownClassName when omitted. */
     triggerClassName?: string
+    /** Extra classes for the root wrapper — width/shrink control so it can flex down in a shared row. */
+    className?: string
 }
 
-export function UserFilter({ filters, users, onValueChange, showLabel = true, size, dropdownClassName = "w-[240px]", triggerClassName }: UserFilterProps) {
+export function UserFilter({ filters, users, onValueChange, showLabel = true, size, dropdownClassName = "w-[240px]", triggerClassName, className }: UserFilterProps) {
     const [open, setOpen] = useState(false)
     const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -54,7 +56,7 @@ export function UserFilter({ filters, users, onValueChange, showLabel = true, si
     }
 
     return (
-        <div className="shrink-0">
+        <div className={cn("shrink-0", className)}>
             {showLabel && <Label className="text-xs text-ink-gray-4 mb-1 block">{_("From")}</Label>}
             <Popover open={open} onOpenChange={setOpen}>
                 <PopoverTrigger asChild>

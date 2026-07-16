@@ -17,7 +17,7 @@ export interface EmojiMartCustomCategory {
 export const customEmojiCategoriesAtom = atom<EmojiMartCustomCategory[]>([])
 
 const loadAppleData = async () => {
-    const response = await fetch("https://cdn.jsdelivr.net/npm/@emoji-mart/data/sets/14/apple.json")
+    const response = await fetch("/assets/raven/emojis/emojis.json")
     return response.json()
 }
 

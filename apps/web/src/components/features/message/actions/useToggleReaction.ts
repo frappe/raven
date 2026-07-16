@@ -6,6 +6,7 @@ import { useUserCookieData } from "@hooks/useUserCookieData"
 import { getErrorMessage } from "@lib/frappe"
 import _ from "@lib/translate"
 import type { Message } from "@raven/types/common/Message"
+import { errorResponseToast } from "@components/ui/error-banner"
 
 /** The server's reaction blob shape (calculate_message_reaction), keyed by emoji / emoji_name. */
 type ReactionEntry = { reaction: string; users: string[]; count: number; is_custom?: boolean }
@@ -85,7 +86,7 @@ export const useToggleReaction = () => {
                 })
                 .catch((e) => {
                     apply() // undo — re-toggling is the exact inverse
-                    toast.error(_("Could not update reaction"), { description: getErrorMessage(e) })
+                    errorResponseToast(_("Could not update reaction"), e)
                 })
         },
         [call, currentUser],

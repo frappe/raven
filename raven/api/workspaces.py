@@ -1,6 +1,7 @@
 import frappe
 from frappe import _
 from frappe.query_builder import JoinType, Order
+from frappe.query_builder.functions import Coalesce
 
 from raven.utils import delete_channel_members_cache, delete_workspace_members_cache
 
@@ -8,19 +9,31 @@ from raven.utils import delete_channel_members_cache, delete_workspace_members_c
 @frappe.whitelist()
 def get_list():
 	"""
-	Fetches list of all workspaces that the current user is a member of/has access to
+	Fetches list of all workspaces that the current user is a member of/has access to.
+
+	Ordered by the user's pinned_workspaces child table (their chosen sidebar
+	order), with workspaces not in the table after it — so the FIRST paint on the
+	client is already in the right order (no reorder flash once the profile loads).
 	"""
-	if not frappe.db.exists("Raven User", {"user": frappe.session.user}):
+	raven_user = frappe.db.get_value("Raven User", {"user": frappe.session.user}, "name")
+	if not raven_user:
 		frappe.throw(_("You do not have access to Raven."), frappe.PermissionError)
 
 	workspace = frappe.qb.DocType("Raven Workspace")
 	workspace_member = frappe.qb.DocType("Raven Workspace Member")
+	pinned = frappe.qb.DocType("Raven User Pinned Workspaces")
 
 	all_workspaces = (
 		frappe.qb.from_(workspace)
 		.join(workspace_member, JoinType.left)
 		.on(
 			(workspace.name == workspace_member.workspace) & (workspace_member.user == frappe.session.user)
+		)
+		.join(pinned, JoinType.left)
+		.on(
+			(pinned.workspace == workspace.name)
+			& (pinned.parent == raven_user)
+			& (pinned.parenttype == "Raven User")
 		)
 		.where((workspace_member.user == frappe.session.user) | (workspace.type == "Public"))
 		.select(
@@ -33,6 +46,9 @@ def get_list():
 			workspace_member.name.as_("workspace_member_name"),
 			workspace_member.is_admin.as_("is_admin"),
 		)
+		# Pinned first in their saved row order; unpinned (NULL idx → large
+		# fallback) after, in creation order.
+		.orderby(Coalesce(pinned.idx, 1000000), order=Order.asc)
 		.orderby(workspace.creation, order=Order.asc)
 	)
 

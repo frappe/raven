@@ -3,17 +3,27 @@
 
 <head>
   <meta charset="UTF-8" />
+  <!-- viewport-fit=cover: required for env(safe-area-inset-*) to report real values on iOS
+       (composer, sidebars, drawers all pad by it) — without it they resolve to 0.
+       interactive-widget=resizes-content (Android Chrome 108+ only; iOS ignores it):
+       make the on-screen keyboard SHRINK the layout viewport instead of overlaying it —
+       h-dvh then tracks the keyboard and the composer stays fully above it. With the
+       default (resizes-visual), Chrome only scrolls the caret into view, so a growing
+       multi-line composer slid its bottom edge (send button) under the keyboard. -->
   <meta name="viewport"
-    content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
   <title>{{ app_name }}</title>
   <meta name="description" content="Simple, work messaging tool.">
   <link rel="apple-touch-icon" sizes="180x180" href="{{ apple_touch_icon }}">
   <link rel="icon" type="image/png" href="{{ icon_96 }}" sizes="96x96" />
   <link rel="icon" type="image/svg+xml" href="{{ favicon_svg }}" />
   <link rel="shortcut icon" href="{{ favicon_ico }}" />
-  <link rel="manifest" href="/assets/raven/raven_v3/manifest.webmanifest">
+  <link rel="manifest" href="/assets/raven/raven/manifest.webmanifest">
   <meta name="msapplication-TileColor" content="#000000">
-  <meta name="theme-color" content="#191919">
+  <!-- Android status bar color (pre-JS paint; the ThemeProvider overwrites
+       these with the resolved theme's --surface-base once the app boots). -->
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#171717">
   <link rel="mask-icon" href="{{ mask_icon }}" color="#000000">
   <meta name="apple-itunes-app" content="app-id=6741682327, app-argument={{sitename}}">
 

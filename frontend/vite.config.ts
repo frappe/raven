@@ -14,7 +14,7 @@ export default defineConfig(({ command, mode }) => {
 			registerType: "autoUpdate",
 			strategies: "injectManifest",
 			injectRegister: null,
-			outDir: "../raven/public/raven",
+			outDir: "../raven/public/raven_v2",
 			manifest: {
 				name: "Raven",
 				start_url: `/${env.VITE_BASE_NAME}`,
@@ -66,7 +66,7 @@ export default defineConfig(({ command, mode }) => {
 			}
 		},
 		build: {
-			outDir: "../raven/public/raven",
+			outDir: "../raven/public/raven_v2",
 			emptyOutDir: true,
 			target: "es2015",
 			rollupOptions: {

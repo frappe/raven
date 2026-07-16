@@ -1,3 +1,5 @@
+import { getConnectionEpoch } from "@stores/connectionFreshness"
+
 type Listener = () => void
 
 type Entry = {
@@ -5,6 +7,14 @@ type Entry = {
     replyCount: number
     /** Timestamp of the latest reply — kept for the threads list / unread badge (piece C). */
     lastMessageTimestamp?: string
+    /** Connection-break counter (stores/connectionFreshness) when this entry was last
+     *  fetched or patched. A live `thread_reply` patch proves the connection was alive
+     *  at that moment, so it counts as validation too. If this falls behind the current
+     *  counter, a break happened since — the count might have missed an event. */
+    epoch: number
+    /** When the last realtime patch landed (ms). Lets a refetch tell whether a patch
+     *  arrived while its request was in flight — the patch is the newer truth then. */
+    patchedAt?: number
 }
 
 /**
@@ -30,6 +40,14 @@ class ThreadMetaStore {
         return this.entries.get(threadID)?.replyCount
     }
 
+    /** True when the count can't be trusted: never fetched, or the realtime connection
+     *  has broken since it was last fetched/patched (a `thread_reply` event may have
+     *  been missed during the gap). Stale counts get refetched — see loadThreadDetails. */
+    isStale(threadID: string): boolean {
+        const entry = this.entries.get(threadID)
+        return !entry || entry.epoch < getConnectionEpoch()
+    }
+
     subscribe(threadID: string, listener: Listener): () => void {
         let set = this.listeners.get(threadID)
         if (!set) {
@@ -44,13 +62,34 @@ class ThreadMetaStore {
     }
 
     /**
-     * One-time seed from get_thread_details (the lazy pill fetch). Won't clobber an entry
-     * that's already tracked — a live `thread_reply` patch is newer than a fetch that may
-     * have been in flight when the reply arrived.
+     * One-time seed (create-thread starts at 0, list rows carry a count). Won't clobber
+     * an entry that's already tracked — a live `thread_reply` patch is newer than a
+     * fetch that may have been in flight when the reply arrived.
      */
     seed(threadID: string, replyCount: number, lastMessageTimestamp?: string) {
         if (this.entries.has(threadID)) return
-        this.entries.set(threadID, { replyCount, lastMessageTimestamp })
+        this.entries.set(threadID, { replyCount, lastMessageTimestamp, epoch: getConnectionEpoch() })
+        this.notify(threadID)
+    }
+
+    /**
+     * Apply a get_thread_details response — the initial fetch, or a refetch after a
+     * connection break. Overwrites the entry, EXCEPT when a realtime patch landed while
+     * the request was in flight: the patch is newer truth, so only the response's count
+     * is discarded (the entry was already re-stamped by the patch).
+     *
+     * `epochAtFetchStart` = the break counter read before the request went out; if the
+     * connection broke mid-request, the entry stays stale and gets refetched again.
+     */
+    applyFetched(threadID: string, replyCount: number, epochAtFetchStart: number, fetchStartedAt: number) {
+        const prev = this.entries.get(threadID)
+        if (prev?.patchedAt && prev.patchedAt >= fetchStartedAt) return
+        if (prev?.replyCount === replyCount && prev.epoch === epochAtFetchStart) return
+        this.entries.set(threadID, {
+            replyCount,
+            lastMessageTimestamp: prev?.lastMessageTimestamp,
+            epoch: epochAtFetchStart,
+        })
         this.notify(threadID)
     }
 
@@ -61,12 +100,17 @@ class ThreadMetaStore {
     patch(threadID: string, replyCount: number, lastMessageTimestamp?: string) {
         const prev = this.entries.get(threadID)
         if (!prev) return
-        if (prev.replyCount === replyCount && prev.lastMessageTimestamp === lastMessageTimestamp) return
-        this.entries.set(threadID, {
+        // Receiving an event proves the connection is alive right now — re-stamp, so an
+        // active thread never looks suspect. (Even when the count itself is unchanged.)
+        const entry: Entry = {
             replyCount,
             lastMessageTimestamp: lastMessageTimestamp ?? prev.lastMessageTimestamp,
-        })
-        this.notify(threadID)
+            epoch: getConnectionEpoch(),
+            patchedAt: Date.now(),
+        }
+        const countChanged = prev.replyCount !== replyCount || prev.lastMessageTimestamp !== entry.lastMessageTimestamp
+        this.entries.set(threadID, entry)
+        if (countChanged) this.notify(threadID)
     }
 
     private notify(threadID: string) {

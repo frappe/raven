@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router";
-import { Archive, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useFrappeUpdateDoc, useSWRConfig } from "frappe-react-sdk";
 import { Button } from "@components/ui/button";
@@ -14,6 +14,7 @@ import {
   AlertDialogTrigger,
 } from "@components/ui/alert-dialog";
 import ErrorBanner from "@components/ui/error-banner";
+import { PrefActionRow } from "@components/features/profile/PrefRows";
 import _ from "@lib/translate";
 import {
   ChannelList,
@@ -23,13 +24,9 @@ import { RavenChannel } from "@raven/types/RavenChannelManagement/RavenChannel";
 
 export interface ArchiveChannelButtonProps {
   channel: ChannelListItem;
-  disabled?: boolean;
 }
 
-export function ArchiveChannelButton({
-  channel,
-  disabled = false,
-}: ArchiveChannelButtonProps) {
+export function ArchiveChannelButton({ channel }: ArchiveChannelButtonProps) {
   const navigate = useNavigate();
   const { mutate } = useSWRConfig();
   const { updateDoc, loading, error } = useFrappeUpdateDoc();
@@ -63,19 +60,19 @@ export function ArchiveChannelButton({
 
   return (
     <AlertDialog>
-      <AlertDialogTrigger asChild disabled={disabled}>
-        <button
-          className={`w-full flex justify-start p-3 h-auto cursor-pointer font-normal bg-transparent border border-outline-gray-2/70 rounded-lg transition-colors ${disabled ? "opacity-50 pointer-events-none" : "hover:bg-surface-gray-2/50"}`}
-        >
-          <div className="flex items-center gap-3">
-            <Archive className="w-4 h-4 text-ink-gray-4" />
-            <span className="text-sm">
-              {channel.is_archived === 0
-                ? _("Archive channel")
-                : _("Unarchive channel")}
-            </span>
-          </div>
-        </button>
+      <AlertDialogTrigger asChild>
+        <PrefActionRow
+          label={
+            channel.is_archived === 0
+              ? _("Archive channel")
+              : _("Unarchive channel")
+          }
+          description={
+            channel.is_archived === 0
+              ? _("Close the channel to new messages and hide it from your list")
+              : _("Restore the channel and allow new messages again")
+          }
+        />
       </AlertDialogTrigger>
       <AlertDialogContent className="sm:max-w-xl">
         <AlertDialogHeader>
@@ -86,27 +83,27 @@ export function ArchiveChannelButton({
           </AlertDialogTitle>
           <AlertDialogDescription asChild>
             {channel.is_archived === 0 ? (
-              <div className="space-y-4 text-left text-ink-gray-8 pt-1">
+              <div className="space-y-4 pt-1">
                 {error ? <ErrorBanner error={error} /> : null}
-                <p className="text-sm text-ink-gray-8/80">
+                <p>
                   {_("Please understand that when you archive")}{" "}
                   <strong>{channel.channel_name}</strong>:
                 </p>
-                <ul className="list-inside list-disc space-y-1 text-sm text-ink-gray-8/80">
+                <ul className="list-inside list-disc space-y-1">
                   <li>{_("It will be removed from your channel list")}</li>
                   <li>
                     {_("No one will be able to send messages to this channel")}
                   </li>
                 </ul>
-                <p className="text-sm text-ink-gray-8/80">
+                <p>
                   {_(
                     "You will still be able to find the channel’s contents via search. And you can always unarchive the channel in the future, if you want.",
                   )}
                 </p>
               </div>
             ) : (
-              <div className="space-y-4 text-left text-ink-gray-8">
-                <p className="text-sm text-ink-gray-8/80 pt-1">
+              <div className="space-y-4">
+                <p className="pt-1">
                   {_("Are you sure you want to unarchive ")}
                   <strong>{channel.channel_name}</strong>?
                 </p>

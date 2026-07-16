@@ -1,5 +1,5 @@
 import { useCallback } from "react"
-import { useNavigate, useOutletContext, useParams } from "react-router-dom"
+import { useNavigate, useOutletContext, useParams, useSearchParams } from "react-router-dom"
 import { useFrappeGetDoc } from "frappe-react-sdk"
 import ThreadDrawer from "./ThreadDrawer"
 import { focusComposer } from "@components/features/ChatInput/composerFocus"
@@ -15,8 +15,14 @@ import type { Message } from "@raven/types/common/Message"
  */
 export default function ThreadDrawerRoute() {
     const { threadID } = useParams<{ threadID: string }>()
-    const { parentChannelID: ctxParent } = useOutletContext<{ parentChannelID?: string }>()
+    const { parentChannelID: ctxParent, showOpenChannel } = useOutletContext<{ parentChannelID?: string, showOpenChannel?: boolean }>()
     const navigate = useNavigate()
+
+    // Permalink to a REPLY inside this thread (set by the /message resolver).
+    // A DISTINCT param from ?message_id, which belongs to the channel's stream —
+    // a channel and thread can be open side by side, each with its own target.
+    const [searchParams] = useSearchParams()
+    const threadMessageID = searchParams.get("thread_message_id")
 
     // The channel/DM views pass the parent via context; the threads page passes it via nav
     // state on click. On a COLD threads-page deep-link there's neither — so resolve it from the
@@ -38,5 +44,13 @@ export default function ThreadDrawerRoute() {
     }, [navigate, parentChannelID])
 
     if (!threadID) return null
-    return <ThreadDrawer threadID={threadID} parentChannelID={parentChannelID} onClose={onClose} />
+    return (
+        <ThreadDrawer
+            threadID={threadID}
+            parentChannelID={parentChannelID}
+            onClose={onClose}
+            showOpenChannel={showOpenChannel}
+            initialMessageID={threadMessageID}
+        />
+    )
 }

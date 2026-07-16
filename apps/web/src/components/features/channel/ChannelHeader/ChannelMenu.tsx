@@ -42,14 +42,14 @@ const ChannelMenu = ({ channelID }: { channelID: string }) => {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm">
-                    <div className="flex items-center gap-1">
-                        <ChannelIcon type={channel.type} className="h-4 w-4" />
-                        <span className="text-base font-medium">
+                <Button variant="ghost" size={isMobile ? "md" : "sm"} className="min-w-0 shrink">
+                    <div className="flex items-center gap-1 min-w-0">
+                        <ChannelIcon type={channel.type} className="size-4.5 md:size-4 shrink-0" />
+                        <span className="text-lg md:text-base font-medium truncate min-w-0">
                             {channel.channel_name}
                         </span>
                     </div>
-                    <ChevronDown className="size-4" />
+                    <ChevronDown className="hidden md:block shrink-0" />
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-64">

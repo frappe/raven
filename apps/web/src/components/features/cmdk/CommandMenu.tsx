@@ -91,14 +91,14 @@ const CommandPalette = ({ inDrawer = false }: { inDrawer?: boolean }) => {
                 value={text}
                 onValueChange={(v) => setText(v.slice(0, 140))}
                 maxLength={140}
-                placeholder={_("Search or type a command")}
+                placeholder={isMobile ? _("Search") : _("Search or type a command")}
             />
-            <CommandList className={inDrawer ? "flex-1 overflow-auto max-h-none" : "max-h-105"}>
+            <CommandList className={inDrawer ? "flex-1 overflow-auto max-h-none pb-6" : "max-h-105"}>
 
                 <ChannelList text={text} />
                 <UserList text={text} />
-                <SettingsList text={text} />
-                <QuickActions text={text} />
+                {!isMobile && <SettingsList text={text} />}
+                {!isMobile && <QuickActions text={text} />}
                 <CommandGroup forceMount>
                     <CommandItem
                         // Fixed value + forceMount: this is the always-available fallback action.
@@ -120,16 +120,16 @@ const CommandPalette = ({ inDrawer = false }: { inDrawer?: boolean }) => {
                         }}
                         className='cursor-pointer min-w-0'
                     >
-                        <TextSearch className="h-4 w-4 text-ink-gray-4 shrink-0" />
+                        <TextSearch className="h-4 w-4 text-base text-ink-gray-4 shrink-0" />
                         {channel ? (
                             <ScopedLabel
                                 text={text}
                                 templateWithText={_("Search for {0} in {1}")}
                                 templateNoText={_("Search in {0}")}
                                 entity={
-                                    <span className="shrink-0 whitespace-nowrap inline-flex items-center gap-1">
+                                    <span className="shrink-0 whitespace-nowrap inline-flex items-center gap-0.5">
                                         <ChannelIcon type={channel.type} className="h-4 w-4 shrink-0" />
-                                        <span className="font-medium text-ink-gray-8">{channel.channel_name}</span>
+                                        <span className="text-base-medium text-ink-gray-8">{channel.channel_name}</span>
                                     </span>
                                 }
                             />
@@ -181,7 +181,7 @@ interface ScopedLabelProps {
 function ScopedLabel({ text, templateWithText, templateNoText, entity }: ScopedLabelProps) {
     const nodes = text
         ? interpolate(templateWithText, [
-            <span key="q" className="truncate min-w-0">{`\`${text}\``}</span>,
+            <span key="q" className="truncate min-w-0 text-base">{`\`${text}\``}</span>,
             entity,
         ])
         : interpolate(templateNoText, [entity])
@@ -195,7 +195,7 @@ function interpolate(template: string, nodes: React.ReactNode[]): React.ReactNod
             return <React.Fragment key={i}>{nodes[Number(part)] ?? null}</React.Fragment>
         }
         const trimmed = part.trim()
-        return trimmed ? <span key={i} className="shrink-0 whitespace-nowrap">{trimmed}</span> : null
+        return trimmed ? <span key={i} className="shrink-0 whitespace-nowrap text-base">{trimmed}</span> : null
     })
 }
 

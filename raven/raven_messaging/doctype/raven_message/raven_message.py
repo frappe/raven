@@ -99,6 +99,8 @@ class RavenMessage(Document):
 		self.remove_empty_trailing_paragraphs(soup)
 		self.extract_mentions(soup)
 
+		self.links = ""
+
 		for link in soup.find_all("a"):
 			href = link.get("href")
 			if href:
@@ -108,6 +110,7 @@ class RavenMessage(Document):
 					preview.deferred_insert()
 
 				self.append("links_table", {"url": href})
+				self.links += f"{href}\n"
 
 		# Spoilers (||text||) must not leak in the derived preview (DM list, push
 		# notifications, search) — replace each spoiler's text with a placeholder
@@ -151,6 +154,10 @@ class RavenMessage(Document):
 					{
 						"channel_id": self.channel_id,
 						"user_id": mention_id,
+						# The mentioned user's client adds this to its unread-notification set
+						# (badge + mark-read-on-view). Set even on insert: Frappe names the doc
+						# (set_new_name) before the before_validate/validate hooks run.
+						"message_id": self.name,
 					},
 					user=mention_id,
 					after_commit=True,
@@ -779,6 +786,8 @@ class RavenMessage(Document):
 						"hide_link_preview": self.hide_link_preview,
 						"blurhash": self.blurhash,
 						"message_batch_id": self.message_batch_id,
+						# Structured payload for System messages (rendered translated client-side)
+						"json": self.json,
 					},
 				},
 				doctype="Raven Channel",

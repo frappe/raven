@@ -1,4 +1,4 @@
-import { createContext, useContext } from "react"
+import { createContext, useContext, useRef } from "react"
 import { useIntersectionObserver } from "usehooks-ts"
 
 /**
@@ -26,8 +26,8 @@ type UseHasBeenInViewOptions = {
  * threads channel fetches only what the user actually sees, not all ~30 windowed
  * messages. (Latching + SWR's cache means scroll-out/in never re-fetches.)
  *
- * For a live "currently visible" need (e.g. clearing notifications when seen), add a
- * non-latching sibling later — this one freezes by design.
+ * For a live "currently visible" need, use the non-latching sibling below — this one
+ * freezes by design.
  */
 export const useHasBeenInView = ({ rootMargin = "200px" }: UseHasBeenInViewOptions = {}) => {
     const root = useContext(ScrollViewportContext)
@@ -37,4 +37,18 @@ export const useHasBeenInView = ({ rootMargin = "200px" }: UseHasBeenInViewOptio
         freezeOnceVisible: true,
     })
     return { ref, hasBeenInView: isIntersecting }
+}
+
+/**
+ * Like useHasBeenInView, but keeps watching: `isInView` is live, `hasBeenInView`
+ * still latches for lazy mounting. For things that need to re-check whenever the
+ * element is on screen (e.g. a thread pill refetching a suspect reply count).
+ */
+export const useInView = ({ rootMargin = "200px" }: UseHasBeenInViewOptions = {}) => {
+    const root = useContext(ScrollViewportContext)
+    const { ref, isIntersecting } = useIntersectionObserver({ root, rootMargin })
+    // Every visibility change re-renders, so latching in a ref is safe here.
+    const seen = useRef(false)
+    if (isIntersecting) seen.current = true
+    return { ref, isInView: isIntersecting, hasBeenInView: seen.current }
 }

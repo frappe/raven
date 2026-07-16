@@ -18,15 +18,17 @@ export const FileDropZone = ({ channelID, children, disabled = false }: { channe
     const onAddFile = useAttachFile(channelID)
     const [isDragging, setIsDragging] = useState(false)
 
-    // Disabled (no composer — archived / not a member): render children plainly so a drop can't
-    // stage files there's no way to send.
-    if (disabled) return <div className="relative flex min-h-0 flex-1 flex-col">{children}</div>
-
+    // IMPORTANT: keep this a single return. There used to be an early-return branch for
+    // `disabled` that rendered `children` in a slightly different tree — React saw that as
+    // a different element tree and REMOUNTED the whole chat pane every time `disabled`
+    // flipped (which happens on every channel open, once membership loads). The remount
+    // silently reset ChatStream's scroll and data state. So: one tree, and when disabled
+    // the handlers below simply do nothing.
     return (
         <div
             className="relative flex min-h-0 flex-1 flex-col"
             onDragOver={(e) => {
-                if (!isFileDrag(e)) return
+                if (disabled || !isFileDrag(e)) return
                 e.preventDefault() // required for the drop event to fire
                 if (!isDragging) setIsDragging(true)
             }}
@@ -36,7 +38,7 @@ export const FileDropZone = ({ channelID, children, disabled = false }: { channe
                 if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setIsDragging(false)
             }}
             onDrop={(e) => {
-                if (!isFileDrag(e)) return
+                if (disabled || !isFileDrag(e)) return
                 e.preventDefault()
                 setIsDragging(false)
                 if (e.dataTransfer.files?.length) {

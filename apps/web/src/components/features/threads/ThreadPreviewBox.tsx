@@ -32,16 +32,14 @@ export const ThreadPreviewBox = ({
             <div
                 onClick={onClick}
                 className={cn(
-                    "group block rounded px-6 py-4 transition-colors relative cursor-pointer select-none",
-                    "hover:bg-surface-gray-3 focus:outline-none focus-visible:bg-surface-gray-3",
+                    "group block rounded p-4 transition-colors relative cursor-pointer select-none",
+                    "hover:bg-surface-gray-3 active:bg-surface-gray-3 focus:outline-none focus-visible:bg-surface-gray-3",
                     isActive && RESULT_ROW_ACTIVE_CLASS,
                     isUnread && !isActive && "bg-surface-gray-1"
                 )}
             >
-                {/* Connecting line from avatar to participants - only show for non-DM threads */}
-                {!channelDetails.isDirectMessage && (
-                    <div className="absolute top-20 left-10 w-7 h-[calc(100%-6.75rem)] border-l border-b border-outline-gray-2 rounded-bl-lg z-0" />
-                )}
+                {/* Connecting line from avatar down to the participants / reply-count row. */}
+                <div className="absolute top-20 left-10 w-7 h-[calc(100%-6.75rem)] border-l border-b border-outline-gray-2 rounded-bl-lg z-0" />
 
                 {/* Header: Channel name and date */}
                 {channelDetails.channelName && (

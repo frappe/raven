@@ -1,6 +1,7 @@
 import { useEditor, type Editor } from "@tiptap/react"
 import type { AnyExtension } from "@tiptap/core"
 import StarterKit from "@tiptap/starter-kit"
+import { Link } from "@tiptap/extension-link"
 import { Highlight } from "@tiptap/extension-highlight"
 import { TableKit } from "@tiptap/extension-table"
 import { Placeholder } from "@tiptap/extensions"
@@ -15,6 +16,7 @@ import { CustomEmoji } from "./customEmoji"
 import { Spoiler } from "./spoiler"
 import { EmojiSuggestion } from "./emoji"
 import { isSuggestionPopupOpen } from "./suggestion"
+import { convertFenceLineToCodeBlock } from "./codeBlockFence"
 
 /**
  * The one Tiptap configuration shared by every place we edit a message — the main
@@ -95,7 +97,17 @@ export const useRavenEditor = ({ submitRef, linkRef, filesRef, cancelReplyRef, e
     const extensions: AnyExtension[] = [
         StarterKit.configure({
             heading: false,
-            link: { openOnClick: false, autolink: true, defaultProtocol: "https" },
+            link: false, // replaced below with a non-inclusive variant
+        }),
+        // Link with `inclusive: false`: stock Link makes the mark inclusive when
+        // autolink is on, so a PASTED link swallowed everything typed after it
+        // (spaces included) until the caret was arrow-keyed out. Non-inclusive
+        // stops the mark at its boundary; autolinking of typed URLs still works —
+        // the autolink plugin re-matches the word on each keystroke by itself.
+        Link.extend({ inclusive: false }).configure({
+            openOnClick: false,
+            autolink: true,
+            defaultProtocol: "https",
         }),
         Highlight,
         TableKit,
@@ -203,13 +215,42 @@ export const useRavenEditor = ({ submitRef, linkRef, filesRef, cancelReplyRef, e
                     // suggestion plugin, so without this it would swallow Enter first.
                     if (isSuggestionPopupOpen()) return false
 
-                    // Shift+Enter is always a newline.
-                    if (event.shiftKey) return false
+                    const ed = editorRef.current
+
+                    // Shift+Enter is always a newline — a PARAGRAPH split (Enter's own
+                    // default chain), matching what plain Enter already produces on
+                    // mobile and in new-line mode. It used to insert a hard break,
+                    // which packed every visual line into ONE paragraph — silently
+                    // killing every block input rule mid-message (``` / "- " / "> "
+                    // all anchor to block start) and making toggleCodeBlock swallow
+                    // the lines above the cursor. Renders identically: .tiptap p has
+                    // no margin, so split paragraphs stack as tight as <br> lines.
+                    if (event.shiftKey) {
+                        if (!ed) return false
+                        const handled = ed.commands.first(({ commands }) => [
+                            () => commands.newlineInCode(), // inside a code block: plain \n
+                            () => commands.createParagraphNear(),
+                            () => commands.liftEmptyBlock(),
+                            () => commands.splitBlock(), // in a list: new line WITHIN the item (Enter makes a new item)
+                        ])
+                        if (handled) {
+                            event.preventDefault()
+                            return true
+                        }
+                        return false
+                    }
+
+                    // A paragraph reading exactly ``` (or ```lang) becomes a code block
+                    // on Enter — the input rule only fires on a typed space, and in
+                    // send-message mode this Enter would otherwise SEND the fence.
+                    // Checked before the mobile branch so it works there too.
+                    if (!event.metaKey && !event.ctrlKey && ed && convertFenceLineToCodeBlock(ed)) {
+                        event.preventDefault()
+                        return true
+                    }
 
                     // Mobile: Enter always inserts a newline; the send button submits.
                     if (isMobile) return false
-
-                    const ed = editorRef.current
 
                     // Cmd/Ctrl+Enter always sends — the reliable "send" chord everywhere,
                     // including code blocks and lists.
