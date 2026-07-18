@@ -11,6 +11,7 @@ import { ChannelListItem, DMChannelListItem } from '@raven/types/common/ChannelL
 import _ from '@lib/translate'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@db'
+import { cn } from '@lib/utils'
 import { useChannelMembers } from '@hooks/useChannelMembers'
 import { Badge } from '@components/ui/badge'
 
@@ -21,11 +22,17 @@ interface SearchFiltersProps {
     onChannelChange: (value: string) => void
     onUserChange: (value: string) => void
     isMobile?: boolean
+    /** Force the compact (icon) Filters button even on desktop — used when the chat pane
+     *  is open and the list pane is too narrow for the full-size text button. */
+    compact?: boolean
 }
-export function SearchFiltersBar({ filters, channels, dmChannels, isMobile, onChannelChange, onUserChange }: SearchFiltersProps) {
+export function SearchFiltersBar({ filters, channels, dmChannels, isMobile, compact, onChannelChange, onUserChange }: SearchFiltersProps) {
     const users = useLiveQuery(() => db.users.toArray(), [])
     const { members, isLoading: isMembersLoading } = useChannelMembers(filters.channel_id || '')
     const clearAll = useClearSearchFilters()
+
+    // Compact (icon) filter button: on mobile, or whenever the caller says space is tight.
+    const compactButton = isMobile || compact
 
     const userFilterOptions = filters.channel_id && members.length > 0 ? members : (users ?? [])
 
@@ -52,8 +59,11 @@ export function SearchFiltersBar({ filters, channels, dmChannels, isMobile, onCh
     const hasFilters = filters.channel_id !== '' || filters.owner !== '' || moreFiltersCount > 0
 
     return (
-        <div className="flex flex-row items-center gap-2 md:items-start md:flex-wrap">
-            {!isMobile && hasFilters && <ClearFiltersButton />}
+        <div className={cn(
+            "flex flex-row items-center gap-2 md:items-start",
+            compactButton ? "md:flex-nowrap" : "md:flex-wrap"
+        )}>
+            {!compactButton && hasFilters && <ClearFiltersButton />}
             {/* On mobile each select sits in a flex-1 wrapper so it shrinks to share the row
                 (trigger goes w-full + truncates); on desktop the wrapper is content-width and
                 the trigger keeps its fixed w-40 — unchanged. */}
@@ -65,7 +75,7 @@ export function SearchFiltersBar({ filters, channels, dmChannels, isMobile, onCh
                     showLabel={false}
                     size="sm"
                     dropdownClassName="w-60"
-                    triggerClassName={isMobile ? "w-full" : "w-40"}
+                    triggerClassName={isMobile ? "w-full" : compact ? "w-[8.5rem]" : "w-40"}
                     className={isMobile ? "w-full min-w-0" : undefined}
                 />
             </div>
@@ -81,7 +91,7 @@ export function SearchFiltersBar({ filters, channels, dmChannels, isMobile, onCh
                     allLabel={_("In Any Channel")}
                     size="sm"
                     dropdownClassName="w-68"
-                    triggerClassName={isMobile ? "w-full" : "w-40"}
+                    triggerClassName={isMobile ? "w-full" : compact ? "w-[8.5rem]" : "w-40"}
                     className={isMobile ? "w-full min-w-0" : undefined}
                     showLabel={false}
                     label="Channel"
@@ -91,8 +101,8 @@ export function SearchFiltersBar({ filters, channels, dmChannels, isMobile, onCh
             {/* TODO: Add date range filter capability to sqlite search, either Frappe side or override in Raven */}
 
             <Popover>
-                {isMobile ? (
-                    <div className="shrink-0 inline-flex h-7 items-stretch rounded border border-outline-gray-2 bg-surface-base divide-x divide-outline-gray-2">
+                {compactButton ? (
+                    <div className="shrink-0 inline-flex h-8 sm:h-7 items-stretch rounded border border-outline-gray-2 bg-surface-base divide-x divide-outline-gray-2">
                         <PopoverTrigger asChild>
                             <button
                                 type="button"

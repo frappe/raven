@@ -5,7 +5,7 @@ import { ChannelListItem, DMChannelListItem } from "@raven/types/common/ChannelL
 import { UserData } from "@db"
 import { WorkspaceFields } from "@hooks/useWorkspaces"
 import { UserAvatar } from "@components/features/message/UserAvatar"
-import { MessageContent } from "@components/features/message/renderers/MessageContent"
+import { MessageContent, MessageBody } from "@components/features/message/renderers/MessageContent"
 import { ChannelIcon } from "@components/common/ChannelIcon/ChannelIcon"
 import { formatRelativeDate } from "@lib/date"
 import { cn } from "@lib/utils"
@@ -86,7 +86,12 @@ const MessageResultBlockInner = ({ message, user, channel, dmChannel, peer, work
                         )}
                     </div>
                     <div className="mt-1 [&_p]:my-0">
-                        <MessageContent message={message} showLinkPreview={false} />
+                        {/* Polls: render the FTS snippet (question + options, with <mark>
+                            highlights) instead of the live poll card — a votable card in a
+                            search list would fire get_poll per row and drop the highlight. */}
+                        {message.message_type === "Poll"
+                            ? <MessageBody content={message.text} />
+                            : <MessageContent message={message} showLinkPreview={false} />}
                     </div>
                 </div>
             </div>

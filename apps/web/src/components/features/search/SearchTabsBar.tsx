@@ -21,7 +21,7 @@ interface SearchTabsBarProps {
 
 const SearchTabsBar: React.FC<SearchTabsBarProps> = ({ activeTab, setActiveTab, fullWidth = false }) => (
     <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as SearchTab)} className={fullWidth ? 'w-full' : 'w-fit'}>
-        <TabsList variant="subtle" size="sm" className={cn(fullWidth && 'w-full')}>
+        <TabsList variant="subtle" size="md" className={cn(fullWidth && 'w-full')}>
             {TABS.map(tab => (
                 <TabsTrigger key={tab.key} value={tab.key} className={cn(fullWidth && 'flex-1')}>
                     {tab.label}

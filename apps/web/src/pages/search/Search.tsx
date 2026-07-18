@@ -148,29 +148,46 @@ export default function Search() {
             "flex flex-row h-full overflow-hidden",
             hasSelection && "bg-surface-gray-1"
         )}>
-            {/* Left pane: full width by default; exact half once a result is selected (no divider —
-                the right pane's gray canvas separates them). On mobile a selection takes over the
-                whole screen, so the list pane is hidden (mirrors the notifications page). */}
+            {/* Left pane: full width by default; the narrower side (45%) once a result is selected —
+                the chat pane gets the wider 55% (no divider — the right pane's gray canvas separates
+                them). On mobile a selection takes over the whole screen, so the list pane is hidden
+                (mirrors the notifications page). */}
             <div className={cn(
                 "relative flex flex-col overflow-hidden min-w-0",
-                hasSelection ? "w-1/2 shrink-0" : "flex-1",
+                hasSelection ? "w-[45%] shrink-0" : "flex-1",
                 isMobile && hasSelection && "hidden"
             )}>
                 <PageHeader title={_('Search')} />
                 <div className="shrink-0">
-                    <div className="mx-auto w-full px-2 pt-2 space-y-2">
+                    {/* p-2 + space-y-3 mirrors the threads page so the search-bar → tabs → list
+                        spacing is identical across pages. */}
+                    <div className="mx-auto w-full p-2 pb-0 space-y-3">
                         {searchInput}
-                        <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-center md:flex-wrap">
-                            <SearchTabsBar activeTab={activeTab} setActiveTab={onTabChange} fullWidth={isMobile} />
-                            <div className="md:ml-auto">
-                                <SearchFiltersBar
-                                    filters={filters}
-                                    channels={channels}
-                                    dmChannels={dmChannels}
-                                    onChannelChange={setChannelFilter}
-                                    onUserChange={setUserFilter}
-                                    isMobile={isMobile}
-                                />
+                        {/* Wrapper is the space-y child; it absorbs the inner row's -my-1 so the
+                            gaps stay 12px (the -my would otherwise shrink them). The inner row is
+                            tabs + filters: one row (nowrap) that scrolls horizontally at odd/narrow
+                            resolutions when the pane is open. py-1 -my-1 gives the filter button's
+                            floating count badge clip room (overflow-x-auto forces overflow-y to clip)
+                            while netting the row's box to zero — so the row height is unchanged. */}
+                        <div>
+                            <div className={cn(
+                                "flex flex-col gap-3 md:flex-row md:items-center md:py-1 md:-my-1",
+                                hasSelection ? "md:flex-nowrap md:overflow-x-auto md:min-w-0" : "md:flex-wrap"
+                            )}>
+                                <SearchTabsBar activeTab={activeTab} setActiveTab={onTabChange} fullWidth={isMobile} />
+                                <div className="md:ml-auto">
+                                    <SearchFiltersBar
+                                        filters={filters}
+                                        channels={channels}
+                                        dmChannels={dmChannels}
+                                        onChannelChange={setChannelFilter}
+                                        onUserChange={setUserFilter}
+                                        isMobile={isMobile}
+                                        // Chat pane open → left pane is only 45%; use the compact icon
+                                        // filter button so the row doesn't crowd/wrap.
+                                        compact={hasSelection}
+                                    />
+                                </div>
                             </div>
                         </div>
                         <SearchActiveBadges
@@ -214,9 +231,9 @@ export default function Search() {
             {selected && (
                 <div className={cn(
                     "shrink-0 flex flex-col min-h-0 bg-surface-gray-0",
-                    isMobile ? "w-full" : "w-1/2"
+                    isMobile ? "w-full" : "w-[55%]"
                 )}>
-                    <NotificationChat selected={selected} />
+                    <NotificationChat selected={selected} onClose={() => setSelected(null)} />
                 </div>
             )}
         </div>

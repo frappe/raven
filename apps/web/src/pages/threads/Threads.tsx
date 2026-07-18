@@ -153,7 +153,7 @@ export default function Threads() {
             // sliding over the tab bar like a native detail page. The footer stays
             // MOUNTED — unmounting it resized the list row, which clamped the list's
             // scroll position at the bottom.
-            <div className="relative flex flex-col h-screen overflow-hidden">
+            <div className="relative flex flex-col h-dvh overflow-hidden">
                 <div className="flex flex-1 overflow-hidden">
                     <div
                         className="flex w-full min-h-0 flex-col"

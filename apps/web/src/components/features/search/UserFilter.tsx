@@ -65,7 +65,8 @@ export function UserFilter({ filters, users, onValueChange, showLabel = true, si
                         size={isCompact ? 'sm' : 'md'}
                         role="combobox"
                         aria-expanded={open}
-                        className={cn("justify-between font-normal overflow-hidden", triggerClassName ?? dropdownClassName)}
+                        // sm bumps to h-8 on mobile (bigger touch target), shrinks to h-7 on desktop.
+                        className={cn("justify-between font-normal overflow-hidden", isCompact && "!h-8 sm:!h-7", triggerClassName ?? dropdownClassName)}
                     >
                         {triggerContent}
                         <ChevronDownIcon className="shrink-0 text-ink-gray-4" />

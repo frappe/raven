@@ -16,6 +16,7 @@ import { WorkspaceFields } from '@hooks/useWorkspaces'
 import { ChannelListItem, DMChannelListItem } from '@raven/types/common/ChannelListItem'
 import type { SelectedNotification } from '@pages/notifications/NotificationChat'
 import { RESULT_ROW_ACTIVE_CLASS } from '@components/common/MessageResultBlock/MessageResultBlock'
+import { searchResultToSelection } from '@components/common/MessageResultBlock/searchResultToSelection'
 import { cn } from '@lib/utils'
 import { SearchFilters } from '../types'
 import { SearchNoResults } from './SearchNoResults'
@@ -49,8 +50,9 @@ const SearchFileResults = ({ searchValue, filters, onSelect, selectedID }: Searc
             initialItemCount={Math.min(results.length, 10)}
             computeItemKey={(_idx, file) => `${file.id}::${file.internal_link ?? ''}`}
             itemContent={(_idx, file) => {
-                // Thread replies live in a thread channel; resolve display against the
-                // real (parent) channel so selection carries the routing-ready id.
+                // Display only: thread replies live in a thread channel, so resolve the
+                // row's channel/avatar against the real (parent) channel. Routing is
+                // handled separately by searchResultToSelection.
                 const baseChannelId = file.parent_channel_id ?? file.channel_id
                 const channel = channelById.get(baseChannelId)
                 const dmChannel = dmById.get(baseChannelId)
@@ -64,13 +66,14 @@ const SearchFileResults = ({ searchValue, filters, onSelect, selectedID }: Searc
                         peer={peer}
                         workspace={channel?.workspace ? workspaceById.get(channel.workspace) : undefined}
                         className={selectedID === file.name ? RESULT_ROW_ACTIVE_CLASS : undefined}
-                        onClick={() => onSelect({
-                            channelID: baseChannelId,
+                        onClick={() => onSelect(searchResultToSelection({
                             messageID: file.name,
+                            channelID: file.channel_id,
+                            parentChannelID: file.parent_channel_id,
+                            isThreadRoot: !!file.is_thread,
                             isDirectMessage: !!dmChannel,
                             peer,
-                            isThread: !!file.is_thread,
-                        })}
+                        }))}
                     />
                 )
             }}

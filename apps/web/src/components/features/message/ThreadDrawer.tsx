@@ -63,19 +63,28 @@ export default function ThreadDrawer({
     const parentIsDM = parentChannel?.is_direct_message === 1
     const threadInputRef = useRef<HTMLFormElement>(null)
 
+    // Parent channel route (DM or workspace channel). Absent until the parent channel is
+    // known (e.g. a cold deep-link still resolving).
+    const navigate = useNavigate()
+    const parentChannelBase =
+        parentChannelID && (parentIsDM || parentChannel?.workspace)
+            ? parentIsDM
+                ? `/dm-channel/${encodeURIComponent(parentChannelID)}`
+                : `/${encodeURIComponent(parentChannel?.workspace ?? "")}/${encodeURIComponent(parentChannelID)}`
+            : undefined
+
     // "Open channel": go to the parent channel with this thread still open and the
     // thread's ROOT message selected there (the thread id IS the root message id).
-    // Unavailable until the parent channel is known (e.g. a cold deep-link still resolving).
-    const navigate = useNavigate()
-    const onOpenChannel =
-        parentChannelID && (parentIsDM || parentChannel?.workspace)
-            ? () => {
-                const base = parentIsDM
-                    ? `/dm-channel/${encodeURIComponent(parentChannelID)}`
-                    : `/${encodeURIComponent(parentChannel?.workspace ?? "")}/${encodeURIComponent(parentChannelID)}`
-                navigate(`${base}/thread/${encodeURIComponent(threadID)}?message_id=${encodeURIComponent(threadID)}`)
-            }
-            : undefined
+    const onOpenChannel = parentChannelBase
+        ? () => navigate(`${parentChannelBase}/thread/${encodeURIComponent(threadID)}?message_id=${encodeURIComponent(threadID)}`)
+        : undefined
+
+    // Parent channel route centered on the thread's root message — the mobile back target
+    // ThreadHeader falls back to when the thread is an overlay (search / saved) with no
+    // route of its own. Ignored on real thread routes, where history-back is used.
+    const mobileBackTo = parentChannelBase
+        ? `${parentChannelBase}?message_id=${encodeURIComponent(threadID)}`
+        : undefined
 
     // Gate the actions by your membership in the thread (already in the members store, seeded by
     // the pill / get_thread_details). Only members can leave; only thread admins can delete.
@@ -161,6 +170,7 @@ export default function ThreadDrawer({
                 <ThreadHeader
                     onClose={onClose}
                     onOpenChannel={showOpenChannel ? onOpenChannel : undefined}
+                    mobileBackTo={mobileBackTo}
                     onLeave={onLeaveThread}
                     onRequestDelete={() => setConfirmDelete(true)}
                     leaving={leaving}

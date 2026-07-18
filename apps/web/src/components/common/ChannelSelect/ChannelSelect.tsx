@@ -82,7 +82,8 @@ export function ChannelSelect({
         return dmChannels?.find((d) => d.name === value) ?? null
     }, [value, channels, dmChannels])
 
-    const triggerSizeClass = size === "sm" ? "!h-7 !py-1 [&>span]:!px-0" : "!h-9 !py-2 [&>span]:!px-0"
+    // sm bumps to h-8 on mobile (bigger touch target), shrinks to h-7 on desktop.
+    const triggerSizeClass = size === "sm" ? "!h-8 sm:!h-7 !py-1 [&>span]:!px-0" : "!h-9 !py-2 [&>span]:!px-0"
     const paddingClass =
         selectedChannel && value !== "*all"
             ? size === "sm"

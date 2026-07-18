@@ -69,23 +69,24 @@ const SavedMessages = () => {
 
     return (
         <div className={cn(
-            "flex flex-col h-screen overflow-hidden",
+            "flex flex-col h-dvh overflow-hidden",
             hasSelection && "bg-surface-gray-1"
         )}>
             <div className="flex flex-1 overflow-hidden">
-                {/* Left pane: full width by default; exact half once a row is selected (no divider — the
-                    right pane's gray canvas separates them). On mobile a selection takes over the whole
-                    screen, so the list pane is hidden (mirrors notifications / search). */}
+                {/* Left pane: full width by default; the narrower 45% once a row is selected — the
+                    chat pane gets the wider 55% (no divider — the right pane's gray canvas separates
+                    them). On mobile a selection takes over the whole screen, so the list pane is
+                    hidden (mirrors notifications / search). */}
                 <div className={cn(
                     "relative flex flex-col min-w-0",
-                    hasSelection ? "w-1/2 shrink-0" : "flex-1",
+                    hasSelection ? "w-[45%] shrink-0" : "flex-1",
                     isMobile && hasSelection && "hidden"
                 )}>
                     <PageHeader title={_('Saved Messages')} />
 
-                    <div className="shrink-0 px-2 pt-2 pb-2 space-y-2">
+                    <div className="shrink-0 p-2 space-y-3">
                         {searchInput}
-                        <div className="mt-3 flex items-center gap-2">
+                        <div className="flex items-center gap-2">
                             {/* --- Reminders: tabs + add-reminder button (commented until backend support) --- */}
                             {/* <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as SavedMessageStatus)}>
                                 <TabsList variant="subtle" size="sm">
@@ -130,9 +131,9 @@ const SavedMessages = () => {
                 {selected && (
                     <div className={cn(
                         "shrink-0 flex flex-col min-h-0 bg-surface-gray-0",
-                        isMobile ? "w-full" : "w-1/2"
+                        isMobile ? "w-full" : "w-[55%]"
                     )}>
-                        <NotificationChat selected={selected} />
+                        <NotificationChat selected={selected} onClose={() => setSelected(null)} />
                     </div>
                 )}
             </div>

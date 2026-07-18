@@ -27,8 +27,13 @@ export function SearchLayout() {
         }, { replace: true })
     }, [setSearchParams])
 
-    return <div className="flex flex-col h-screen w-full">
-        <Outlet context={{ searchValue, setSearchValue }} />
+    return <div className="flex flex-col h-dvh w-full">
+        {/* flex-1 min-h-0 so the page (h-full) fills only the space ABOVE the in-flow
+            footer. Without it the Outlet's h-full ate the whole viewport and pushed
+            the shrink-0 footer off the bottom of the screen. */}
+        <div className="flex-1 min-h-0">
+            <Outlet context={{ searchValue, setSearchValue }} />
+        </div>
         <AppMobileFooter />
     </div>
 

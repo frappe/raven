@@ -126,7 +126,7 @@ export function NotificationPane({
     )
 }
 
-export default function NotificationChat({ selected }: { selected: SelectedNotification | null }) {
+export default function NotificationChat({ selected, onClose }: { selected: SelectedNotification | null, onClose?: () => void }) {
     const channelID = selected?.channelID ?? ""
     const setMessageTarget = useSetAtom(messageTargetAtom(channelID))
 
@@ -147,6 +147,8 @@ export default function NotificationChat({ selected }: { selected: SelectedNotif
             isDirectMessage={selected.isDirectMessage}
             peer={selected.peer}
             initialMessageID={selected.messageID}
+            // Desktop thread pane's close X → collapse the split back to the list.
+            onCloseThread={onClose}
         />
     )
 }
