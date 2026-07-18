@@ -159,6 +159,28 @@ const CommandPalette = ({ inDrawer = false }: { inDrawer?: boolean }) => {
                             />
                         )}
                     </CommandItem>
+                    {/* "Search anywhere": the UNSCOPED counterpart, shown only when the primary
+                        item is scoped to the current channel/DM (in global context that item is
+                        already unscoped, so this would be redundant). Fixed non-matching value +
+                        forceMount, same as above, so it stays visible without stealing the highlight. */}
+                    {(channel || peerUser || isDMRoute) && (
+                        <CommandItem
+                            value="raven-global-search-anywhere"
+                            forceMount
+                            onSelect={() => {
+                                navigate(text ? `/search?q=${encodeURIComponent(text)}` : '/search')
+                                setOpen(false)
+                            }}
+                            className='cursor-pointer min-w-0'
+                        >
+                            <TextSearch className="h-4 w-4 text-base text-ink-gray-4 shrink-0" />
+                            <ScopedLabel
+                                text={text}
+                                templateWithText={_("Search for {0} anywhere")}
+                                templateNoText={_("Search anywhere")}
+                            />
+                        </CommandItem>
+                    )}
                 </CommandGroup>
                 <CommandEmpty>
                     {_("No results found.")}
