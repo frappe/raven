@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react"
+import { useState } from "react"
 import { useHotkeys } from "react-hotkeys-hook"
 import { Search as SearchIcon, X } from "lucide-react"
 
@@ -34,12 +34,7 @@ const SavedMessages = () => {
     const hasSelection = !!selected
     const isMobile = useIsMobile()
 
-    // Clicking the open row again collapses the pane back to a full-width list.
-    const onSelect = useCallback((selection: SelectedNotification) => {
-        setSelected(prev => prev?.messageID === selection.messageID ? null : selection)
-    }, [])
-
-    // Esc closes the pane (no visible close button — toggle the row or hit Esc).
+    // Esc clears the selection — the static right pane falls back to its empty state.
     useHotkeys('esc', () => setSelected(null), { enableOnFormTags: true }, [])
 
     const searchInput = (
@@ -49,9 +44,7 @@ const SavedMessages = () => {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={_('Search saved messages')}
-                className={cn("pl-9 pr-9 h-9 md:h-8 text-xl md:text-base",
-                    hasSelection && "bg-surface-gray-3 hover:bg-surface-gray-4"
-                )}
+                className="pl-9 pr-9 h-9 md:h-8 text-xl md:text-base"
                 autoFocus
             />
             {search && (
@@ -68,20 +61,18 @@ const SavedMessages = () => {
     )
 
     return (
-        <div className={cn(
-            "flex flex-col h-dvh overflow-hidden",
-            hasSelection && "bg-surface-gray-1"
-        )}>
-            <div className="flex flex-1 overflow-hidden">
-                {/* Left pane: full width by default; the narrower 45% once a row is selected — the
-                    chat pane gets the wider 55% (no divider — the right pane's gray canvas separates
-                    them). On mobile a selection takes over the whole screen, so the list pane is
-                    hidden (mirrors notifications / search). */}
-                <div className={cn(
-                    "relative flex flex-col min-w-0",
-                    hasSelection ? "w-[45%] shrink-0" : "flex-1",
-                    isMobile && hasSelection && "hidden"
-                )}>
+        <div className="flex flex-col h-dvh overflow-hidden">
+            {/* relative for the mobile chat layer (absolute inset-0 below). */}
+            <div className="relative flex flex-1 overflow-hidden">
+                {/* Left pane: full width on mobile (the open chat covers it as a layer);
+                    pinned at 45% on desktop beside the static chat pane — mirrors the
+                    threads / notifications split. */}
+                <div
+                    className="relative flex flex-col min-w-0 w-full md:w-[45%] md:max-w-[50%] md:shrink-0 bg-surface-base md:bg-surface-sidebar"
+                    // While covered by the mobile chat layer, keep the list out of
+                    // focus / accessibility order.
+                    inert={isMobile && hasSelection ? true : undefined}
+                >
                     <PageHeader title={_('Saved Messages')} />
 
                     <div className="shrink-0 p-2 space-y-3">
@@ -109,7 +100,7 @@ const SavedMessages = () => {
                                 showLabel={false}
                                 dropdownClassName="w-68"
                                 className={isMobile ? "w-full min-w-0" : undefined}
-                                triggerClassName={"w-40"}
+                                triggerClassName="w-40"
                             />
                             {/* <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setReminderDialogOpen(true)}>
                                 <Plus className="h-3.5 w-3.5 mr-1.5" />
@@ -122,20 +113,28 @@ const SavedMessages = () => {
                         <SavedMessagesList
                             searchQuery={search}
                             channel={channel}
-                            onSelect={onSelect}
+                            onSelect={setSelected}
                             selectedID={selected?.messageID}
                         />
                     </div>
                 </div>
 
-                {selected && (
-                    <div className={cn(
-                        "shrink-0 flex flex-col min-h-0 bg-surface-gray-0",
-                        isMobile ? "w-full" : "w-[55%]"
-                    )}>
-                        <NotificationChat selected={selected} onClose={() => setSelected(null)} />
-                    </div>
-                )}
+                {/* Right pane: static on desktop — empty state until a saved message is
+                    selected (mirrors threads / notifications). On mobile it's a full-screen
+                    layer over the list while one is open, so the list underneath keeps its
+                    scroll position. */}
+                <div className={cn(
+                    "flex flex-col min-w-0 min-h-0 bg-surface-gray-1",
+                    "max-md:absolute max-md:inset-0 max-md:z-20 animate-layer-in",
+                    !hasSelection && "max-md:hidden",
+                    "md:flex-1",
+                )}>
+                    <NotificationChat
+                        selected={selected}
+                        onClose={() => setSelected(null)}
+                        emptyMessage={_("Select a saved message to view the conversation.")}
+                    />
+                </div>
             </div>
 
             {/* --- Reminder dialog (commented until backend support) --- */}

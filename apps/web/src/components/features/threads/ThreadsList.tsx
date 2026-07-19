@@ -237,15 +237,17 @@ export default function ThreadsList({
                 defaultItemHeight={140}
                 context={listContext}
                 components={listComponents}
-                computeItemKey={(_index, thread) => thread.name}
-                itemContent={(_index, thread) => (
+                computeItemKey={(index, thread) => thread?.name ?? index}
+                // Rows can shrink between renders (search/filter apply per keystroke) while
+                // Virtuoso still holds the old index range — skip the out-of-range frame.
+                itemContent={(_index, thread) => thread ? (
                     <ThreadRow
                         thread={thread}
                         lookups={lookups}
                         onSelect={onThreadClick}
                         isActive={activeThreadID === thread.name}
                     />
-                )}
+                ) : null}
             />
         </ScrollViewportContext.Provider>
     )

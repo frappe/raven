@@ -101,7 +101,7 @@ export function ChannelSelect({
                 </SelectItem>
             )}
             <SelectGroup>
-                <SelectLabel className="text-xs text-ink-gray-4/80 px-2 py-1.5">
+                <SelectLabel>
                     {_("Channels")}
                 </SelectLabel>
                 {channels.map((ch) => (
@@ -118,7 +118,7 @@ export function ChannelSelect({
                 <>
                     <SelectSeparator />
                     <SelectGroup>
-                        <SelectLabel className="text-xs text-ink-gray-4/80 px-2 py-1.5">
+                        <SelectLabel>
                             {_("Direct Messages")}
                         </SelectLabel>
                         {dmChannels.map((dm) => (

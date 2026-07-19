@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useState } from 'react'
 import { useOutletContext, useSearchParams } from 'react-router-dom'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { Search as SearchIcon, X } from 'lucide-react'
@@ -50,12 +50,7 @@ export default function Search() {
     const hasSelection = !!selected
     const isMobile = useIsMobile()
 
-    // Clicking the open row again collapses the pane back to a full-width list.
-    const onSelect = useCallback((selection: SelectedNotification) => {
-        setSelected(prev => prev?.messageID === selection.messageID ? null : selection)
-    }, [])
-
-    // Esc closes the pane (no visible close button — toggle the row or hit Esc).
+    // Esc clears the selection — the static right pane falls back to its empty state.
     useHotkeys('esc', () => setSelected(null), { enableOnFormTags: true }, [])
 
     const filters: SearchFilters = {
@@ -124,9 +119,7 @@ export default function Search() {
                 value={searchValue}
                 onChange={(e) => setSearchValue(e.target.value)}
                 placeholder={_('Search messages, files, links, polls')}
-                className={cn("pl-9 pr-9 h-9 md:h-8 text-xl md:text-base",
-                    hasSelection && "bg-surface-gray-3 hover:bg-surface-gray-4"
-                )}
+                className="pl-9 pr-9 h-9 md:h-8 text-xl md:text-base"
                 autoFocus
             />
             {searchValue && (
@@ -144,19 +137,17 @@ export default function Search() {
 
 
     return (
-        <div className={cn(
-            "flex flex-row h-full overflow-hidden",
-            hasSelection && "bg-surface-gray-1"
-        )}>
-            {/* Left pane: full width by default; the narrower side (45%) once a result is selected —
-                the chat pane gets the wider 55% (no divider — the right pane's gray canvas separates
-                them). On mobile a selection takes over the whole screen, so the list pane is hidden
-                (mirrors the notifications page). */}
-            <div className={cn(
-                "relative flex flex-col overflow-hidden min-w-0",
-                hasSelection ? "w-[45%] shrink-0" : "flex-1",
-                isMobile && hasSelection && "hidden"
-            )}>
+        // relative for the mobile chat layer (absolute inset-0 below).
+        <div className="relative flex flex-row h-full overflow-hidden">
+            {/* Left pane: full width on mobile (the open chat covers it as a layer);
+                pinned at 45% on desktop beside the static chat pane — mirrors the
+                threads / notifications split. */}
+            <div
+                className="relative flex flex-col overflow-hidden min-w-0 w-full md:w-[45%] md:max-w-[50%] md:shrink-0 bg-surface-base md:bg-surface-sidebar"
+                // While covered by the mobile chat layer, keep the list out of
+                // focus / accessibility order.
+                inert={isMobile && hasSelection ? true : undefined}
+            >
                 <PageHeader title={_('Search')} />
                 <div className="shrink-0">
                     {/* p-2 + space-y-3 mirrors the threads page so the search-bar → tabs → list
@@ -166,14 +157,11 @@ export default function Search() {
                         {/* Wrapper is the space-y child; it absorbs the inner row's -my-1 so the
                             gaps stay 12px (the -my would otherwise shrink them). The inner row is
                             tabs + filters: one row (nowrap) that scrolls horizontally at odd/narrow
-                            resolutions when the pane is open. py-1 -my-1 gives the filter button's
-                            floating count badge clip room (overflow-x-auto forces overflow-y to clip)
-                            while netting the row's box to zero — so the row height is unchanged. */}
+                            resolutions (the list pane is only 45% wide). py-1 -my-1 gives the filter
+                            button's floating count badge clip room (overflow-x-auto forces overflow-y
+                            to clip) while netting the row's box to zero — row height is unchanged. */}
                         <div>
-                            <div className={cn(
-                                "flex flex-col gap-3 md:flex-row md:items-center md:py-1 md:-my-1",
-                                hasSelection ? "md:flex-nowrap md:overflow-x-auto md:min-w-0" : "md:flex-wrap"
-                            )}>
+                            <div className="flex flex-col gap-3 md:flex-row md:items-center md:py-1 md:-my-1 md:flex-nowrap md:overflow-x-auto md:min-w-0">
                                 <SearchTabsBar activeTab={activeTab} setActiveTab={onTabChange} fullWidth={isMobile} />
                                 <div className="md:ml-auto">
                                     <SearchFiltersBar
@@ -183,9 +171,6 @@ export default function Search() {
                                         onChannelChange={setChannelFilter}
                                         onUserChange={setUserFilter}
                                         isMobile={isMobile}
-                                        // Chat pane open → left pane is only 45%; use the compact icon
-                                        // filter button so the row doesn't crowd/wrap.
-                                        compact={hasSelection}
                                     />
                                 </div>
                             </div>
@@ -218,24 +203,32 @@ export default function Search() {
                     <div className="mx-auto w-full h-full">
                         {hasActiveSearch && (
                             <>
-                                {activeTab === 'messages' && <SearchMessageResults searchValue={filters.query} filters={filters} onSelect={onSelect} selectedID={selected?.messageID} />}
-                                {activeTab === 'files' && <SearchFileResults searchValue={filters.query} filters={filters} onSelect={onSelect} selectedID={selected?.messageID} />}
-                                {activeTab === 'links' && <SearchLinkResults searchValue={filters.query} filters={filters} onSelect={onSelect} selectedID={selected?.messageID} />}
-                                {activeTab === 'polls' && <SearchPollResults searchValue={filters.query} filters={filters} onSelect={onSelect} selectedID={selected?.messageID} />}
+                                {activeTab === 'messages' && <SearchMessageResults searchValue={filters.query} filters={filters} onSelect={setSelected} selectedID={selected?.messageID} />}
+                                {activeTab === 'files' && <SearchFileResults searchValue={filters.query} filters={filters} onSelect={setSelected} selectedID={selected?.messageID} />}
+                                {activeTab === 'links' && <SearchLinkResults searchValue={filters.query} filters={filters} onSelect={setSelected} selectedID={selected?.messageID} />}
+                                {activeTab === 'polls' && <SearchPollResults searchValue={filters.query} filters={filters} onSelect={setSelected} selectedID={selected?.messageID} />}
                             </>
                         )}
                     </div>
                 </div>
             </div>
 
-            {selected && (
-                <div className={cn(
-                    "shrink-0 flex flex-col min-h-0 bg-surface-gray-0",
-                    isMobile ? "w-full" : "w-[55%]"
-                )}>
-                    <NotificationChat selected={selected} onClose={() => setSelected(null)} />
-                </div>
-            )}
+            {/* Right pane: static on desktop — empty state until a result is selected
+                (mirrors threads / notifications). On mobile it's a full-screen layer over
+                the list while a result is open, so the list underneath keeps its scroll
+                position. */}
+            <div className={cn(
+                "flex flex-col min-w-0 min-h-0 bg-surface-gray-1",
+                "max-md:absolute max-md:inset-0 max-md:z-20 animate-layer-in",
+                !hasSelection && "max-md:hidden",
+                "md:flex-1",
+            )}>
+                <NotificationChat
+                    selected={selected}
+                    onClose={() => setSelected(null)}
+                    emptyMessage={_("Select a result to view the message.")}
+                />
+            </div>
         </div>
     )
 }

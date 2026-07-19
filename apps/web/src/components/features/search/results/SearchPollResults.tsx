@@ -39,8 +39,12 @@ const SearchPollResults = ({ searchValue, filters, onSelect, selectedID }: Searc
             data={results}
             style={{ height: '100%' }}
             initialItemCount={Math.min(results.length, 10)}
-            computeItemKey={(_idx, r) => r.id}
+            computeItemKey={(idx, r) => r?.id ?? idx}
             itemContent={(_idx, r) => {
+                // Results can shrink between renders (short-query fallback filters per
+                // keystroke) while Virtuoso still holds the old index range — skip the
+                // out-of-range frame; the next render drops the row.
+                if (!r) return null
                 // Display only: thread replies live in a thread channel, so resolve the
                 // row's channel/avatar against the real (parent) channel. Routing is
                 // handled separately by searchResultToSelection.

@@ -7,6 +7,7 @@ import { useMessageRowLookups } from '@hooks/useMessageRowLookups'
 import { useUserCookieData } from '@hooks/useUserCookieData'
 import { MessageListSkeleton } from '@components/features/dm-channel/DirectMessagePageSkeleton'
 import { MessageResultBlock, RESULT_ROW_ACTIVE_CLASS } from '@components/common/MessageResultBlock/MessageResultBlock'
+import { searchResultToSelection } from '@components/common/MessageResultBlock/searchResultToSelection'
 import type { SelectedNotification } from '@pages/notifications/NotificationChat'
 import ErrorBanner from '@components/ui/error-banner'
 import { Bookmark } from 'lucide-react'
@@ -132,10 +133,15 @@ const SavedMessagesList = ({ searchQuery, channel, onSelect, selectedID }: Saved
             data={results}
             style={{ height: '100%' }}
             initialItemCount={Math.min(results.length, 10)}
-            computeItemKey={(_idx, r) => r.name}
+            computeItemKey={(idx, r) => r?.name ?? idx}
             itemContent={(_idx, r) => {
-                // Thread replies live in a thread channel; resolve display against
-                // the real (parent) channel so selection carries the routing-ready id.
+                // Results can shrink between renders (search/channel filters apply per
+                // keystroke) while Virtuoso still holds the old index range — skip the
+                // out-of-range frame; the next render drops the row.
+                if (!r) return null
+                // Display only: thread replies live in a thread channel, so name/workspace
+                // lookups resolve against the real (parent) channel. Routing is handled
+                // separately by searchResultToSelection.
                 const baseChannelId = r.parent_channel_id ?? r.channel_id
                 const channelData = channelById.get(baseChannelId)
                 const dmChannel = dmById.get(baseChannelId)
@@ -149,13 +155,14 @@ const SavedMessagesList = ({ searchQuery, channel, onSelect, selectedID }: Saved
                         peer={peer}
                         workspace={channelData?.workspace ? workspaceById.get(channelData.workspace) : undefined}
                         className={selectedID === r.name ? RESULT_ROW_ACTIVE_CLASS : undefined}
-                        onClick={() => onSelect({
-                            channelID: baseChannelId,
+                        onClick={() => onSelect(searchResultToSelection({
                             messageID: r.name,
+                            channelID: r.channel_id,
+                            parentChannelID: r.parent_channel_id,
+                            isThreadRoot: !!r.is_thread,
                             isDirectMessage: !!dmChannel,
                             peer,
-                            isThread: !!r.is_thread,
-                        })}
+                        }))}
                     />
                 )
             }}

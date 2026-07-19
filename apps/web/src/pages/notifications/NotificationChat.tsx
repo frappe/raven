@@ -15,8 +15,10 @@ import type { UserData } from "@db"
 import ThreadDrawer from "@components/features/message/ThreadDrawer"
 import { MessageCircleIcon } from "lucide-react"
 
-/** Right-pane selection on the notifications page. Owned by `Notifications`
- * (useState there) and passed in — cleared automatically when the component unmounts on route change. */
+/** Right-pane selection for the list + chat-pane pages. Search and Saved Messages own
+ * it as local state (their static pane shows an empty state while null); the
+ * notifications page encodes the same shape into its route instead
+ * (`/notifications/:channelID/:messageID` + nav state, see NotificationChatRoute). */
 export type SelectedNotification = {
     channelID: string
     messageID: string
@@ -25,7 +27,7 @@ export type SelectedNotification = {
     isThread: boolean
 }
 
-export function NotificationsEmptyState() {
+export function NotificationsEmptyState({ message }: { message?: string }) {
     return (
         <div className="h-full p-0 md:p-1">
             <Island className="h-full">
@@ -35,7 +37,7 @@ export function NotificationsEmptyState() {
                     </EmptyMedia>
                     <EmptyHeader>
                         <EmptyDescription>
-                            {_("Select a notification to view the message.")}
+                            {message ?? _("Select a notification to view the message.")}
                         </EmptyDescription>
                     </EmptyHeader>
                 </Empty>
@@ -126,7 +128,13 @@ export function NotificationPane({
     )
 }
 
-export default function NotificationChat({ selected, onClose }: { selected: SelectedNotification | null, onClose?: () => void }) {
+export default function NotificationChat({ selected, onClose, emptyMessage }: {
+    selected: SelectedNotification | null
+    onClose?: () => void
+    /** Copy for the no-selection state — the hosting page names its own list items
+     *  (results / saved messages); defaults to the notifications wording. */
+    emptyMessage?: string
+}) {
     const channelID = selected?.channelID ?? ""
     const setMessageTarget = useSetAtom(messageTargetAtom(channelID))
 
@@ -138,7 +146,7 @@ export default function NotificationChat({ selected, onClose }: { selected: Sele
         setMessageTarget(makeMessageTarget(selected.messageID))
     }, [selected, setMessageTarget])
 
-    if (!selected) return <NotificationsEmptyState />
+    if (!selected) return <NotificationsEmptyState message={emptyMessage} />
 
     return (
         <NotificationPane
@@ -147,7 +155,8 @@ export default function NotificationChat({ selected, onClose }: { selected: Sele
             isDirectMessage={selected.isDirectMessage}
             peer={selected.peer}
             initialMessageID={selected.messageID}
-            // Desktop thread pane's close X → collapse the split back to the list.
+            // Thread pane's close X → clear the selection: desktop falls back to the
+            // pane's empty state, mobile closes the chat layer back to the list.
             onCloseThread={onClose}
         />
     )
