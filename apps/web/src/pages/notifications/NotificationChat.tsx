@@ -59,6 +59,7 @@ export function NotificationPane({
     peer,
     initialMessageID,
     onCloseThread,
+    onBack,
 }: {
     channelID: string
     isThread: boolean
@@ -68,6 +69,9 @@ export function NotificationPane({
     initialMessageID?: string | null
     /** Close handler for the thread pane's X/Esc — omit where closing isn't meaningful. */
     onCloseThread?: () => void
+    /** Mobile back override for the chat header — passed by state-driven hosts
+     * (search/saved) whose chat layer has no history entry to pop. */
+    onBack?: () => void
 }) {
     const navigate = useNavigate()
     const channel = useChannelById(channelID)
@@ -113,9 +117,9 @@ export function NotificationPane({
     // CurrentChannelContext) — so no breakpoint handling is needed here.
     const header = isDirectMessage
         ? peer
-            ? <DMChannelHeader peer={peer} channelID={channelID} showActions={false} onOpenChannel={openChannel} />
+            ? <DMChannelHeader peer={peer} channelID={channelID} showActions={false} onOpenChannel={openChannel} onBack={onBack} />
             : null
-        : <ChannelHeader channelID={channelID} showActions={false} onOpenChannel={canOpenChannel ? openChannel : undefined} />
+        : <ChannelHeader channelID={channelID} showActions={false} onOpenChannel={canOpenChannel ? openChannel : undefined} onBack={onBack} />
 
     return (
         <ChatContentView
@@ -158,6 +162,9 @@ export default function NotificationChat({ selected, onClose, emptyMessage }: {
             // Thread pane's close X → clear the selection: desktop falls back to the
             // pane's empty state, mobile closes the chat layer back to the list.
             onCloseThread={onClose}
+            // Mobile back chevron: this chat is a state layer, not a history entry —
+            // back means "clear the selection", not history.back() (which left the page).
+            onBack={onClose}
         />
     )
 }

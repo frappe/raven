@@ -26,9 +26,13 @@ interface ChannelHeaderProps {
     /** Show an "Open channel" button that navigates to the channel's full page —
      * provided by panes (notifications/search/saved) as the way out of the pane. */
     onOpenChannel?: () => void
+    /** Override for the mobile back chevron. State-driven panes (search/saved) open the
+     * chat as a layer with NO history entry, so popping history would leave the page —
+     * they pass their close handler instead. Route-driven hosts omit it. */
+    onBack?: () => void
 }
 
-const ChannelHeader = ({ channelID, showActions = true, onOpenChannel }: ChannelHeaderProps) => {
+const ChannelHeader = ({ channelID, showActions = true, onOpenChannel, onBack }: ChannelHeaderProps) => {
     const { channel, toggleStarChannel, isStarred } = useChannel(channelID)
     const { workspaceID } = useParams()
     const isMobile = useIsMobile()
@@ -40,7 +44,9 @@ const ChannelHeader = ({ channelID, showActions = true, onOpenChannel }: Channel
     // With a thread open ON TOP (mobile layer), the thread header owns the cold-start
     // stack repair (its parent is the threads page) — this covered header stands down.
     const threadOnTop = useLocation().pathname.includes("/thread/")
-    const goBack = useMobileBack(inNotifications ? "/notifications" : `/${workspaceID ?? ""}`, { repairStack: !threadOnTop })
+    // No stack repair when onBack overrides: the chat isn't a history entry there.
+    const historyBack = useMobileBack(inNotifications ? "/notifications" : `/${workspaceID ?? ""}`, { repairStack: !threadOnTop && !onBack })
+    const goBack = onBack ?? historyBack
 
     const pinnedCount = channel?.pinned_messages_string ? channel.pinned_messages_string.split("\n").length : 0
 

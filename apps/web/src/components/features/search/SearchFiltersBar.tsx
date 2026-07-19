@@ -52,11 +52,14 @@ export function SearchFiltersBar({ filters, channels, dmChannels, isMobile, onCh
 
     return (
         <div className="flex flex-row items-center gap-2 md:flex-nowrap">
-            {/* On mobile each select sits in a flex-1 wrapper so it shrinks to share the row
-                (trigger goes w-full + truncates); on desktop the wrapper is content-width and
-                the trigger keeps a fixed width — the list pane is pinned at 45%, so the
-                selects stay narrow to fit beside the tabs. */}
-            <div className="flex-1 min-w-0 md:flex-none">
+            {/* Each select fills its wrapper (trigger w-full + truncates); the wrapper does
+                the sizing. Mobile: flex-1 shares the row. Desktop: fixed width with a
+                min-width floor — when the clear-all X appears the selects give up a little
+                width to absorb it, so no horizontal scroll on normal screens. Below the
+                floors the row's overflow-x-auto (see Search.tsx) takes over as fallback.
+                (width, not flex-basis: a basis is ignored in the parent's max-content
+                sizing, which collapsed the selects to their text width by default.) */}
+            <div className="flex-1 min-w-0 md:flex-initial md:w-[8.5rem] md:min-w-[7rem]">
                 <UserFilter
                     filters={filters}
                     users={userFilterOptions}
@@ -64,11 +67,11 @@ export function SearchFiltersBar({ filters, channels, dmChannels, isMobile, onCh
                     showLabel={false}
                     size="sm"
                     dropdownClassName="w-60"
-                    triggerClassName={isMobile ? "w-full" : "w-[8.5rem]"}
-                    className={isMobile ? "w-full min-w-0" : undefined}
+                    triggerClassName="w-full"
+                    className="w-full min-w-0"
                 />
             </div>
-            <div className="flex-1 min-w-0 md:flex-none">
+            <div className="flex-1 min-w-0 md:flex-initial md:w-40 md:min-w-[8.5rem]">
                 <ChannelSelect
                     channels={channels}
                     dmChannels={dmChannels}
@@ -80,8 +83,8 @@ export function SearchFiltersBar({ filters, channels, dmChannels, isMobile, onCh
                     allLabel={_("In Any Channel")}
                     size="sm"
                     dropdownClassName="w-68"
-                    triggerClassName={isMobile ? "w-full" : "w-[10rem]"}
-                    className={isMobile ? "w-full min-w-0" : undefined}
+                    triggerClassName="w-full"
+                    className="w-full min-w-0"
                     showLabel={false}
                     label="Channel"
                     searchable

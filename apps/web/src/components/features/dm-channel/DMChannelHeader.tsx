@@ -30,11 +30,15 @@ interface DMChannelHeaderProps {
     /** Show an "Open channel" button that navigates to the DM's full page —
      * provided by panes (notifications/search/saved) as the way out of the pane. */
     onOpenChannel?: () => void
+    /** Override for the mobile back chevron. State-driven panes (search/saved) open the
+     * chat as a layer with NO history entry, so popping history would leave the page —
+     * they pass their close handler instead. Route-driven hosts omit it. */
+    onBack?: () => void
     /** DM channel id (for drawer state) */
     channelID: string
 }
 
-export function DMChannelHeader({ peer, channelID, showActions = true, onOpenChannel }: DMChannelHeaderProps) {
+export function DMChannelHeader({ peer, channelID, showActions = true, onOpenChannel, onBack }: DMChannelHeaderProps) {
     // Mobile back: pop history, so it lands wherever this chat was opened from
     // (DM list, notifications, …). The cold-start fallback comes from the route
     // this header is rendered under.
@@ -42,7 +46,9 @@ export function DMChannelHeader({ peer, channelID, showActions = true, onOpenCha
     // With a thread open ON TOP (mobile layer), the thread header owns the cold-start
     // stack repair (its parent is the threads page) — this covered header stands down.
     const threadOnTop = useLocation().pathname.includes("/thread/")
-    const goBack = useMobileBack(inNotifications ? "/notifications" : "/dm-channel", { repairStack: !threadOnTop })
+    // No stack repair when onBack overrides: the chat isn't a history entry there.
+    const historyBack = useMobileBack(inNotifications ? "/notifications" : "/dm-channel", { repairStack: !threadOnTop && !onBack })
+    const goBack = onBack ?? historyBack
     const displayName = peer.full_name || peer.name
     const setDrawerType = useOpenChannelDrawer(channelID)
     const { dmChannel } = useChannel(channelID)

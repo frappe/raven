@@ -163,7 +163,12 @@ export default function Search() {
                         <div>
                             <div className="flex flex-col gap-3 md:flex-row md:items-center md:py-1 md:-my-1 md:flex-nowrap md:overflow-x-auto md:min-w-0">
                                 <SearchTabsBar activeTab={activeTab} setActiveTab={onTabChange} fullWidth={isMobile} />
-                                <div className="md:ml-auto">
+                                {/* min-w-0: the browser over-estimates this wrapper's automatic
+                                    minimum by a few px, which forced a tiny horizontal scroll when
+                                    the clear-X appears. With it the selects flex down to their
+                                    min-w floors first; past the floors content overflows into the
+                                    row's scroll — the floors still hold, so the fallback stays. */}
+                                <div className="md:ml-auto md:min-w-0">
                                     <SearchFiltersBar
                                         filters={filters}
                                         channels={channels}
