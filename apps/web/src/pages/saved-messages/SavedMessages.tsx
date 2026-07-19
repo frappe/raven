@@ -61,9 +61,11 @@ const SavedMessages = () => {
     )
 
     return (
-        <div className="flex flex-col h-dvh overflow-hidden">
-            {/* relative for the mobile chat layer (absolute inset-0 below). */}
-            <div className="relative flex flex-1 overflow-hidden">
+        // relative on the OUTER column: the mobile chat layer (absolute inset-0 below)
+        // covers list + footer, sliding over the tab bar like a native detail page.
+        // The footer stays MOUNTED and is inerted while covered (see AppMobileFooter).
+        <div className="relative flex flex-col h-dvh overflow-hidden">
+            <div className="flex flex-1 min-h-0 overflow-hidden">
                 {/* Left pane: full width on mobile (the open chat covers it as a layer);
                     pinned at 45% on desktop beside the static chat pane — mirrors the
                     threads / notifications split. */}
@@ -121,8 +123,8 @@ const SavedMessages = () => {
 
                 {/* Right pane: static on desktop — empty state until a saved message is
                     selected (mirrors threads / notifications). On mobile it's a full-screen
-                    layer over the list while one is open, so the list underneath keeps its
-                    scroll position. */}
+                    layer over list + tab bar (inset-0 of the OUTER column) while one is
+                    open, so the list underneath keeps its scroll position. */}
                 <div className={cn(
                     "flex flex-col min-w-0 min-h-0 bg-surface-gray-1",
                     "max-md:absolute max-md:inset-0 max-md:z-20 animate-layer-in",
@@ -140,7 +142,7 @@ const SavedMessages = () => {
             {/* --- Reminder dialog (commented until backend support) --- */}
             {/* <ReminderDialog ... /> */}
 
-            <AppMobileFooter />
+            <AppMobileFooter inert={isMobile && hasSelection ? true : undefined} />
         </div>
     )
 }

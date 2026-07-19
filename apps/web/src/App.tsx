@@ -12,7 +12,6 @@ import { WorkspaceRedirect } from "@components/workspace-switcher/WorkspaceRedir
 import { FrappeProvider } from 'frappe-react-sdk'
 import { initEmojiMart } from '@lib/emojiMart'
 import Cookies from 'js-cookie'
-import { SearchLayout } from "@components/layout/SearchLayout"
 import { Toaster } from "@components/ui/sonner"
 import { TooltipProvider } from "@radix-ui/react-tooltip"
 import { LucideProvider } from "lucide-react"
@@ -102,9 +101,7 @@ const router = createBrowserRouter(
       <Route path="threads" element={<Threads />}>
         <Route path=":threadID" element={<ThreadDrawerRoute />} />
       </Route>
-      <Route path="search" element={<SearchLayout />}>
-        <Route index element={<Suspense fallback={null}><Search /></Suspense>} />
-      </Route>
+      <Route path="search" element={<Suspense fallback={null}><Search /></Suspense>} />
       <Route path="saved-messages" element={<Suspense fallback={null}><SavedMessages /></Suspense>} />
       <Route path="profile" element={<Suspense fallback={null}><MobileProfile /></Suspense>} />
       {/* OS share sheet lands here (manifest share_target) — conversation picker */}

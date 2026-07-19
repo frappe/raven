@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useOutletContext, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { Search as SearchIcon, X } from 'lucide-react'
 
@@ -11,6 +11,7 @@ import SearchFileResults from '@components/features/search/results/SearchFileRes
 import SearchLinkResults from '@components/features/search/results/SearchLinkResults'
 import SearchPollResults from '@components/features/search/results/SearchPollResults'
 import NotificationChat, { type SelectedNotification } from '@pages/notifications/NotificationChat'
+import AppMobileFooter from '@components/features/header/AppMobileFooter'
 import { PageHeader } from '@components/layout/PageHeader'
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@components/ui/empty'
 import { SearchFilters } from '@components/features/search/types'
@@ -23,14 +24,18 @@ import { useIsMobile } from '@hooks/use-mobile'
 import { cn } from '@lib/utils'
 import _ from '@lib/translate'
 
-interface SearchOutletContext {
-    searchValue: string
-    setSearchValue: (v: string) => void
-}
-
 export default function Search() {
-    const { searchValue, setSearchValue } = useOutletContext<SearchOutletContext>()
+    // All search state lives in URL params so links like /search?q=foo&channel=general work.
     const [searchParams, setSearchParams] = useSearchParams()
+    const searchValue = searchParams.get('q') ?? ''
+
+    const setSearchValue = (value: string) => {
+        setSearchParams(prev => {
+            if (value) prev.set('q', value)
+            else prev.delete('q')
+            return prev
+        }, { replace: true })
+    }
 
     const channelFromURL = searchParams.get('channel') ?? ''
     const userFromURL = searchParams.get('user') ?? ''
@@ -137,103 +142,108 @@ export default function Search() {
 
 
     return (
-        // relative for the mobile chat layer (absolute inset-0 below).
-        <div className="relative flex flex-row h-full overflow-hidden">
-            {/* Left pane: full width on mobile (the open chat covers it as a layer);
-                pinned at 45% on desktop beside the static chat pane — mirrors the
-                threads / notifications split. */}
-            <div
-                className="relative flex flex-col overflow-hidden min-w-0 w-full md:w-[45%] md:max-w-[50%] md:shrink-0 bg-surface-base md:bg-surface-sidebar"
-                // While covered by the mobile chat layer, keep the list out of
-                // focus / accessibility order.
-                inert={isMobile && hasSelection ? true : undefined}
-            >
-                <PageHeader title={_('Search')} />
-                <div className="shrink-0">
-                    {/* p-2 + space-y-3 mirrors the threads page so the search-bar → tabs → list
-                        spacing is identical across pages. */}
-                    <div className="mx-auto w-full p-2 pb-0 space-y-3">
-                        {searchInput}
-                        {/* Wrapper is the space-y child; it absorbs the inner row's -my-1 so the
-                            gaps stay 12px (the -my would otherwise shrink them). The inner row is
-                            tabs + filters: one row (nowrap) that scrolls horizontally at odd/narrow
-                            resolutions (the list pane is only 45% wide). py-1 -my-1 gives the filter
-                            button's floating count badge clip room (overflow-x-auto forces overflow-y
-                            to clip) while netting the row's box to zero — row height is unchanged. */}
-                        <div>
-                            <div className="flex flex-col gap-3 md:flex-row md:items-center md:py-1 md:-my-1 md:flex-nowrap md:overflow-x-auto md:min-w-0">
-                                <SearchTabsBar activeTab={activeTab} setActiveTab={onTabChange} fullWidth={isMobile} />
-                                {/* min-w-0: the browser over-estimates this wrapper's automatic
-                                    minimum by a few px, which forced a tiny horizontal scroll when
-                                    the clear-X appears. With it the selects flex down to their
-                                    min-w floors first; past the floors content overflows into the
-                                    row's scroll — the floors still hold, so the fallback stays. */}
-                                <div className="md:ml-auto md:min-w-0">
-                                    <SearchFiltersBar
-                                        filters={filters}
-                                        channels={channels}
-                                        dmChannels={dmChannels}
-                                        onChannelChange={setChannelFilter}
-                                        onUserChange={setUserFilter}
-                                        isMobile={isMobile}
-                                    />
+        // relative on the OUTER column: the mobile chat layer (absolute inset-0 below)
+        // covers list + footer, sliding over the tab bar like a native detail page.
+        // The footer stays MOUNTED and is inerted while covered (see AppMobileFooter).
+        <div className="relative flex flex-col h-dvh overflow-hidden">
+            <div className="flex flex-1 min-h-0 flex-row overflow-hidden">
+                {/* Left pane: full width on mobile (the open chat covers it as a layer);
+                    pinned at 45% on desktop beside the static chat pane — mirrors the
+                    threads / notifications split. */}
+                <div
+                    className="relative flex flex-col overflow-hidden min-w-0 w-full md:w-[45%] md:max-w-[50%] md:shrink-0 bg-surface-base md:bg-surface-sidebar"
+                    // While covered by the mobile chat layer, keep the list out of
+                    // focus / accessibility order.
+                    inert={isMobile && hasSelection ? true : undefined}
+                >
+                    <PageHeader title={_('Search')} />
+                    <div className="shrink-0">
+                        {/* p-2 + space-y-3 mirrors the threads page so the search-bar → tabs → list
+                            spacing is identical across pages. */}
+                        <div className="mx-auto w-full p-2 pb-0 space-y-3">
+                            {searchInput}
+                            {/* Wrapper is the space-y child; it absorbs the inner row's -my-1 so the
+                                gaps stay 12px (the -my would otherwise shrink them). The inner row is
+                                tabs + filters: one row (nowrap) that scrolls horizontally at odd/narrow
+                                resolutions (the list pane is only 45% wide). py-1 -my-1 gives the filter
+                                button's floating count badge clip room (overflow-x-auto forces overflow-y
+                                to clip) while netting the row's box to zero — row height is unchanged. */}
+                            <div>
+                                <div className="flex flex-col gap-3 md:flex-row md:items-center md:py-1 md:-my-1 md:flex-nowrap md:overflow-x-auto md:min-w-0">
+                                    <SearchTabsBar activeTab={activeTab} setActiveTab={onTabChange} fullWidth={isMobile} />
+                                    {/* min-w-0: the browser over-estimates this wrapper's automatic
+                                        minimum by a few px, which forced a tiny horizontal scroll when
+                                        the clear-X appears. With it the selects flex down to their
+                                        min-w floors first; past the floors content overflows into the
+                                        row's scroll — the floors still hold, so the fallback stays. */}
+                                    <div className="md:ml-auto md:min-w-0">
+                                        <SearchFiltersBar
+                                            filters={filters}
+                                            channels={channels}
+                                            dmChannels={dmChannels}
+                                            onChannelChange={setChannelFilter}
+                                            onUserChange={setUserFilter}
+                                            isMobile={isMobile}
+                                        />
+                                    </div>
                                 </div>
                             </div>
+                            <SearchActiveBadges
+                                filters={filters}
+                                channels={channels}
+                                dmChannels={dmChannels}
+                                users={users ?? []}
+                            />
                         </div>
-                        <SearchActiveBadges
-                            filters={filters}
-                            channels={channels}
-                            dmChannels={dmChannels}
-                            users={users ?? []}
-                        />
+                    </div>
+
+                    {/* Empty prompt centers over the whole pane (absolute) so it lands at the same
+                        height as the right pane's empty state, not offset below the header/tabs/filters.
+                        pointer-events-none keeps the search input + filters clickable underneath. */}
+                    {!hasActiveSearch && (
+                        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                            <Empty>
+                                <EmptyMedia><SearchIcon /></EmptyMedia>
+                                <EmptyHeader>
+                                    <EmptyTitle>{_('Search Raven')}</EmptyTitle>
+                                    <EmptyDescription>{_('Find messages, files, links and polls. Type a query or pick a filter to start.')}</EmptyDescription>
+                                </EmptyHeader>
+                            </Empty>
+                        </div>
+                    )}
+
+                    <div className="flex-1 min-h-0 px-3 md:px-0 pb-2">
+                        <div className="mx-auto w-full h-full">
+                            {hasActiveSearch && (
+                                <>
+                                    {activeTab === 'messages' && <SearchMessageResults searchValue={filters.query} filters={filters} onSelect={setSelected} selectedID={selected?.messageID} />}
+                                    {activeTab === 'files' && <SearchFileResults searchValue={filters.query} filters={filters} onSelect={setSelected} selectedID={selected?.messageID} />}
+                                    {activeTab === 'links' && <SearchLinkResults searchValue={filters.query} filters={filters} onSelect={setSelected} selectedID={selected?.messageID} />}
+                                    {activeTab === 'polls' && <SearchPollResults searchValue={filters.query} filters={filters} onSelect={setSelected} selectedID={selected?.messageID} />}
+                                </>
+                            )}
+                        </div>
                     </div>
                 </div>
 
-                {/* Empty prompt centers over the whole pane (absolute) so it lands at the same
-                    height as the right pane's empty state, not offset below the header/tabs/filters.
-                    pointer-events-none keeps the search input + filters clickable underneath. */}
-                {!hasActiveSearch && (
-                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                        <Empty>
-                            <EmptyMedia><SearchIcon /></EmptyMedia>
-                            <EmptyHeader>
-                                <EmptyTitle>{_('Search Raven')}</EmptyTitle>
-                                <EmptyDescription>{_('Find messages, files, links and polls. Type a query or pick a filter to start.')}</EmptyDescription>
-                            </EmptyHeader>
-                        </Empty>
-                    </div>
-                )}
-
-                <div className="flex-1 min-h-0 px-3 md:px-0 pb-2">
-                    <div className="mx-auto w-full h-full">
-                        {hasActiveSearch && (
-                            <>
-                                {activeTab === 'messages' && <SearchMessageResults searchValue={filters.query} filters={filters} onSelect={setSelected} selectedID={selected?.messageID} />}
-                                {activeTab === 'files' && <SearchFileResults searchValue={filters.query} filters={filters} onSelect={setSelected} selectedID={selected?.messageID} />}
-                                {activeTab === 'links' && <SearchLinkResults searchValue={filters.query} filters={filters} onSelect={setSelected} selectedID={selected?.messageID} />}
-                                {activeTab === 'polls' && <SearchPollResults searchValue={filters.query} filters={filters} onSelect={setSelected} selectedID={selected?.messageID} />}
-                            </>
-                        )}
-                    </div>
+                {/* Right pane: static on desktop — empty state until a result is selected
+                    (mirrors threads / notifications). On mobile it's a full-screen layer over
+                    list + tab bar (inset-0 of the OUTER column) while a result is open, so the
+                    list underneath keeps its scroll position. */}
+                <div className={cn(
+                    "flex flex-col min-w-0 min-h-0 bg-surface-gray-1",
+                    "max-md:absolute max-md:inset-0 max-md:z-20 animate-layer-in",
+                    !hasSelection && "max-md:hidden",
+                    "md:flex-1",
+                )}>
+                    <NotificationChat
+                        selected={selected}
+                        onClose={() => setSelected(null)}
+                        emptyMessage={_("Select a result to view the message.")}
+                    />
                 </div>
             </div>
-
-            {/* Right pane: static on desktop — empty state until a result is selected
-                (mirrors threads / notifications). On mobile it's a full-screen layer over
-                the list while a result is open, so the list underneath keeps its scroll
-                position. */}
-            <div className={cn(
-                "flex flex-col min-w-0 min-h-0 bg-surface-gray-1",
-                "max-md:absolute max-md:inset-0 max-md:z-20 animate-layer-in",
-                !hasSelection && "max-md:hidden",
-                "md:flex-1",
-            )}>
-                <NotificationChat
-                    selected={selected}
-                    onClose={() => setSelected(null)}
-                    emptyMessage={_("Select a result to view the message.")}
-                />
-            </div>
+            <AppMobileFooter inert={isMobile && hasSelection ? true : undefined} />
         </div>
     )
 }
