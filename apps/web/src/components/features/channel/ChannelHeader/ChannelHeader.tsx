@@ -7,10 +7,10 @@ import ChannelMenu from "./ChannelMenu"
 import { useAtomValue } from "jotai"
 import { channelDrawerAtom } from "@utils/channelAtoms"
 import { useOpenChannelDrawer } from "@hooks/useChannelDrawer"
-import { useLocation, useMatch, useParams } from "react-router-dom"
+import { useLocation, useParams } from "react-router-dom"
 import { useChannel } from "@hooks/useChannel"
 import { useIsMobile } from "@hooks/use-mobile"
-import { useMobileBack } from "@hooks/useMobileBack"
+import { PANE_HOSTS, useMobileBack } from "@hooks/useMobileBack"
 import _ from "@lib/translate"
 
 interface ChannelHeaderProps {
@@ -26,13 +26,9 @@ interface ChannelHeaderProps {
     /** Show an "Open channel" button that navigates to the channel's full page —
      * provided by panes (notifications/search/saved) as the way out of the pane. */
     onOpenChannel?: () => void
-    /** Override for the mobile back chevron. State-driven panes (search/saved) open the
-     * chat as a layer with NO history entry, so popping history would leave the page —
-     * they pass their close handler instead. Route-driven hosts omit it. */
-    onBack?: () => void
 }
 
-const ChannelHeader = ({ channelID, showActions = true, onOpenChannel, onBack }: ChannelHeaderProps) => {
+const ChannelHeader = ({ channelID, showActions = true, onOpenChannel }: ChannelHeaderProps) => {
     const { channel, toggleStarChannel, isStarred } = useChannel(channelID)
     const { workspaceID } = useParams()
     const isMobile = useIsMobile()
@@ -40,13 +36,14 @@ const ChannelHeader = ({ channelID, showActions = true, onOpenChannel, onBack }:
     // Mobile back: pop history, so it lands wherever this chat was opened from
     // (channel list, notifications, …). The cold-start fallback comes from the
     // route this header is rendered under.
-    const inNotifications = !!useMatch("/notifications/*")
+    // Chat-pane hosts render this header inside their chat child route — a cold start
+    // there gets the host's LIST synthesized beneath it, not a workspace.
+    const pathname = useLocation().pathname
+    const paneHost = PANE_HOSTS.find((p) => pathname.startsWith(p + "/"))
     // With a thread open ON TOP (mobile layer), the thread header owns the cold-start
     // stack repair (its parent is the threads page) — this covered header stands down.
-    const threadOnTop = useLocation().pathname.includes("/thread/")
-    // No stack repair when onBack overrides: the chat isn't a history entry there.
-    const historyBack = useMobileBack(inNotifications ? "/notifications" : `/${workspaceID ?? ""}`, { repairStack: !threadOnTop && !onBack })
-    const goBack = onBack ?? historyBack
+    const threadOnTop = pathname.includes("/thread/")
+    const goBack = useMobileBack(paneHost ?? `/${workspaceID ?? ""}`, { repairStack: !threadOnTop })
 
     const pinnedCount = channel?.pinned_messages_string ? channel.pinned_messages_string.split("\n").length : 0
 

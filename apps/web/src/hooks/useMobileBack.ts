@@ -24,14 +24,19 @@ import { useIsMobile } from "@hooks/use-mobile"
  *   -----------------------------|------------------------|---------------------------
  *   Channel                      | workspace list (/{ws}) | ChannelHeader
  *   DM                           | /dm-channel            | DMChannelHeader
- *   Notification chat            | /notifications         | the pane's channel/DM header
+ *   Chat-pane host's chat route  | the host's list        | the pane's channel/DM header
  *   Thread (channel or DM)       | /threads               | ThreadHeader
- *   Thread inside notifications  | /notifications         | ThreadHeader
+ *   Thread inside a pane host    | the host's list        | ThreadHeader
  *
  * On thread routes, two headers are mounted (the channel header sits COVERED under
  * the thread layer) — the covered one passes `repairStack: false` so the thread
  * header, whose parent route is right, is the one that repairs.
  */
+
+/** Pages that host the chat pane as a CHILD ROUTE (`/<host>/:channelID/:messageID`,
+ *  see NotificationChatRoute). Headers rendered under one of these use the host's
+ *  list as the mobile-back fallback / cold-start repair target. */
+export const PANE_HOSTS = ["/notifications", "/search", "/saved-messages"]
 export function useMobileBack(
     fallback: string | (() => void),
     options?: {

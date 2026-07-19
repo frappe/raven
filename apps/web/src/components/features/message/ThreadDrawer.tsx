@@ -79,13 +79,6 @@ export default function ThreadDrawer({
         ? () => navigate(`${parentChannelBase}/thread/${encodeURIComponent(threadID)}?message_id=${encodeURIComponent(threadID)}`)
         : undefined
 
-    // Parent channel route centered on the thread's root message — the mobile back target
-    // ThreadHeader falls back to when the thread is an overlay (search / saved) with no
-    // route of its own. Ignored on real thread routes, where history-back is used.
-    const mobileBackTo = parentChannelBase
-        ? `${parentChannelBase}?message_id=${encodeURIComponent(threadID)}`
-        : undefined
-
     // Gate the actions by your membership in the thread (already in the members store, seeded by
     // the pill / get_thread_details). Only members can leave; only thread admins can delete.
     const { name: currentUser } = useUserCookieData()
@@ -170,7 +163,6 @@ export default function ThreadDrawer({
                 <ThreadHeader
                     onClose={onClose}
                     onOpenChannel={showOpenChannel ? onOpenChannel : undefined}
-                    mobileBackTo={mobileBackTo}
                     onLeave={onLeaveThread}
                     onRequestDelete={() => setConfirmDelete(true)}
                     leaving={leaving}

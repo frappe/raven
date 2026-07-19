@@ -1,13 +1,10 @@
-import { useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { useFrappeGetDoc } from "frappe-react-sdk"
-import { useSetAtom } from "jotai"
 import type { Message } from "@raven/types/common/Message"
 import { useChannelById } from "@stores/channels/useChannelList"
 import ChannelHeader from "@components/features/channel/ChannelHeader/ChannelHeader"
 import { DMChannelHeader } from "@components/features/dm-channel/DMChannelHeader"
 import { ChatContentView } from "@components/features/message/ChatContentView"
-import { messageTargetAtom, makeMessageTarget } from "@utils/channelAtoms"
 import { Empty, EmptyHeader, EmptyDescription, EmptyMedia } from "@components/ui/empty"
 import _ from "@lib/translate"
 import { Island } from "@components/layout/Island"
@@ -15,10 +12,9 @@ import type { UserData } from "@db"
 import ThreadDrawer from "@components/features/message/ThreadDrawer"
 import { MessageCircleIcon } from "lucide-react"
 
-/** Right-pane selection for the list + chat-pane pages. Search and Saved Messages own
- * it as local state (their static pane shows an empty state while null); the
- * notifications page encodes the same shape into its route instead
- * (`/notifications/:channelID/:messageID` + nav state, see NotificationChatRoute). */
+/** Selection payload a list row hands to its host's onSelect. Every host
+ * (notifications, search, saved messages) encodes it into its chat child route —
+ * path params + nav state, rendered by NotificationChatRoute in the right pane. */
 export type SelectedNotification = {
     channelID: string
     messageID: string
@@ -59,7 +55,6 @@ export function NotificationPane({
     peer,
     initialMessageID,
     onCloseThread,
-    onBack,
 }: {
     channelID: string
     isThread: boolean
@@ -69,9 +64,6 @@ export function NotificationPane({
     initialMessageID?: string | null
     /** Close handler for the thread pane's X/Esc — omit where closing isn't meaningful. */
     onCloseThread?: () => void
-    /** Mobile back override for the chat header — passed by state-driven hosts
-     * (search/saved) whose chat layer has no history entry to pop. */
-    onBack?: () => void
 }) {
     const navigate = useNavigate()
     const channel = useChannelById(channelID)
@@ -117,9 +109,9 @@ export function NotificationPane({
     // CurrentChannelContext) — so no breakpoint handling is needed here.
     const header = isDirectMessage
         ? peer
-            ? <DMChannelHeader peer={peer} channelID={channelID} showActions={false} onOpenChannel={openChannel} onBack={onBack} />
+            ? <DMChannelHeader peer={peer} channelID={channelID} showActions={false} onOpenChannel={openChannel} />
             : null
-        : <ChannelHeader channelID={channelID} showActions={false} onOpenChannel={canOpenChannel ? openChannel : undefined} onBack={onBack} />
+        : <ChannelHeader channelID={channelID} showActions={false} onOpenChannel={canOpenChannel ? openChannel : undefined} />
 
     return (
         <ChatContentView
@@ -132,39 +124,3 @@ export function NotificationPane({
     )
 }
 
-export default function NotificationChat({ selected, onClose, emptyMessage }: {
-    selected: SelectedNotification | null
-    onClose?: () => void
-    /** Copy for the no-selection state — the hosting page names its own list items
-     *  (results / saved messages); defaults to the notifications wording. */
-    emptyMessage?: string
-}) {
-    const channelID = selected?.channelID ?? ""
-    const setMessageTarget = useSetAtom(messageTargetAtom(channelID))
-
-    // Tell the chat stream to scroll to the notification's message. makeMessageTarget
-    // creates a fresh request object each time, so clicking the same notification again
-    // still re-triggers the jump (a plain id would be ignored as an unchanged value).
-    useEffect(() => {
-        if (!selected) return
-        setMessageTarget(makeMessageTarget(selected.messageID))
-    }, [selected, setMessageTarget])
-
-    if (!selected) return <NotificationsEmptyState message={emptyMessage} />
-
-    return (
-        <NotificationPane
-            channelID={selected.channelID}
-            isThread={selected.isThread}
-            isDirectMessage={selected.isDirectMessage}
-            peer={selected.peer}
-            initialMessageID={selected.messageID}
-            // Thread pane's close X → clear the selection: desktop falls back to the
-            // pane's empty state, mobile closes the chat layer back to the list.
-            onCloseThread={onClose}
-            // Mobile back chevron: this chat is a state layer, not a history entry —
-            // back means "clear the selection", not history.back() (which left the page).
-            onBack={onClose}
-        />
-    )
-}

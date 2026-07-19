@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Outlet, useMatch, useNavigate, useSearchParams } from 'react-router-dom'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { Search as SearchIcon, X } from 'lucide-react'
 
@@ -10,7 +10,7 @@ import SearchMessageResults from '@components/features/search/results/SearchMess
 import SearchFileResults from '@components/features/search/results/SearchFileResults'
 import SearchLinkResults from '@components/features/search/results/SearchLinkResults'
 import SearchPollResults from '@components/features/search/results/SearchPollResults'
-import NotificationChat, { type SelectedNotification } from '@pages/notifications/NotificationChat'
+import { NotificationsEmptyState, type SelectedNotification } from '@pages/notifications/NotificationChat'
 import AppMobileFooter from '@components/features/header/AppMobileFooter'
 import { PageHeader } from '@components/layout/PageHeader'
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@components/ui/empty'
@@ -51,12 +51,40 @@ export default function Search() {
     const tabFromURL = (searchParams.get('tab') as SearchTab) || 'messages'
 
     const [activeTab, setActiveTab] = useState<SearchTab>(tabFromURL)
-    const [selected, setSelected] = useState<SelectedNotification | null>(null)
-    const hasSelection = !!selected
     const isMobile = useIsMobile()
 
-    // Esc clears the selection — the static right pane falls back to its empty state.
-    useHotkeys('esc', () => setSelected(null), { enableOnFormTags: true }, [])
+    // The open result is ROUTE-driven (same as notifications): `/search/:channelID/:messageID`
+    // renders NotificationChatRoute in the right pane's Outlet. Being a history entry means
+    // the mobile back chevron / OS back-swipe pop to this list, and refresh restores the chat.
+    const navigate = useNavigate()
+    const selectedMessageID = useMatch("/search/:channelID/:messageID")?.params.messageID
+    const hasSelection = !!selectedMessageID
+
+    const onSelect = (selection: SelectedNotification) => {
+        navigate(
+            {
+                pathname: `/search/${encodeURIComponent(selection.channelID)}/${encodeURIComponent(selection.messageID)}`,
+                // Keep the query/filters in the URL while the chat is open.
+                search: searchParams.toString(),
+            },
+            {
+                // Thread/DM context for the pane — a cold deep-link derives it instead.
+                state: {
+                    isThread: selection.isThread,
+                    isDirectMessage: selection.isDirectMessage,
+                    peerID: selection.peer?.name,
+                },
+                // First open pushes (one back closes the chat); switching between
+                // results replaces, so back never walks through every chat viewed.
+                replace: hasSelection,
+            },
+        )
+    }
+
+    // Esc closes the open chat — the static right pane falls back to its empty state.
+    useHotkeys('esc', () => {
+        if (hasSelection) navigate({ pathname: '/search', search: searchParams.toString() })
+    }, { enableOnFormTags: true }, [hasSelection, searchParams])
 
     const filters: SearchFilters = {
         query: searchValue || '',
@@ -216,10 +244,10 @@ export default function Search() {
                         <div className="mx-auto w-full h-full">
                             {hasActiveSearch && (
                                 <>
-                                    {activeTab === 'messages' && <SearchMessageResults searchValue={filters.query} filters={filters} onSelect={setSelected} selectedID={selected?.messageID} />}
-                                    {activeTab === 'files' && <SearchFileResults searchValue={filters.query} filters={filters} onSelect={setSelected} selectedID={selected?.messageID} />}
-                                    {activeTab === 'links' && <SearchLinkResults searchValue={filters.query} filters={filters} onSelect={setSelected} selectedID={selected?.messageID} />}
-                                    {activeTab === 'polls' && <SearchPollResults searchValue={filters.query} filters={filters} onSelect={setSelected} selectedID={selected?.messageID} />}
+                                    {activeTab === 'messages' && <SearchMessageResults searchValue={filters.query} filters={filters} onSelect={onSelect} selectedID={selectedMessageID} />}
+                                    {activeTab === 'files' && <SearchFileResults searchValue={filters.query} filters={filters} onSelect={onSelect} selectedID={selectedMessageID} />}
+                                    {activeTab === 'links' && <SearchLinkResults searchValue={filters.query} filters={filters} onSelect={onSelect} selectedID={selectedMessageID} />}
+                                    {activeTab === 'polls' && <SearchPollResults searchValue={filters.query} filters={filters} onSelect={onSelect} selectedID={selectedMessageID} />}
                                 </>
                             )}
                         </div>
@@ -236,11 +264,9 @@ export default function Search() {
                     !hasSelection && "max-md:hidden",
                     "md:flex-1",
                 )}>
-                    <NotificationChat
-                        selected={selected}
-                        onClose={() => setSelected(null)}
-                        emptyMessage={_("Select a result to view the message.")}
-                    />
+                    {hasSelection
+                        ? <Outlet />
+                        : <NotificationsEmptyState message={_("Select a result to view the message.")} />}
                 </div>
             </div>
             <AppMobileFooter inert={isMobile && hasSelection ? true : undefined} />

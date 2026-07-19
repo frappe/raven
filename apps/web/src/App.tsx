@@ -101,8 +101,12 @@ const router = createBrowserRouter(
       <Route path="threads" element={<Threads />}>
         <Route path=":threadID" element={<ThreadDrawerRoute />} />
       </Route>
-      <Route path="search" element={<Suspense fallback={null}><Search /></Suspense>} />
-      <Route path="saved-messages" element={<Suspense fallback={null}><SavedMessages /></Suspense>} />
+      <Route path="search" element={<Suspense fallback={null}><Search /></Suspense>}>
+        <Route path=":channelID/:messageID" element={<NotificationChatRoute />} />
+      </Route>
+      <Route path="saved-messages" element={<Suspense fallback={null}><SavedMessages /></Suspense>}>
+        <Route path=":channelID/:messageID" element={<NotificationChatRoute />} />
+      </Route>
       <Route path="profile" element={<Suspense fallback={null}><MobileProfile /></Suspense>} />
       {/* OS share sheet lands here (manifest share_target) — conversation picker */}
       <Route path="share-target" element={<Suspense fallback={null}><ShareTarget /></Suspense>} />

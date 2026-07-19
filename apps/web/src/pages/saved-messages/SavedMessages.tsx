@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { Outlet, useMatch, useNavigate } from "react-router-dom"
 import { useHotkeys } from "react-hotkeys-hook"
 import { Search as SearchIcon, X } from "lucide-react"
 
@@ -6,7 +7,7 @@ import AppMobileFooter from "@components/features/header/AppMobileFooter"
 import { ChannelSelect } from "@components/common/ChannelSelect"
 import SavedMessagesList from "@components/features/saved-messages/SavedMessagesList"
 import { PageHeader } from "@components/layout/PageHeader"
-import NotificationChat, { type SelectedNotification } from "@pages/notifications/NotificationChat"
+import { NotificationsEmptyState, type SelectedNotification } from "@pages/notifications/NotificationChat"
 import { Input } from "@components/ui/input"
 import { useIsMobile } from "@hooks/use-mobile"
 import { useChannelList } from "@stores/channels/useChannelList"
@@ -28,14 +29,38 @@ import _ from "@lib/translate"
 const SavedMessages = () => {
     const [search, setSearch] = useState('')
     const [channel, setChannel] = useState('*all')
-    const [selected, setSelected] = useState<SelectedNotification | null>(null)
     const { channels, dmChannels } = useChannelList()
     const users = useLiveQuery(() => db.users.toArray(), [])
-    const hasSelection = !!selected
     const isMobile = useIsMobile()
 
-    // Esc clears the selection — the static right pane falls back to its empty state.
-    useHotkeys('esc', () => setSelected(null), { enableOnFormTags: true }, [])
+    // The open message is ROUTE-driven (same as notifications): `/saved-messages/:channelID/:messageID`
+    // renders NotificationChatRoute in the right pane's Outlet. Being a history entry means
+    // the mobile back chevron / OS back-swipe pop to this list, and refresh restores the chat.
+    const navigate = useNavigate()
+    const selectedMessageID = useMatch("/saved-messages/:channelID/:messageID")?.params.messageID
+    const hasSelection = !!selectedMessageID
+
+    const onSelect = (selection: SelectedNotification) => {
+        navigate(
+            `/saved-messages/${encodeURIComponent(selection.channelID)}/${encodeURIComponent(selection.messageID)}`,
+            {
+                // Thread/DM context for the pane — a cold deep-link derives it instead.
+                state: {
+                    isThread: selection.isThread,
+                    isDirectMessage: selection.isDirectMessage,
+                    peerID: selection.peer?.name,
+                },
+                // First open pushes (one back closes the chat); switching between
+                // messages replaces, so back never walks through every chat viewed.
+                replace: hasSelection,
+            },
+        )
+    }
+
+    // Esc closes the open chat — the static right pane falls back to its empty state.
+    useHotkeys('esc', () => {
+        if (hasSelection) navigate('/saved-messages')
+    }, { enableOnFormTags: true }, [hasSelection])
 
     const searchInput = (
         <div className="relative">
@@ -115,8 +140,8 @@ const SavedMessages = () => {
                         <SavedMessagesList
                             searchQuery={search}
                             channel={channel}
-                            onSelect={setSelected}
-                            selectedID={selected?.messageID}
+                            onSelect={onSelect}
+                            selectedID={selectedMessageID}
                         />
                     </div>
                 </div>
@@ -131,11 +156,9 @@ const SavedMessages = () => {
                     !hasSelection && "max-md:hidden",
                     "md:flex-1",
                 )}>
-                    <NotificationChat
-                        selected={selected}
-                        onClose={() => setSelected(null)}
-                        emptyMessage={_("Select a saved message to view the conversation.")}
-                    />
+                    {hasSelection
+                        ? <Outlet />
+                        : <NotificationsEmptyState message={_("Select a saved message to view the conversation.")} />}
                 </div>
             </div>
 

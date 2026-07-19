@@ -16,15 +16,23 @@ type NotificationNavState = {
 } | null
 
 /**
- * Router glue for `/notifications/:channelID/:messageID` — the notification pane as a
- * ROUTE, so opening a notification is a history entry: the mobile back-swipe closes the
- * chat instead of leaving the notifications page, and a refresh restores the open chat.
+ * Router glue for the chat-pane child routes — `/notifications/:channelID/:messageID?`,
+ * `/search/:channelID/:messageID` and `/saved-messages/:channelID/:messageID`. The pane
+ * is a ROUTE, so opening a chat is a history entry: the mobile back-swipe closes it
+ * instead of leaving the host page, and a refresh restores the open chat.
  */
 export default function NotificationChatRoute() {
     const { channelID = "", messageID = "" } = useParams<{ channelID: string; messageID?: string }>()
     const navigate = useNavigate()
     const location = useLocation()
     const navState = (location.state ?? null) as NotificationNavState
+
+    // The host's list route: strip this route's own params off the path. The query string
+    // stays — on /search it carries the active query/filters.
+    const listPath = {
+        pathname: location.pathname.split("/").slice(0, messageID ? -2 : -1).join("/") || "/",
+        search: location.search,
+    }
 
     // The click passes thread/DM context in navigation state; a cold deep-link derives
     // it from the channel store instead. Threads aren't in the store — "unknown id once
@@ -55,7 +63,7 @@ export default function NotificationChatRoute() {
             isDirectMessage={isDirectMessage}
             peer={peer ?? undefined}
             initialMessageID={messageID}
-            onCloseThread={() => navigate("/notifications")}
+            onCloseThread={() => navigate(listPath)}
         />
     )
 }
