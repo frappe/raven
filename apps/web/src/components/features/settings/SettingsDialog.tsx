@@ -34,7 +34,7 @@ const ChannelsPanel = lazy(() => import('./panels/Channels').then((m) => ({ defa
 const EmojisPanel = lazy(() => import('./panels/Emojis').then((m) => ({ default: m.Emojis })));
 const DocumentNotificationsPanel = lazy(() => import('./panels/DocumentNotifications').then((m) => ({ default: m.DocumentNotifications })));
 const DocumentPreviewsPanel = lazy(() => import('./panels/DocumentPreviews').then((m) => ({ default: m.DocumentPreviews })));
-const MessageActionsPanel = lazy(() => import('./panels/MessageActions').then((m) => ({ default: m.MessageActions })));
+const MessageActionsPanel = lazy(() => import('./panels/MessageActions/MessageActions').then((m) => ({ default: m.MessageActions })));
 const ScheduledMessagesPanel = lazy(() => import('./panels/ScheduledMessages').then((m) => ({ default: m.ScheduledMessages })));
 const WebhooksPanel = lazy(() => import('./panels/Webhooks/Webhooks').then((m) => ({ default: m.Webhooks })));
 const AgentsPanel = lazy(() => import('./panels/Agents').then((m) => ({ default: m.Agents })));
