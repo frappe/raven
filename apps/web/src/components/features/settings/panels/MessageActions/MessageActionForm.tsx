@@ -83,18 +83,35 @@ const GeneralTab = () => {
                     <FieldError message={errors.action?.message} />
                 </div>
             </div>
-
             {action === "Create Document" && (
-                <div className="flex flex-col gap-1.5">
-                    <LinkFormField
-                        name="document_type"
-                        label={_("Document Type")}
-                        isRequired
-                        doctype="DocType"
-                        filters={[["istable", "=", 0], ["issingle", "=", 0]]}
-                        rules={{ required: action === "Create Document" ? _("Document Type is required") : false }}
-                    />
-                    <FieldHelp>{_("The document you want this action to create.")}</FieldHelp>
+                <div className="grid grid-cols-2">
+                    <div className="flex flex-col gap-1.5">
+                        <LinkFormField
+                            name="document_type"
+                            label={_("Document Type")}
+                            isRequired
+                            doctype="DocType"
+                            filters={[["istable", "=", 0], ["issingle", "=", 0]]}
+                            rules={{ required: action === "Create Document" ? _("Document Type is required") : false }}
+                        />
+                        <FieldHelp>{_("The document you want this action to create.")}</FieldHelp>
+                    </div>
+                </div>
+            )}
+
+            {action === "Server Script" && (
+                <div className="grid grid-cols-2">
+                    <div className="flex flex-col gap-1.5">
+                        <LinkFormField
+                            name="server_script"
+                            label={_("Server Script")}
+                            isRequired
+                            doctype="Server Script"
+                            filters={[["disabled", "=", 0], ["script_type", "=", "API"]]}
+                            rules={{ required: action === "Server Script" ? _("Server Script is required") : false }}
+                        />
+                        <FieldHelp>{_("The Server Script to run. It must be of type \"API\".")}</FieldHelp>
+                    </div>
                 </div>
             )}
 
@@ -111,20 +128,6 @@ const GeneralTab = () => {
                     />
                     <FieldHelp>{_("Dotted path to the custom function/API. Cannot contain spaces.")}</FieldHelp>
                     <FieldError message={errors.custom_function_path?.message} />
-                </div>
-            )}
-
-            {action === "Server Script" && (
-                <div className="flex flex-col gap-1.5">
-                    <LinkFormField
-                        name="server_script"
-                        label={_("Server Script")}
-                        isRequired
-                        doctype="Server Script"
-                        filters={[["disabled", "=", 0], ["script_type", "=", "API"]]}
-                        rules={{ required: action === "Server Script" ? _("Server Script is required") : false }}
-                    />
-                    <FieldHelp>{_("The Server Script to run. It must be of type \"API\".")}</FieldHelp>
                 </div>
             )}
 

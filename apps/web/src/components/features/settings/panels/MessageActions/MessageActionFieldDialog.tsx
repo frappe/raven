@@ -136,7 +136,9 @@ const FieldForm = ({
                     <div className="flex flex-col gap-1.5">
                         <Label htmlFor="select-options">{_("Options")}</Label>
                         <Textarea
-                            id="select-options" rows={6} placeholder={_("Add options on new lines")}
+                            id="select-options"
+                            className="min-h-[100px]"
+                            placeholder={_("Add options on new lines")}
                             {...register("options", { required: type === "Select" ? _("Options are required") : false })}
                         />
                         {errors.options && <p className="text-p-sm text-ink-red-3">{errors.options.message}</p>}
@@ -201,7 +203,11 @@ const FieldForm = ({
                             )}
                         />
                     ) : defaultValueType === "Jinja" ? (
-                        <Textarea rows={6} placeholder="{{ message.content }}" {...register("default_value")} />
+                        <Textarea
+                            className="min-h-[100px]"
+                            placeholder="{{ message.content }}"
+                            {...register("default_value")}
+                        />
                     ) : (
                         <Input {...register("default_value")} />
                     )}

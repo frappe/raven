@@ -14,7 +14,12 @@ export const DocumentNotificationConditionTab = () => {
         <div className="flex flex-col gap-5 w-full">
             <div className="flex flex-col gap-1.5">
                 <Label htmlFor="condition">{_("Condition")}</Label>
-                <Textarea id="condition" rows={8} placeholder='e.g. doc.docstatus == 1' {...register("condition")} />
+                <Textarea
+                    id="condition"
+                    className="min-h-[100px]"
+                    placeholder='e.g. doc.docstatus == 1'
+                    {...register("condition")}
+                />
                 <p className="text-p-sm text-ink-gray-5">{_("Optional: the notification is sent only if this expression is true.")}</p>
                 <pre className="rounded-md bg-surface-gray-2 p-3 text-p-sm text-ink-gray-7">
                     <span className="font-medium">{_("Some examples:")}</span>{"\n"}

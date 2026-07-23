@@ -84,91 +84,101 @@ export const WebhookConditionForm = () => {
             ) : null}
 
             {needCondition && conditionOn === "Custom" ? (
-                <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="condition">{_("Condition")} <span className="text-ink-red-3">*</span></Label>
-                    <Textarea
-                        id="condition"
-                        rows={8}
-                        {...register("condition", { required: conditionOn === "Custom" ? _("Condition is required") : false })}
-                    />
-                    <FieldError message={errors?.condition?.message} />
-                    <FieldHelp>{_("The webhook will be triggered if this expression is true.")}</FieldHelp>
-                    <pre className="mt-1 rounded-md bg-surface-gray-2 p-3 text-p-sm text-ink-gray-7">
-                        <span className="font-medium">{_("Try something like:")}</span>{"\n"}
-                        doc.channel_id == 'general'{"\n"}
-                        doc.is_direct_message == 1{"\n"}
-                        doc.owner == 'Administrator'
-                    </pre>
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-1.5">
+                        <Label htmlFor="condition">{_("Condition")} <span className="text-ink-red-3">*</span></Label>
+                        <Textarea
+                            id="condition"
+                            className="min-h-[100px]"
+                            {...register("condition", { required: conditionOn === "Custom" ? _("Condition is required") : false })}
+                        />
+                        <FieldError message={errors?.condition?.message} />
+                        <FieldHelp>{_("The webhook will be triggered if this expression is true.")}</FieldHelp>
+                    </div>
+                    <div>
+                        <pre className="mt-5.5 rounded-md bg-surface-gray-2 p-3 text-p-sm text-ink-gray-7">
+                            <span className="font-medium">{_("Try something like:")}</span>{"\n"}
+                            doc.channel_id == 'general'{"\n"}
+                            doc.is_direct_message == 1{"\n"}
+                            doc.owner == 'Administrator'
+                        </pre>
+                    </div>
                 </div>
             ) : needCondition && conditionOn === "Channel" ? (
-                <div className="flex flex-col gap-1.5">
-                    <Label>{_("Channel")}</Label>
-                    <Controller
-                        control={control}
-                        name="channel_id"
-                        render={({ field }) => (
-                            <ChannelSelect
-                                channels={channels}
-                                value={field.value ?? ""}
-                                onValueChange={field.onChange}
-                                searchable
-                                className="w-full"
-                                triggerClassName="w-full"
-                            />
-                        )}
-                    />
-                    <FieldHelp>{_("Webhook will trigger only if the message is sent on this channel.")}</FieldHelp>
+                <div className="grid grid-cols-2">
+                    <div className="flex flex-col gap-1.5">
+                        <Label>{_("Channel")}</Label>
+                        <Controller
+                            control={control}
+                            name="channel_id"
+                            render={({ field }) => (
+                                <ChannelSelect
+                                    channels={channels}
+                                    value={field.value ?? ""}
+                                    onValueChange={field.onChange}
+                                    searchable
+                                    className="w-full"
+                                    triggerClassName="w-full"
+                                />
+                            )}
+                        />
+                        <FieldHelp>{_("Webhook will trigger only if the message is sent on this channel.")}</FieldHelp>
+                    </div>
                 </div>
             ) : needCondition && conditionOn === "User" ? (
-                <div className="flex flex-col gap-1.5">
-                    <Label>{_("User")}</Label>
-                    <Controller
-                        control={control}
-                        name="user"
-                        render={({ field }) => (
-                            <Select value={field.value} onValueChange={field.onChange}>
-                                <SelectTrigger className="w-full"><SelectValue placeholder={_("Select Field")} /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectGroup>
-                                        <SelectLabel>{_("User")}</SelectLabel>
-                                        {users.map((user) => (
-                                            <SelectItem key={user.name} value={user.name}>
-                                                <span className="flex items-center gap-2 min-w-0">
-                                                    <UserAvatar user={user} size="sm" showStatusIndicator={false} />
-                                                    <span className="truncate">{user.full_name ?? user.name}</span>
-                                                </span>
-                                            </SelectItem>
-                                        ))}
-                                    </SelectGroup>
-                                </SelectContent>
-                            </Select>
-                        )}
-                    />
-                    <FieldHelp>{_("Webhook will trigger only if the message is sent by this user.")}</FieldHelp>
+                <div className="grid grid-cols-2">
+                    <div className="flex flex-col gap-1.5">
+                        <Label>{_("User")}</Label>
+                        <Controller
+                            control={control}
+                            name="user"
+                            render={({ field }) => (
+                                <Select value={field.value} onValueChange={field.onChange}>
+                                    <SelectTrigger className="w-full"><SelectValue placeholder={_("Select Field")} /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectGroup>
+                                            <SelectLabel>{_("User")}</SelectLabel>
+                                            {users.map((user) => (
+                                                <SelectItem key={user.name} value={user.name}>
+                                                    <span className="flex items-center gap-2 min-w-0">
+                                                        <UserAvatar user={user} size="sm" showStatusIndicator={false} />
+                                                        <span className="truncate">{user.full_name ?? user.name}</span>
+                                                    </span>
+                                                </SelectItem>
+                                            ))}
+                                        </SelectGroup>
+                                    </SelectContent>
+                                </Select>
+                            )}
+                        />
+                        <FieldHelp>{_("Webhook will trigger only if the message is sent by this user.")}</FieldHelp>
+                    </div>
                 </div>
             ) : needCondition && conditionOn === "Channel Type" ? (
-                <div className="flex flex-col gap-1.5">
-                    <Label>{_("Channel Type")}</Label>
-                    <Controller
-                        control={control}
-                        name="channel_type"
-                        render={({ field }) => (
-                            <Select value={field.value} onValueChange={field.onChange}>
-                                <SelectTrigger className="w-full"><SelectValue placeholder={_("Select Field")} /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectGroup>
-                                        <SelectLabel>{_("Channel Type")}</SelectLabel>
-                                        <SelectItem value="Public">{_("Public")}</SelectItem>
-                                        <SelectItem value="Private">{_("Private")}</SelectItem>
-                                        <SelectItem value="Open">{_("Open")}</SelectItem>
-                                        <SelectItem value="DM">{_("Direct Message")}</SelectItem>
-                                        <SelectItem value="Self Message">{_("Self Message")}</SelectItem>
-                                    </SelectGroup>
-                                </SelectContent>
-                            </Select>
-                        )}
-                    />
-                    <FieldHelp>{_("The webhook will trigger if the channel type equals the value selected here.")}</FieldHelp>
+                <div className="grid grid-cols-2">
+                    <div className="flex flex-col gap-1.5">
+                        <Label>{_("Channel Type")}</Label>
+                        <Controller
+                            control={control}
+                            name="channel_type"
+                            render={({ field }) => (
+                                <Select value={field.value} onValueChange={field.onChange}>
+                                    <SelectTrigger className="w-full"><SelectValue placeholder={_("Select Field")} /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectGroup>
+                                            <SelectLabel>{_("Channel Type")}</SelectLabel>
+                                            <SelectItem value="Public">{_("Public")}</SelectItem>
+                                            <SelectItem value="Private">{_("Private")}</SelectItem>
+                                            <SelectItem value="Open">{_("Open")}</SelectItem>
+                                            <SelectItem value="DM">{_("Direct Message")}</SelectItem>
+                                            <SelectItem value="Self Message">{_("Self Message")}</SelectItem>
+                                        </SelectGroup>
+                                    </SelectContent>
+                                </Select>
+                            )}
+                        />
+                        <FieldHelp>{_("The webhook will trigger if the channel type equals the value selected here.")}</FieldHelp>
+                    </div>
                 </div>
             ) : null}
         </div>

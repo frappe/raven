@@ -113,7 +113,7 @@ export const DocumentNotificationDetailsTab = ({ isEdit }: { isEdit: boolean }) 
                 <Label htmlFor="message">{_("Message Content")}</Label>
                 <Textarea
                     id="message"
-                    rows={8}
+                    className="min-h-[100px]"
                     placeholder="Hi {{ doc.employee_name }}, your salary slip is ready."
                     {...register("message")}
                 />
