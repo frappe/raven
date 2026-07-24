@@ -2,23 +2,17 @@ import { Controller, useFormContext, useWatch } from "react-hook-form"
 import { ZapIcon, VariableIcon } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs"
 import { Input } from "@components/ui/input"
-import { Textarea } from "@components/ui/textarea"
 import { Label } from "@components/ui/label"
-import { Switch } from "@components/ui/switch"
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@components/ui/select"
-import { LinkFormField } from "@components/ui/form-elements"
+import { DataField, LinkFormField, SmallTextField, SwitchFormField } from "@components/ui/form-elements"
 import _ from "@lib/translate"
 import type { MessageActionFormData } from "./types"
 import { MessageActionFieldsBuilder } from "./MessageActionFieldsBuilder"
 
 const FieldError = ({ message }: { message?: string }) =>
     message ? <p className="text-p-sm text-ink-red-3">{message}</p> : null
-
-const FieldHelp = ({ children }: { children: React.ReactNode }) => (
-    <p className="text-p-sm text-ink-gray-5">{children}</p>
-)
 
 /** Create/edit form for a Raven Message Action — General + Fields tabs. */
 export const MessageActionForm = () => (
@@ -85,81 +79,70 @@ const GeneralTab = () => {
             </div>
             {action === "Create Document" && (
                 <div className="grid grid-cols-2">
-                    <div className="flex flex-col gap-1.5">
-                        <LinkFormField
-                            name="document_type"
-                            label={_("Document Type")}
-                            isRequired
-                            doctype="DocType"
-                            filters={[["istable", "=", 0], ["issingle", "=", 0]]}
-                            rules={{ required: action === "Create Document" ? _("Document Type is required") : false }}
-                        />
-                        <FieldHelp>{_("The document you want this action to create.")}</FieldHelp>
-                    </div>
+                    <LinkFormField
+                        name="document_type"
+                        label={_("Document Type")}
+                        isRequired
+                        doctype="DocType"
+                        filters={[["istable", "=", 0], ["issingle", "=", 0]]}
+                        rules={{ required: action === "Create Document" ? _("Document Type is required") : false }}
+                        formDescription={_("The document you want this action to create.")}
+                    />
                 </div>
             )}
 
             {action === "Server Script" && (
                 <div className="grid grid-cols-2">
-                    <div className="flex flex-col gap-1.5">
-                        <LinkFormField
-                            name="server_script"
-                            label={_("Server Script")}
-                            isRequired
-                            doctype="Server Script"
-                            filters={[["disabled", "=", 0], ["script_type", "=", "API"]]}
-                            rules={{ required: action === "Server Script" ? _("Server Script is required") : false }}
-                        />
-                        <FieldHelp>{_("The Server Script to run. It must be of type \"API\".")}</FieldHelp>
-                    </div>
+                    <LinkFormField
+                        name="server_script"
+                        label={_("Server Script")}
+                        isRequired
+                        doctype="Server Script"
+                        filters={[["disabled", "=", 0], ["script_type", "=", "API"]]}
+                        rules={{ required: action === "Server Script" ? _("Server Script is required") : false }}
+                        formDescription={_("The Server Script to run. It must be of type \"API\".")}
+                    />
                 </div>
             )}
 
             {action === "Custom Function" && (
-                <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="custom_function_path">{_("Custom Function Path")} <span className="text-ink-red-3">*</span></Label>
-                    <Textarea
-                        id="custom_function_path"
-                        placeholder="myapp.api.my_custom_function"
-                        {...register("custom_function_path", {
-                            required: action === "Custom Function" ? _("Path is required") : false,
-                            validate: (v) => (v?.includes(" ") ? _("Path cannot contain spaces") : true),
-                        })}
-                    />
-                    <FieldHelp>{_("Dotted path to the custom function/API. Cannot contain spaces.")}</FieldHelp>
-                    <FieldError message={errors.custom_function_path?.message} />
-                </div>
+                <SmallTextField
+                    name="custom_function_path"
+                    label={_("Custom Function Path")}
+                    isRequired
+                    inputProps={{ placeholder: "myapp.api.my_custom_function" }}
+                    rules={{
+                        required: action === "Custom Function" ? _("Path is required") : false,
+                        validate: (v) => (v?.includes(" ") ? _("Path cannot contain spaces") : true),
+                    }}
+                    formDescription={_("Dotted path to the custom function/API. Cannot contain spaces.")}
+                />
             )}
 
-            <Controller
-                control={control}
-                name="enabled"
-                render={({ field }) => (
-                    <label className="flex items-center gap-2 text-p-base text-ink-gray-8">
-                        <Switch checked={!!field.value} onCheckedChange={(v) => field.onChange(v ? 1 : 0)} />
-                        {_("Enabled")}
-                    </label>
-                )}
+            <SwitchFormField name="enabled" label={_("Enabled")} />
+
+            <DataField
+                name="title"
+                label={_("Title")}
+                isRequired
+                inputProps={{ placeholder: _("Create support ticket") }}
+                rules={{ required: _("Title is required") }}
+                formDescription={_("Title of the message action dialog.")}
             />
 
-            <div className="flex flex-col gap-1.5">
-                <Label htmlFor="title">{_("Title")} <span className="text-ink-red-3">*</span></Label>
-                <Input id="title" placeholder={_("Create support ticket")} {...register("title", { required: _("Title is required") })} />
-                <FieldHelp>{_("Title of the message action dialog.")}</FieldHelp>
-                <FieldError message={errors.title?.message} />
-            </div>
+            <SmallTextField
+                name="description"
+                label={_("Description")}
+                inputProps={{ placeholder: _("Create a support ticket from the message.") }}
+                formDescription={_("Shown on the message action dialog.")}
+            />
 
-            <div className="flex flex-col gap-1.5">
-                <Label htmlFor="description">{_("Description")}</Label>
-                <Textarea id="description" placeholder={_("Create a support ticket from the message.")} {...register("description")} />
-                <FieldHelp>{_("Shown on the message action dialog.")}</FieldHelp>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-                <Label htmlFor="success_message">{_("Success Message")}</Label>
-                <Textarea id="success_message" placeholder={_("Ticket created successfully.")} {...register("success_message")} />
-                <FieldHelp>{_("Shown in the toast after the action runs.")}</FieldHelp>
-            </div>
+            <SmallTextField
+                name="success_message"
+                label={_("Success Message")}
+                inputProps={{ placeholder: _("Ticket created successfully.") }}
+                formDescription={_("Shown in the toast after the action runs.")}
+            />
         </div>
     )
 }

@@ -1,17 +1,16 @@
 import { useMemo, useState } from "react"
-import { Controller, FormProvider, useForm, useWatch } from "react-hook-form"
+import { FormProvider, useForm, useWatch } from "react-hook-form"
 import { Button } from "@components/ui/button"
-import { Input } from "@components/ui/input"
-import { Textarea } from "@components/ui/textarea"
 import { Label } from "@components/ui/label"
-import { Switch } from "@components/ui/switch"
 import {
     Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@components/ui/dialog"
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@components/ui/select"
-import { LinkFormField } from "@components/ui/form-elements"
+import {
+    DataField, LinkFormField, SelectFormField, SmallTextField, SwitchFormField,
+} from "@components/ui/form-elements"
 import useDoctypeMeta from "@hooks/useDoctypeMeta"
 import type { DocField } from "@raven/types/Core/DocField"
 import _ from "@lib/translate"
@@ -58,7 +57,7 @@ const FieldForm = ({
     onSubmit: (d: FieldData) => void
 }) => {
     const methods = useForm<FieldData>({ defaultValues: field ?? { default_value_type: "Static" } })
-    const { register, control, setValue, handleSubmit, formState: { errors } } = methods
+    const { control, setValue, handleSubmit } = methods
 
     const fieldname = useWatch({ control, name: "fieldname" })
     const type = useWatch({ control, name: "type" })
@@ -82,67 +81,57 @@ const FieldForm = ({
                             <DoctypeFieldSelect doctype={doctype} value={fieldname ?? ""} onFieldSelect={onDoctypeFieldSelect} />
                         </div>
                     ) : (
-                        <div className="flex flex-col gap-1.5 w-1/2">
-                            <Label htmlFor="fieldname">{_("Field Name")} <span className="text-ink-red-3">*</span></Label>
-                            <Input id="fieldname" {...register("fieldname", { required: _("Field is required") })} />
-                            {errors.fieldname && <p className="text-p-sm text-ink-red-3">{errors.fieldname.message}</p>}
+                        <div className="w-1/2">
+                            <DataField
+                                name="fieldname"
+                                label={_("Field Name")}
+                                isRequired
+                                rules={{ required: _("Field is required") }}
+                            />
                         </div>
                     )}
-                    <div className="flex flex-col gap-1.5 w-1/2">
-                        <Label htmlFor="label">{_("Label")} <span className="text-ink-red-3">*</span></Label>
-                        <Input id="label" {...register("label", { required: _("Label is required") })} />
-                        {errors.label && <p className="text-p-sm text-ink-red-3">{errors.label.message}</p>}
+                    <div className="w-1/2">
+                        <DataField
+                            name="label"
+                            label={_("Label")}
+                            isRequired
+                            rules={{ required: _("Label is required") }}
+                        />
                     </div>
                 </div>
 
                 <div className="flex gap-3">
-                    <div className="flex flex-col gap-1.5 w-1/2">
-                        <Label>{_("Type")} <span className="text-ink-red-3">*</span></Label>
-                        <Controller
-                            control={control}
+                    <div className="w-1/2">
+                        <SelectFormField
                             name="type"
+                            label={_("Type")}
+                            isRequired
                             rules={{ required: _("Type is required") }}
-                            render={({ field: f }) => (
-                                <Select value={f.value} onValueChange={f.onChange}>
-                                    <SelectTrigger className="w-full"><SelectValue placeholder={_("Select a type")} /></SelectTrigger>
-                                    <SelectContent>
-                                        {FIELD_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                            )}
-                        />
-                        {errors.type && <p className="text-p-sm text-ink-red-3">{errors.type.message}</p>}
+                        >
+                            {FIELD_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                        </SelectFormField>
                     </div>
                     {type === "Data" && (
-                        <div className="flex flex-col gap-1.5 w-1/2">
-                            <Label htmlFor="options">{_("Validation")} <span className="text-p-sm text-ink-gray-5">({_("optional")})</span></Label>
-                            <Input id="options" placeholder='email, tel, or url' {...register("options")} />
+                        <div className="w-1/2">
+                            <DataField
+                                name="options"
+                                label={_("Validation")}
+                                formDescription={_("Optional — email, tel, or url")}
+                                inputProps={{ placeholder: "email, tel, or url" }}
+                            />
                         </div>
                     )}
                 </div>
 
-                <Controller
-                    control={control}
-                    name="is_required"
-                    render={({ field: f }) => (
-                        <label className="flex items-center gap-2 text-p-base text-ink-gray-8">
-                            <Switch checked={!!f.value} onCheckedChange={(v) => f.onChange(v ? 1 : 0)} />
-                            {_("Required")}
-                        </label>
-                    )}
-                />
+                <SwitchFormField name="is_required" label={_("Required")} />
 
                 {type === "Select" && (
-                    <div className="flex flex-col gap-1.5">
-                        <Label htmlFor="select-options">{_("Options")}</Label>
-                        <Textarea
-                            id="select-options"
-                            className="min-h-[100px]"
-                            placeholder={_("Add options on new lines")}
-                            {...register("options", { required: type === "Select" ? _("Options are required") : false })}
-                        />
-                        {errors.options && <p className="text-p-sm text-ink-red-3">{errors.options.message}</p>}
-                    </div>
+                    <SmallTextField
+                        name="options"
+                        label={_("Options")}
+                        inputProps={{ className: "min-h-[100px]", placeholder: _("Add options on new lines") }}
+                        rules={{ required: type === "Select" ? _("Options are required") : false }}
+                    />
                 )}
 
                 {type === "Link" && (
@@ -156,67 +145,45 @@ const FieldForm = ({
                     />
                 )}
 
-                <div className="flex flex-col gap-1.5">
-                    <Label>{_("Default Value Type")}</Label>
-                    <Controller
-                        control={control}
-                        name="default_value_type"
-                        render={({ field: f }) => (
-                            <Select value={f.value} onValueChange={f.onChange}>
-                                <SelectTrigger className="w-full"><SelectValue placeholder={_("Select a default value type")} /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Static">{_("Static")}</SelectItem>
-                                    <SelectItem value="Message Field">{_("Message Field")}</SelectItem>
-                                    <SelectItem value="Jinja">{_("Jinja")}</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        )}
+                <SelectFormField
+                    name="default_value_type"
+                    label={_("Default Value Type")}
+                    formDescription={_("Static value, a field from the selected message, or a Jinja template with the message as context.")}
+                >
+                    <SelectItem value="Static">{_("Static")}</SelectItem>
+                    <SelectItem value="Message Field">{_("Message Field")}</SelectItem>
+                    <SelectItem value="Jinja">{_("Jinja")}</SelectItem>
+                </SelectFormField>
+
+                {defaultValueType === "Message Field" ? (
+                    <SelectFormField name="default_value" label={_("Default Value")}>
+                        <SelectItem value="text">{_("Text (with HTML)")}</SelectItem>
+                        <SelectItem value="content">{_("Content (plain text)")}</SelectItem>
+                        <SelectItem value="file">{_("File")}</SelectItem>
+                        <SelectItem value="owner">{_("Owner")}</SelectItem>
+                        <SelectItem value="creation">{_("Creation")}</SelectItem>
+                        <SelectItem value="message_type">{_("Message Type")}</SelectItem>
+                        <SelectItem value="link_doctype">{_("Linked DocType")}</SelectItem>
+                        <SelectItem value="link_document">{_("Linked Document")}</SelectItem>
+                        <SelectItem value="channel_id">{_("Channel ID")}</SelectItem>
+                        <SelectItem value="workspace_id">{_("Workspace ID")}</SelectItem>
+                        <SelectItem value="message_url">{_("Message URL")}</SelectItem>
+                    </SelectFormField>
+                ) : defaultValueType === "Jinja" ? (
+                    <SmallTextField
+                        name="default_value"
+                        label={_("Default Value")}
+                        inputProps={{ className: "min-h-[100px]", placeholder: "{{ message.content }}" }}
                     />
-                    <p className="text-p-sm text-ink-gray-5">
-                        {_("Static value, a field from the selected message, or a Jinja template with the message as context.")}
-                    </p>
-                </div>
+                ) : (
+                    <DataField name="default_value" label={_("Default Value")} />
+                )}
 
-                <div className="flex flex-col gap-1.5">
-                    <Label>{_("Default Value")}</Label>
-                    {defaultValueType === "Message Field" ? (
-                        <Controller
-                            control={control}
-                            name="default_value"
-                            render={({ field: f }) => (
-                                <Select value={f.value} onValueChange={f.onChange}>
-                                    <SelectTrigger className="w-full"><SelectValue placeholder={_("Select a message field")} /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="text">{_("Text (with HTML)")}</SelectItem>
-                                        <SelectItem value="content">{_("Content (plain text)")}</SelectItem>
-                                        <SelectItem value="file">{_("File")}</SelectItem>
-                                        <SelectItem value="owner">{_("Owner")}</SelectItem>
-                                        <SelectItem value="creation">{_("Creation")}</SelectItem>
-                                        <SelectItem value="message_type">{_("Message Type")}</SelectItem>
-                                        <SelectItem value="link_doctype">{_("Linked DocType")}</SelectItem>
-                                        <SelectItem value="link_document">{_("Linked Document")}</SelectItem>
-                                        <SelectItem value="channel_id">{_("Channel ID")}</SelectItem>
-                                        <SelectItem value="workspace_id">{_("Workspace ID")}</SelectItem>
-                                        <SelectItem value="message_url">{_("Message URL")}</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            )}
-                        />
-                    ) : defaultValueType === "Jinja" ? (
-                        <Textarea
-                            className="min-h-[100px]"
-                            placeholder="{{ message.content }}"
-                            {...register("default_value")}
-                        />
-                    ) : (
-                        <Input {...register("default_value")} />
-                    )}
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="helper_text">{_("Description")} <span className="text-p-sm text-ink-gray-5">({_("optional")})</span></Label>
-                    <Input id="helper_text" {...register("helper_text")} />
-                </div>
+                <DataField
+                    name="helper_text"
+                    label={_("Description")}
+                    formDescription={_("Optional")}
+                />
 
                 <DialogFooter>
                     <DialogClose asChild>

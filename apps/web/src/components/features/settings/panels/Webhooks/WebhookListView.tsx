@@ -15,7 +15,7 @@ import {
 } from "@components/ui/settings-dialog"
 import type { RavenWebhook } from "@raven/types/RavenIntegrations/RavenWebhook"
 import { getDateObject } from "@lib/date"
-import { isSystemManager } from "@utils/roles"
+import { hasRole } from "@lib/permissions"
 import _ from "@lib/translate"
 
 /** Shared SWR key for the webhooks list — mutated by the create/detail sub-views. */
@@ -25,7 +25,7 @@ type Props = { onCreate: () => void; onOpen: (webhookID: string) => void }
 
 /** Webhooks list — a table with edit/delete row actions, plus a create action. */
 export default function WebhookListView({ onCreate, onOpen }: Props) {
-    const isRavenAdmin = isSystemManager()
+    const isRavenAdmin = hasRole("System Manager")
 
     const { data, error, isLoading, mutate } = useFrappeGetDocList<RavenWebhook>(
         "Raven Webhook",

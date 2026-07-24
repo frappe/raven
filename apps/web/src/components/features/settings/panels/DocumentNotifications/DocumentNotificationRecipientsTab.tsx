@@ -9,6 +9,7 @@ import {
 import LinkFieldCombobox from "@components/common/LinkFieldComboBox/LinkFieldCombobox"
 import useDoctypeMeta from "@hooks/useDoctypeMeta"
 import type { RavenDocumentNotification } from "@raven/types/RavenIntegrations/RavenDocumentNotification"
+import type { RavenDocumentNotificationRecipients } from "@raven/types/RavenIntegrations/RavenDocumentNotificationRecipients"
 import type { DocField } from "@raven/types/Core/DocField"
 import _ from "@lib/translate"
 
@@ -26,7 +27,7 @@ export const DocumentNotificationRecipientsTab = () => {
                 </p>
                 <Button
                     type="button" variant="outline" size="sm"
-                    onClick={() => append({ channel_type: "Channel", variable_type: "Static", value: "" })}
+                    onClick={() => append({ channel_type: "Channel", variable_type: "Static", value: "" } as RavenDocumentNotificationRecipients)}
                 >
                     <PlusIcon />
                     {_("Add Recipient")}

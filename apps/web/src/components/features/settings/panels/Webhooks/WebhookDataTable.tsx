@@ -14,9 +14,16 @@ import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@components/ui/table"
 import { Label } from "@components/ui/label"
+import useDoctypeMeta from "@hooks/useDoctypeMeta"
 import type { RavenWebhook } from "@raven/types/RavenIntegrations/RavenWebhook"
 import _ from "@lib/translate"
-import { DoctypeFieldList, SampleData, type FieldsData } from "./utils"
+import { SampleData, TriggerEvents } from "./utils"
+
+/** A payload-field option, derived live from the target DocType's meta. */
+type PayloadField = { fieldname: string; label: string; fieldtype: string; description?: string }
+
+/** Layout-only fieldtypes carry no value, so they're never payload fields. */
+const LAYOUT_FIELDTYPES = new Set(["Section Break", "Column Break", "Tab Break", "HTML", "Button", "Fold", "Heading"])
 
 /** Data tab — select which document fields make up the webhook payload. */
 export const WebhookData = () => {
@@ -24,12 +31,25 @@ export const WebhookData = () => {
     const { fields, append, remove } = useFieldArray({ name: "webhook_data" })
     const webhookTrigger = useWatch({ control, name: "webhook_trigger" })
 
-    // The payload fields come from the selected Trigger Event — without one there's
-    // nothing to pick, so gate the whole tab on it.
+    // The payload fields come from the selected Trigger Event's DocType — without one
+    // there's nothing to pick, so gate the whole tab on it. Fields come from live meta.
     const hasTrigger = Boolean(webhookTrigger)
-    const availableFields = useMemo<FieldsData[]>(
-        () => DoctypeFieldList.find((f) => f.events.includes(webhookTrigger))?.fields ?? [],
+    const triggerDoctype = useMemo(
+        () => TriggerEvents.find((e) => e.label === webhookTrigger)?.doctype ?? "",
         [webhookTrigger],
+    )
+    const { doc: meta } = useDoctypeMeta(triggerDoctype)
+    const availableFields = useMemo<PayloadField[]>(
+        () =>
+            (meta?.fields ?? [])
+                .filter((f) => f.fieldname && f.fieldtype && !LAYOUT_FIELDTYPES.has(f.fieldtype))
+                .map((f) => ({
+                    fieldname: f.fieldname as string,
+                    label: f.label ?? (f.fieldname as string),
+                    fieldtype: f.fieldtype as string,
+                    description: f.description,
+                })),
+        [meta],
     )
 
     return (
@@ -76,7 +96,6 @@ export const WebhookData = () => {
                                 key={field.id}
                                 index={index}
                                 availableFields={availableFields}
-                                trigger={webhookTrigger}
                                 onRemove={() => remove(index)}
                             />
                         ))}
@@ -90,11 +109,10 @@ export const WebhookData = () => {
 /** One payload-field row. Reads its own fieldname via useWatch so the Key, the
  *  info button's enabled state and the info lookup all stay reactive. */
 const WebhookDataRow = ({
-    index, availableFields, trigger, onRemove,
+    index, availableFields, onRemove,
 }: {
     index: number
-    availableFields: FieldsData[]
-    trigger: string
+    availableFields: PayloadField[]
     onRemove: () => void
 }) => {
     const { control, register, setValue } = useFormContext<RavenWebhook>()
@@ -131,7 +149,7 @@ const WebhookDataRow = ({
                 <Input readOnly placeholder={_("Key")} {...register(`webhook_data.${index}.key`)} />
             </TableCell>
             <TableCell>
-                <FieldInfoDialog fieldname={fieldname} trigger={trigger} />
+                <FieldInfoDialog fieldname={fieldname} availableFields={availableFields} />
             </TableCell>
             <TableCell>
                 <Button
@@ -146,10 +164,10 @@ const WebhookDataRow = ({
     )
 }
 
-const FieldInfoDialog = ({ fieldname, trigger }: { fieldname?: string; trigger: string }) => {
+const FieldInfoDialog = ({ fieldname, availableFields }: { fieldname?: string; availableFields: PayloadField[] }) => {
     const fieldData = useMemo(
-        () => DoctypeFieldList.find((f) => f.events.includes(trigger))?.fields.find((f) => f.fieldname === fieldname),
-        [fieldname, trigger],
+        () => availableFields.find((f) => f.fieldname === fieldname),
+        [fieldname, availableFields],
     )
 
     return (
@@ -167,14 +185,10 @@ const FieldInfoDialog = ({ fieldname, trigger }: { fieldname?: string; trigger: 
                     </DialogTitle>
                     {fieldData?.description && <DialogDescription>{fieldData.description}</DialogDescription>}
                 </DialogHeader>
-                {fieldData?.example !== undefined && (
-                    <div className="flex flex-col gap-1.5">
-                        <Label>{_("Example")}</Label>
-                        <pre className="rounded-md bg-surface-gray-2 p-3 text-p-sm text-ink-gray-7 overflow-auto max-h-64">
-                            <code>{JSON.stringify(fieldData.example, null, 2)}</code>
-                        </pre>
-                    </div>
-                )}
+                <div className="flex flex-col gap-1.5">
+                    <Label>{_("Fieldname")}</Label>
+                    <pre className="rounded-md bg-surface-gray-2 p-3 text-p-sm text-ink-gray-7"><code>{fieldData?.fieldname}</code></pre>
+                </div>
             </DialogContent>
         </Dialog>
     )

@@ -14,7 +14,7 @@ import {
     SettingsPanelContent, SettingsPanelDescription, SettingsPanelHeader, SettingsPanelTitle,
 } from "@components/ui/settings-dialog"
 import type { RavenDocumentNotification } from "@raven/types/RavenIntegrations/RavenDocumentNotification"
-import { hasRavenAdminRole, isSystemManager } from "@utils/roles"
+import { isRavenSettingsAdmin } from "../AdminSettingsForm"
 import _ from "@lib/translate"
 
 /** Shared SWR key for the list — mutated by the create/detail sub-views. */
@@ -24,7 +24,7 @@ type Props = { onCreate: () => void; onOpen: (id: string) => void }
 
 /** Document Notifications list — a table with edit/delete row actions + a create action. */
 export default function DocumentNotificationListView({ onCreate, onOpen }: Props) {
-    const isRavenAdmin = hasRavenAdminRole() || isSystemManager()
+    const isRavenAdmin = isRavenSettingsAdmin()
 
     const { data, error, isLoading, mutate } = useFrappeGetDocList<RavenDocumentNotification>(
         "Raven Document Notification",

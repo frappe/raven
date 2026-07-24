@@ -1,10 +1,10 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form"
 import { AppWindowIcon, CodeIcon, DatabaseIcon, WorkflowIcon } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs"
-import { Input } from "@components/ui/input"
 import { Label } from "@components/ui/label"
 import { Switch } from "@components/ui/switch"
 import { Badge } from "@components/ui/badge"
+import { DataField } from "@components/ui/form-elements"
 import {
     Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue,
 } from "@components/ui/select"
@@ -41,44 +41,35 @@ export const WebhookForm = ({ isEdit = false }: { isEdit?: boolean }) => (
 )
 
 const GeneralWebhookForm = ({ isEdit }: { isEdit: boolean }) => {
-    const { register, formState: { errors }, control, setValue } = useFormContext<RavenWebhook>()
+    const { formState: { errors }, control, setValue } = useFormContext<RavenWebhook>()
     const security = useWatch({ control, name: "enable_security" })
 
     return (
         <div className="flex flex-col gap-5 w-full">
             {!isEdit && (
-                <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="name">{_("Name")} <span className="text-ink-red-3">*</span></Label>
-                    <Input
-                        id="name"
-                        autoFocus
-                        {...register("name", {
-                            required: _("Name is required"),
-                            maxLength: { value: 140, message: _("Name should not exceed 140 characters") },
-                        })}
-                    />
-                    <FieldError message={errors?.name?.message} />
-                </div>
+                <DataField
+                    name="name"
+                    label={_("Name")}
+                    isRequired
+                    inputProps={{ autoFocus: true }}
+                    rules={{ required: _("Name is required") }}
+                />
             )}
 
-            <div className="flex flex-col gap-1.5">
-                <Label htmlFor="request_url">{_("Request URL")} <span className="text-ink-red-3">*</span></Label>
-                <Input
-                    id="request_url"
-                    {...register("request_url", {
-                        required: _("Request URL is required"),
-                        maxLength: { value: 140, message: _("Request URL should not exceed 140 characters") },
-                    })}
-                />
-                <FieldError message={errors?.request_url?.message} />
-            </div>
+            <DataField
+                name="request_url"
+                label={_("Request URL")}
+                isRequired
+                rules={{ required: _("Request URL is required") }}
+            />
 
             <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="timeout">{_("Request Timeout")}</Label>
-                    <Input id="timeout" type="number" {...register("timeout", { valueAsNumber: true })} />
-                    <FieldHelp>{_("The number of seconds until the request expires.")}</FieldHelp>
-                </div>
+                <DataField
+                    name="timeout"
+                    label={_("Request Timeout")}
+                    inputProps={{ type: "number" }}
+                    formDescription={_("The number of seconds until the request expires.")}
+                />
 
                 <div className="flex flex-col gap-1.5">
                     <Label htmlFor="webhook_trigger">{_("Trigger Event")} <span className="text-ink-red-3">*</span></Label>
@@ -128,18 +119,13 @@ const GeneralWebhookForm = ({ isEdit }: { isEdit: boolean }) => {
             </div>
 
             {security ? (
-                <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="webhook_secret">{_("Webhook Secret")} <span className="text-ink-red-3">*</span></Label>
-                    <Input
-                        id="webhook_secret"
-                        type="password"
-                        {...register("webhook_secret", {
-                            required: security ? _("Webhook secret is required") : false,
-                            maxLength: { value: 140, message: _("Webhook secret should not exceed 140 characters") },
-                        })}
-                    />
-                    <FieldError message={errors?.webhook_secret?.message} />
-                </div>
+                <DataField
+                    name="webhook_secret"
+                    label={_("Webhook Secret")}
+                    isRequired
+                    inputProps={{ type: "password" }}
+                    rules={{ required: security ? _("Webhook secret is required") : false }}
+                />
             ) : null}
         </div>
     )
