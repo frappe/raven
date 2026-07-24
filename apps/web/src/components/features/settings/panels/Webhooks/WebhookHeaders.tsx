@@ -16,10 +16,7 @@ export const WebhookHeaders = () => {
     return (
         <div className="flex flex-col gap-3">
             <div className="flex items-start justify-between gap-2">
-                <div className="flex flex-col gap-0.5">
-                    <h4 className="text-base-medium text-ink-gray-8">{_("Headers")}</h4>
-                    <p className="text-p-sm text-ink-gray-5">{_("Add the headers you want to send with the request.")}</p>
-                </div>
+                <p className="text-p-sm text-ink-gray-5 max-w-lg">{_("Add the headers you want to send with the request.")}</p>
                 <Button type="button" variant="outline" size="sm" onClick={() => append({ key: "", value: "" })}>
                     <PlusIcon />
                     {_("Add")}

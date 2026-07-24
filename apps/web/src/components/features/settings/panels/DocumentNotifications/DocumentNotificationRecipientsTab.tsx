@@ -6,6 +6,9 @@ import { Input } from "@components/ui/input"
 import {
     Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue,
 } from "@components/ui/select"
+import {
+    Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@components/ui/table"
 import LinkFieldCombobox from "@components/common/LinkFieldComboBox/LinkFieldCombobox"
 import useDoctypeMeta from "@hooks/useDoctypeMeta"
 import type { RavenDocumentNotification } from "@raven/types/RavenIntegrations/RavenDocumentNotification"
@@ -34,9 +37,23 @@ export const DocumentNotificationRecipientsTab = () => {
                 </Button>
             </div>
 
-            {fields.map((row, index) => (
-                <RecipientRow key={row.id} index={index} onRemove={() => remove(index)} />
-            ))}
+            {fields.length > 0 && (
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead className="w-48">{_("Channel Type")}</TableHead>
+                            <TableHead className="w-44">{_("Variable Type")}</TableHead>
+                            <TableHead>{_("Value")} <span className="text-ink-red-3">*</span></TableHead>
+                            <TableHead className="w-12" />
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {fields.map((row, index) => (
+                            <RecipientRow key={row.id} index={index} onRemove={() => remove(index)} />
+                        ))}
+                    </TableBody>
+                </Table>
+            )}
 
             <p className="text-p-sm text-ink-gray-5">
                 {_("You can use Jinja to resolve a recipient — e.g.")}{" "}
@@ -50,9 +67,8 @@ const RecipientRow = ({ index, onRemove }: { index: number; onRemove: () => void
     const { control } = useFormContext<RavenDocumentNotification>()
 
     return (
-        <div className="flex items-start gap-2 rounded-lg border border-outline-gray-2 p-3">
-            <div className="flex flex-col gap-1.5 w-48 shrink-0">
-                <span className="text-p-sm text-ink-gray-5">{_("Channel Type")}</span>
+        <TableRow>
+            <TableCell>
                 <Controller
                     control={control}
                     name={`recipients.${index}.channel_type`}
@@ -67,9 +83,8 @@ const RecipientRow = ({ index, onRemove }: { index: number; onRemove: () => void
                         </Select>
                     )}
                 />
-            </div>
-            <div className="flex flex-col gap-1.5 w-44 shrink-0">
-                <span className="text-p-sm text-ink-gray-5">{_("Variable Type")}</span>
+            </TableCell>
+            <TableCell>
                 <Controller
                     control={control}
                     name={`recipients.${index}.variable_type`}
@@ -84,9 +99,8 @@ const RecipientRow = ({ index, onRemove }: { index: number; onRemove: () => void
                         </Select>
                     )}
                 />
-            </div>
-            <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                <span className="text-p-sm text-ink-gray-5">{_("Value")}</span>
+            </TableCell>
+            <TableCell>
                 <Controller
                     control={control}
                     name={`recipients.${index}.value`}
@@ -94,18 +108,20 @@ const RecipientRow = ({ index, onRemove }: { index: number; onRemove: () => void
                     render={({ field, fieldState }) => (
                         <>
                             <RecipientValueField index={index} value={field.value ?? ""} onChange={field.onChange} />
-                            {fieldState.error && <p className="text-p-sm text-ink-red-3">{fieldState.error.message}</p>}
+                            {fieldState.error && <p className="mt-1.5 text-p-sm text-ink-red-3">{fieldState.error.message}</p>}
                         </>
                     )}
                 />
-            </div>
-            <Button
-                type="button" variant="ghost" theme="red" size="sm" isIconButton
-                aria-label={_("Remove recipient")} onClick={onRemove} className="mt-6 shrink-0"
-            >
-                <Trash2Icon />
-            </Button>
-        </div>
+            </TableCell>
+            <TableCell>
+                <Button
+                    type="button" variant="ghost" theme="red" size="sm" isIconButton
+                    aria-label={_("Remove recipient")} onClick={onRemove}
+                >
+                    <Trash2Icon />
+                </Button>
+            </TableCell>
+        </TableRow>
     )
 }
 

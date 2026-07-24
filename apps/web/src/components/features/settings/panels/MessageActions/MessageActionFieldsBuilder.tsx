@@ -21,13 +21,16 @@ export const MessageActionFieldsBuilder = () => {
 
     return (
         <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-end gap-2">
-                {action === "Create Document" && doctype && (
-                    <ImportFromDoctype doctype={doctype} append={(d) => append(d as RavenMessageActionFields)} />
-                )}
-                <FieldDialog doctype={doctype} onSubmit={(d) => append(d as RavenMessageActionFields)}>
-                    <Button type="button" variant="outline" size="sm"><PlusIcon />{_("Add Field")}</Button>
-                </FieldDialog>
+            <div className="flex items-start justify-between gap-2">
+                <p className="text-p-sm text-ink-gray-5 max-w-lg">{_("Fields to collect from the user when this action runs.")}</p>
+                <div className="flex items-center gap-2">
+                    {action === "Create Document" && doctype && (
+                        <ImportFromDoctype doctype={doctype} append={(d) => append(d as RavenMessageActionFields)} />
+                    )}
+                    <FieldDialog doctype={doctype} onSubmit={(d) => append(d as RavenMessageActionFields)}>
+                        <Button type="button" variant="outline" size="sm"><PlusIcon />{_("Add Field")}</Button>
+                    </FieldDialog>
+                </div>
             </div>
 
             {fields.length > 0 && (

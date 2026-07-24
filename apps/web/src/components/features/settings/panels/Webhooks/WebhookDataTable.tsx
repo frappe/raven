@@ -55,10 +55,7 @@ export const WebhookData = () => {
     return (
         <div className="flex flex-col gap-3">
             <div className="flex items-start justify-between gap-2">
-                <div className="flex flex-col gap-0.5">
-                    <h4 className="text-base-medium text-ink-gray-8">{_("Webhook Data")}</h4>
-                    <p className="text-p-sm text-ink-gray-5">{_("Select the fields you want in the webhook payload.")}</p>
-                </div>
+                <p className="text-p-sm text-ink-gray-5 max-w-lg">{_("Select the fields you want in the webhook payload.")}</p>
                 <div className="flex items-center gap-2">
                     <PreviewDialog />
                     <Button
@@ -84,7 +81,7 @@ export const WebhookData = () => {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>{_("Fieldname")} <span className="text-ink-red-3">*</span></TableHead>
+                            <TableHead className="w-64">{_("Fieldname")} <span className="text-ink-red-3">*</span></TableHead>
                             <TableHead>{_("Key")}</TableHead>
                             <TableHead className="w-12" />
                             <TableHead className="w-12" />

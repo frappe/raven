@@ -94,7 +94,7 @@ export const WebhookConditionForm = () => {
                         formDescription={_("The webhook will be triggered if this expression is true.")}
                     />
                     <div>
-                        <pre className="mt-5.5 rounded-md bg-surface-gray-2 p-3 text-p-sm text-ink-gray-7">
+                        <pre className="mt-6 rounded-md bg-surface-gray-2 p-3 text-p-sm text-ink-gray-7">
                             <span className="font-medium">{_("Try something like:")}</span>{"\n"}
                             doc.channel_id == 'general'{"\n"}
                             doc.is_direct_message == 1{"\n"}
