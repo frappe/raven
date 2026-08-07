@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useSetAtom } from "jotai"
 import { NavLink, useMatch, useNavigate, useParams } from "react-router-dom"
 import { useHotkeys } from "react-hotkeys-hook"
-import { Check, ChevronDown, ChevronRight, Hash, PencilLine, Star } from "lucide-react"
+import { BellOff, Check, ChevronDown, ChevronRight, Hash, PencilLine, Star } from "lucide-react"
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso"
 import { useLocalStorage } from "usehooks-ts"
 import { useChannelUnread, useGroupUnreadCount, useWorkspaceUnread } from "@stores/unread/useChannelUnread"
@@ -23,6 +23,7 @@ import {
 } from "@components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@components/ui/avatar"
 import { ChannelIcon } from "@components/common/ChannelIcon/ChannelIcon"
+import { ChannelRowActions } from "@components/common/ChannelRowActions"
 import { CustomizeSidebarButton } from "@components/features/channel/CustomizeSidebar/CustomizeSidebarButton"
 import { MobileSearchButton } from "@components/features/header/QuickSearch/SearchButton"
 import { useWorkspaces, type WorkspaceFields } from "@hooks/useWorkspaces"
@@ -38,6 +39,8 @@ import { useChannelDraft } from "@components/features/ChatInput/draft"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip"
 import type { ChannelListItem } from "@raven/types/common/ChannelListItem"
 import { useIsMobile } from "@hooks/use-mobile"
+import { useLongPress } from "@hooks/useLongPress"
+import { hapticTick } from "@utils/haptics"
 
 interface GroupsState {
     [key: string]: boolean
@@ -413,19 +416,32 @@ const ChannelRow = ({ channel, workspaceID }: { channel: ChannelListItem; worksp
     // Channel rows have no preview line — an unsent draft shows as a pencil.
     const draft = useChannelDraft(channel.name)
 
+    const isMobile = useIsMobile()
+    const [sheetOpen, setSheetOpen] = useState(false)
+    const [menuOpen, setMenuOpen] = useState(false)
+    const longPress = useLongPress(() => {
+        hapticTick()
+        setSheetOpen(true)
+    }, isMobile)
+
     return (
         <NavLink
             {...prefetchHandlers}
+            {...longPress}
             to={`/${encodeURIComponent(workspaceID ?? "")}/${encodeURIComponent(channel.name)}`}
             className={({ isActive }) =>
                 cn(
-                    "flex min-w-0 select-none items-center gap-1.5 overflow-hidden rounded text-base px-3 md:px-2 text-ink-gray-6 dark:text-ink-gray-7 py-2 md:py-1.5",
+                    "group/row flex min-w-0 select-none items-center gap-1.5 overflow-hidden rounded text-base px-3 md:px-2 text-ink-gray-6 dark:text-ink-gray-7 py-2 md:py-1.5",
                     // `transition` (not transition-colors) so box-shadow animates IN SYNC
                     // with the background — Virtuoso recycles rows on workspace switch, and
                     // transition-colors left the shadow popping while the bg cross-faded.
                     "outline-none ring-outline-gray-2 transition focus-visible:ring-2",
                     "hover:bg-surface-gray-3 active:bg-surface-gray-3",
                     unread > 0 && !channel.muted && "text-ink-gray-7 dark:text-ink-gray-8",
+                    // Menu/sheet open pins the HOVER look (not the route-active raised
+                    // look): the pointer may leave the row while its menu is up, and
+                    // the highlight should hold until the menu closes.
+                    (menuOpen || sheetOpen) && "bg-surface-gray-3",
                     isActive && "bg-surface-elevation-3 shadow-sm text-ink-gray-8 dark:text-ink-gray-9 hover:bg-surface-elevation-3 active:bg-surface-elevation-3",
                 )
             }
@@ -453,11 +469,34 @@ const ChannelRow = ({ channel, workspaceID }: { channel: ChannelListItem; worksp
                     </TooltipContent>
                 </Tooltip>
             )}
+            {/* Badge yields its slot to the kebab on hover/menu-open (display swap,
+                like the muted marker below) — the kebab appears in its place instead
+                of alongside it. */}
             {unread > 0 && !channel.muted && (
-                <Badge size="sm" variant="ghost" theme="gray" className="shrink-0 px-0 justify-center tabular-nums">
+                <Badge
+                    size="sm"
+                    variant="ghost"
+                    theme="gray"
+                    className={cn("shrink-0 px-0 justify-center tabular-nums", "md:group-hover/row:hidden", menuOpen && "hidden")}
+                >
                     {unread > 9 ? "9+" : unread}
                 </Badge>
             )}
+            {/* Notifications-muted marker (allow_notifications — the flag the kebab's
+                Mute and the settings panel's bell both flip): in-flow in the badge
+                slot, swapping display with the kebab (hover/menu-open) so the two
+                never occupy space together. */}
+            {channel.allow_notifications === 0 && (
+                <BellOff className={cn("size-6 shrink-0 p-1 text-ink-gray-5 -my-1 -mr-[5px]", "md:group-hover/row:hidden", menuOpen && "hidden")} />
+            )}
+            <ChannelRowActions
+                channelID={channel.name}
+                channelName={channel.channel_name}
+                workspaceID={workspaceID}
+                sheetOpen={sheetOpen}
+                onSheetOpenChange={setSheetOpen}
+                onMenuOpenChange={setMenuOpen}
+            />
         </NavLink>
     )
 }

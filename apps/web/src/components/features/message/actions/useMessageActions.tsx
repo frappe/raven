@@ -9,6 +9,7 @@ import {
     Copy,
     Link,
     LucideIcon,
+    MessageSquareDot,
     MessageSquareText,
     Edit3Icon,
     Pin,
@@ -26,6 +27,7 @@ import { parsePinnedIds } from "@stores/messages/selectors"
 import { channelStore } from "@stores/channels/store"
 import { useChannelPinnedString } from "@stores/channels/useChannelList"
 import { seedThreadMeta } from "@stores/threads/useThreadMeta"
+import { useMarkUnread } from "@stores/unread/useMarkUnread"
 import _ from "@lib/translate"
 import type { Message } from "@raven/types/common/Message"
 import { useUserCookieData } from "@hooks/useUserCookieData"
@@ -114,6 +116,7 @@ export const useMessageActions = (
     const canInteract = options?.canInteract ?? true
     const { name: currentUser } = useUserCookieData()
     const setDialog = useSetAtom(messageDialogAtom)
+    const markUnread = useMarkUnread()
     const navigate = useNavigate()
     const { call } = useContext(FrappeContext) as FrappeConfig
     // Pinned state lives on the channel, and pinning doesn't change the message object —
@@ -295,6 +298,24 @@ export const useMessageActions = (
                 },
             },
         )
+        // Mark unread from THIS message: the anchor and everything after it become
+        // unread (Slack semantics — allowed on your own messages too; they never
+        // count toward the badge, so anchoring on one only affects what follows).
+        // Channels + DMs only: both the channel-unread store and the sidebar badge
+        // are channel-keyed, so inside a thread this would visibly do nothing —
+        // same parentChannel gate as Create thread. Not gated on canInteract:
+        // read-state operation, valid in archived channels. It IS gated on having
+        // a member row (or being an Open channel, where the backend auto-creates
+        // the watermark): unread state lives on Raven Channel Member.last_visit,
+        // and for non-member Public/Private channels the server silently no-ops.
+        if (parentChannel && (parentChannel.member_id || parentChannel.type === "Open")) {
+            organize.push({
+                id: "mark-unread",
+                label: _("Mark as unread"),
+                icon: MessageSquareDot,
+                onSelect: () => markUnread(message.channel_id, message.name),
+            })
+        }
         if (hasReactions) {
             organize.push({
                 id: "reactions",
@@ -351,5 +372,5 @@ export const useMessageActions = (
         }
 
         return { groups: [respond, pollActions, clipboard, organize, owner].filter((group) => group.length > 0), isOwner }
-    }, [message, currentUser, setDialog, navigate, call, pinnedString, canInteract, isPoll, pollData, mutatePoll])
+    }, [message, currentUser, setDialog, navigate, call, pinnedString, canInteract, isPoll, pollData, mutatePoll, markUnread])
 }

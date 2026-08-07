@@ -107,6 +107,28 @@ class TestReadReceipts(IntegrationTestCase):
 		# unread counts exclude the user's own messages; m1,m2,m3 authored by `test`
 		self.assertEqual(get_unread_count_for_channel(self.channel.name), 2)
 
+	def test_set_channel_unread_skips_own_latest_message(self):
+		"""Channel-level mark-unread must anchor past the user's own trailing
+		messages: own messages never count toward the badge, so anchoring on one
+		would mark the channel 'unread' with a count of zero — invisibly."""
+		from raven.api.raven_message import get_unread_count_for_channel
+		from raven.utils import set_channel_unread
+
+		frappe.set_user("test@example.com")
+		self._send("from someone else")
+
+		# test1 replies last, then marks the channel unread with no explicit anchor.
+		frappe.set_user("test1@example.com")
+		own_reply = self._send("my own reply")
+		self._set_last_visit(
+			"test1@example.com", frappe.utils.add_to_date(own_reply.creation, seconds=5)
+		)
+
+		set_channel_unread(self.channel.name)
+
+		# Anchor skipped the own reply and landed on test@'s message.
+		self.assertEqual(get_unread_count_for_channel(self.channel.name), 1)
+
 	def test_set_channel_unread_no_message_uses_latest(self):
 		from raven.api.raven_message import get_unread_count_for_channel
 		from raven.utils import set_channel_unread
