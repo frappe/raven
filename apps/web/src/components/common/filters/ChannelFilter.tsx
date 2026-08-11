@@ -33,25 +33,27 @@ interface ChannelFilterProps {
     modal?: boolean
 }
 
-/** Channel + DM picker for the filter bars. */
-export function ChannelFilter({
+/**
+ * The selectable rows alone — shared by the desktop combobox below and the
+ * mobile drill-in sheet (SearchFiltersSheet), so the two surfaces show one
+ * list. Must render inside a cmdk <Command>; pass the live search text so
+ * the list can flatten while a search runs.
+ */
+export function ChannelFilterRows({
     channels,
     dmChannels,
     users,
     value,
-    onValueChange,
-    allLabel = _("In Any Channel"),
-    triggerClassName,
-    className,
-    modal = false,
-}: ChannelFilterProps) {
-    const selectedChannel = useMemo(() => {
-        if (!value || value === ALL) return null
-        return channels.find((channel) => channel.name === value)
-            ?? dmChannels?.find((dm) => dm.name === value)
-            ?? null
-    }, [value, channels, dmChannels])
-
+    search,
+    onSelect,
+}: {
+    channels: ChannelListItem[]
+    dmChannels?: DMChannelListItem[]
+    users?: UserData[]
+    value: string
+    search: string
+    onSelect: (name: string) => void
+}) {
     const channelsByWorkspace = useMemo(() => {
         const groups = new Map<string, ChannelListItem[]>()
         for (const channel of channels) {
@@ -71,6 +73,73 @@ export function ChannelFilter({
         [workspaces],
     )
 
+    const item = (channel: ChannelFilterItem, workspaceName?: string) => (
+        <ChannelCommandItem
+            key={channel.name}
+            channel={channel}
+            users={users}
+            selected={value === channel.name}
+            onSelect={() => onSelect(channel.name)}
+            workspaceName={workspaceName}
+        />
+    )
+
+    // Searching flattens the list into one group. cmdk ranks items by score
+    // within a group but leaves the groups themselves in render order, so a
+    // weak fuzzy match in the first workspace outranked an exact match in the
+    // second — searching "memes" put the exact channel 7th, below
+    // "framework-bug-triaging-sprint". One group means one ranking, and each
+    // row carries the workspace the heading would have told you.
+    if (search) {
+        return (
+            <CommandGroup>
+                {channels.map((channel) => item(
+                    channel,
+                    channel.workspace ? workspaceNames.get(channel.workspace) ?? channel.workspace : undefined,
+                ))}
+                {dmChannels?.map((dm) => item(dm, _("Direct Message")))}
+            </CommandGroup>
+        )
+    }
+
+    // Idle: grouped by workspace, which is how you browse rather than search.
+    return (
+        <>
+            {channelsByWorkspace.map(([workspaceID, workspaceChannels]) => (
+                <CommandGroup key={workspaceID} heading={workspaceNames.get(workspaceID) ?? workspaceID}>
+                    {/* Arrow, not a bare reference: map would pass the index as
+                        the workspace name. */}
+                    {workspaceChannels.map((channel) => item(channel))}
+                </CommandGroup>
+            ))}
+            {dmChannels && dmChannels.length > 0 && (
+                <CommandGroup heading={_("Direct Messages")}>
+                    {dmChannels.map((dm) => item(dm))}
+                </CommandGroup>
+            )}
+        </>
+    )
+}
+
+/** Channel + DM picker for the filter bars. */
+export function ChannelFilter({
+    channels,
+    dmChannels,
+    users,
+    value,
+    onValueChange,
+    allLabel = _("In Any Channel"),
+    triggerClassName,
+    className,
+    modal = false,
+}: ChannelFilterProps) {
+    const selectedChannel = useMemo(() => {
+        if (!value || value === ALL) return null
+        return channels.find((channel) => channel.name === value)
+            ?? dmChannels?.find((dm) => dm.name === value)
+            ?? null
+    }, [value, channels, dmChannels])
+
     return (
         <FilterCombobox
             className={className}
@@ -89,54 +158,16 @@ export function ChannelFilter({
                 )
             }
         >
-            {(close, search) => {
-                const item = (channel: ChannelFilterItem, workspaceName?: string) => (
-                    <ChannelCommandItem
-                        key={channel.name}
-                        channel={channel}
-                        users={users}
-                        selected={value === channel.name}
-                        onSelect={() => { onValueChange(channel.name); close() }}
-                        workspaceName={workspaceName}
-                    />
-                )
-
-                // Searching flattens the list into one group. cmdk ranks items by score
-                // within a group but leaves the groups themselves in render order, so a
-                // weak fuzzy match in the first workspace outranked an exact match in the
-                // second — searching "memes" put the exact channel 7th, below
-                // "framework-bug-triaging-sprint". One group means one ranking, and each
-                // row carries the workspace the heading would have told you.
-                if (search) {
-                    return (
-                        <CommandGroup>
-                            {channels.map((channel) => item(
-                                channel,
-                                channel.workspace ? workspaceNames.get(channel.workspace) ?? channel.workspace : undefined,
-                            ))}
-                            {dmChannels?.map((dm) => item(dm, _("Direct Message")))}
-                        </CommandGroup>
-                    )
-                }
-
-                // Idle: grouped by workspace, which is how you browse rather than search.
-                return (
-                    <>
-                        {channelsByWorkspace.map(([workspaceID, workspaceChannels]) => (
-                            <CommandGroup key={workspaceID} heading={workspaceNames.get(workspaceID) ?? workspaceID}>
-                                {/* Arrow, not a bare reference: map would pass the index as
-                                    the workspace name. */}
-                                {workspaceChannels.map((channel) => item(channel))}
-                            </CommandGroup>
-                        ))}
-                        {dmChannels && dmChannels.length > 0 && (
-                            <CommandGroup heading={_("Direct Messages")}>
-                                {dmChannels.map((dm) => item(dm))}
-                            </CommandGroup>
-                        )}
-                    </>
-                )
-            }}
+            {(close, search) => (
+                <ChannelFilterRows
+                    channels={channels}
+                    dmChannels={dmChannels}
+                    users={users}
+                    value={value}
+                    search={search}
+                    onSelect={(name) => { onValueChange(name); close() }}
+                />
+            )}
         </FilterCombobox>
     )
 }
@@ -188,7 +219,7 @@ function ChannelOption({
                     <UserAvatar user={peerUser} size={compact ? "xs" : "sm"} showStatusIndicator={false} showBotIndicator={false} />
                 ) : (
                     <span className={cn(
-                        "flex shrink-0 items-center justify-center rounded bg-surface-gray-2 text-xs font-bold text-ink-gray-4",
+                        "flex shrink-0 items-center justify-center rounded bg-surface-gray-2 text-xs font-bold text-ink-gray-5",
                         compact ? "size-4" : "size-6",
                     )}>
                         ?
@@ -197,7 +228,7 @@ function ChannelOption({
             ) : (
                 <ChannelIcon
                     type={(channel as ChannelListItem).type as "Public" | "Private" | "Open"}
-                    className="size-4 shrink-0 text-ink-gray-5"
+                    className="size-4 shrink-0 text-ink-gray-6"
                 />
             )}
             {/* leading-snug: the UI type scale's 1.15 is too tight to contain descenders

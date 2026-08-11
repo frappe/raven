@@ -10,6 +10,7 @@
   "auto_add_system_users",
   "show_raven_on_desk",
   "use_website_favicon",
+  "blocked_links",
   "integrations_tab",
   "integrations_section",
   "tenor_api_key",
@@ -293,13 +294,20 @@
    "fieldname": "frappe_meet_hosted_urls",
    "fieldtype": "Small Text",
    "label": "Frappe Meet Hosted URLs"
+  },
+  {
+   "description": "The system will not generate link previews for these links if they appear in messages.",
+   "fieldname": "blocked_links",
+   "fieldtype": "Table",
+   "label": "Blocked Links",
+   "options": "Raven Blocked Links"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-07-05 06:01:58.752266",
+ "modified": "2026-08-10 12:06:13.678904",
  "modified_by": "Administrator",
  "module": "Raven",
  "name": "Raven Settings",

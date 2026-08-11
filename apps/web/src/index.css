@@ -23,6 +23,17 @@
   src: url("/assets/frappe/css/fonts/inter/InterVariable-Italic.woff2") format("woff2");
 }
 
+/* Newsreader (variable: weight 200-800 + optical sizing) — the serif from
+   Frappe's own site. Only the Frappe link-preview card uses it, and
+   browsers fetch a font lazily on first use, so nobody else pays for it. */
+@font-face {
+  font-family: Newsreader;
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("/assets/raven/fonts/NewsreaderVariable.woff2") format("woff2");
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @custom-variant standalone (@media (display-mode: standalone));
@@ -478,4 +489,13 @@ body {
 [data-sonner-toaster][data-sonner-theme="dark"] [data-sonner-toast] [data-close-button][data-close-button]:hover {
   background: var(--surface-gray-8);
   border-color: transparent;
+}
+
+/* Sonner's dark-theme description color is not gated on data-styled either:
+   it paints the description near-white, invisible on our INVERTED dark-mode
+   card (surface-gray-9 flips to a light card). Restate the class map's
+   text-ink-base, which flips with it. Doubled attribute = the usual
+   specificity tie-break over sonner's own rule. */
+[data-sonner-toaster][data-sonner-theme="dark"] [data-sonner-toast] [data-description][data-description] {
+  color: var(--ink-base);
 }

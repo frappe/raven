@@ -14,6 +14,7 @@ import { useUnreadSync } from "@stores/unread/useUnreadSync"
 import { useUnreadRealtime } from "@stores/unread/useUnreadRealtime"
 import { useMessageRoomSubscriptions } from "@stores/messages/useMessageRoomSubscriptions"
 import { useMessagesRealtime } from "@stores/messages/useMessagesRealtime"
+import { useLinkPreviewsRealtime } from "@stores/linkPreviews/useLinkPreview"
 import { useConnectionFreshness } from "@hooks/useConnectionFreshness"
 import { useActiveSocketConnection } from "@hooks/useActiveSocketConnection"
 import { useOutboxAutoRetry } from "@stores/messages/useOutboxAutoRetry"
@@ -115,6 +116,8 @@ const AppListeners = ({ children }: { children: React.ReactNode }) => {
     useMessageRoomSubscriptions()
     // Dispatches those live message events into the message store
     useMessagesRealtime()
+    // Patches freshly fetched link previews into the link preview store
+    useLinkPreviewsRealtime()
     // Health-checks the socket on focus and force-reconnects a dead one (e.g. after a
     // backgrounded tab suspended it) — the reconnect then bumps the connection epoch
     useActiveSocketConnection()

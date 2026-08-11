@@ -38,35 +38,38 @@ const ChannelList = ({ text }: { text: string }) => {
 
     if (!filteredChannels.length) return null
 
-    return (
-        <CommandGroup heading={_("Channels")}>
-            {filteredChannels.map(channel => channel.name && (
-                <CommandItem
-                    key={channel.name}
-                    value={channel.name}
-                    keywords={[channel.channel_name]}
-                    onSelect={() => {
-                        navigate(`/${channel.workspace}/${channel.name}`)
-                        setOpen(false)
-                    }}
-                    className='cursor-pointer'
-                >
-                    <ChannelIcon type={channel.type} className="h-4 w-4 shrink-0" />
-                    <span className="truncate text-base">{channel.channel_name}</span>
-                    <div className='flex items-center gap-1 ml-auto'>
-                        {channel.is_archived ? (
-                            <Badge variant="subtle" size='sm'>
-                                {_("Archived")}
-                            </Badge>
-                        ) : null}
-                        <div className="flex items-center gap-1 text-xs text-ink-gray-4">
-                            <span>{channel.workspace}</span>
-                        </div>
-                    </div>
-                </CommandItem>
-            ))}
-        </CommandGroup>
-    )
+    const rows = filteredChannels.map(channel => channel.name && (
+        <CommandItem
+            key={channel.name}
+            value={channel.name}
+            keywords={[channel.channel_name]}
+            onSelect={() => {
+                navigate(`/${channel.workspace}/${channel.name}`)
+                setOpen(false)
+            }}
+            className='cursor-pointer'
+        >
+            <ChannelIcon type={channel.type} className="h-4 w-4 shrink-0" />
+            <span className="truncate">{channel.channel_name}</span>
+            <div className='flex items-center gap-1 ml-auto'>
+                {channel.is_archived ? (
+                    <Badge variant="subtle" size='sm'>
+                        {_("Archived")}
+                    </Badge>
+                ) : null}
+                <div className="flex items-center gap-1 text-xs font-normal text-ink-gray-4">
+                    <span>{channel.workspace}</span>
+                </div>
+            </div>
+        </CommandItem>
+    ))
+
+    // While searching, rows go bare into the palette's single ranking group
+    // (see CommandPalette) so channels compete with users and commands on
+    // score, not on section order. Browsing keeps the labeled section.
+    if (text) return <>{rows}</>
+
+    return <CommandGroup heading={_("Channels")}>{rows}</CommandGroup>
 }
 
 export default ChannelList

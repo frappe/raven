@@ -581,10 +581,12 @@ def get_message_readers(message_id: str):
 	Return the channel members who have read `message_id`.
 
 	A member has read the message when their `last_visit` watermark is at or
-	after the message's creation. The message author is excluded (they
-	trivially read their own message). Accepted caveat: in Open channels a user
-	who can see the channel but has no Raven Channel Member record (never
-	visited) does not appear.
+	after the message's creation. Ordered most recent reader first. Only user
+	ids go out: `last_visit` is the member's latest catch-up time, not when
+	they read THIS message, so showing it would mislead. The message author is
+	excluded (they trivially read their own message). Accepted caveat: in Open
+	channels a user who can see the channel but has no Raven Channel Member
+	record (never visited) does not appear.
 	"""
 	message = frappe.db.get_value(
 		"Raven Message", message_id, ["channel_id", "creation", "owner"], as_dict=True
@@ -597,11 +599,11 @@ def get_message_readers(message_id: str):
 	member = frappe.qb.DocType("Raven Channel Member")
 	readers = (
 		frappe.qb.from_(member)
-		.select(member.user_id, member.last_visit)
+		.select(member.user_id)
 		.where(member.channel_id == message.channel_id)
 		.where(member.last_visit >= message.creation)
 		.where(member.user_id != message.owner)
-		.orderby(member.last_visit, order=Order.asc)
+		.orderby(member.last_visit, order=Order.desc)
 		.run(as_dict=True)
 	)
 	return readers
@@ -909,3 +911,136 @@ def build_reply_blockquote(replied_message_details) -> str:
 	return (
 		f"<blockquote><p><strong>{frappe.utils.escape_html(author)}</strong></p>{body}</blockquote>"
 	)
+
+
+@frappe.whitelist(methods=["POST"])
+def attach_file_to_document(message_ids: list[str], doctype: str, docname: str):
+	"""
+	Attach files shared on Raven to another document — one File row per message, e.g. for
+	a multi-file batch the user ticks in bulk (messages sharing a message_batch_id).
+
+	A Raven Message stores only the file URL, so each File doc has to be found via the
+	message it is attached to. Doing that lookup here rather than on the client means a
+	missing File row or a failed permission check surfaces as a real error instead of a
+	silent no-op — for every message in the list, not just the first, and the whole call
+	is all-or-nothing: nothing is attached until every message in the list has been found
+	to have a file.
+	"""
+	from frappe.handler import check_write_permission
+
+	for message_id in message_ids:
+		if not frappe.has_permission(doctype="Raven Message", doc=message_id, ptype="read"):
+			frappe.throw(_("You don't have permission to access this message"), frappe.PermissionError)
+
+	# Permission on the TARGET doc — same check frappe.handler.upload_file runs. Checked once:
+	# it's the same target document for every file in the list.
+	check_write_permission(doctype, docname)
+
+	# Resolve every source file before inserting anything, so a message with no File row
+	# throws before any File row is created — no partial attachment left behind.
+	files = []
+	for message_id in message_ids:
+		file = frappe.db.get_value(
+			"File",
+			{
+				"attached_to_doctype": "Raven Message",
+				"attached_to_name": message_id,
+				"attached_to_field": "file",
+			},
+			["name", "file_url", "file_name", "is_private"],
+			as_dict=True,
+		)
+
+		if not file:
+			frappe.throw(_("No file found on this message"), frappe.DoesNotExistError)
+
+		files.append(file)
+
+	attached_file_names = []
+	for file in files:
+		source = frappe.get_doc("File", file.name)
+		# create_attachment_copy reuses the existing blob (flags.copy_from_existing_file
+		# short-circuits before_insert), so the file is read once instead of twice and a
+		# lowered max-file-size limit can't throw on a file already on the server. Not
+		# available on Frappe v15 (landed 2026-04-11), which pyproject.toml still supports
+		# — fall back to the old insert path there.
+		if hasattr(source, "create_attachment_copy"):
+			attached_file = source.create_attachment_copy(doctype, docname)
+		else:
+			attached_file = frappe.get_doc(
+				{
+					"doctype": "File",
+					"attached_to_doctype": doctype,
+					"attached_to_name": docname,
+					"file_name": file.file_name,
+					"file_url": file.file_url,
+					"is_private": file.is_private,
+				}
+			).insert()
+		attached_file_names.append(attached_file.name)
+
+	return attached_file_names
+
+
+@frappe.whitelist()
+def download_batch_files(message_ids: list[str] | str):
+	"""
+	Zip every file in a multi-file message into one download.
+
+	Firing N browser downloads instead is unreliable where it matters: Chrome interrupts
+	with a "Download multiple files?" prompt, Safari commonly honours only the first, and
+	on iOS nothing lands at all — the single-file path works there only because it routes
+	through the Web Share sheet, which cannot take N files. One zip is an ordinary
+	download on every platform.
+
+	Deliberately NOT all-or-nothing, unlike attach_file_to_document: a message with no
+	File row is skipped rather than fatal, because a batch's caption is a plain Text
+	message and zipping the files that do exist is the useful outcome. It throws only when
+	nothing at all resolves.
+	"""
+	import re
+
+	from frappe.core.doctype.file.file import File
+	from frappe.utils import today
+
+	# A GET query carries the list as JSON text.
+	if isinstance(message_ids, str):
+		message_ids = frappe.parse_json(message_ids)
+
+	for message_id in message_ids:
+		if not frappe.has_permission(doctype="Raven Message", doc=message_id, ptype="read"):
+			frappe.throw(_("You don't have permission to access this message"), frappe.PermissionError)
+
+	file_names = []
+	channel_id = None
+	for message_id in message_ids:
+		if channel_id is None:
+			channel_id = frappe.db.get_value("Raven Message", message_id, "channel_id")
+
+		file_name = frappe.db.get_value(
+			"File",
+			{
+				"attached_to_doctype": "Raven Message",
+				"attached_to_name": message_id,
+				"attached_to_field": "file",
+			},
+			"name",
+		)
+		if file_name:
+			file_names.append(file_name)
+
+	if not file_names:
+		frappe.throw(_("No files found on these messages"), frappe.DoesNotExistError)
+
+	# Name the zip after the channel rather than Frappe's generic files.zip, so a Downloads
+	# folder full of them stays readable.
+	channel_name = (
+		frappe.db.get_value("Raven Channel", channel_id, "channel_name") if channel_id else None
+	)
+	slug = re.sub(r"[^a-z0-9]+", "-", (channel_name or "").lower()).strip("-")
+
+	frappe.response["filename"] = f"{slug or 'raven-files'}-{today()}.zip"
+	# zip_files re-checks read permission on every File it packs, so this stays safe even
+	# if the permission loop above is ever loosened.
+	frappe.response["filecontent"] = File.zip_files(file_names)
+	frappe.response["type"] = "download"

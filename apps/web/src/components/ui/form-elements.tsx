@@ -14,6 +14,7 @@ import { Textarea } from "./textarea"
 import LinkFieldCombobox, { LinkFieldComboboxProps } from "@components/common/LinkFieldComboBox/LinkFieldCombobox"
 import { Select, SelectContent, SelectTrigger, SelectValue } from "./select"
 import { Switch } from "./switch"
+import { Checkbox } from "./checkbox"
 
 interface FormElementProps {
     name: string,
@@ -273,6 +274,43 @@ export const SwitchFormField = ({ name, rules, label, formDescription, disabled,
                         onCheckedChange={(checked) => field.onChange(intValue ? (checked ? 1 : 0) : checked)}
                     />
                 </FormControl>
+            </FormItem>
+        )}
+    />
+}
+
+interface CheckboxFieldProps extends FormElementProps {
+    /** Stored as Frappe's 0 | 1 (not boolean). */
+    intValue?: boolean
+}
+
+/**
+ * A labelled checkbox row — the doc-form counterpart to SwitchFormField (which is
+ * the settings-row control). Label sits to the RIGHT of the box, desk-style.
+ */
+export const CheckboxFormField = ({ name, rules, label, isRequired, formDescription, disabled, readOnly, intValue = true }: CheckboxFieldProps) => {
+
+    const { control } = useFormContext()
+
+    return <FormField
+        control={control}
+        name={name}
+        disabled={disabled}
+        rules={rules}
+        render={({ field }) => (
+            <FormItem>
+                <div className="flex items-center gap-2">
+                    <FormControl>
+                        <Checkbox
+                            checked={intValue ? field.value === 1 : !!field.value}
+                            disabled={disabled || readOnly}
+                            onCheckedChange={(checked) => field.onChange(intValue ? (checked ? 1 : 0) : checked === true)}
+                        />
+                    </FormControl>
+                    <FormLabel className="!mt-0 cursor-pointer">{label}{isRequired && <FormRequiredIndicator />}</FormLabel>
+                </div>
+                {formDescription && <FormDescription>{formDescription}</FormDescription>}
+                <FormMessage />
             </FormItem>
         )}
     />

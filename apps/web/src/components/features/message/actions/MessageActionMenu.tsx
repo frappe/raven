@@ -7,10 +7,13 @@ import {
     ContextMenuGroup,
     ContextMenuItem,
     ContextMenuSeparator,
+    ContextMenuSub,
+    ContextMenuSubContent,
+    ContextMenuSubTrigger,
     ContextMenuTrigger,
 } from "@components/ui/context-menu"
 import { Button } from "@components/ui/button"
-import { Drawer, DrawerContent, DrawerTitle } from "@components/ui/drawer"
+import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from "@components/ui/drawer"
 import { channelMessagesStore } from "@stores/messages/store"
 import { messageActionTargetAtom, messagePressTargetAtom, replyToMessageAtom } from "@utils/channelAtoms"
 import { useIsMobile } from "@hooks/use-mobile"
@@ -22,7 +25,7 @@ import { ReactionPickerPanel } from "./ReactionPicker"
 import { useToggleReaction } from "./useToggleReaction"
 import { hapticTick } from "@utils/haptics"
 import { focusComposer } from "@components/features/ChatInput/composerFocus"
-import { Reply, SmilePlus } from "lucide-react"
+import { ChevronLeft, ChevronRight, Reply, SmilePlus } from "lucide-react"
 import type { Message } from "@raven/types/common/Message"
 import { DoubleTapReactionAtom, QuickEmojisAtom } from "@utils/preferences"
 
@@ -111,12 +114,33 @@ export const MessageActionMenu = ({
     /** While the toolbar's ellipsis menu is open, hover-clearing is suspended. */
     const toolbarMenuOpenRef = useRef(false)
 
-    const blockFromEvent = (event: React.MouseEvent): { message: Message; element: HTMLElement } | null => {
+    /**
+     * The message actually under the pointer, WITHOUT resolving its batch. Deliberately
+     * cheap — a DOM lookup and a Map hit — because the hover path calls this on every
+     * mouseover, and mouseover bubbles: it re-fires as the pointer crosses each child
+     * element inside one message.
+     */
+    const hitFromEvent = (event: React.MouseEvent): { message: Message; element: HTMLElement } | null => {
         const element = (event.target as HTMLElement).closest?.("[data-message-id]") as HTMLElement | null
         const messageID = element?.getAttribute("data-message-id")
         if (!element || !messageID) return null
         const message = channelMessagesStore.getState(channelID).byId.get(messageID)
         if (!message) return null
+        return { message, element }
+    }
+
+    /**
+     * What the toolbar keys on: every member of a batch shows the SAME toolbar, so the
+     * batch is the identity, not the individual tile. Cheap to compute from a raw hit,
+     * and equal for the resolved (batch-last) message too — which is what lets the hover
+     * handler compare before paying for batch resolution.
+     */
+    const hoverKeyOf = (message: Message) => message.message_batch_id || message.name
+
+    const blockFromEvent = (event: React.MouseEvent): { message: Message; element: HTMLElement } | null => {
+        const hit = hitFromEvent(event)
+        if (!hit) return null
+        const { message, element } = hit
         // A batch acts as one logical message: target its LAST (newest) member — where
         // the reply linkage already lives — regardless of which tile was hit, and anchor
         // the toolbar to the whole batch row so it doesn't jump between album tiles.
@@ -140,8 +164,15 @@ export const MessageActionMenu = ({
     /** Desktop: tracks which message the pointer is over and positions the floating toolbar. */
     const onMouseOver = (event: React.MouseEvent) => {
         if (isMobile || toolbarMenuOpenRef.current) return
+        const hit = hitFromEvent(event)
+        if (!hit) return
+        // Bail on the CHEAP identity before resolving the batch. Batch resolution scans the
+        // channel's whole loaded window, and this handler fires many times per message
+        // (mouseover bubbles), so doing it first re-scanned on every child-element crossing
+        // only to discard the result at this very check.
+        if (hovered && hoverKeyOf(hit.message) === hoverKeyOf(hovered.message)) return
         const block = blockFromEvent(event)
-        if (!block || block.message.name === hovered?.message.name) return
+        if (!block) return
         showToolbarFor(block.message, block.element)
     }
 
@@ -453,7 +484,7 @@ export const MessageActionMenu = ({
             event.preventDefault()
             return
         }
-        action.onSelect()
+        action.onSelect?.()
     }
 
     /**
@@ -485,12 +516,22 @@ export const MessageActionMenu = ({
         }
     }
 
-    /** The mobile sheet shows either the action list or the full emoji picker. */
-    const [sheetView, setSheetView] = useState<"actions" | "picker">("actions")
-    const closeSheet = () => {
-        setTarget(null)
+    /** The mobile sheet shows the action list, the full emoji picker, or the pushed
+     *  custom-actions sub-view. `submenu` actions (read receipts) don't push a view
+     *  here — they run onSelect, which opens their own bottom sheet. */
+    const [sheetView, setSheetView] = useState<"actions" | "picker" | "custom">("actions")
+    // Closing ONLY dismisses the sheet — the view it was showing stays until the next open.
+    // Resetting on the way out (directly, or off vaul's onAnimationEnd, which fires before
+    // the sheet has finished sliding down) swaps the panel back to the action list
+    // mid-animation, flashing the actions as the sheet leaves.
+    const closeSheet = () => setTarget(null)
+    // So the reset happens on the way IN instead: every long-press starts at the action
+    // list. Keyed on the target's id — closing nulls it, so re-opening the SAME message
+    // still re-runs this.
+    useEffect(() => {
+        if (!target) return
         setSheetView("actions")
-    }
+    }, [target?.name])
 
     // The open sheet owns the system back gesture (atom-driven overlay above
     // the routes — back would otherwise navigate the page underneath it).
@@ -553,16 +594,47 @@ export const MessageActionMenu = ({
                     <Fragment key={index}>
                         {index > 0 && <ContextMenuSeparator />}
                         <ContextMenuGroup>
-                            {group.map((action) => (
-                                <ContextMenuItem
-                                    key={action.id}
-                                    variant={action.danger ? "destructive" : "default"}
-                                    onSelect={(event) => selectAction(action, event)}
-                                >
-                                    <action.icon />
-                                    <span>{action.label}</span>
-                                </ContextMenuItem>
-                            ))}
+                            {group.map((action) =>
+                                action.children ? (
+                                    // Nested ACTION ROWS (custom actions).
+                                    <ContextMenuSub key={action.id}>
+                                        <ContextMenuSubTrigger>
+                                            {action.icon && <action.icon />}
+                                            <span>{action.label}</span>
+                                        </ContextMenuSubTrigger>
+                                        {/* Content-sized between the primitive's min-w-[8rem] floor and a
+                                            max-w cap: action_name is an unbounded Data field (140 chars),
+                                            so a long admin label truncates instead of sprawling the panel. */}
+                                        <ContextMenuSubContent className="max-w-64">
+                                            {action.children.map((child) => (
+                                                <ContextMenuItem key={child.id} onSelect={(event) => selectAction(child, event)}>
+                                                    {child.icon && <child.icon />}
+                                                    <span className="truncate">{child.label}</span>
+                                                </ContextMenuItem>
+                                            ))}
+                                        </ContextMenuSubContent>
+                                    </ContextMenuSub>
+                                ) : action.submenu ? (
+                                    // Nested PANEL content (read receipts): Radix mounts the content
+                                    // only once opened, so anything inside fetches on open.
+                                    <ContextMenuSub key={action.id}>
+                                        <ContextMenuSubTrigger>
+                                            {action.icon && <action.icon />}
+                                            <span>{action.label}</span>
+                                        </ContextMenuSubTrigger>
+                                        <ContextMenuSubContent>{action.submenu()}</ContextMenuSubContent>
+                                    </ContextMenuSub>
+                                ) : (
+                                    <ContextMenuItem
+                                        key={action.id}
+                                        variant={action.danger ? "destructive" : "default"}
+                                        onSelect={(event) => selectAction(action, event)}
+                                    >
+                                        {action.icon && <action.icon />}
+                                        <span>{action.label}</span>
+                                    </ContextMenuItem>
+                                ),
+                            )}
                         </ContextMenuGroup>
                     </Fragment>
                 ))}
@@ -586,6 +658,7 @@ export const MessageActionMenu = ({
                         onCloseAutoFocus={(event) => event.preventDefault()}
                     >
                         <DrawerTitle className="sr-only">{_("Message actions")}</DrawerTitle>
+                        <DrawerDescription className="sr-only">{_("Actions for this message")}</DrawerDescription>
                         {sheetView === "picker" && menuMessage ? (
                             // Full emoji picker takes over the sheet edge-to-edge (same panel
                             // as the desktop popover); picking closes the whole sheet.
@@ -604,6 +677,27 @@ export const MessageActionMenu = ({
                                 className="flex justify-center overflow-hidden [&_em-emoji-picker]:h-[60vh] [&_em-emoji-picker]:w-100vw"
                             >
                                 <ReactionPickerPanel perLine={10} message={menuMessage} onClose={closeSheet} />
+                            </div>
+                        ) : sheetView === "custom" && menuMessage ? (
+                            <div className="flex flex-col gap-1 p-3 pb-6">
+                                <div className="flex items-center gap-1 px-1 pb-2">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        isIconButton
+                                        aria-label={_("Back")}
+                                        onClick={() => setSheetView("actions")}
+                                    >
+                                        <ChevronLeft />
+                                    </Button>
+                                    <span className="text-base font-medium text-ink-gray-8">{_("Actions")}</span>
+                                </div>
+                                {actionGroups
+                                    .flat()
+                                    .find((action) => action.id === "custom-actions")
+                                    ?.children?.map((child) => (
+                                        <SheetActionRow key={child.id} action={child} onDone={closeSheet} />
+                                    ))}
                             </div>
                         ) : (
                             <div className="flex flex-col gap-1 p-3 pb-6">
@@ -655,9 +749,23 @@ export const MessageActionMenu = ({
                                 {actionGroups.map((group, index) => (
                                     <Fragment key={index}>
                                         {index > 0 && <div className="my-1 border-t border-outline-gray-2" />}
-                                        {group.map((action) => (
-                                            <SheetActionRow key={action.id} action={action} onDone={closeSheet} />
-                                        ))}
+                                        {group.map((action) =>
+                                            action.children ? (
+                                                <Button
+                                                    key={action.id}
+                                                    variant="ghost"
+                                                    size="lg"
+                                                    className="w-full justify-start gap-3 active:bg-surface-gray-2"
+                                                    onClick={() => setSheetView("custom")}
+                                                >
+                                                    {action.icon && <action.icon />}
+                                                    {action.label}
+                                                    <ChevronRight className="ml-auto text-ink-gray-5" />
+                                                </Button>
+                                            ) : (
+                                                <SheetActionRow key={action.id} action={action} onDone={closeSheet} />
+                                            ),
+                                        )}
                                     </Fragment>
                                 ))}
                             </div>
@@ -676,11 +784,11 @@ const SheetActionRow = ({ action, onDone }: { action: MessageAction; onDone: () 
         theme={action.danger ? "red" : "gray"}
         className={cn("w-full justify-start gap-3", action.danger ? "active:bg-surface-red-2" : "active:bg-surface-gray-2")}
         onClick={() => {
-            action.onSelect()
+            action.onSelect?.()
             onDone()
         }}
     >
-        <action.icon />
+        {action.icon && <action.icon />}
         {action.label}
     </Button>
 )

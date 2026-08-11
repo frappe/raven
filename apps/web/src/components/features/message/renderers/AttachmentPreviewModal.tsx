@@ -161,7 +161,9 @@ const AttachmentPreviewContent = ({
 
     const download = () => downloadFile(current.fileUrl, current.fileName)
     const share = async () => {
-        if ((await shareFile(current.fileUrl, current.fileName)) === "copied") toast.success(_("Link copied"))
+        const result = await shareFile(current.fileUrl, current.fileName)
+        if (result === "copied") toast.success(_("Link copied"))
+        else if (result === "failed") toast.error(_("Could not copy link"))
     }
 
     // Backdrop fade for the swipe-down-to-close drag: written straight onto the

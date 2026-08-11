@@ -1,6 +1,6 @@
 import { useMemo } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@components/ui/dialog"
-import { Drawer, DrawerContent, DrawerTitle } from "@components/ui/drawer"
+import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from "@components/ui/drawer"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@components/ui/tabs"
 import { UserAvatar } from "@components/features/message/UserAvatar"
 import { useUser } from "@hooks/useUser"
@@ -131,6 +131,7 @@ export const ReactionsDialog = ({ message, open, onClose }: { message: Message |
                     <DrawerTitle className="px-4 pb-4 pt-1 text-left text-2xl-semibold text-ink-gray-9">
                         {_("Reactions")}
                     </DrawerTitle>
+<DrawerDescription className="sr-only">{_("Who reacted to this message")}</DrawerDescription>
                     <div className="pb-4">
                         <ReactionsBody reactions={reactions} />
                     </div>

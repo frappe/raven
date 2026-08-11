@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { useFrappePostCall } from "frappe-react-sdk"
 import { toast } from "sonner"
-import { BarChart3Icon, File, FileText, Film, MessageSquareText, Music, type LucideIcon } from "lucide-react"
 import {
     AlertDialog,
     AlertDialogCancel,
@@ -14,91 +13,11 @@ import {
 import { Button } from "@components/ui/button"
 import { Checkbox } from "@components/ui/checkbox"
 import { channelMessagesStore } from "@stores/messages/store"
-import { getAttachmentKind, type AttachmentKind } from "@utils/attachmentPreview"
 import { getErrorMessage } from "@lib/frappe"
-import { formatBytes, getFileExtension } from "@lib/file"
-import { getFileName } from "@raven/lib/utils/operations"
+import { MessagePreview } from "./MessagePreview"
 import _ from "@lib/translate"
 import type { Message } from "@raven/types/common/Message"
-import FileTypeIcon from "@components/common/FileIcons/FileTypeIcon"
 import { errorResponseToast } from "@components/ui/error-banner"
-
-type MediaMessage = Message & { file?: string; file_thumbnail?: string; file_size?: number }
-
-const KIND_ICON: Record<Exclude<AttachmentKind, "image">, LucideIcon> = {
-    video: Film,
-    audio: Music,
-    pdf: FileText,
-    file: File,
-}
-
-const KIND_LABEL: Record<AttachmentKind, string> = {
-    image: _("Image"),
-    video: _("Video"),
-    audio: _("Audio"),
-    pdf: _("PDF"),
-    file: _("File"),
-}
-
-/** Plain text for previews — backend `content` joins blocks with spaces, so derive from HTML when present. */
-const getMessagePreviewText = (message: Message): string => {
-    const html = "text" in message ? message.text : undefined
-    if (html?.trim()) {
-        const withBreaks = html
-            .replace(/<br\s*\/?>/gi, "\n")
-            .replace(/<\/(?:p|div|li|blockquote|tr|h[1-6])>/gi, "\n")
-        const plain = new DOMParser().parseFromString(withBreaks, "text/html").body.textContent ?? ""
-        const cleaned = plain.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim()
-        // Fall through when empty (e.g. an emoji-/image-only message) so the preview isn't blank.
-        if (cleaned) return cleaned
-    }
-    return message.content?.trim() || _("Message")
-}
-
-/**
- * Compact preview of one message being deleted: an image thumbnail or a
- * kind-icon tile + filename + size for a file, or a snippet for a text caption.
- * Shared by the single-message card and each batch checklist row.
- */
-const MessagePreview = ({ message }: { message: Message }) => {
-    const media = message as MediaMessage
-    const file = media.file
-
-    if (file) {
-        const extension = getFileExtension(file)
-        const kind = getAttachmentKind(file)
-        const name = getFileName(file)
-        const size = media.file_size ? formatBytes(media.file_size) : null
-        const meta = [KIND_LABEL[kind], size].filter(Boolean).join(" · ")
-        const Icon = kind === "image" ? null : KIND_ICON[kind]
-        return (
-            <>
-                {kind === "image" || !Icon ? (
-                    <img
-                        src={media.file_thumbnail || file}
-                        alt={name}
-                        loading="lazy"
-                        className="size-8 shrink-0 rounded-sm object-cover bg-surface-gray-3"
-                    />
-                ) : (
-                    <FileTypeIcon fileType={extension} size="xl" />
-                )}
-                <div className="min-w-0 flex gap-1 flex-col">
-                    <p className="truncate text-sm text-ink-gray-8">{name}</p>
-                    <p className="truncate text-xs text-ink-gray-5">{meta}</p>
-                </div>
-            </>
-        )
-    }
-    return (
-        <>
-            <div className="flex size-8 shrink-0 items-center justify-center rounded bg-surface-gray-1 text-ink-gray-6">
-                {message.message_type === "Poll" ? <BarChart3Icon className="size-4" /> : <MessageSquareText className="size-4" />}
-            </div>
-            <p className="min-w-0 flex-1 text-p-sm text-ink-gray-7 whitespace-pre-wrap wrap-break-words line-clamp-2">{getMessagePreviewText(message)}</p>
-        </>
-    )
-}
 
 /**
  * Delete confirmation with a preview of exactly what's being removed. A single

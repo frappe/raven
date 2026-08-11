@@ -12,23 +12,29 @@ interface UserFilterProps {
     users: UserData[]
     value: string
     onValueChange: (value: string) => void
+    /** Trigger text while nothing is picked. Callers with a label above the
+     *  field pass something like "Anyone" so the word isn't said twice. */
+    placeholder?: string
     /** The trigger's width, which its row decides. The popover doesn't follow it. */
     triggerClassName?: string
     /** Root wrapper — width/shrink control so the filter can flex down in a shared row. */
     className?: string
 }
 
-/** Message-author picker for the filter bars. */
-export function UserFilter({
+/**
+ * The selectable rows alone — shared by the desktop combobox below and the
+ * mobile drill-in sheet (SearchFiltersSheet), so the two surfaces show one
+ * list. Must render inside a cmdk <Command>.
+ */
+export function UserFilterRows({
     users,
     value,
-    onValueChange,
-    triggerClassName,
-    className,
-}: UserFilterProps) {
-    const selectedUser = users.find((user) => user.name === value)
-    const isAllSelected = !value || value === ALL
-
+    onSelect,
+}: {
+    users: UserData[]
+    value: string
+    onSelect: (name: string) => void
+}) {
     // Three tiers: people you can still hear from, then deactivated accounts, then bots.
     // A bot posts constantly but is rarely who you're filtering for, and a deactivated
     // account has a fixed, finite history — neither should sit above a colleague. Ties
@@ -57,6 +63,44 @@ export function UserFilter({
     }, [users])
 
     return (
+        // Only users in this list — a "Users" heading labels nothing. The group stays
+        // for its p-1 gutter; cmdk renders no heading element when the prop is absent.
+        <CommandGroup>
+            {orderedUsers.map((user) => {
+                const name = user.full_name ?? user.name
+                const isAmbiguous = ambiguousNames.has(name)
+                return (
+                    <FilterComboboxItem
+                        key={user.name}
+                        // The user id is the identity — unique per doctype, so two
+                        // people with one name stay separate rows. The name is what
+                        // gets ranked.
+                        value={user.name}
+                        keywords={[name]}
+                        selected={value === user.name}
+                        onSelect={() => onSelect(user.name)}
+                    >
+                        <UserOption user={user} secondary={isAmbiguous ? user.name : undefined} />
+                    </FilterComboboxItem>
+                )
+            })}
+        </CommandGroup>
+    )
+}
+
+/** Message-author picker for the filter bars. */
+export function UserFilter({
+    users,
+    value,
+    onValueChange,
+    placeholder,
+    triggerClassName,
+    className,
+}: UserFilterProps) {
+    const selectedUser = users.find((user) => user.name === value)
+    const isAllSelected = !value || value === ALL
+
+    return (
         <FilterCombobox
             className={className}
             triggerClassName={triggerClassName}
@@ -67,37 +111,18 @@ export function UserFilter({
                 selectedUser && !isAllSelected ? (
                     <UserOption user={selectedUser} compact />
                 ) : (
-                    // Short on purpose: three equal columns leave ~73px of label on a phone,
-                    // and "From Anyone" needs 88px — it truncated to "From Anyo…".
                     <span className="min-w-0 flex-1 truncate text-left leading-snug text-ink-gray-4">
-                        {_("Person")}
+                        {placeholder ?? _("Person")}
                     </span>
                 )
             }
         >
             {(close) => (
-                // Only users in this list — a "Users" heading labels nothing. The group stays
-                // for its p-1 gutter; cmdk renders no heading element when the prop is absent.
-                <CommandGroup>
-                    {orderedUsers.map((user) => {
-                        const name = user.full_name ?? user.name
-                        const isAmbiguous = ambiguousNames.has(name)
-                        return (
-                            <FilterComboboxItem
-                                key={user.name}
-                                // The user id is the identity — unique per doctype, so two
-                                // people with one name stay separate rows. The name is what
-                                // gets ranked.
-                                value={user.name}
-                                keywords={[name]}
-                                selected={value === user.name}
-                                onSelect={() => { onValueChange(user.name); close() }}
-                            >
-                                <UserOption user={user} secondary={isAmbiguous ? user.name : undefined} />
-                            </FilterComboboxItem>
-                        )
-                    })}
-                </CommandGroup>
+                <UserFilterRows
+                    users={users}
+                    value={value}
+                    onSelect={(name) => { onValueChange(name); close() }}
+                />
             )}
         </FilterCombobox>
     )

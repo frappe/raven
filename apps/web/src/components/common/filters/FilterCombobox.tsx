@@ -11,11 +11,11 @@ import { useFilterListScroll } from "./useFilterListScroll"
 
 /**
  * DropdownMenuItem's type scale and geometry, so a filter row reads like a menu row.
- * text-lg md:text-base (15/14) overrides CommandItem's own text-content (14/13) —
- * cn() registers text-content in the font-size group, so the later class wins.
- * Two deliberate departures: a fixed h-7.5 instead of py-2/md:py-1.5, so every row
- * lines up with the trigger and the search field; and hover:, because these are cmdk
- * rows and a plain button, neither of which takes DropdownMenu's focus: highlight.
+ * text-lg md:text-base (15/14) restates CommandItem's own scale — kept explicit so a
+ * filter row can't drift if the base ever changes. Two deliberate departures: a fixed
+ * h-7.5 instead of py-2/md:py-1.5, so every row lines up with the trigger and the
+ * search field; and hover:, because these are cmdk rows and a plain button, neither
+ * of which takes DropdownMenu's focus: highlight.
  */
 export const FILTER_ITEM_STYLES = "flex h-7.5 cursor-pointer items-center gap-2 rounded px-2 text-lg md:text-base text-ink-gray-7 hover:bg-surface-gray-2"
 
@@ -297,7 +297,16 @@ export function FilterCombobox({
                             // leaves a different amount of slack at the bottom than a list
                             // with no headings. flex/items-center keeps the label centred in
                             // the taller box.
-                            className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain overflow-x-hidden [&_[cmdk-group-heading]]:text-sm-medium [&_[cmdk-group-heading]]:flex [&_[cmdk-group-heading]]:h-7.5 [&_[cmdk-group-heading]]:items-center [&_[cmdk-group-heading]]:py-0"
+                            // DropdownMenuLabel's type, pinned in full: CommandGroup's own
+                            // heading default is the command PALETTE's (text-base regular
+                            // ink-gray-5), so the menu-label look lives entirely here. The
+                            // selectors go through [cmdk-group] to outrank the base heading
+                            // utilities on specificity — at equal specificity the winner is
+                            // Tailwind's generated order, which is a coin toss per property.
+                            // Spelled as text-sm + font-medium, not .text-sm-medium — that
+                            // espresso class is @layer components, and a non-utility class
+                            // behind a [&_…] variant compiles to nothing.
+                            className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain overflow-x-hidden [&_[cmdk-group]_[cmdk-group-heading]]:text-sm [&_[cmdk-group]_[cmdk-group-heading]]:font-medium [&_[cmdk-group]_[cmdk-group-heading]]:text-ink-gray-4 [&_[cmdk-group]_[cmdk-group-heading]]:flex [&_[cmdk-group]_[cmdk-group-heading]]:h-7.5 [&_[cmdk-group]_[cmdk-group-heading]]:items-center [&_[cmdk-group]_[cmdk-group-heading]]:py-0"
                         >
                             <CommandList className="max-h-none overflow-visible">
                                 <CommandEmpty>{emptyLabel}</CommandEmpty>

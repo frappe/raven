@@ -1,4 +1,10 @@
-import { Search, ExternalLink, Link, FileBox } from 'lucide-react'
+import { useState } from 'react'
+import { Search } from 'lucide-react'
+import { useSetAtom } from 'jotai'
+import { LinkResultContent } from '@components/common/LinkResultBlock/LinkResultContent'
+import { ProviderFilter } from '@components/common/filters/ProviderFilter'
+import { channelDrawerAtom, makeMessageTarget, messageTargetAtom } from '@utils/channelAtoms'
+import { useIsMobile } from '@hooks/use-mobile'
 import { useDebounceValue } from 'usehooks-ts'
 import { useFrappeEventListener } from 'frappe-react-sdk'
 import _ from '@lib/translate'
@@ -16,9 +22,29 @@ const ChannelLinks = ({ channelID }: { channelID: string }) => {
     // the tab re-renders once per settled query. The search hooks no longer
     // debounce internally — this is the one debounce.
     const [searchQuery, setSearchQuery] = useDebounceValue('', 200)
+    // Same picker as the search page's links tab. Local state — the
+    // drawer has no URL to keep it in.
+    const [providers, setProviders] = useState<string[]>([])
+    const isMobile = useIsMobile()
+
+    const setMessageTarget = useSetAtom(messageTargetAtom(channelID))
+    const setDrawerType = useSetAtom(channelDrawerAtom(channelID))
+
+    // Clicking a link card jumps the stream to its message — the same
+    // target atom every other entry point uses (pins, replies, deep
+    // links). Every result is in THIS channel: the search is filtered by
+    // channel_id, which matches direct channel messages only.
+    const jumpToMessage = (messageID: string) => {
+        setMessageTarget(makeMessageTarget(messageID))
+        // Mobile: the drawer is a bottom sheet COVERING the stream —
+        // dismiss it so the jump is actually visible. The desktop side
+        // rail can stay open.
+        if (isMobile) setDrawerType('')
+    }
 
     const { results, isLoading, error, mutate } = useLinkSearch(searchQuery, {
         channel_id: channelID,
+        link_provider: providers,
     }, 100)
 
     useFrappeEventListener("link_previews_updated", (data: { channel_id: string }) => {
@@ -29,7 +55,7 @@ const ChannelLinks = ({ channelID }: { channelID: string }) => {
 
     return (
         <div className="px-1 space-y-2">
-            {/* Search Bar and Toggle */}
+            {/* Search bar + source picker */}
             <div className="flex items-center gap-2">
                 <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-ink-gray-4" />
@@ -39,12 +65,22 @@ const ChannelLinks = ({ channelID }: { channelID: string }) => {
                         className="pl-9 h-8 text-sm"
                     />
                 </div>
+                {/* Icon trigger: a labeled trigger's width changes with the
+                    selection and would squeeze the search box beside it. */}
+                <ProviderFilter
+                    value={providers}
+                    onValueChange={setProviders}
+                    iconTrigger
+                    // size-8 matches the search field beside it.
+                    triggerClassName="size-8"
+                    className="shrink-0"
+                />
             </div>
             {error && <ErrorBanner error={error} />}
             {/* Links List */}
             <div>
                 {isLoading ? <LinkPreviewSkeletonList /> :
-                    results.length === 0 ? <div className="text-sm text-ink-gray-4 text-center py-8">{searchQuery ? _("No links found matching your search.") : _("No links shared in this channel yet.")}</div> :
+                    results.length === 0 ? <div className="text-sm text-ink-gray-4 text-center py-8">{searchQuery || providers.length > 0 ? _("No links found matching your search.") : _("No links shared in this channel yet.")}</div> :
                         <div className='space-y-2'>
                             {results.map((link) => {
                                 const member = members.find((m) => m.name === link.author)
@@ -53,6 +89,7 @@ const ChannelLinks = ({ channelID }: { channelID: string }) => {
                                         key={`${link.id}-${link.url}`}
                                         link={link}
                                         member={member}
+                                        onClick={() => jumpToMessage(link.id)}
                                     />
                                 )
                             })}
@@ -63,21 +100,21 @@ const ChannelLinks = ({ channelID }: { channelID: string }) => {
 }
 
 const LinkPreviewSkeleton = ({ i = 0 }: { i?: number }) => {
+    // Mirrors the real card: shared-by line, then the compact link block
+    // (small thumb beside text).
     return (
-        <div className="flex gap-3 p-4">
-            <Skeleton className="h-8 w-8 rounded-md shrink-0" />
-            <div className="flex-1 space-y-2 min-w-0">
-                <div className="flex items-center gap-2">
-                    <Skeleton className="h-3.5 w-20" />
-                    <Skeleton className="h-3 w-14" />
+        <div className="w-full rounded-lg border border-outline-gray-2 p-3 space-y-2">
+            <div className="flex items-center gap-1.5">
+                <Skeleton className="size-4 rounded-full shrink-0" />
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-3 w-12" />
+            </div>
+            <div className="flex gap-3">
+                <Skeleton className="h-14 w-24 rounded-md shrink-0" />
+                <div className="flex-1 space-y-2 min-w-0">
+                    <Skeleton className="h-4" style={{ width: `${45 + (i % 4) * 15}%` }} />
+                    <Skeleton className="h-3 w-24" />
                 </div>
-                <Skeleton
-                    className="h-4"
-                    style={{ width: `${45 + (i % 4) * 15}%` }}
-                />
-                {i % 2 === 0 && (
-                    <Skeleton className="h-4" style={{ width: "70%" }} />
-                )}
             </div>
         </div>
     )
@@ -93,62 +130,38 @@ const LinkPreviewSkeletonList = () => {
     )
 }
 
-const LinkPreviewCard = ({ link, member }: {
+const LinkPreviewCard = ({ link, member, onClick }: {
     link: LinkSearchResult,
     member?: ChannelMemberData,
+    /** Jumps the stream to the link's message. */
+    onClick: () => void,
 }) => {
-    const url = link.url
-    const hostname = (() => {
-        try { return new URL(url).hostname } catch { return url }
-    })()
-    const faviconUrl = `https://icons.duckduckgo.com/ip2/${hostname}.ico`
-    const displayTitle = link.title || url
-    const displaySubtitle = link.site_name || hostname
-
     return (
         <div
-            key={link.id}   //TODO: Scroll to message when clicked, we have message id as link.name
-            className={`group border border-outline-gray-2/70 rounded-lg hover:bg-surface-gray-2/50 transition-colors cursor-pointer overflow-hidden w-full p-3`}
+            className="group border border-outline-gray-2 rounded-lg hover:bg-surface-gray-1 transition-colors cursor-pointer overflow-hidden w-full p-3"
             tabIndex={0}
             role="button"
-            aria-label={`Open link: ${displayTitle}`}>
+            onClick={onClick}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } }}
+            aria-label={_('Jump to message with link: {0}', [link.title || link.url])}>
 
             <div className="space-y-2">
-                <div className="flex items-start gap-3 min-w-0">
-                    {faviconUrl ? (
-                        <img
-                            src={faviconUrl}
-                            alt=""
-                            className="w-5 h-5 shrink-0"
-                            onError={(e) => {
-                                e.currentTarget.style.display = 'none'
-                                e.currentTarget.nextElementSibling?.classList.remove('hidden')
-                            }}
+                {/* Who shared it and when — the link block below is the same
+                    one the search Links tab renders. */}
+                <div className="flex items-center gap-1.5 text-xs text-ink-gray-4">
+                    {member && <>
+                        <UserAvatar
+                            user={member}
+                            size="xs"
+                            showStatusIndicator={false}
                         />
-                    ) : (
-                        <FileBox className="w-5 h-5 shrink-0 text-ink-gray-4" />
-                    )}
-                    <Link className="w-5 h-5 shrink-0 text-ink-gray-4 hidden" />
-                    <div className="flex-1 min-w-0">
-                        <h3 className="text-sm font-medium text-ink-gray-8 truncate">
-                            {displayTitle}
-                        </h3>
-                        <div className="text-xs text-ink-gray-4/70 mt-0.5">
-                            {displaySubtitle}
-                        </div>
-                    </div>
-                    <ExternalLink className="h-3 w-3 text-ink-gray-4 opacity-0 group-hover:opacity-100 hover:text-ink-gray-8 transition-opacity duration-200 shrink-0 mt-0.5" onClick={() => window.open(url, '_blank')} />
+                        <span className="truncate text-ink-gray-6">{member.full_name}</span>
+                        <span>·</span>
+                    </>}
+                    <span className="shrink-0">{formatRelativeDate(link.creation)}</span>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-ink-gray-4/80 ml-8">
-                    {member && <> <UserAvatar
-                        user={member}
-                        size="xs"
-                        showStatusIndicator={false}
-                    />
-                        <span>{member.full_name}</span>
-                        <span>•</span></>}
-                    <span>{formatRelativeDate(link.creation)}</span>
-                </div>
+                {/* compact: the drawer is too narrow for banners and wide thumbs. */}
+                <LinkResultContent link={link} compact />
             </div>
         </div>
     )

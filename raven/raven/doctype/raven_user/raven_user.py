@@ -20,6 +20,9 @@ class RavenUser(Document):
 			RavenGroupedChannels,
 		)
 		from raven.raven.doctype.raven_pinned_channels.raven_pinned_channels import RavenPinnedChannels
+		from raven.raven.doctype.raven_user_pinned_workspaces.raven_user_pinned_workspaces import (
+			RavenUserPinnedWorkspaces,
+		)
 		from raven.raven_channel_management.doctype.raven_channel_groups.raven_channel_groups import (
 			RavenChannelGroups,
 		)
@@ -37,7 +40,9 @@ class RavenUser(Document):
 		full_name: DF.Data
 		grouped_channels: DF.Table[RavenGroupedChannels]
 		last_mention_viewed_on: DF.Datetime | None
+		link_previews: DF.Literal["Link Hover", "Preview Card"]
 		pinned_channels: DF.Table[RavenPinnedChannels]
+		pinned_workspaces: DF.Table[RavenUserPinnedWorkspaces]
 		sort_channels_by: DF.Literal["Alphabetical Order", "Recent Activity", "Unreads First"]
 		time_format: DF.Literal["12-hour", "24-hour"]
 		type: DF.Literal["User", "Bot"]

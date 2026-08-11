@@ -14,9 +14,33 @@ class RavenMessageLinks(Document):
 	if TYPE_CHECKING:
 		from frappe.types import DF
 
+		normalized_url: DF.SmallText | None
 		parent: DF.Data
 		parentfield: DF.Data
 		parenttype: DF.Data
+		provider: DF.Literal[
+			"Other",
+			"Wikipedia",
+			"Frappe",
+			"Site Document Link",
+			"Raven Link",
+			"Frappe Meet",
+			"Google Meet",
+			"Zoom",
+			"YouTube",
+			"YouTube Music",
+			"Spotify",
+			"Apple Music",
+			"Apple Podcasts",
+			"SoundCloud",
+			"Loom",
+			"Vimeo",
+			"Reddit",
+			"Figma",
+			"X",
+			"GitHub",
+			"Hacker News",
+		]
 		url: DF.SmallText
 	# end: auto-generated types
 

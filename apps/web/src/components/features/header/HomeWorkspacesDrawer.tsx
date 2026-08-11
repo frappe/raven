@@ -14,6 +14,7 @@ import useCurrentRavenUser from "@raven/lib/hooks/useCurrentRavenUser"
 import { lastChannelAtom, lastWorkspaceAtom } from "@utils/lastVisitedAtoms"
 import { DRAWER_EXIT_MS } from "@utils/drawer"
 import { useHistoryBackClose } from "@hooks/useHistoryBackClose"
+import { useNoDragWhileScrolled } from "@hooks/useNoDragWhileScrolled"
 import type { ChannelListItem } from "@raven/types/common/ChannelListItem"
 import { cn } from "@lib/utils"
 import _ from "@lib/translate"
@@ -98,6 +99,7 @@ export const HomeWorkspacesDrawer = ({
 type UnreadRow = { channel: ChannelListItem; workspace: WorkspaceFields; count: number }
 
 const DrawerBody = ({ onNavigate }: { onNavigate: (to: string, options?: { instant?: boolean }) => void }) => {
+    const noDragProps = useNoDragWhileScrolled()
     const { workspaces } = useWorkspaces()
     const { channels } = useChannels()
     const { myProfile } = useCurrentRavenUser()
@@ -220,7 +222,9 @@ const DrawerBody = ({ onNavigate }: { onNavigate: (to: string, options?: { insta
                         should stay within thumb reach, not ride up the screen.
                         dvh, not vh: in a browser tab vh ignores the collapsing
                         URL bar and would overshoot. */}
-                    <div className="max-h-[35dvh] min-h-0 overflow-y-auto px-2 pb-2" data-vaul-no-drag>
+                    {/* Positional no-drag (see useNoDragWhileScrolled): the channel list
+                        scrolls while scrolled; a pull from its top dismisses the sheet. */}
+                    <div {...noDragProps} className="max-h-[35dvh] min-h-0 overflow-y-auto px-2 pb-2">
                         {sections.map(({ workspace, rows }) => (
                             <section key={workspace.name} className="mb-2">
                                 {showSectionHeaders && (

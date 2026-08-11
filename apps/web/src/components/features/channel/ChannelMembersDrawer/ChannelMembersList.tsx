@@ -7,6 +7,7 @@ import { UserMinus, SearchIcon, Crown, MessagesSquareIcon, Ellipsis } from 'luci
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@components/ui/dropdown-menu';
 import _ from '@lib/translate';
 import { ChannelMemberData, loadChannelMembers } from '@hooks/useChannelMembers';
+import { useNoDragWhileScrolled } from '@hooks/useNoDragWhileScrolled';
 import { useCreateDM } from '@hooks/useCreateDM';
 import { Virtuoso } from 'react-virtuoso';
 import { useContext } from 'react';
@@ -21,6 +22,7 @@ import { ChannelListItem } from '@raven/types/common/ChannelListItem';
 const ChannelMembersList = ({ members, channel, allowSettingChange }: { members: ChannelMemberData[], channel: ChannelListItem, allowSettingChange: boolean }) => {
 
     const [searchQuery, setSearchQuery] = useDebounceValue('', 200)
+    const noDragProps = useNoDragWhileScrolled()
 
     const filteredMembers = useMemo(() => {
         if (!searchQuery) return members
@@ -58,10 +60,12 @@ const ChannelMembersList = ({ members, channel, allowSettingChange }: { members:
                     </p>
                 </div>
             ) : (
-                // data-vaul-no-drag: on mobile this list lives inside a vaul bottom
-                // sheet, which claims vertical touch drags as sheet gestures — the
-                // list never scrolled. This hands the touches back to the scroller.
-                <div className="flex-1 min-h-0 px-2" data-vaul-no-drag>
+                // Positional no-drag (see useNoDragWhileScrolled): on mobile this list
+                // lives inside a vaul bottom sheet, which claimed vertical touch drags
+                // as sheet gestures — the list never scrolled. The attribute hands
+                // touches back to the scroller, but only WHILE it's scrolled, so a
+                // pull-down from the top still dismisses the sheet.
+                <div {...noDragProps} className="flex-1 min-h-0 px-2">
                     <MembersList filteredMembers={filteredMembers} channelID={channel.name} allowSettingChange={allowSettingChange} />
                 </div>
             )}

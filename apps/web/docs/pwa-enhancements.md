@@ -564,6 +564,27 @@ Notes for a blog post. Each item: what we did, and the non-obvious reason why.
     all remember. The lesson is a sharper version of an old one: on iOS, the
     chrome around your app is a mirror, not a setting. You influence it by
     what you draw, and some flickers are the honest cost of drawing near it.
+46. **Bands across a white photo while panning — the GPU showing you its
+    tiles.** Zoom into an image in the viewer on a phone and drag it around:
+    on busy photos everything looks fine, but on a flat white image, faint
+    bands crawl across the picture as you pan. The mechanism is rasterization,
+    not layout: the image moves via `transform: translate(...) scale(...)`,
+    but nothing promoted it to its own compositor layer — so instead of
+    sliding a cached texture, mobile WebKit *re-rasterizes the scaled image
+    every frame, tile by tile*, mid-gesture. Adjacent tiles get sampled at
+    fractionally different offsets, and the seams between them differ by a
+    hair of brightness. A photo's texture hides that hair; a flat white
+    surface is a precision instrument for displaying it. (Desktop GPUs
+    re-raster fast enough that you never catch the tiles mid-update — which
+    is why the bug report says "on mobile".) The fix is one property:
+    `will-change: transform` promotes the image to a compositor layer, and
+    panning becomes a pure texture transform with nothing to re-rasterize.
+    The trade-off to know about: during a pinch the browser samples the
+    cached texture, so the image can look slightly soft mid-gesture and
+    sharpens on release — the same behavior as native photo viewers. The
+    general lesson: content that animates via transforms every frame should
+    live on its own layer, and flat, bright test images are worth keeping
+    around — they reveal compositor artifacts that real photos camouflage.
 
 ## What's still on the list
 

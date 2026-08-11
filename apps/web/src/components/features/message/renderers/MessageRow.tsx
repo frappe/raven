@@ -54,7 +54,7 @@ export const MessageRow = ({
             // overflow-hidden clips media to the rounded corners — but while this row
             // holds the inline editor, drop it so the editor's mention/emoji popup
             // (which rises above the box) isn't clipped by the row.
-            "group/message-item w-full overflow-hidden has-[[data-raven-editor]]:overflow-visible relative hover:bg-surface-gray-1 py-2 rounded-md px-3.5 transition-all duration-200",
+            "group/message-item w-full overflow-hidden has-[[data-raven-editor]]:overflow-visible relative hover:bg-surface-gray-1/70 py-2 rounded-md px-3.5 transition-all duration-200",
             className,
         )}
     >

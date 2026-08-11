@@ -32,7 +32,7 @@ const QuickActions = ({ text }: { text: string }) => {
         ...AVAILABILITY_OPTIONS.map((option) => ({
             value: `set-status-${option.value}`,
             label: _('Set status to {0}', [option.label]),
-            icon: <span className={cn('size-2 rounded-full', getStatusIndicatorColor(option.value))} />,
+            icon: <div className='size-4 flex items-center justify-center'><span className={cn('size-2 rounded-full', getStatusIndicatorColor(option.value))} /></div>,
             keywords: ['status', 'availability', option.value, ...(option.value === 'Do not disturb' ? ['dnd'] : [])],
             action: () => setAvailability(option.value),
         })),
@@ -49,25 +49,27 @@ const QuickActions = ({ text }: { text: string }) => {
 
     if (!filteredItems.length) return null
 
-    return (
-        <CommandGroup heading={_("Commands")}>
-            {filteredItems.map(item => (
-                <CommandItem
-                    key={item.value}
-                    value={item.value}
-                    keywords={[item.label, ...item.keywords]}
-                    onSelect={() => {
-                        item.action()
-                        setOpen(false)
-                    }}
-                    className='cursor-pointer text-base'
-                >
-                    {item.icon}
-                    {item.label}
-                </CommandItem>
-            ))}
-        </CommandGroup>
-    )
+    const rows = filteredItems.map(item => (
+        <CommandItem
+            key={item.value}
+            value={item.value}
+            keywords={[item.label, ...item.keywords]}
+            onSelect={() => {
+                item.action()
+                setOpen(false)
+            }}
+            className='cursor-pointer'
+        >
+            {item.icon}
+            {item.label}
+        </CommandItem>
+    ))
+
+    // While searching, rows go bare into the palette's single ranking group
+    // (see CommandPalette). Browsing keeps the labeled section.
+    if (text) return <>{rows}</>
+
+    return <CommandGroup heading={_("Commands")}>{rows}</CommandGroup>
 }
 
 export default QuickActions

@@ -36,6 +36,7 @@ import {
 import { Button } from "@components/ui/button";
 import ErrorBanner from "@components/ui/error-banner";
 import { useIsMobile } from "@hooks/use-mobile";
+import { useNoDragWhileScrolled } from "@hooks/useNoDragWhileScrolled";
 import _ from "@lib/translate";
 import {
   ChannelList,
@@ -64,6 +65,7 @@ export const EditChannelDescriptionButton = ({
   channel: ChannelListItem;
 }) => {
   const isMobile = useIsMobile();
+  const noDragProps = useNoDragWhileScrolled();
   const [open, setOpen] = useState(false);
   const { updateDoc, loading, error, reset: resetCall } = useFrappeUpdateDoc();
   const { mutate } = useSWRConfig();
@@ -235,7 +237,9 @@ export const EditChannelDescriptionButton = ({
           <DrawerDescription className="sr-only">
             {_("Update the channel name and description")}
           </DrawerDescription>
-          <div className="overflow-y-auto px-4 pt-2 pb-4" data-vaul-no-drag>
+          {/* Positional no-drag (see useNoDragWhileScrolled): scrolled form scrolls,
+              pull from the top dismisses. */}
+          <div {...noDragProps} className="overflow-y-auto px-4 pt-2 pb-4">
             {formBody}
           </div>
           {/* Invisible close target for the programmatic close — see close() */}

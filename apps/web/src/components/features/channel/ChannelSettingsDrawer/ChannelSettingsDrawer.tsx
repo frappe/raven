@@ -11,6 +11,7 @@ import { UserProfileDrawer } from '@components/features/dm-channel/UserProfileDr
 import { useAtom } from 'jotai';
 import { channelDrawerAtom } from '@utils/channelAtoms';
 import { useCurrentChannelID } from '@hooks/useCurrentChannelID';
+import { useNoDragWhileScrolled } from '@hooks/useNoDragWhileScrolled';
 import type { UserData } from '@db';
 import _ from '@lib/translate'
 import { Separator } from '@components/ui/separator';
@@ -23,6 +24,7 @@ interface ChannelSettingsDrawerProps {
 const ChannelSettingsDrawer = ({ peerUser }: ChannelSettingsDrawerProps) => {
 
     const channelID = useCurrentChannelID()
+    const noDragProps = useNoDragWhileScrolled()
     const [drawerType, setDrawerType] = useAtom(channelDrawerAtom(channelID))
 
     const isDM = !!peerUser
@@ -77,13 +79,14 @@ const ChannelSettingsDrawer = ({ peerUser }: ChannelSettingsDrawerProps) => {
                     {!isDM && <TabsTrigger value="settings" className="w-full">{_('Settings')}</TabsTrigger>}
                 </TabsList>
 
-                {/* data-vaul-no-drag: on mobile this drawer lives inside a vaul bottom
-                    sheet, which claims vertical touch drags as sheet gestures — this
-                    hands them back to the scroller. (DrawerContent itself pads past the
-                    home-indicator safe area.) */}
+                {/* Positional no-drag (see useNoDragWhileScrolled): on mobile this
+                    drawer lives inside a vaul bottom sheet, which claims vertical touch
+                    drags as sheet gestures — this hands them back to the scroller while
+                    it's scrolled, and a pull-down from the top still dismisses.
+                    (DrawerContent itself pads past the home-indicator safe area.) */}
                 <div
+                    {...noDragProps}
                     className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-2"
-                    data-vaul-no-drag
                 >
                     {!isDM && (
                         <TabsContent value="settings">

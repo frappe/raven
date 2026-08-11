@@ -45,7 +45,9 @@ export const MessageFiles = ({ messages, attachments }: { messages: Message[]; a
             },
             onDownload: () => downloadFile(url, fileName),
             onShare: async () => {
-                if ((await shareFile(url, fileName)) === "copied") toast.success(_("Link copied"))
+                const result = await shareFile(url, fileName)
+                if (result === "copied") toast.success(_("Link copied"))
+                else if (result === "failed") toast.error(_("Could not copy link"))
             },
         }
     }

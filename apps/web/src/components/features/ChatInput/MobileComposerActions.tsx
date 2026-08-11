@@ -1,7 +1,7 @@
 import { useRef, useState } from "react"
 import { Plus, Camera, Images, FileBox, type LucideIcon, FilesIcon, ChartBar, Video } from "lucide-react"
 import { Button } from "@components/ui/button"
-import { Drawer, DrawerContent, DrawerTitle, DrawerTrigger } from "@components/ui/drawer"
+import { Drawer, DrawerContent, DrawerDescription, DrawerTitle, DrawerTrigger } from "@components/ui/drawer"
 import { useAttachFile } from "./useFileInput"
 import { CreatePollDialog } from "./CreatePollDialog"
 import AttachFrappeDocumentDialog from "./AttachFrappeDocumentDialog"
@@ -81,6 +81,7 @@ export const MobileComposerActions = ({
                 </DrawerTrigger>
                 <DrawerContent>
                     <DrawerTitle className="sr-only">{_("Composer actions")}</DrawerTitle>
+                    <DrawerDescription className="sr-only">{_("Attach files, polls and more")}</DrawerDescription>
                     {/* Circle icon tiles, WhatsApp-style — every option is an icon */}
                     <div className="grid grid-cols-4 gap-x-2 gap-y-6 px-4 pt-6 pb-10">
                         {tiles.map((tile) => (

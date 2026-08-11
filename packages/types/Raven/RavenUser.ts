@@ -54,4 +54,6 @@ export interface RavenUser {
 	filter_joined_channels?: 0 | 1
 	/** Sort channels by: Select */
 	sort_channels_by?: "Alphabetical Order" | "Recent Activity" | "Unreads First"
+	/**	Link Previews : Select	*/
+	link_previews?: "Link Hover" | "Preview Card"
 }

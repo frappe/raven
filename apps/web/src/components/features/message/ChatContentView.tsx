@@ -7,7 +7,7 @@ import ChatStream from "@components/features/message/ChatStream"
 import ChatInput from "@components/features/ChatInput/ChatInput"
 import ChannelContextDrawer from "@components/features/channel/ChannelContextDrawer"
 import { PollDrawer } from "@components/features/message/renderers/PollDrawer"
-import { Drawer, DrawerContent, DrawerTitle } from "@components/ui/drawer"
+import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from "@components/ui/drawer"
 import { Island } from "@components/layout/Island"
 import { FileDropZone } from "@components/features/ChatInput/FileDropZone"
 import { useComposerGate, ComposerArea } from "@components/features/ChatInput/composerGate"
@@ -177,6 +177,7 @@ export function ChatContentView({
                     <Drawer open={!!pollDrawerData} onOpenChange={(open) => !open && setPollDrawerData(null)}>
                         <DrawerContent className="h-[85dvh]">
                             <DrawerTitle className="sr-only">{_("Poll")}</DrawerTitle>
+                            <DrawerDescription className="sr-only">{_("Poll details and votes")}</DrawerDescription>
                             {pollDrawerData && (
                                 <PollDrawer
                                     messageID={pollDrawerData.messageID}
@@ -188,6 +189,7 @@ export function ChatContentView({
                     <Drawer open={hasContextDrawer && !pollDrawerData} onOpenChange={(open) => !open && setChannelDrawer('')}>
                         <DrawerContent className="h-[85dvh]">
                             <DrawerTitle className="sr-only">{_("Channel details")}</DrawerTitle>
+                            <DrawerDescription className="sr-only">{_("Channel information and settings")}</DrawerDescription>
                             <ChannelContextDrawer />
                         </DrawerContent>
                     </Drawer>
