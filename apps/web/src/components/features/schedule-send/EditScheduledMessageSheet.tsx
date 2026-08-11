@@ -106,7 +106,7 @@ export const EditScheduledMessageSheet = ({ row, open, onOpenChange, onDone }: E
                                 {/* align="end": the panel's min width can exceed the trigger's,
                                     and the trigger sits at the sheet's right edge — right-align
                                     so the panel never pokes past it (or off-screen). */}
-                                <SelectContent align="end">
+                                <SelectContent align="end" className="max-h-62 overflow-y-auto">
                                     {/* px-3/py-2 + tabular-nums: fuller rows with evenly
                                         spaced digits (frappe-ui's time-picker look). */}
                                     {allTimeOptions.map((option) => (

@@ -111,7 +111,7 @@ export const InlineScheduledMessageEditor = ({ row, onDone, onCancel }: InlineSc
                                     <Clock />
                                     <SelectValue>{allTimeOptions.find((option) => option.value === time)?.label}</SelectValue>
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent align="start" className="min-w-28 max-h-62 overflow-y-auto">
                                     {/* px-3 + tabular-nums: fuller rows with evenly spaced
                                         digits (frappe-ui's time-picker look). */}
                                     {allTimeOptions.map((option) => (

@@ -65,7 +65,7 @@ export const ScheduleTimePicker = ({ onConfirm, onCancel, busy }: ScheduleTimePi
                 </SelectTrigger>
                 {/* px-3 + tabular-nums with the mobile height bump: fuller rows
                     with evenly spaced digits (frappe-ui's time-picker look). */}
-                <SelectContent>
+                <SelectContent className="max-h-62 overflow-y-auto">
                     {availableOptions.map((option) => (
                         <SelectItem key={option.value} value={option.value} className="px-3 py-2 md:py-1.5 tabular-nums">
                             {option.label}
