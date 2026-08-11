@@ -130,6 +130,20 @@ interface FilterComboboxProps {
     triggerClassName?: string
     /** Root wrapper — width/shrink control so the filter can flex down in a shared row. */
     className?: string
+    /**
+     * Set this when the combobox lives inside a MODAL dialog.
+     *
+     * Radix Dialog locks scrolling through react-remove-scroll, which preventDefaults wheel
+     * events on everything outside the dialog's own content — and this popover portals to
+     * document.body, so it counts as outside. Its list then can't be scrolled by wheel at
+     * all, while keyboard navigation still works (cmdk scrolls the highlighted row
+     * programmatically, which no wheel handler sees).
+     *
+     * A modal popover pushes its OWN scroll lock, and react-remove-scroll only lets the
+     * top of the lock stack act — so the dialog's lock steps aside and this list becomes
+     * the scrollable region. That's the library's intended answer for nested locks.
+     */
+    modal?: boolean
 }
 
 /**
@@ -144,6 +158,7 @@ export function FilterCombobox({
     onClear,
     triggerClassName,
     className,
+    modal = false,
 }: FilterComboboxProps) {
     const [open, setOpen] = useState(false)
     const isMobile = useIsMobile()
@@ -175,7 +190,7 @@ export function FilterCombobox({
         // nudged the whole filter row (and everything under it) down by a pixel.
         // relative: the clear button is positioned over the chevron's place.
         <div className={cn("relative flex shrink-0", className)}>
-            <Popover open={open} onOpenChange={onOpenChange}>
+            <Popover open={open} onOpenChange={onOpenChange} modal={modal}>
                 <PopoverTrigger asChild>
                     <Button
                         variant="subtle"

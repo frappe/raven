@@ -12,15 +12,17 @@ import { useUnreadThreadsCount } from "@stores/threads/useUnreadThreads"
 import _ from "@lib/translate"
 import { cn } from "@lib/utils"
 import { useSetAtom } from "jotai"
-import { BellIcon, BookmarkIcon, MessageSquareTextIcon, MoreHorizontalIcon, SearchIcon, UsersIcon } from "lucide-react"
+import { BellIcon, BookmarkIcon, CalendarClockIcon, MessageSquareTextIcon, MoreHorizontalIcon, SearchIcon, UsersIcon } from "lucide-react"
 import { NavLink } from "react-router"
 import { settingsDialogOpenTab } from "@components/features/settings/settingsDialogAtom"
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core"
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { useFrappeUpdateDoc } from "frappe-react-sdk"
 import useCurrentRavenUser from "@raven/lib/hooks/useCurrentRavenUser"
+import ScheduledMessagesDialog from "@components/features/schedule-send/ScheduledMessagesDialog"
+import { useScheduledMessagesCount } from "@components/features/schedule-send/useScheduledMessages"
 
 /**
  * Dropping a drag makes the browser fire ONE click on whatever ends up under
@@ -60,6 +62,7 @@ const PrimarySidebar = () => {
                         <Separator />
                     </div>
                     <SearchButton />
+                    <ScheduledMessagesButton />
                     <NotificationsLink />
                     <DirectMessagesLink />
                     <ThreadsLink />
@@ -102,6 +105,28 @@ const SearchButton = () => {
         </TooltipContent>
 
     </Tooltip>
+}
+
+const ScheduledMessagesButton = () => {
+    const count = useScheduledMessagesCount()
+    const [open, setOpen] = useState(false)
+    // The icon may hide when the count hits 0, but a mounted open dialog stays
+    // mounted until the user closes it — sending/deleting the last row (or a
+    // background dispatch) must not yank it away mid-use.
+    if (count === 0 && !open) return null
+    return (
+        <>
+            {/* Same anatomy as the NavLink icons: IconBox owns the tooltip and the
+                32px inner box the badge anchors to, so alignment matches exactly. */}
+            <button type="button" aria-label={_("Scheduled Messages")} onClick={() => setOpen(true)}>
+                <IconBox title={_("Scheduled Messages")}>
+                    <CalendarClockIcon />
+                    <UnreadBadge count={count} />
+                </IconBox>
+            </button>
+            <ScheduledMessagesDialog open={open} onOpenChange={setOpen} />
+        </>
+    )
 }
 
 const IconBox = ({ children, isActive, title }: { children: React.ReactNode, isActive?: boolean, title?: string }) => {

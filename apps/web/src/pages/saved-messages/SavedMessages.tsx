@@ -15,16 +15,6 @@ import { useUsers } from "@hooks/useUsers"
 import { cn } from "@lib/utils"
 import _ from "@lib/translate"
 
-// --- Reminders (not yet backed by the API — see SavedMessage doctype) ---
-// Saved messages are currently a binary `_liked_by` bookmark. Status tabs
-// (in_progress/archived/completed), `saved_at` and reminders require new
-// Raven Message fields + API support. Scaffolding kept commented for later.
-// import { ReminderDialog } from "@components/features/saved-messages/ReminderDialog"
-// import { Plus } from "lucide-react"
-// import { Tabs, TabsList, TabsTrigger } from "@components/ui/tabs"
-// import { Button } from "@components/ui/button"
-// import { SavedMessage, SavedMessageStatus } from "../../types/SavedMessage"
-
 const SavedMessages = () => {
     const [search, setSearch] = useState('')
     const [channel, setChannel] = useState('*all')
@@ -104,14 +94,6 @@ const SavedMessages = () => {
                     <div className="shrink-0 p-2 space-y-3">
                         {searchInput}
                         <div className="flex items-center gap-2">
-                            {/* --- Reminders: tabs + add-reminder button (commented until backend support) --- */}
-                            {/* <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as SavedMessageStatus)}>
-                                <TabsList variant="subtle" size="sm">
-                                    {TABS.map(tab => (
-                                        <TabsTrigger key={tab.key} value={tab.key}>{_(tab.label)}</TabsTrigger>
-                                    ))}
-                                </TabsList>
-                            </Tabs> */}
                             <ChannelFilter
                                 channels={channels}
                                 dmChannels={dmChannels}
@@ -119,13 +101,9 @@ const SavedMessages = () => {
                                 value={channel}
                                 onValueChange={setChannel}
                                 allLabel={_('Any Channel')}
-                                className={isMobile ? "w-full min-w-0" : undefined}
+                                className={isMobile ? "flex-1 min-w-0" : undefined}
                                 triggerClassName="w-50"
                             />
-                            {/* <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setReminderDialogOpen(true)}>
-                                <Plus className="h-3.5 w-3.5 mr-1.5" />
-                                {_("Add reminder")}
-                            </Button> */}
                         </div>
                     </div>
 
@@ -154,9 +132,6 @@ const SavedMessages = () => {
                         : <NotificationsEmptyState message={_("Select a saved message to view the conversation.")} />}
                 </div>
             </div>
-
-            {/* --- Reminder dialog (commented until backend support) --- */}
-            {/* <ReminderDialog ... /> */}
 
             <AppMobileFooter inert={isMobile && hasSelection ? true : undefined} />
         </div>
