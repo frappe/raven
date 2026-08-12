@@ -59,8 +59,8 @@ export const ScheduleTimePicker = ({ onConfirm, onCancel, onPickChange, busy }: 
                         {/* Late tonight every slot may already be past — say so instead of crashing. */}
                         <SelectValue>{effectiveOption?.label ?? _("No times left today")}</SelectValue>
                     </SelectTrigger>
-                    {/* align="end": the panel can be wider than the trigger. */}
-                    <SelectContent align="end" className="max-h-62 overflow-y-auto">
+                    {/* Panel width locked to the trigger's. */}
+                    <SelectContent className="w-[var(--radix-select-trigger-width)] min-w-0 max-h-62 overflow-y-auto">
                         {availableOptions.map((option) => (
                             <SelectItem key={option.value} value={option.value} className="px-3 py-2 md:py-1.5 tabular-nums">
                                 {option.label}

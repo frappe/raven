@@ -83,9 +83,8 @@ export const EditScheduledMessageSheet = ({ row, open, onOpenChange, onDone }: E
                                     <Clock />
                                     <SelectValue>{allTimeOptions.find((option) => option.value === time)?.label}</SelectValue>
                                 </SelectTrigger>
-                                {/* align="end": the panel can be wider than the trigger,
-                                    which sits at the sheet's right edge. */}
-                                <SelectContent align="end" className="max-h-62 overflow-y-auto">
+                                {/* Panel width locked to the trigger's. */}
+                                <SelectContent className="w-[var(--radix-select-trigger-width)] min-w-0 max-h-62 overflow-y-auto">
                                     {/* tabular-nums + px-3: frappe-ui's time-picker row look. */}
                                     {allTimeOptions.map((option) => (
                                         <SelectItem key={option.value} value={option.value} className="px-3 py-2 tabular-nums">

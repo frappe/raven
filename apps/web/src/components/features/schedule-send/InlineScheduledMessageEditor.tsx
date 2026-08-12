@@ -85,7 +85,14 @@ export const DatePickerPopover = ({ value, onChange, size = "sm", className }: D
                         <CalendarIcon />
                     </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+                {/* collisionPadding 16 = the sheets' px-4 gutter, so the calendar
+                    lines up with the fields it belongs to. */}
+                <PopoverContent
+                    className="w-auto p-0"
+                    align="start"
+                    collisionPadding={16}
+                    onOpenAutoFocus={(e) => e.preventDefault()}
+                >
                     <Calendar
                         mode="single"
                         selected={value}
@@ -142,7 +149,8 @@ export const InlineScheduledMessageEditor = ({ row, onDone, onCancel }: InlineSc
                                     <Clock />
                                     <SelectValue>{allTimeOptions.find((option) => option.value === time)?.label}</SelectValue>
                                 </SelectTrigger>
-                                <SelectContent align="start" className="min-w-28 max-h-62 overflow-y-auto">
+                                {/* Panel width locked to the trigger's. */}
+                                <SelectContent align="start" className="w-[var(--radix-select-trigger-width)] min-w-0 max-h-62 overflow-y-auto">
                                     {/* tabular-nums + px-3: frappe-ui's time-picker row look. */}
                                     {allTimeOptions.map((option) => (
                                         <SelectItem key={option.value} value={option.value} className="px-3 tabular-nums">
