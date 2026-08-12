@@ -132,24 +132,24 @@ const Profile = () => {
                         <ProfileRow icon={Bookmark} label={_("Saved messages")} chevron />
                     </NavLink>
 
-                    {/* Scheduled messages — the PWA has no sidebar rail, so this row is
-                        the mobile entry point. A real route: back-swipe returns here. */}
-                    <NavLink to="/scheduled-messages">
-                        <ProfileRow
-                            icon={CalendarClock}
-                            label={_("Scheduled messages")}
-                            trailing={
-                                <span className="flex items-center gap-2">
-                                    {scheduledCount > 0 && (
+                    {/* Scheduled messages — the PWA's entry point (no sidebar rail).
+                        Hidden when there's nothing scheduled, like the desktop icon. */}
+                    {scheduledCount > 0 && (
+                        <NavLink to="/scheduled-messages">
+                            <ProfileRow
+                                icon={CalendarClock}
+                                label={_("Scheduled messages")}
+                                trailing={
+                                    <span className="flex items-center gap-2">
                                         <span className="h-4 min-w-4 px-1 flex items-center justify-center rounded-full bg-surface-red-6 text-ink-base dark:text-ink-red-1 text-[10px] leading-none">
                                             {scheduledCount > 9 ? "9+" : scheduledCount}
                                         </span>
-                                    )}
-                                    <ChevronRight className="size-4" />
-                                </span>
-                            }
-                        />
-                    </NavLink>
+                                        <ChevronRight className="size-4" />
+                                    </span>
+                                }
+                            />
+                        </NavLink>
+                    )}
 
                     <ProfileRow icon={Edit} label={_("Edit profile")} onClick={() => setEditOpen(true)} className="rounded-b-lg" />
 
