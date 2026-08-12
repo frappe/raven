@@ -87,8 +87,17 @@ const userColumns: ColumnDef<UserData>[] = [
         accessorKey: "custom_status",
         header: _("Status"),
         meta: { gridWidth: "minmax(120px,1fr)" } satisfies ListViewColumnMeta,
+        // A status is free text and routinely outruns this column. Badge is `w-fit` with
+        // `overflow-clip`, so on its own it grows past the cell and is cut mid-word with no
+        // ellipsis. max-w-full caps `fit-content` at the cell — a shrink factor does nothing
+        // here, since the ListView cell is a block, not a flex container — and the inner
+        // span carries the ellipsis, which the badge's own inline-flex box can't render.
         cell: ({ row }) =>
-            row.original.custom_status ? <Badge variant="subtle">{row.original.custom_status}</Badge> : null,
+            row.original.custom_status ? (
+                <Badge variant="subtle" className="max-w-full">
+                    <span className="truncate">{row.original.custom_status}</span>
+                </Badge>
+            ) : null,
     },
 ]
 

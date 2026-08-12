@@ -6,6 +6,7 @@ import { UserAvatar } from "@components/features/message/UserAvatar"
 import { cn } from "@lib/utils"
 import type { ChannelListItem, DMChannelListItem } from "@raven/types/common/ChannelListItem"
 import { UserData } from "@db"
+import { getUserDisplayName, isCurrentUser } from "@utils/userDisplay"
 import _ from "@lib/translate"
 import { useWorkspaces } from "@hooks/useWorkspaces"
 
@@ -128,7 +129,7 @@ export function ChannelFilter({
     users,
     value,
     onValueChange,
-    allLabel = _("In Any Channel"),
+    allLabel = _("Any Channel"),
     triggerClassName,
     className,
     modal = false,
@@ -196,7 +197,7 @@ function ChannelCommandItem({
     )
 }
 
-function getChannelLabel(channel: ChannelFilterItem, users?: UserData[]): string {
+export function getChannelLabel(channel: ChannelFilterItem, users?: UserData[]): string {
     if (channel.is_direct_message === 1) {
         const dm = channel as DMChannelListItem
         return users?.find((user) => user.name === dm.peer_user_id)?.full_name ?? dm.peer_user_id ?? channel.name
@@ -204,11 +205,17 @@ function getChannelLabel(channel: ChannelFilterItem, users?: UserData[]): string
     return channel.channel_name ?? channel.name ?? ""
 }
 
-function ChannelOption({
+/** One channel/DM row — shared with the forward dialog's recipient picker. */
+export function ChannelOption({
     channel, users, compact = false, workspaceName,
 }: { channel: ChannelFilterItem; users?: UserData[]; compact?: boolean; workspaceName?: string }) {
     const isDM = channel.is_direct_message === 1
     const peerUser = users?.find((user) => user.name === (channel as DMChannelListItem).peer_user_id)
+
+    // Your own DM (the note-to-self conversation) reads "<name> (You)", the same as it does
+    // in the DM sidebar. Applied HERE and not in getChannelLabel, because that label is also
+    // the row's cmdk `keywords` — a search for "you" must not match your own DM.
+    const isSelfDM = isDM && isCurrentUser((channel as DMChannelListItem).peer_user_id)
 
     // min-w-0 + flex-1 in BOTH modes: as a list row this has to be able to shrink,
     // or it overflows the item and pushes the trailing check out of the popover.
@@ -234,12 +241,17 @@ function ChannelOption({
             {/* leading-snug: the UI type scale's 1.15 is too tight to contain descenders
                 once `truncate` clips the line box. */}
             <span className="min-w-0 flex-1 truncate text-left leading-snug">
-                {getChannelLabel(channel, users)}
+                {getUserDisplayName(getChannelLabel(channel, users), isSelfDM)}
             </span>
             {/* Stands in for the group heading while the list is flat: two channels can share
                 a name across workspaces, and a ranked result is useless if you can't tell
-                which one it is. max-w keeps a long workspace name from eating the channel. */}
-            {workspaceName && (
+                which one it is. max-w keeps a long workspace name from eating the channel.
+
+                Dropped on your own DM, where this slot only ever says "Direct Message" — the
+                avatar already conveys that, and both together don't fit: this slot is
+                shrink-0 while the name truncates, so the name yields first and the "(You)"
+                gets clipped off the row that most needed it. */}
+            {workspaceName && !isSelfDM && (
                 <span className="shrink-0 max-w-24 truncate text-sm leading-snug text-ink-gray-4">
                     {workspaceName}
                 </span>

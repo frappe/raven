@@ -3,10 +3,27 @@ import { CommandGroup } from '@components/ui/command'
 import { FilterCombobox, FilterComboboxItem } from './FilterCombobox'
 import { UserAvatar } from '@components/features/message/UserAvatar'
 import { UserData } from "@db"
+import { getUserDisplayName, isCurrentUser } from '@utils/userDisplay'
 import _ from '@lib/translate'
 
 /** Sentinel for "no author filter". Not a real user id. */
 const ALL = 'all'
+
+/**
+ * Full names shared by more than one account — common enough on a real directory to matter.
+ * cmdk can tell such rows apart on its own (the value is the user id), but a reader can't.
+ * Callers show the id as secondary text on exactly these rows and nowhere else.
+ */
+export const getAmbiguousNames = (users: UserData[]): Set<string> => {
+    const seen = new Set<string>()
+    const duplicated = new Set<string>()
+    for (const user of users) {
+        const name = user.full_name ?? user.name
+        if (seen.has(name)) duplicated.add(name)
+        else seen.add(name)
+    }
+    return duplicated
+}
 
 interface UserFilterProps {
     users: UserData[]
@@ -47,20 +64,7 @@ export function UserFilterRows({
         )
     }, [users])
 
-    // Two accounts can carry the same full name — this site has four such pairs, including
-    // two "Aditya Patil". cmdk can tell the rows apart on its own (the value is the user id),
-    // but a reader can't: the email is the only thing distinguishing them, so it's shown on
-    // those rows and nowhere else.
-    const ambiguousNames = useMemo(() => {
-        const seen = new Set<string>()
-        const duplicated = new Set<string>()
-        for (const user of users) {
-            const name = user.full_name ?? user.name
-            if (seen.has(name)) duplicated.add(name)
-            else seen.add(name)
-        }
-        return duplicated
-    }, [users])
+    const ambiguousNames = useMemo(() => getAmbiguousNames(users), [users])
 
     return (
         // Only users in this list — a "Users" heading labels nothing. The group stays
@@ -128,7 +132,13 @@ export function UserFilter({
     )
 }
 
-function UserOption({ user, compact = false, secondary }: { user: UserData; compact?: boolean; secondary?: string }) {
+/** One person row — shared with the forward dialog's recipient picker. */
+export function UserOption({ user, compact = false, secondary }: { user: UserData; compact?: boolean; secondary?: string }) {
+    // Your own row reads "<name> (You)", the same as it does in the DM sidebar. The suffix
+    // is applied HERE and not in the row's `keywords`, so searching "you" can't match
+    // every self row.
+    const isSelf = isCurrentUser(user.name)
+
     return (
         <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
             <UserAvatar
@@ -139,10 +149,17 @@ function UserOption({ user, compact = false, secondary }: { user: UserData; comp
             />
             {/* leading-snug: the UI type scale's 1.15 clips descenders once truncate
                 bounds the line box. */}
-            <span className="min-w-0 flex-1 truncate text-left leading-snug">{user.full_name}</span>
+            <span className="min-w-0 flex-1 truncate text-left leading-snug">
+                {getUserDisplayName(user.full_name ?? user.name, isSelf)}
+            </span>
             {/* Only set when another account shares this name: the id is the sole thing
-                distinguishing the two rows. */}
-            {secondary && (
+                distinguishing the two rows.
+
+                Suppressed on your OWN row, where "(You)" already does that job and does it
+                better. Both together don't fit: this slot is shrink-0 while the name
+                truncates, so in a w-64 popover the name yields first and the "(You)" gets
+                clipped off the row that most needed it. */}
+            {secondary && !isSelf && (
                 <span className="shrink-0 max-w-32 truncate text-sm leading-snug text-ink-gray-4">
                     {secondary}
                 </span>

@@ -1,5 +1,5 @@
 import { useEffect } from "react"
-import { FieldValues, useForm, UseFormReturn } from "react-hook-form"
+import { useForm } from "react-hook-form"
 import { useFrappeUpdateDoc } from "frappe-react-sdk"
 import { toast } from "sonner"
 import { useRavenSettings } from "@hooks/fetchers/useRavenSettings"
@@ -27,10 +27,22 @@ const isRavenSettingsAdmin = () => hasRole("Raven Admin") || hasRole("System Man
  * doc so untouched fields aren't wiped), and mutate the cache. Panels just supply
  * their fields as children — they read form state through useFormContext.
  *
+ * `children` is a NODE, not a render prop taking the form. It used to be
+ * `(form) => ReactNode`, with panels calling `form.watch(...)` inside it to show or hide
+ * dependent fields — and those fields never appeared when you flicked their switch. They
+ * showed up only after a save, because saving toggles the button's `loading` flag, and
+ * that unrelated re-render was what refreshed them.
+ *
+ * The cause is React Compiler: disabling it made the same code work, which is what
+ * pinned it. A render prop invoked with referentially stable arguments is a memoization
+ * candidate, so its result can be reused instead of re-evaluated. Panels now read form
+ * state with useFormContext/useWatch inside their own component, where the subscription
+ * belongs to the component that renders the fields.
+ *
  * The Save button lives in the panel header (outside the <form>), wired by `form`
  * id — same pattern as the Profile panel.
  */
-export function AdminSettingsForm<T extends FieldValues>({
+export function AdminSettingsForm({
     title,
     description,
     formId,
@@ -39,20 +51,20 @@ export function AdminSettingsForm<T extends FieldValues>({
     title: string
     description: string
     formId: string
-    children: (form: UseFormReturn<T>) => React.ReactNode
+    children: React.ReactNode
 }) {
     const { ravenSettings, mutate, isLoading } = useRavenSettings()
     const { updateDoc, loading: saving } = useFrappeUpdateDoc<RavenSettings>()
     const isAdmin = isRavenSettingsAdmin()
 
-    const form = useForm<T>({ disabled: !isAdmin })
+    const form = useForm<RavenSettings>({ disabled: !isAdmin })
 
     // Seed once the doc arrives (and reset when it changes underneath us).
     useEffect(() => {
-        if (ravenSettings) form.reset(ravenSettings as unknown as T)
+        if (ravenSettings) form.reset(ravenSettings)
     }, [ravenSettings]) // eslint-disable-line react-hooks/exhaustive-deps
 
-    const onSubmit = (data: T) => {
+    const onSubmit = (data: RavenSettings) => {
         if (!ravenSettings) return
         toast.promise(
             // Merge over the current doc so we only change this panel's fields.
@@ -88,7 +100,7 @@ export function AdminSettingsForm<T extends FieldValues>({
                                     </AlertDescription>
                                 </Alert>
                             )}
-                            {children(form)}
+                            {children}
                         </form>
                     </Form>
                 )}

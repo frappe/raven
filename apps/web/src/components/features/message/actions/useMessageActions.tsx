@@ -11,6 +11,7 @@ import {
     MessageSquareText,
     Edit3Icon,
     Eye,
+    Forward,
     Pin,
     PinOff,
     Reply,
@@ -26,6 +27,7 @@ import { buildFileActions, type MessageAction } from "./fileActions"
 import { ReadReceiptsList } from "./ReadReceiptsList"
 import { channelMessagesStore } from "@stores/messages/store"
 import { parsePinnedIds } from "@stores/messages/selectors"
+import { isOptimistic } from "@stores/messages/types"
 import { channelStore } from "@stores/channels/store"
 import { useChannelPinnedString } from "@stores/channels/useChannelList"
 import { seedThreadMeta } from "@stores/threads/useThreadMeta"
@@ -203,8 +205,24 @@ export const useMessageActions = (
             })
         }
 
-        // Clipboard: copy text, copy message link
+        // Clipboard: forward, copy text, copy message link
         const clipboard: MessageAction[] = []
+        // Forward sits with copy/link — all three take this message somewhere else.
+        // NOT gated on canInteract: that flag is membership in the SOURCE channel and
+        // governs writing back into it, while a forward writes into a different channel
+        // whose permission the server checks on insert. So someone reading a message in
+        // the search or notification pane can still forward it.
+        // Polls can't be copied without either sharing or orphaning their poll doc; a
+        // System notice (joins/leaves) means nothing anywhere else; and an optimistic
+        // message has no server copy to forward yet.
+        if (message.message_type !== "Poll" && message.message_type !== "System" && !isOptimistic(message)) {
+            clipboard.push({
+                id: "forward",
+                label: _("Forward"),
+                icon: Forward,
+                onSelect: () => setDialog({ type: "forward", message }),
+            })
+        }
         if (message.text || message.content) {
             clipboard.push({
                 id: "copy",

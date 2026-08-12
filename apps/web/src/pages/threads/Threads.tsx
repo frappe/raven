@@ -113,7 +113,6 @@ export default function Threads() {
                                 users={users}
                                 value={channel}
                                 onValueChange={setChannel}
-                                allLabel={_("Any Channel")}
                                 className="w-full min-w-0"
                                 triggerClassName="w-full max-w-50 md:w-50"
                             />

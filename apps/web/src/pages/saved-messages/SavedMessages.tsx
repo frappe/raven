@@ -99,9 +99,8 @@ const SavedMessages = () => {
                                 dmChannels={dmChannels}
                                 users={users}
                                 value={channel}
-                                onValueChange={setChannel}
-                                allLabel={_('Any Channel')}
-                                className={isMobile ? "flex-1 min-w-0" : undefined}
+                                onValueChange={setChannel}                               
+                                className={isMobile ? "w-full min-w-0" : undefined}
                                 triggerClassName="w-50"
                             />
                         </div>

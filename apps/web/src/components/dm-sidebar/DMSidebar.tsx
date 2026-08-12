@@ -12,6 +12,7 @@ import { db, type UserData } from "@db"
 import { cn } from "@lib/utils"
 import { formatRelativeDate } from "@lib/date"
 import { getMessageTeaser } from "@utils/messageUtils"
+import { getUserDisplayName, isCurrentUser } from "@utils/userDisplay"
 import { useChannelDraft } from "@components/features/ChatInput/draft"
 import _ from "@lib/translate"
 import type { DMChannelListItem } from "@raven/types/common/ChannelListItem"
@@ -218,9 +219,7 @@ const DMRow = memo(function DMRow({ dmChannel, peerUser }: DMRowProps) {
     const { count: unread } = useChannelUnread(dmChannel.name)
     const prefetchHandlers = usePrefetchChannel(dmChannel.name, unread > 0)
 
-    const isSelf = peerUser.name === currentUser
-    const baseName = peerUser.full_name || peerUser.name
-    const displayName = isSelf ? _("{0} (You)", [baseName]) : baseName
+    const displayName = getUserDisplayName(peerUser.full_name || peerUser.name, isCurrentUser(peerUser.name))
     const date = formatRelativeDate(dmChannel.last_message_timestamp)
     const lastMessage = getMessageTeaser(dmChannel.last_message_details, currentUser)
     // An unsent draft beats the last message as the preview (WhatsApp-style):
