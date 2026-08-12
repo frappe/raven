@@ -1,18 +1,19 @@
 import json
-import re
 
 import frappe
 from frappe import _
-from frappe.utils.background_jobs import enqueue, is_job_enqueued
-from linkpreview import Link, LinkGrabber, LinkPreview, link_preview
 
-from raven.utils import get_raven_room
+from raven.links import is_preview_blocked, normalize_url
 
 
 @frappe.whitelist(methods=["GET"])
 def get_preview_link(urls: list[str] | str):
-
-	data = {}
+	"""
+	Old endpoint, kept only because the v2 frontend still calls it.
+	It is now a read-only lookup of previews the server already stored
+	(see raven/links.py). It never fetches. v3 gets its own get_previews
+	endpoint in Layer 3 of the plan.
+	"""
 	empty_data = {
 		"title": "",
 		"description": "",
@@ -21,65 +22,118 @@ def get_preview_link(urls: list[str] | str):
 		"absolute_image": "",
 		"site_name": "",
 	}
-	message_links = []
 
-	if urls and urls != "[]":
+	if not urls or urls == "[]":
+		return []
+
+	if isinstance(urls, str):
 		urls = json.loads(urls)
 
-		for url in urls:
-			data = frappe.cache().get_value(url)
-			if data == None:
-				# Don't try to preview insecure links like IP addresses
-				# If URL is an IP address, or starts with mailto or tel, don't preview. Just return empty data
-				if (
-					url.startswith("mailto")
-					or url.startswith("tel")
-					or re.match(r"http://\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/.*", url)
-					or re.match(r"https://\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/.*", url)
-					or re.match(r"http://\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}", url)
-					or re.match(r"https://\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}", url)
-				):
-					data = empty_data
-				else:
-					preview = None
-					try:
-						# If this is a Twitter/X URL, then we need to fetch the preview from the Twitter API
-						# This is because the linkpreview library doesn't support Twitter previews with the default bot
-						if "twitter.com" in url or "x.com" in url:
-							grabber = LinkGrabber()
-							content, url_fetched = grabber.get_content(url, headers="imessagebot")
-							link = Link(url_fetched, content)
-							preview = LinkPreview(link)
-						else:
-							preview = link_preview(url)
-					except Exception:
-						preview = None
-						pass
-					if preview == None:
-						data = empty_data
-					else:
+	# Previews are stored under the normalized spelling. Normalize each raw
+	# URL the same way, then look them all up in one query.
+	normalized_by_raw = {url: normalize_url(url) for url in urls}
+	# The blocklist beats stored data — a doc may predate the block.
+	lookup = [
+		normalized
+		for normalized in normalized_by_raw.values()
+		if normalized and not is_preview_blocked(normalized)
+	]
 
-						# Description might have emojis in them, which comes in with special characters like copyright etc
-						# TODO: We need to replace these special characters with the actual emojis
+	stored = {}
+	if lookup:
+		for row in frappe.get_all(
+			"Raven Link Preview",
+			filters={"url": ("in", lookup)},
+			fields=["url", "title", "description", "image", "site_name"],
+		):
+			stored[row.url] = row
 
-						data = {
-							"title": str(preview.title or ""),
-							"description": str(preview.description or ""),
-							"image": str(preview.image or ""),
-							"force_title": str(preview.force_title or ""),
-							"absolute_image": str(preview.absolute_image or ""),
-							"site_name": str(preview.site_name or ""),
-						}
-					frappe.cache().set_value(url, data)
-			message_links.append(data)
+	results = []
+	for url in urls:
+		row = stored.get(normalized_by_raw.get(url))
+		# A shell doc with no fetched content yet is the same as no preview.
+		if row and row.title:
+			results.append(
+				{
+					"title": row.title or "",
+					"description": row.description or "",
+					"image": row.image or "",
+					"force_title": row.title or "",
+					"absolute_image": row.image or "",
+					"site_name": row.site_name or "",
+				}
+			)
+		else:
+			results.append(empty_data)
 
-	return message_links
+	return results
+
+
+# One screen of messages at most. A bigger batch means something is
+# calling this wrong.
+MAX_PREVIEW_BATCH = 50
+
+
+@frappe.whitelist(methods=["POST"])
+def get_previews(urls: list[str] | str):
+	"""
+	The v3 read endpoint. Takes RAW urls exactly as they appear in
+	messages, normalizes them server-side (the normalizer lives in one
+	place), and returns stored previews keyed by the raw urls requested.
+	A url with no stored preview maps to None. Never fetches anything —
+	that is the background pipeline's job (raven/links.py).
+
+	POST although it only reads: a window's batch of urls (up to 50 x 500
+	chars) does not fit safely in a query string.
+	"""
+	if not urls or urls == "[]":
+		return {}
+
+	if isinstance(urls, str):
+		urls = json.loads(urls)
+
+	urls = urls[:MAX_PREVIEW_BATCH]
+
+	normalized_by_raw = {url: normalize_url(url) for url in urls}
+	# The blocklist beats stored data — a doc may predate the block.
+	lookup = {
+		normalized
+		for normalized in normalized_by_raw.values()
+		if normalized and not is_preview_blocked(normalized)
+	}
+
+	stored = {}
+	if lookup:
+		for row in frappe.get_all(
+			"Raven Link Preview",
+			filters={"url": ("in", list(lookup))},
+			fields=[
+				"url",
+				"provider",
+				"status",
+				"title",
+				"description",
+				"image",
+				"image_width",
+				"image_height",
+				"site_name",
+				"metadata",
+			],
+		):
+			# The JSON column comes back as a string. The client wants a dict.
+			row.metadata = json.loads(row.metadata) if row.metadata else None
+			stored[row.url] = row
+
+	return {url: stored.get(normalized_by_raw.get(url)) for url in urls}
 
 
 @frappe.whitelist(methods=["POST"])
 def hide_link_preview(message_id: str):
 	"""
-	Remove the preview from the message
+	v2 only. v3 dropped per-message hiding — it hid the preview for ALL
+	users even when one person opted out. v3 replaces it with a per-user
+	display preference (hover or card). Delete this along with the v2
+	frontend.
 	"""
 	message = frappe.get_doc("Raven Message", message_id)
 
@@ -90,40 +144,3 @@ def hide_link_preview(message_id: str):
 	message.hide_link_preview = 1
 	message.flags.editing_metadata = True
 	message.save()
-
-
-@frappe.whitelist(methods=["POST"])
-def update_link_previews_in_background(urls: list[str] | str, channel_id: str | None = None):
-	job_id = f"update_link_previews_{channel_id}"
-	if not is_job_enqueued(job_id):
-		enqueue(method=update_link_previews, urls=urls, channel_id=channel_id, job_name=job_id)
-	else:
-		frappe.log_error(f"Update preview links job is already running for channel {channel_id}")
-
-
-def update_link_previews(urls: list[str] | str, channel_id: str | None = None):
-	if isinstance(urls, str) and urls != "[]":
-		urls = json.loads(urls)
-
-	for url in urls:
-		try:
-			if frappe.db.exists("Raven Link Preview", url):
-				preview_doc = frappe.get_doc("Raven Link Preview", url)
-				preview_doc.fetch_preview()
-				preview_doc.save()
-			else:
-				preview_doc = frappe.get_doc(
-					{
-						"doctype": "Raven Link Preview",
-						"url": url,
-					}
-				)
-				preview_doc.insert()
-
-		except Exception:
-			frappe.log_error(f"Failed to update preview for {url}")
-
-	if channel_id:
-		frappe.publish_realtime(
-			"link_previews_updated", {"channel_id": channel_id}, room=get_raven_room()
-		)

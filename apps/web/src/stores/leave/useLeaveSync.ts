@@ -21,8 +21,8 @@ export const useLeaveSync = () => {
         isHRInstalled() ? "users_on_leave" : null,
         {
             dedupingInterval: 1000 * 60 * 60 * 6,
+            focusThrottleInterval: 1000 * 60 * 60 * 6,
             revalidateOnReconnect: true,
-            revalidateOnFocus: false,
         },
     )
 

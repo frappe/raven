@@ -39,6 +39,8 @@ def _message_columns(message):
 		message.is_thread,
 		message.blurhash,
 		message.message_batch_id,
+		message.links,
+		message.json,
 	)
 
 
@@ -124,9 +126,14 @@ def get_messages(
 	# the "New messages" line and scroll there. Only when the caller has visited before
 	# (last_visit set) and there's something newer — otherwise fall through to the latest page.
 	if anchor_to_unread and last_visit:
-		# Exclude System messages ("X joined", etc.) so the divider anchors on the first real
-		# new message — and doesn't show at all when everything new is just system noise. This
-		# matches the unread COUNT, which already ignores System (get_unread_count_for_channels).
+		# Exclude System messages ("X joined", etc.) and the caller's OWN messages —
+		# your own message is never "new" to you. Sending does not advance last_visit
+		# on the server (only the client's read tracker does, later), so without the
+		# owner filter the divider often anchored on the user's own message — most
+		# visibly in threads, where the member row is created just before the first
+		# reply. Bot messages are the exception: a bot can post with owner set to
+		# this user, and the user didn't write those — they count as new. Hence the
+		# or_filters: keep a message when someone else wrote it OR a bot wrote it.
 		first_unread = frappe.db.get_all(
 			"Raven Message",
 			pluck="name",
@@ -135,6 +142,10 @@ def get_messages(
 				"creation": (">", last_visit),
 				"message_type": ("!=", "System"),
 			},
+			or_filters=[
+				["owner", "!=", frappe.session.user],
+				["is_bot_message", "=", 1],
+			],
 			order_by="creation asc, name asc",
 			limit=1,
 		)

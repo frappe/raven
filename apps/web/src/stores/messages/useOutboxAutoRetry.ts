@@ -1,7 +1,8 @@
 import { useContext, useEffect } from "react"
 import { FrappeConfig, FrappeContext } from "frappe-react-sdk"
-import { getAllOutbox } from "./outbox"
+import { getAllOutbox, purgeExpiredOutbox } from "./outbox"
 import { retryOutboxRecord, type PostClient } from "./messageSender"
+import { flushVisitOutbox } from "@stores/unread/visitOutbox"
 
 /**
  * A running flush, if any. Module-level (not per-hook) so two triggers can never run
@@ -16,14 +17,32 @@ import { retryOutboxRecord, type PostClient } from "./messageSender"
 let flushChain: Promise<void> = Promise.resolve()
 
 const runFlush = async (client: PostClient, includeFailed: boolean) => {
+    // Read-only site (maintenance / physical restore): every write would be rejected,
+    // so retrying would only flip the whole outbox to "failed". Leave the records as
+    // they are — the next trigger (reconnect after the site is writable again, or the
+    // reload users do anyway after maintenance) re-checks and flushes then.
+    if (window.frappe?.boot?.read_only) return
+
+    // Drop week-old sends BEFORE reading — a resurrected stale message is worse than
+    // a lost one (see purgeExpiredOutbox).
+    await purgeExpiredOutbox()
+
     const records = await getAllOutbox()
     // Send them one at a time (oldest first), waiting for each before the next.
     // Sending in parallel would make several inserts hit the same channel row at once
     // (deadlock) and let the server timestamp them in any order (messages shuffle).
     for (const record of records) {
+        // "rejected" = the server refused it (permission error) — retrying can never
+        // succeed, so the auto-flush leaves it alone. Only the user's own Retry
+        // (after their access is restored) or Discard moves it.
+        if (record.status === "rejected") continue
         if (!includeFailed && record.status !== "sending") continue
         await retryOutboxRecord(client, record)
     }
+
+    // Messages first, then read watermarks — replay any track_visit calls that
+    // couldn't be delivered (offline / read-only / error). See visitOutbox.
+    await flushVisitOutbox(client)
 }
 
 const flushOutbox = (client: PostClient, includeFailed: boolean) => {
@@ -32,7 +51,8 @@ const flushOutbox = (client: PostClient, includeFailed: boolean) => {
 }
 
 /**
- * Sends the messages saved in the outbox.
+ * Sends the messages saved in the outbox (and replays queued read watermarks —
+ * see visitOutbox — after them).
  *
  * - On app start (only if online): re-send messages that were mid-send when the app
  *   last closed ("sending") — we don't know if they reached the server, so we try

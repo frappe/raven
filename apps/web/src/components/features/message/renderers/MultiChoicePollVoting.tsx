@@ -1,4 +1,4 @@
-import React, { useMemo } from "react"
+import React from "react"
 import { Checkbox } from "@components/ui/checkbox"
 import { Button } from "@components/ui/button"
 import { cn } from "@lib/utils"
@@ -24,17 +24,19 @@ export const MultiChoicePollVoting: React.FC<MultiChoicePollVotingProps> = ({
     onSubmit,
 }) => {
     const [selectedOptions, setSelectedOptions] = React.useState<string[]>([])
-    const isDisabled = useMemo(() => {
-        if (poll.is_disabled === 1) return true
 
-        if (poll.max_choices && selectedOptions.length >= poll.max_choices) return true
-
-        return false
-
-    }, [poll.is_disabled, poll.max_choices, selectedOptions.length])
+    // Two SEPARATE things, deliberately not one flag: a closed poll disables
+    // everything, but a full selection (max choices reached) only blocks adding
+    // MORE options — unchecking and submitting must keep working, otherwise a
+    // full selection locks the voter out of the poll entirely.
+    const pollClosed = poll.is_disabled === 1
+    const maxChoices = poll.max_choices || 0
+    const maxReached = maxChoices > 0 && selectedOptions.length >= maxChoices
 
     const handleCheckboxChange = (optionId: string, checked: boolean) => {
-        if (isDisabled) return
+        if (pollClosed) return
+        // At the cap only ADDING is blocked; unchecking is always allowed.
+        if (checked && maxReached) return
 
         setSelectedOptions((prev) => {
             if (checked) {
@@ -50,7 +52,7 @@ export const MultiChoicePollVoting: React.FC<MultiChoicePollVotingProps> = ({
     }
 
     const handleSubmit = () => {
-        if (!isDisabled && selectedOptions.length > 0 && onSubmit) {
+        if (!pollClosed && selectedOptions.length > 0 && onSubmit) {
             onSubmit(selectedOptions)
         }
     }
@@ -65,6 +67,8 @@ export const MultiChoicePollVoting: React.FC<MultiChoicePollVotingProps> = ({
                     const percentage = getOptionPercentage(option, poll)
                     const isChecked = selectedOptions.includes(option.name)
                     const optionWithVoters = option as PollOptionWithVoters
+                    // A CHECKED option stays enabled at the cap — it can be unchecked.
+                    const optionDisabled = pollClosed || (maxReached && !isChecked)
 
                     return (
                         <label
@@ -73,7 +77,7 @@ export const MultiChoicePollVoting: React.FC<MultiChoicePollVotingProps> = ({
                             data-checked={isChecked}
                             className={cn(
                                 "flex items-center gap-2 px-3.5 py-1.5 h-7 w-full bg-surface-gray-1 data-[checked=true]:bg-surface-gray-2 rounded-full [corner-shape:squircle] cursor-pointer transition-colors",
-                                !isDisabled && "hover:bg-surface-gray-2"
+                                !optionDisabled && "hover:bg-surface-gray-2"
                             )}
                         >
                             <Checkbox
@@ -81,7 +85,7 @@ export const MultiChoicePollVoting: React.FC<MultiChoicePollVotingProps> = ({
                                 onCheckedChange={(checked) =>
                                     handleCheckboxChange(option.name, checked === true)
                                 }
-                                disabled={isDisabled}
+                                disabled={optionDisabled}
                                 className="shrink-0"
                             />
                             <span className="text-sm text-ink-gray-8 wrap-break-word flex-1 min-w-0 leading-snug">
@@ -105,13 +109,13 @@ export const MultiChoicePollVoting: React.FC<MultiChoicePollVotingProps> = ({
                         : null}
                 </div>
                 <div>
-                    {!isDisabled && (
+                    {!pollClosed && selectedOptions.length > 0 && (
                         <Button
                             size="sm"
                             onClick={handleSubmit}
                             disabled={selectedOptions.length === 0}
                         >
-                            Submit
+                            {_("Submit")}
                         </Button>
                     )}
                 </div>

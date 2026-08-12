@@ -78,7 +78,7 @@ export const MessageItem = ({ message, onInView }: { message: Message; onInView?
             <OptimisticStatus message={message} />
         </MessageSenderLayout>
 
-        {showThread ? <MessageThreadPill threadID={message.name} /> : null}
+        {showThread ? <MessageThreadPill threadID={message.name} channelID={message.channel_id} /> : null}
     </MessageRow>
 }
 

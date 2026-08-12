@@ -149,6 +149,33 @@ class ChannelStore {
     getChannels = () => this.channels
     getDMChannels = () => this.dmChannels
 
+    /** ----- byId snapshots (useChannelsById / useDMsById) -----
+     * Lazily derived, cached on the source ARRAY's identity: one Map build per actual
+     * list change, shared by every consumer — replaces the old per-consumer useMemo
+     * rebuilds. Deliberately TWO maps (not the internal combined `byId`): consumers
+     * discriminate channel-vs-DM by which map hits for an id. Memoized stable-return
+     * getters are safe as useSyncExternalStore snapshots. */
+    private channelsByIdCache: { source: ChannelListItem[]; map: Map<string, ChannelListItem> } | null = null
+    private dmsByIdCache: { source: DMChannelListItem[]; map: Map<string, DMChannelListItem> } | null = null
+
+    getChannelsById = (): Map<string, ChannelListItem> => {
+        if (this.channelsByIdCache?.source !== this.channels) {
+            const map = new Map<string, ChannelListItem>()
+            for (const channel of this.channels) map.set(channel.name, channel)
+            this.channelsByIdCache = { source: this.channels, map }
+        }
+        return this.channelsByIdCache.map
+    }
+
+    getDMsById = (): Map<string, DMChannelListItem> => {
+        if (this.dmsByIdCache?.source !== this.dmChannels) {
+            const map = new Map<string, DMChannelListItem>()
+            for (const dm of this.dmChannels) map.set(dm.name, dm)
+            this.dmsByIdCache = { source: this.dmChannels, map }
+        }
+        return this.dmsByIdCache.map
+    }
+
     /** ----- Single channel ----- */
 
     subscribeChannel = (channelID: string, listener: Listener) => {

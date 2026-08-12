@@ -1,21 +1,18 @@
-import { Bell, BellOff, BellRing } from 'lucide-react'
 import { UserAvatar } from '@components/features/message/UserAvatar'
+import { ChannelIcon } from '@components/common/ChannelIcon/ChannelIcon'
 import { useChannel } from '@hooks/useChannel'
-import _ from '@lib/translate'
 import { useUser } from '@hooks/useUser'
-import { Button } from '@components/ui/button'
-import { SettingsSection } from './SettingsSection'
-import { LeaveChannelButton } from "./LeaveChannelButton"
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@components/ui/dropdown-menu'
+import { formatDate } from '@lib/date'
+import { canManageChannel } from '@lib/permissions'
+import _ from '@lib/translate'
 import { EditChannelDescriptionButton } from './EditChannelDescriptionButton'
-import { useMemo } from 'react'
-import { hasRole } from '@lib/permissions'
 
+/**
+ * Identity header of the channel drawer — name, description, created-by. It sits
+ * above the tabs and is always visible, so it stays read-only and compact; every
+ * action (notifications, leave, admin changes) lives in the Settings tab instead.
+ * Mirrors UserProfileDrawer, which fills this slot for DMs.
+ */
 const ChannelInfo = ({ channelID }: { channelID: string }) => {
     const { channel } = useChannel(channelID)
     const user = useUser(channel?.owner ?? "")
@@ -24,104 +21,30 @@ const ChannelInfo = ({ channelID }: { channelID: string }) => {
         return null
     }
 
-    const allowSettingChange = useMemo(() => {
-        if (channel.is_admin == 1) {
-            return true;
-        }
-        if (channel.member_id && hasRole("Raven Admin")) {
-            return true;
-        }
-        return false;
-    }, [channel]);
-
     return (
-        <div className="px-1 space-y-2 pb-4 pt-2">
-            {/* About Section */}
-            <div className="space-y-2 w-full">
-                <h3 className="font-semibold text-sm">{_("About")}</h3>
-
-                {/* Channel Name and Description */}
-                <div className="p-3 border border-outline-gray-2/70 rounded-lg hover:bg-surface-gray-2/50 transition-colors cursor-default">
-                    <div className="space-y-3">
-                        <div className="flex items-start justify-between">
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <span className="text-sm font-medium">
-                                        {channel.channel_name}
-                                    </span>
-                                </div>
-                                <div className="text-sm text-ink-gray-4/90">
-                                    {channel.name}
-                                </div>
-
-                                {channel.channel_description && (
-                                    <>
-                                        <div className="flex items-center gap-2 mb-1 mt-3.5">
-                                            <span className="text-sm font-medium">
-                                                {_("Channel description")}
-                                            </span>
-                                        </div>
-                                        <p className="text-sm text-ink-gray-4/90 max-h-20 overflow-y-auto">
-                                            {channel.channel_description}
-                                        </p>
-                                    </>
-                                )}
-                            </div>
-                            {allowSettingChange && (<EditChannelDescriptionButton channel={channel} />)}
-                        </div>
-                        {user && user.name !== "Administrator" && (
-                            <>
-                                <div className="border-t border-outline-gray-2/50"></div>
-                                <div className="flex items-center gap-2">
-                                    <UserAvatar user={user} size="xs" className="w-5 h-5 rounded-full" showStatusIndicator={false} showBotIndicator={false} />
-                                    <span className="text-sm text-ink-gray-4/80">
-                                        {_(`Created by {0} on {1}`, [user.full_name, channel.creation.split(" ")[0]])}
-                                    </span>
-                                </div>
-                            </>)}
-                    </div>
+        <div className="flex flex-col gap-1 px-5 md:pt-3 pb-4">
+            <div className="flex items-center gap-1.5 justify-between">
+                <div className="flex items-center gap-1 overflow-hidden">
+                    <ChannelIcon type={channel.type} className="size-4.5 shrink-0 text-ink-gray-7" />
+                    <span className="text-xl-medium text-ink-gray-7 truncate" title={channel.channel_name}>{channel.channel_name}</span>
                 </div>
-
-                {/* Push Notifications */}
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button
-                            variant="ghost"
-                            className="w-full justify-start p-3 h-auto cursor-pointer font-normal bg-transparent border border-outline-gray-2/70 rounded-lg hover:bg-surface-gray-2/50 transition-colors"
-                        >
-                            <div className="flex items-center gap-3">
-                                <Bell className="w-4 h-4 text-ink-gray-4" />
-                                <span className="text-sm">{_("Push Notifications")}</span>
-                            </div>
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-40">
-                        <DropdownMenuItem onClick={() => { }}>
-                            <div className="flex items-center gap-2">
-                                <BellRing className="h-3 w-3 text-ink-gray-8/80" />
-                                <span>{_("All Notifications")}</span>
-                            </div>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => { }}>
-                            <div className="flex items-center gap-2">
-                                <Bell className="h-3 w-3 text-ink-gray-8/80" />
-                                <span>{_("Mentions Only")}</span>
-                            </div>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => { }}>
-                            <div className="flex items-center gap-2">
-                                <BellOff className="h-3 w-3 text-ink-gray-8/80" />
-                                <span>{_("Mute Channel")}</span>
-                            </div>
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-                {/* Leave Channel */}
-                {channel.type !== "Open" && <LeaveChannelButton channel={channel} />}
+                {canManageChannel(channel) && <EditChannelDescriptionButton channel={channel} />}
             </div>
 
-            {/* Settings Section */}
-            <SettingsSection channel={channel} allowSettingChange={allowSettingChange} />
+            {channel.channel_description && (
+                <p className="text-p-sm text-ink-gray-6 line-clamp-3">
+                    {channel.channel_description}
+                </p>
+            )}
+
+            {user && user.name !== "Administrator" && (
+                <div className="flex items-center gap-1.5 pt-2">
+                    <UserAvatar user={user} size="xs" showStatusIndicator={false} showBotIndicator={false} />
+                    <span className="text-sm text-ink-gray-6">
+                        {_(`Created by {0} on {1}`, [user.full_name, formatDate(channel.creation, "Do MMMM YYYY")])}
+                    </span>
+                </div>
+            )}
         </div>
     )
 }

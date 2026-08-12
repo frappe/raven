@@ -27,7 +27,6 @@ export default function Channel() {
         <ChatContentView
             channelID={channelID}
             header={<ChannelHeader channelID={channelID} />}
-            pinnedMessagesString={channel?.pinned_messages_string}
         />
     )
 }

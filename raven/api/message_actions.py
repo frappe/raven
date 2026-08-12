@@ -2,6 +2,45 @@ import frappe
 from frappe import _
 
 
+def get_enabled_action(action_id: str):
+	"""
+	Fetch a message action, throwing if it is disabled. The menu only lists
+	enabled actions, but a direct API call must not bypass that filter.
+	"""
+	action = frappe.get_doc("Raven Message Action", action_id)
+	if not action.enabled:
+		frappe.throw(_("Message Action {0} is disabled").format(action.action_name))
+	return action
+
+
+def filter_values_to_action_fields(action, values: dict) -> dict:
+	"""
+	Drop any submitted key the action does not define. Without this, the payload
+	can override the admin's config — e.g. a `doctype` key would beat
+	`action.document_type` in the Create Document merge below.
+	"""
+	allowed = {field.fieldname for field in action.fields}
+	return {key: value for key, value in values.items() if key in allowed}
+
+
+def resolve_workspace_id(message) -> str | None:
+	"""
+	The workspace for the `workspace_id` message-field default: the channel's own
+	workspace, else the last workspace this user is a member of, else None.
+	(v2 used get_last_doc(...).name here — the MEMBER row's name, not a workspace,
+	and it raised DoesNotExistError for users with no membership rows.)
+	"""
+	workspace = frappe.get_cached_value("Raven Channel", message.channel_id, "workspace")
+	if workspace:
+		return workspace
+	return frappe.db.get_value(
+		"Raven Workspace Member",
+		{"user": frappe.session.user},
+		"workspace",
+		order_by="modified desc",
+	)
+
+
 @frappe.whitelist(methods=["GET"])
 def get_action_defaults(action_id: str, message_id: str):
 	"""
@@ -9,25 +48,16 @@ def get_action_defaults(action_id: str, message_id: str):
 	"""
 
 	frappe.has_permission(doctype="Raven Message", doc=message_id, ptype="read", throw=True)
-	action = frappe.get_doc("Raven Message Action", action_id)
+	action = get_enabled_action(action_id)
 	message = frappe.get_doc("Raven Message", message_id)
+
+	# The canonical /message resolver route redirects to the right place for every
+	# message (channel, DM, or thread reply) — same shape the web app's own
+	# "Copy message link" uses. No workspace/thread special-casing needed.
+	message_url = frappe.utils.get_url(f"/raven/message/{message.name}")
 
 	# Loop through the fields in the action and get the default values from the message
 	defaults = {}
-
-	channel_doc = frappe.get_doc("Raven Channel", message.channel_id)
-	workspace_id = channel_doc.workspace
-
-	if not workspace_id:
-		# Get the last workspace that this user has access to
-		workspace_id = frappe.get_last_doc("Raven Workspace Member", {"user": frappe.session.user}).name
-
-	url = frappe.utils.get_url(f"/raven/{workspace_id}")
-
-	if channel_doc.is_thread:
-		message_url = url + f"/threads/{message.channel_id}?message_id={message.name}"
-	else:
-		message_url = url + f"/{message.channel_id}?message_id={message.name}"
 
 	for field in action.fields:
 		if not field.default_value:
@@ -40,7 +70,7 @@ def get_action_defaults(action_id: str, message_id: str):
 			if field.default_value == "message_url":
 				val = message_url
 			elif field.default_value == "workspace_id":
-				val = workspace_id
+				val = resolve_workspace_id(message)
 			else:
 				val = message.get(field.default_value)
 			if val:
@@ -65,8 +95,9 @@ def execute_action(action_id: str, message_id: str, values: dict):
 	"""
 
 	frappe.has_permission(doctype="Raven Message", doc=message_id, ptype="read", throw=True)
-	action = frappe.get_doc("Raven Message Action", action_id)
+	action = get_enabled_action(action_id)
 	message = frappe.get_doc("Raven Message", message_id)
+	values = filter_values_to_action_fields(action, values)
 
 	if action.action == "Create Document":
 		doc = frappe.get_doc({"doctype": action.document_type, **values})
@@ -80,7 +111,19 @@ def execute_action(action_id: str, message_id: str, values: dict):
 			# Ignore permissions to allow editing of the document
 			message.save(ignore_permissions=True)
 
-		return {"message": "Document created successfully", "document": doc.name, "doctype": doc.doctype}
+		# Resolve the document's URL server-side (hook-overridable for apps that
+		# don't live under /app, e.g. Frappe CRM). Relative, so the client opens
+		# it on whatever origin the user is on.
+		from raven.api.document_link import get as get_document_link
+
+		link = get_document_link(doc.doctype, doc.name, with_site_url=False)
+
+		return {
+			"message": "Document created successfully",
+			"document": doc.name,
+			"doctype": doc.doctype,
+			"link": link,
+		}
 
 	if action.action == "Custom Function":
 		# Call the function with the values

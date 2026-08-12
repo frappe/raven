@@ -53,7 +53,7 @@ export const EmojiPickerButton = ({ editor }: { editor: Editor }) => {
                 <TooltipContent>{_("Emoji")}</TooltipContent>
             </Tooltip>
             <PopoverContent side="top" align="start" className="w-auto border-0 p-0">
-                <Picker onEmojiSelect={onSelect} theme={themeValue} set="apple" custom={customEmojis} previewPosition="none" />
+                <Picker onEmojiSelect={onSelect} theme={themeValue} set="native" custom={customEmojis} previewPosition="none" />
             </PopoverContent>
         </Popover>
     )

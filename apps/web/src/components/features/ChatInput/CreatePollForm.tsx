@@ -1,22 +1,19 @@
-import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useFieldArray, useForm } from 'react-hook-form'
 import { useFrappePostCall } from 'frappe-react-sdk'
-import { toast } from 'sonner'
 import dayjs from 'dayjs'
-import { CalendarClock, CalendarIcon, EyeOff, ListChecks, Plus, X } from 'lucide-react'
+import { CalendarClock, EyeOff, ListChecks, ListOrdered, Plus, X } from 'lucide-react'
 import { Button } from '@components/ui/button'
 import { Input } from '@components/ui/input'
-import { Label } from '@components/ui/label'
 import { Switch } from '@components/ui/switch'
 import { Separator } from '@components/ui/separator'
-import { Calendar } from '@components/ui/calendar'
-import { Popover, PopoverContent, PopoverTrigger } from '@components/ui/popover'
-import { DialogFooter, DialogHeader, DialogTitle } from '@components/ui/dialog'
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@components/ui/form'
-import { SmallTextField } from '@components/ui/form-elements'
-import { getErrorMessage } from '@lib/frappe'
-import { cn } from '@lib/utils'
+import { DialogFooter } from '@components/ui/dialog'
+import { useIsMobile } from '@hooks/use-mobile'
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, FormRequiredIndicator } from '@components/ui/form'
+import { DataField, DateField, SmallTextField } from '@components/ui/form-elements'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@components/ui/select'
+import { H4 } from '@components/ui/typography'
 import _ from '@lib/translate'
+import { errorResponseToast } from '@components/ui/error-banner'
 
 interface CreatePollFormProps {
     channelID: string
@@ -25,13 +22,18 @@ interface CreatePollFormProps {
 
 interface PollFormData {
     question: string
-    options: string[]
+    /** Object rows (not string[]) — the shape useFieldArray requires. */
+    options: { option: string }[]
     is_anonymous: boolean
     is_multi_choice: boolean
-    max_choices: number
+    /** Select values are strings; converted on submit. */
+    max_choices: string
+    auto_close: boolean
+    /** YYYY-MM-DD — the DateField contract. */
+    end_date: string
+    /** HH:mm */
+    end_time: string
 }
-
-const MAX_OPTIONS = 10
 
 /** Half-hour granularity for the end-time picker. */
 const TIME_STEP_SECONDS = 30 * 60
@@ -49,34 +51,37 @@ const SUGGESTION_SEQUENCES = [
 ]
 
 /**
- * Inline option input with a ghost-text suggestion. When `suggestion` continues what's typed
- * (or fills an empty row whose turn it is), the remainder shows muted behind the cursor and
- * Tab accepts it.
+ * Inline option input with a ghost-text suggestion. When `suggestion` continues what's
+ * typed, the remainder shows muted behind the cursor and Tab accepts it. A standard
+ * ui/Input under the hood — only the overlay is custom, which is why this can't be a
+ * plain DataField (form-elements has no slot for a ghost layer).
  */
 const OptionInput = ({
     value,
     suggestion,
     placeholder,
     onChange,
-    onAccept,
+    ref,
 }: {
     value: string
     suggestion: string
     placeholder: string
     onChange: (value: string) => void
-    onAccept: (value: string) => void
+    /** RHF field ref — lets append({ focusName }) focus the new row's input. */
+    ref?: React.Ref<HTMLInputElement>
 }) => {
     const remainder = suggestion.toLowerCase().startsWith(value.toLowerCase()) ? suggestion.slice(value.length) : ''
     return (
         <div className="relative flex-1">
             <Input
+                ref={ref}
                 value={value}
                 placeholder={remainder ? '' : placeholder}
                 onChange={(e) => onChange(e.target.value)}
                 onKeyDown={(e) => {
                     if (e.key === 'Tab' && !e.shiftKey && remainder) {
                         e.preventDefault()
-                        onAccept(suggestion)
+                        onChange(suggestion)
                     }
                 }}
             />
@@ -92,51 +97,59 @@ const OptionInput = ({
     )
 }
 
+/**
+ * Poll creation form, built on the standard form stack (react-hook-form +
+ * ui/form-elements) — same anatomy as banking's RuleForm: stacked fields with
+ * gap-4, a field-array block with per-row remove + an outline "add" button,
+ * a Separator, then a titled settings section.
+ */
 export const CreatePollForm = ({ channelID, onClose }: CreatePollFormProps) => {
     const { call: createPoll, loading: isCreating } = useFrappePostCall('raven.api.raven_poll.create_poll')
 
-    // The auto-close date/time lives outside the form (it's a combined value gated by a switch).
-    const [autoClose, setAutoClose] = useState(false)
-    const [endDate, setEndDate] = useState<Date | undefined>(undefined)
-    const [endTime, setEndTime] = useState('17:00')
-
     const form = useForm<PollFormData>({
-        defaultValues: { question: '', options: ['', ''], is_anonymous: false, is_multi_choice: false, max_choices: 2 },
+        defaultValues: {
+            question: '',
+            options: [{ option: '' }, { option: '' }],
+            is_anonymous: false,
+            is_multi_choice: false,
+            max_choices: 'any',
+            auto_close: false,
+            end_date: '',
+            end_time: '17:00',
+        },
         mode: 'onChange',
     })
 
-    const options = form.watch('options')
-    const isMultiChoice = form.watch('is_multi_choice')
+    const { fields, append, remove } = useFieldArray({ control: form.control, name: 'options' })
+    const isMobile = useIsMobile()
 
-    const setOptions = (next: string[]) => form.setValue('options', next)
-    const addOption = () => setOptions([...options, ''])
-    const removeOption = (index: number) => setOptions(options.filter((_opt, i) => i !== index))
-    const updateOption = (index: number, value: string) => setOptions(options.map((opt, i) => (i === index ? value : opt)))
+    const isMultiChoice = form.watch('is_multi_choice')
+    const autoClose = form.watch('auto_close')
+    const optionValues = form.watch('options')
 
     // The suggested answer for a row: the first row matches a sequence by its typed prefix;
     // later rows take the next answer from whichever sequence the first row settled on.
     const getSuggestion = (index: number): string => {
-        const current = (options[index] ?? '').trim()
+        const current = (optionValues[index]?.option ?? '').trim()
         if (index === 0) {
             if (!current) return ''
             return SUGGESTION_SEQUENCES.find((seq) => seq[0].toLowerCase().startsWith(current.toLowerCase()))?.[0] ?? ''
         }
-        const first = (options[0] ?? '').trim().toLowerCase()
+        const first = (optionValues[0]?.option ?? '').trim().toLowerCase()
         return SUGGESTION_SEQUENCES.find((seq) => seq[0].toLowerCase() === first)?.[index] ?? ''
     }
 
     const onSubmit = (data: PollFormData) => {
-        const validOptions = data.options.map((o) => o.trim()).filter(Boolean)
+        const validOptions = data.options.map((row) => row.option.trim()).filter(Boolean)
         if (validOptions.length < 2) {
             form.setError('options', { message: _('At least 2 options are required') })
             return
         }
 
         let end_date: string | undefined
-        if (autoClose && endDate) {
-            const [hours, minutes] = endTime.split(':').map(Number)
-            const closesAt = dayjs(endDate).hour(hours).minute(minutes).second(0)
-            end_date = closesAt.format('YYYY-MM-DD HH:mm:ss')
+        if (data.auto_close && data.end_date) {
+            const [hours, minutes] = data.end_time.split(':').map(Number)
+            end_date = dayjs(data.end_date).hour(hours).minute(minutes).second(0).format('YYYY-MM-DD HH:mm:ss')
         }
 
         // The backend posts the poll message to the channel; the realtime echo adds it to the
@@ -148,47 +161,73 @@ export const CreatePollForm = ({ channelID, onClose }: CreatePollFormProps) => {
             is_multi_choice: data.is_multi_choice,
             is_anonymous: data.is_anonymous,
             end_date,
-            max_choices: data.is_multi_choice ? Math.min(Number(data.max_choices) || 2, validOptions.length) : undefined,
+            // "any" = no cap — omit the field entirely. Also no cap with ≤2 valid
+            // options: the row is hidden then, so any stored number is stale.
+            max_choices:
+                data.is_multi_choice && data.max_choices !== 'any' && validOptions.length > 2
+                    ? Math.min(Number(data.max_choices) || 2, validOptions.length)
+                    : undefined,
         })
             .then(() => onClose())
-            .catch((e) => toast.error(_('Could not create poll'), { description: getErrorMessage(e) }))
+            .catch((e) => errorResponseToast(_('Could not create poll'), e))
     }
 
     return (
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
-                <DialogHeader>
-                    <DialogTitle>{_('Create Poll')}</DialogTitle>
-                </DialogHeader>
-
                 <SmallTextField
                     name="question"
                     label={_('Question')}
                     isRequired
                     rules={{ required: _('Poll question is required') }}
-                    inputProps={{ placeholder: _('What would you like to ask?'), rows: 2 }}
+                    inputProps={{ placeholder: _('What would you like to ask?'), rows: 2, autoFocus: !isMobile }}
                 />
 
-                {/* Options */}
+                {/* Options — field-array rows, RuleForm-style: input + always-present
+                    remove (disabled at the 2-option minimum) + outline add button */}
                 <div className="flex flex-col gap-2">
-                    <Label>{_('Options')}</Label>
+                    <span className="text-sm font-medium">
+                        {_('Options')}{' '}
+                        <FormRequiredIndicator />
+                    </span>
 
-                    {options.map((option, index) => (
-                        <div key={index} className="flex items-center gap-2">
-                            <OptionInput
-                                value={option}
-                                suggestion={getSuggestion(index)}
-                                placeholder={_('Option {0}', [String(index + 1)])}
-                                onChange={(value) => updateOption(index, value)}
-                                onAccept={(value) => updateOption(index, value)}
-                            />
-                            {options.length > 2 && (
+                    {fields.map((field, index) => (
+                        <div key={field.id} className="flex w-full items-center gap-2">
+                            <div className="w-full">
+                                {/* FormField (not DataField) so the row stays RHF-registered
+                                    while hosting the ghost-suggestion input */}
+                                <FormField
+                                    control={form.control}
+                                    name={`options.${index}.option`}
+                                    render={({ field: optionField }) => (
+                                        <FormItem>
+                                            <FormLabel className="sr-only">{_('Option {0}', [String(index + 1)])}</FormLabel>
+                                            <FormControl>
+                                                <OptionInput
+                                                    ref={optionField.ref}
+                                                    value={optionField.value}
+                                                    suggestion={getSuggestion(index)}
+                                                    placeholder={_('Option {0}', [String(index + 1)])}
+                                                    onChange={optionField.onChange}
+                                                />
+                                            </FormControl>
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+                            {/* Removal only makes sense past the 2-option minimum — no
+                                disabled placeholder buttons on a fresh form */}
+                            {fields.length > 2 && (
                                 <Button
                                     type="button"
                                     variant="ghost"
                                     size="sm"
                                     isIconButton
-                                    onClick={() => removeOption(index)}
+                                    // Out of the tab order: Tab is for moving input → input
+                                    // (and accepting ghost suggestions). Keyboard users lose
+                                    // nothing — clearing a row's text removes it at submit.
+                                    tabIndex={-1}
+                                    onClick={() => remove(index)}
                                     aria-label={_('Remove option {0}', [String(index + 1)])}
                                 >
                                     <X />
@@ -197,13 +236,12 @@ export const CreatePollForm = ({ channelID, onClose }: CreatePollFormProps) => {
                         </div>
                     ))}
 
-                    {options.length < MAX_OPTIONS && (
-                        <Button type="button" variant="subtle" size="sm" className="w-fit" onClick={addOption}>
-                            <Plus />
-                            {_('Add option')}
-                        </Button>
-                    )}
+                    <Button type="button" variant="subtle" size="sm" className="w-fit" onClick={() => append({ option: '' }, { focusName: `options.${fields.length}.option` })}>
+                        <Plus />
+                        {_('Add option')}
+                    </Button>
 
+                    {/* Array-level error slot ("at least 2 options"), set on submit */}
                     <FormField control={form.control} name="options" render={() => <FormItem><FormMessage /></FormItem>} />
                 </div>
 
@@ -211,7 +249,7 @@ export const CreatePollForm = ({ channelID, onClose }: CreatePollFormProps) => {
 
                 {/* Settings */}
                 <div className="flex flex-col gap-4">
-                    <Label>{_('Poll Settings')}</Label>
+                    <H4 className="text-base text-ink-gray-7">{_('Poll Settings')}</H4>
 
                     <FormField
                         control={form.control}
@@ -219,39 +257,45 @@ export const CreatePollForm = ({ channelID, onClose }: CreatePollFormProps) => {
                         render={({ field }) => (
                             <FormItem className="flex flex-row items-center justify-between gap-4">
                                 <div className="space-y-0.5">
-                                    <FormLabel className="flex items-center gap-2">
-                                        <ListChecks className="h-4 w-4 text-ink-gray-5" />
-                                        {_('Allow multiple choices')}
-                                    </FormLabel>
+                                    <FormLabel className="flex items-center gap-2"><ListChecks className="h-4 w-4 text-ink-gray-5" />{_('Allow multiple choices')}</FormLabel>
                                     <FormDescription>{_('Voters can select more than one option')}</FormDescription>
                                 </div>
                                 <FormControl>
-                                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                    <Switch size="md" checked={field.value} onCheckedChange={field.onChange} />
                                 </FormControl>
                             </FormItem>
                         )}
                     />
 
-                    {isMultiChoice && (
+                    {/* Same row anatomy as the switch rows — label + description left,
+                        compact control right — so the settings list reads as one list.
+                        Hidden with only 2 options: "at most 2 of 2" IS "any". */}
+                    {isMultiChoice && fields.length > 2 && (
                         <FormField
                             control={form.control}
                             name="max_choices"
                             render={({ field }) => (
                                 <FormItem className="flex flex-row items-center justify-between gap-4">
                                     <div className="space-y-0.5">
-                                        <FormLabel>{_('Maximum choices')}</FormLabel>
+                                        <FormLabel className="flex items-center gap-2"><ListOrdered className="h-4 w-4 text-ink-gray-5" />{_('Maximum choices')}</FormLabel>
                                         <FormDescription>{_('How many options each person can select')}</FormDescription>
                                     </div>
-                                    <FormControl>
-                                        <Input
-                                            type="number"
-                                            min={2}
-                                            max={options.length}
-                                            className="w-20"
-                                            value={field.value ?? ''}
-                                            onChange={(e) => field.onChange(e.target.value === '' ? undefined : e.target.valueAsNumber)}
-                                        />
-                                    </FormControl>
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger className="w-20">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            {/* "Any" (no cap) + 2 … current option-row count */}
+                                            <SelectItem value="any">{_('Any')}</SelectItem>
+                                            {Array.from({ length: Math.max(fields.length - 1, 1) }, (_unused, i) => String(i + 2)).map((count) => (
+                                                <SelectItem key={count} value={count}>
+                                                    {count}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </FormItem>
                             )}
                         />
@@ -263,54 +307,64 @@ export const CreatePollForm = ({ channelID, onClose }: CreatePollFormProps) => {
                         render={({ field }) => (
                             <FormItem className="flex flex-row items-center justify-between gap-4">
                                 <div className="space-y-0.5">
-                                    <FormLabel className="flex items-center gap-2">
-                                        <EyeOff className="h-4 w-4 text-ink-gray-5" />
-                                        {_('Anonymous poll')}
-                                    </FormLabel>
+                                    <FormLabel className="flex items-center gap-2"><EyeOff className="h-4 w-4 text-ink-gray-5" />{_('Anonymous poll')}</FormLabel>
                                     <FormDescription>{_('Hide voter identities from other participants')}</FormDescription>
                                 </div>
                                 <FormControl>
-                                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                    <Switch size="md" checked={field.value} onCheckedChange={field.onChange} />
                                 </FormControl>
                             </FormItem>
                         )}
                     />
 
-                    {/* Auto-close: gates the date + time pickers (toggle off to clear). */}
-                    <div className="flex flex-row items-center justify-between gap-4">
-                        <div className="space-y-0.5">
-                            <Label className="text-p-sm-medium text-ink-gray-7">
-                                <CalendarClock className="h-4 w-4 text-ink-gray-5" />
-                                {_('Close this poll automatically')}
-                            </Label>
-                            <p className="text-p-sm text-ink-gray-6">{_('Stop accepting votes at a chosen date and time')}</p>
-                        </div>
-                        <Switch checked={autoClose} onCheckedChange={setAutoClose} />
-                    </div>
+                    <FormField
+                        control={form.control}
+                        name="auto_close"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between gap-4">
+                                <div className="space-y-0.5">
+                                    <FormLabel className="flex items-center gap-2"><CalendarClock className="h-4 w-4 text-ink-gray-5" />{_('Close this poll automatically')}</FormLabel>
+                                    <FormDescription>{_('Stop accepting votes at a chosen date and time')}</FormDescription>
+                                </div>
+                                <FormControl>
+                                    <Switch size="md" checked={field.value} onCheckedChange={field.onChange} />
+                                </FormControl>
+                            </FormItem>
+                        )}
+                    />
 
                     {autoClose && (
                         <div className="grid grid-cols-2 gap-2">
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button variant="outline" className={cn('w-full justify-start font-normal', !endDate && 'text-ink-gray-4')}>
-                                        <CalendarIcon />
-                                        {endDate ? dayjs(endDate).format('MMM D, YYYY') : _('Pick date')}
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent align="start" className="w-auto p-0">
-                                    <Calendar mode="single" selected={endDate} onSelect={setEndDate} disabled={(date) => date < new Date()} />
-                                </PopoverContent>
-                            </Popover>
-                            <Input type="time" step={TIME_STEP_SECONDS} value={endTime} onChange={(e) => setEndTime(e.target.value)} className='[&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none' />
+                            <DateField
+                                name="end_date"
+                                label={_('End date')}
+                                isRequired
+                                rules={{
+                                    validate: (value: string) => {
+                                        if (!autoClose) return true
+                                        if (!value) return _('Pick a date to close the poll on')
+                                        return dayjs(value).isBefore(dayjs(), 'day') ? _('The end date must be in the future') : true
+                                    },
+                                }}
+                            />
+                            <DataField
+                                name="end_time"
+                                label={_('End time')}
+                                inputProps={{
+                                    type: 'time',
+                                    step: TIME_STEP_SECONDS,
+                                    className: '[&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none',
+                                }}
+                            />
                         </div>
                     )}
                 </div>
 
                 <DialogFooter>
-                    <Button type="button" variant="outline" onClick={onClose} disabled={isCreating}>
+                    <Button type="button" variant="outline" size={isMobile ? 'lg' : 'md'} onClick={onClose} disabled={isCreating}>
                         {_('Cancel')}
                     </Button>
-                    <Button type="submit" loading={isCreating} loadingText={_('Creating...')} disabled={!form.watch('question')?.trim()}>
+                    <Button type="submit" size={isMobile ? 'lg' : 'md'} loading={isCreating} loadingText={_('Creating...')} disabled={!form.watch('question')?.trim()}>
                         {_('Create Poll')}
                     </Button>
                 </DialogFooter>

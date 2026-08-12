@@ -1,30 +1,17 @@
-import { ChannelList } from "@raven/types/common/ChannelListItem";
-import { useFrappePostCall, useSWRConfig } from "frappe-react-sdk";
+import { channelStore } from "@stores/channels/store";
+import { useFrappePostCall } from "frappe-react-sdk";
 
 export const useLeaveChannel = (channelID: string) => {
-  const { mutate } = useSWRConfig();
   const { call, loading, error } = useFrappePostCall(
     "raven.api.raven_channel.leave_channel",
   );
 
   const leaveChannel = async () => {
     return call({ channel_id: channelID }).then(() => {
-      mutate(
-        "channel_list",
-        (data: { message: ChannelList } | undefined) => {
-          if (data) {
-            return {
-              message: {
-                ...data.message,
-                channels: data.message.channels.map((ch) =>
-                  ch.name === channelID ? { ...ch, member_id: "" } : ch,
-                ),
-              },
-            };
-          }
-        },
-        { revalidate: false },
-      );
+      // Store, not the SWR cache — see useJoinChannel for why. `leave_channel` deletes
+      // the member doc, whose on_trash publishes `channel_list_updated` to this user,
+      // so a refetch reconciles right after this optimistic patch.
+      channelStore.patchChannel(channelID, { member_id: "" });
     });
   };
 

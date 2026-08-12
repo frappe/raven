@@ -69,15 +69,16 @@ class ChannelUnreadStore {
         return () => this.globalListeners.delete(listener)
     }
 
-    /**
-     * Number of channels with unread (a conversation count, not a message sum).
-     * Primitive snapshot, safe to recompute per read. Unread threads will be
-     * folded into the app-level total separately once that count exists.
-     */
-    getTotalUnread(): number {
-        let total = 0
-        for (const state of this.states.values()) if (state.count > 0) total++
-        return total
+    // NOTE: no raw "total unread" getter on purpose — this store doesn't know which
+    // channels are MUTED, and every app-level aggregate (tab title, icon badge,
+    // footer) must exclude them. Compose totals in the hooks layer
+    // (useChannelUnread.ts), which joins against the channel list.
+
+    /** Ids of the currently-unread channels (notification-shade housekeeping). */
+    getUnreadChannelIDs(): string[] {
+        const ids: string[] = []
+        for (const [channelID, state] of this.states) if (state.count > 0) ids.push(channelID)
+        return ids
     }
 
     /** ----- Inputs ----- */
@@ -121,6 +122,25 @@ class ChannelUnreadStore {
             return
         }
         this.update(channelID, { count: caughtUp ? 0 : state.count, lastSeen: timestamp })
+    }
+
+    /**
+     * Mark a channel unread back to `watermark` with a server-computed `count`.
+     * The deliberate BACKWARD counterpart to markRead (which is forward-only and
+     * would drop this): the user marked a channel/message unread, rolling
+     * last_visit backward server-side, so we set lastSeen backward and the count
+     * directly. Mirrors set_channel_unread's guard bypass on the backend.
+     */
+    markUnread(channelID: string, watermark: string, count: number) {
+        this.update(channelID, { count, lastSeen: watermark })
+        // Roll the PRISTINE server baseline back too — the server's last_visit
+        // just moved backward, and the read tracker seeds its "don't re-post"
+        // guard from this map. Left at the old (higher) value, re-reading the
+        // channel would post nothing (watermark <= baseline → skip), the server
+        // would keep it unread, and the badge would come back on refresh. Only
+        // a fresh get_messages response would otherwise overwrite it — which a
+        // warm re-entry never triggers.
+        this.serverWatermarks.set(channelID, watermark)
     }
 
     /** Register the channel open at the live edge (or null). It won't accumulate increments. */

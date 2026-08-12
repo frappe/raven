@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router";
 import { useState } from "react";
-import { AlertTriangle, Loader2, Trash2 } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useFrappeDeleteDoc, useSWRConfig } from "frappe-react-sdk";
 import { Button } from "@components/ui/button";
@@ -15,6 +15,8 @@ import {
   AlertDialogTrigger,
 } from "@components/ui/alert-dialog";
 import ErrorBanner from "@components/ui/error-banner";
+import { Alert, AlertDescription, AlertTitle } from "@components/ui/alert";
+import { PrefActionRow } from "@components/features/profile/PrefRows";
 import _ from "@lib/translate";
 import {
   ChannelList,
@@ -24,13 +26,9 @@ import { Checkbox } from "@components/ui/checkbox";
 
 export interface DeleteChannelButtonProps {
   channel: ChannelListItem;
-  disabled?: boolean;
 }
 
-export function DeleteChannelButton({
-  channel,
-  disabled = false,
-}: DeleteChannelButtonProps) {
+export function DeleteChannelButton({ channel }: DeleteChannelButtonProps) {
   const navigate = useNavigate();
   const { mutate } = useSWRConfig();
   const { deleteDoc, loading, error } = useFrappeDeleteDoc();
@@ -61,36 +59,31 @@ export function DeleteChannelButton({
 
   return (
     <AlertDialog>
-      <AlertDialogTrigger asChild disabled={disabled}>
-        <button
-          className={`w-full flex justify-start p-3 h-auto cursor-pointer font-normal bg-transparent border border-outline-gray-2/70 rounded-lg transition-colors ${disabled ? "opacity-50 pointer-events-none" : "hover:bg-red-200/20"}`}
-        >
-          <div className="flex items-center gap-3">
-            <Trash2 className="w-4 h-4 text-ink-red-3" />
-            <span className="text-sm text-ink-red-3">
-              {_("Delete channel")}
-            </span>
-          </div>
-        </button>
+      <AlertDialogTrigger asChild>
+        <PrefActionRow
+          label={_("Delete channel")}
+          description={_("Permanently delete this channel and all of its messages")}
+          destructive
+        />
       </AlertDialogTrigger>
       <AlertDialogContent className="sm:max-w-xl">
         <AlertDialogHeader>
           <AlertDialogTitle>{_("Delete this channel?")}</AlertDialogTitle>
           <AlertDialogDescription asChild>
-            <div className="space-y-4 text-left text-ink-gray-8 pt-1">
+            <div className="space-y-4 pt-1">
               {error ? <ErrorBanner error={error} /> : null}
-              <div className="flex items-start gap-3 rounded-md border border-outline-red-3/40 bg-surface-red-5/10 p-3">
-                <AlertTriangle className="h-4 w-4 text-ink-red-3 mt-0.5" />
-                <p className="text-sm text-ink-gray-8/90">
+              <Alert theme="red">
+                <AlertTriangle />
+                <AlertTitle>
                   {_("This action is permanent and cannot be undone.")}
-                </p>
-              </div>
-              <p className="text-sm text-ink-gray-8/80">
+                </AlertTitle>
+              </Alert>
+              <p>
                 {_(
                   "When you delete a channel, all messages from this channel will be removed immediately.",
                 )}
               </p>
-              <ul className="list-inside list-disc space-y-1 text-sm text-ink-gray-8/80">
+              <ul className="list-inside list-disc space-y-1">
                 <li>
                   {_(
                     "All messages, including files and images will be removed",
@@ -102,7 +95,7 @@ export function DeleteChannelButton({
                   )}
                 </li>
               </ul>
-              <label className="flex items-center gap-2 text-sm text-ink-gray-8/90 select-none">
+              <label className="flex items-center gap-2 select-none">
                 <Checkbox
                   checked={allowDelete}
                   onCheckedChange={(v) => setAllowDelete(Boolean(v))}
@@ -121,18 +114,13 @@ export function DeleteChannelButton({
             variant="solid"
             theme="red"
             size="md"
+            loading={loading}
+            loadingText={_("Deleting")}
             disabled={!allowDelete || loading}
             onClick={deleteChannel}
             aria-label={_("Delete this channel?")}
           >
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin text-ink-gray-8/80 aria-hidden" />
-                {_("Deleting")}
-              </>
-            ) : (
-              _("Delete")
-            )}
+            {_("Delete")}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

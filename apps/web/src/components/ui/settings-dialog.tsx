@@ -1,4 +1,5 @@
 import * as React from "react"
+import { SettingsDialogContext } from "./settings-dialog-context"
 import { Tabs as TabsPrimitive, Dialog as DialogPrimitive } from "radix-ui"
 import { cn } from "@lib/utils"
 import { DialogContent } from "./dialog"
@@ -34,17 +35,6 @@ import { Label } from "./label"
  * </Dialog>
  */
 
-type SettingsDialogContextValue = {
-    onClose?: VoidFunction
-}
-
-const SettingsDialogContext = React.createContext<SettingsDialogContextValue>({})
-
-/**
- * Exposes `onClose` to descendant panels so they can dismiss the dialog after
- * a successful save without prop-drilling.
- */
-export const useSettingsDialog = () => React.useContext(SettingsDialogContext)
 
 type SettingsDialogProps = Omit<
     React.ComponentProps<typeof TabsPrimitive.Root>,
@@ -111,7 +101,7 @@ function SettingsTabGroup({
     return (
         <div data-slot="settings-tab-group" className={className} {...props}>
             {header && (
-                <div className="h-7.5 px-2 py-[7px] my-[3px] flex cursor-default gap-1.5 text-xs-medium text-ink-gray-5 transition-all duration-300 ease-in-out sticky top-0 z-10 bg-surface-sidebar">
+                <div className="h-7.5 px-2 py-[7px] my-[3px] flex cursor-default gap-1.5 text-xs-medium text-ink-gray-5 transition-all duration-300 ease-in-out sticky top-0 z-10 bg-surface-sidebar dark:bg-surface-elevation-1">
                     <span>{header}</span>
                 </div>
             )}
@@ -152,7 +142,7 @@ function SettingsTabItem({
                     )}
                     <span
                         className={cn(
-                            "flex-1 shrink-0 truncate text-sm duration-300 ease-in-out w-auto opacity-100 text-ink-gray-6",
+                            "flex-1 shrink-0 truncate text-sm leading-snug duration-300 ease-in-out w-auto opacity-100 text-ink-gray-6",
                             icon && "ms-2"
                         )}
                     >
@@ -218,7 +208,7 @@ function SettingsPanelHeader({
             <div className="flex flex-col gap-1 w-full">
                 {children}
             </div>
-            <div className="flex item-center space-x-2 w-fit justify-end">
+            <div className="flex items-center space-x-2 w-fit justify-end">
                 {actions}
             </div>
         </div>

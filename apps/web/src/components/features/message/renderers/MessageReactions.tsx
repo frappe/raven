@@ -1,15 +1,25 @@
-import { useMemo } from "react"
+import { useMemo, useRef } from "react"
+import { useSetAtom } from "jotai"
 import { useLiveQuery } from "dexie-react-hooks"
 import { SmilePlus } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip"
 import { cn } from "@lib/utils"
 import { db } from "@db"
 import { useUserCookieData } from "@hooks/useUserCookieData"
+import { messageDialogAtom } from "@utils/channelAtoms"
+import { hapticTick } from "@utils/haptics"
 import { ReactionObject } from "@raven/types/common/ChatStream"
 import type { Message } from "@raven/types/common/Message"
 import { useToggleReaction } from "../actions/useToggleReaction"
 import { ReactionPicker } from "../actions/ReactionPicker"
 import _ from "@lib/translate"
+
+/** Hold a pill this long (touch) to open the who-reacted view instead of toggling. */
+const LONG_PRESS_MS = 450
+/** Finger drift beyond this cancels the long-press — it's a scroll, not a hold. */
+const LONG_PRESS_SLOP_PX = 10
+/** Suppress the synthetic click for this long after the long-press fires. */
+const LONG_PRESS_CLICK_GUARD_MS = 500
 
 /**
  * `message_reactions` is stored as a JSON string keyed per reaction:
@@ -43,6 +53,7 @@ export const MessageReactionsRow = ({ message }: { message: Message }) => {
     const reactions = useMemo(() => parseReactions(message.message_reactions), [message.message_reactions])
     const { name: currentUser } = useUserCookieData()
     const toggleReaction = useToggleReaction()
+    const setDialog = useSetAtom(messageDialogAtom)
 
     if (reactions.length === 0) return null
 
@@ -54,6 +65,8 @@ export const MessageReactionsRow = ({ message }: { message: Message }) => {
                     reaction={reaction}
                     isUserReacted={reaction.users.includes(currentUser)}
                     onToggle={() => toggleReaction(message, reaction.reaction, reaction.is_custom, reaction.emoji_name)}
+                    // Mobile: long-pressing a pill opens who-reacted (tooltips need hover)
+                    onLongPress={() => setDialog({ type: "reactions", message })}
                 />
             ))}
             <AddReactionButton message={message} />
@@ -61,7 +74,78 @@ export const MessageReactionsRow = ({ message }: { message: Message }) => {
     )
 }
 
-const ReactionButton = ({ reaction, isUserReacted, onToggle }: { reaction: ReactionObject; isUserReacted: boolean; onToggle: () => void }) => {
+const ReactionButton = ({
+    reaction,
+    isUserReacted,
+    onToggle,
+    onLongPress,
+}: {
+    reaction: ReactionObject
+    isUserReacted: boolean
+    onToggle: () => void
+    onLongPress: () => void
+}) => {
+    // Touch long-press → who-reacted view (desktop sees names in the tooltip).
+    // Same detector pattern as MessageActionMenu: iOS never fires contextmenu.
+    const pressRef = useRef<{ timer: number; x: number; y: number } | null>(null)
+    const suppressClickUntilRef = useRef(0)
+
+    const cancelPress = () => {
+        if (!pressRef.current) return
+        window.clearTimeout(pressRef.current.timer)
+        pressRef.current = null
+    }
+
+    const onPointerDown = (event: React.PointerEvent) => {
+        if (event.pointerType !== "touch") return
+        // Keep the MESSAGE-level long-press (action sheet) from also arming —
+        // holding a pill should open who-reacted, not both surfaces. This also
+        // means a reply-swipe can't start on a pill, which is fine: pills are
+        // small and the rest of the row still swipes.
+        event.stopPropagation()
+        cancelPress()
+        const timer = window.setTimeout(() => {
+            pressRef.current = null
+            // The click that follows finger-lift must not TOGGLE the reaction
+            // the user was only inspecting.
+            suppressClickUntilRef.current = performance.now() + LONG_PRESS_CLICK_GUARD_MS
+            hapticTick()
+            onLongPress()
+        }, LONG_PRESS_MS)
+        pressRef.current = { timer, x: event.clientX, y: event.clientY }
+    }
+
+    const onPointerMove = (event: React.PointerEvent) => {
+        const press = pressRef.current
+        if (!press) return
+        if (Math.abs(event.clientX - press.x) > LONG_PRESS_SLOP_PX || Math.abs(event.clientY - press.y) > LONG_PRESS_SLOP_PX) {
+            cancelPress()
+        }
+    }
+
+    const onClick = (event: React.MouseEvent) => {
+        if (performance.now() < suppressClickUntilRef.current) {
+            suppressClickUntilRef.current = 0
+            event.preventDefault()
+            event.stopPropagation()
+            return
+        }
+        onToggle()
+    }
+
+    const onContextMenu = (event: React.MouseEvent) => {
+        // Pills have no context menu, ever. Android (never iOS) fires a native
+        // contextmenu for a touch long-press on its own OEM-dependent schedule;
+        // if it bubbled to the stream wrapper, the message ACTION sheet would
+        // open on top of the who-reacted view — two stacked drawers from one
+        // hold. Suppressing unconditionally (rather than only while our own
+        // hold timer is armed) removes every timing assumption; the cost is
+        // that a desktop right-click on a pill does nothing, which is fine —
+        // the rest of the message is the right-click target for the menu.
+        event.preventDefault()
+        event.stopPropagation()
+    }
+
     return (
         <Tooltip>
             <TooltipTrigger asChild>
@@ -75,10 +159,16 @@ const ReactionButton = ({ reaction, isUserReacted, onToggle }: { reaction: React
                     className={cn(
                         "flex cursor-pointer items-center justify-center gap-1 rounded-full px-2 py-1 text-sm outline-none transition focus-visible:focus-ring",
                         isUserReacted
-                            ? "bg-surface-violet-2 text-ink-violet-9 hover:bg-surface-violet-3"
+                            ? "bg-surface-blue-2 dark:bg-surface-gray-4 text-ink-blue-9 dark:text-ink-gray-9 hover:bg-surface-blue-3 dark:hover:bg-surface-gray-5"
                             : "bg-surface-gray-2 text-ink-gray-6 hover:bg-surface-gray-3",
                     )}
-                    onClick={onToggle}
+                    onClick={onClick}
+                    onContextMenu={onContextMenu}
+                    onPointerDown={onPointerDown}
+                    onPointerMove={onPointerMove}
+                    onPointerUp={cancelPress}
+                    onPointerCancel={cancelPress}
+                    onPointerLeave={cancelPress}
                     aria-label={_("{0}, {1} reactions", [reaction.emoji_name, String(reaction.count)])}
                     aria-pressed={isUserReacted}
                 >
@@ -94,7 +184,7 @@ const ReactionButton = ({ reaction, isUserReacted, onToggle }: { reaction: React
                         // em-emoji renders from the Apple set (initialized in
                         // App.tsx) so reactions look the same on every platform
                         <span className="flex h-4.5 w-4.5 items-center justify-center" aria-hidden="true">
-                            <em-emoji native={reaction.reaction} set="apple" size="1.1em" fallback={reaction.reaction} />
+                            <em-emoji native={reaction.reaction} set="native" size="1.1em" fallback={reaction.reaction} />
                         </span>
                     )}
                     <span>{reaction.count}</span>

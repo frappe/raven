@@ -1,3 +1,5 @@
+from urllib.parse import urlsplit
+
 import frappe
 
 
@@ -7,11 +9,33 @@ def boot_session(bootinfo):
 
 	bootinfo.show_raven_chat_on_desk = raven_settings.show_raven_on_desk
 
+	if raven_settings.frappe_meet_hosted_urls:
+		bootinfo.frappe_meet_hosted_urls = raven_settings.frappe_meet_hosted_urls
+
+	# Domain-wide blocklist rows only: the client needs them to suppress
+	# provider EMBEDS (a YouTube facade renders without asking the
+	# server). Exact-URL rows are enforced purely server-side — cards
+	# only render when get_previews returns data.
+	blocked_domains = []
+	for blocked in raven_settings.blocked_links or []:
+		entry = (blocked.link or "").strip()
+		if not entry or blocked.match_exact:
+			continue
+		hostname = urlsplit(entry if "://" in entry else f"https://{entry}").hostname
+		if hostname:
+			blocked_domains.append(hostname.lower())
+	if blocked_domains:
+		bootinfo.link_preview_blocked_domains = blocked_domains
+
 	tenor_api_key = raven_settings.tenor_api_key
 
 	document_link_override = frappe.get_hooks("raven_document_link_override")
 
-	if frappe.session.user and frappe.session.user != "Guest":
+	if (
+		frappe.session.user
+		and frappe.session.user != "Guest"
+		and frappe.db.exists("Raven User", frappe.session.user)
+	):
 		chat_style, time_format = frappe.db.get_value(
 			"Raven User", frappe.session.user, ["chat_style", "time_format"]
 		)

@@ -22,8 +22,6 @@ export function UserProfileDrawer({ user }: UserProfileDrawerProps) {
 
     const isDisabled = user.enabled === 0
 
-    // TODO: Add designation etc
-
     return (
         <div className="">
             <div className="flex items-center px-5 pt-4 pb-2 gap-4">
@@ -34,7 +32,7 @@ export function UserProfileDrawer({ user }: UserProfileDrawerProps) {
                     />
                 </div>
                 <div className="flex flex-col self-center gap-1 justify-between">
-                    <span className="text-2xl-medium">
+                    <span className="text-2xl-medium text-ink-gray-9">
                         {displayName} {name === user.name ? <span className="text-base text-ink-gray-6">({_("You")})</span> : ""}
                     </span>
                     {customStatus && (

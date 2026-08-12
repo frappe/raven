@@ -7,7 +7,8 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "group_name"
+  "group_name",
+  "sort_by"
  ],
  "fields": [
   {
@@ -15,8 +16,13 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Group Name",
-   "reqd": 1,
-   "unique": 1
+   "reqd": 1
+  },
+  {
+   "fieldname": "sort_by",
+   "fieldtype": "Select",
+   "label": "Sort By",
+   "options": "\nAlphabetical Order\nRecent Activity"
   }
  ],
  "grid_page_length": 50,

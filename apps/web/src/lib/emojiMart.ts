@@ -17,7 +17,7 @@ export interface EmojiMartCustomCategory {
 export const customEmojiCategoriesAtom = atom<EmojiMartCustomCategory[]>([])
 
 const loadAppleData = async () => {
-    const response = await fetch("https://cdn.jsdelivr.net/npm/@emoji-mart/data/sets/14/apple.json")
+    const response = await fetch("/assets/raven/emojis/emojis.json")
     return response.json()
 }
 
@@ -30,5 +30,21 @@ const loadAppleData = async () => {
  * picker. Called once at app start (no custom) and again from useRegisterCustomEmojis
  * once the custom list is fetched.
  */
-export const initEmojiMart = (custom?: EmojiMartCustomCategory[]) =>
-    init({ data: loadAppleData, set: "apple", custom })
+export const initEmojiMart = (custom?: EmojiMartCustomCategory[]) => {
+    // Without a stored index, emoji-mart seeds "Frequently used" with a
+    // fake starter list (+1, grinning, …) at fake scores — and persists
+    // those scores after the first real pick, so an emoji actually used
+    // once ranks below fifteen never-used ones for a long time. An
+    // EXISTING index skips the seeding, and an empty one removes the
+    // section entirely — it appears once real usage exists, honest from
+    // the first entry. Only written when the key is absent: real usage
+    // data is never touched, and logout clears these keys anyway.
+    try {
+        if (window.localStorage["emoji-mart.frequently"] === undefined) {
+            window.localStorage["emoji-mart.frequently"] = "{}"
+        }
+    } catch {
+        // Storage unavailable (privacy modes) — emoji-mart copes on its own.
+    }
+    return init({ data: loadAppleData, set: "apple", custom })
+}

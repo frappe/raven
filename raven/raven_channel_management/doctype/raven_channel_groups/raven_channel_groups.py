@@ -18,6 +18,7 @@ class RavenChannelGroups(Document):
 		parent: DF.Data
 		parentfield: DF.Data
 		parenttype: DF.Data
+		sort_by: DF.Literal["", "Alphabetical Order", "Recent Activity"]
 	# end: auto-generated types
 
 	pass

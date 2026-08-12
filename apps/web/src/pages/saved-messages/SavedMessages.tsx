@@ -1,16 +1,17 @@
-import { useCallback, useState } from "react"
-import { useHotkeys } from "react-hotkeys-hook"
+import { useState } from "react"
+import { Outlet, useMatch, useNavigate } from "react-router-dom"
+import { useEscHotkey } from '@hooks/useEscHotkey'
 import { Search as SearchIcon, X } from "lucide-react"
 
 import AppMobileFooter from "@components/features/header/AppMobileFooter"
-import { ChannelSelect } from "@components/common/ChannelSelect"
+import { ChannelFilter } from "@components/common/filters/ChannelFilter"
 import SavedMessagesList from "@components/features/saved-messages/SavedMessagesList"
 import { PageHeader } from "@components/layout/PageHeader"
-import NotificationChat, { type SelectedNotification } from "@pages/notifications/NotificationChat"
+import { NotificationsEmptyState, type SelectedNotification } from "@pages/notifications/NotificationChat"
 import { Input } from "@components/ui/input"
+import { useIsMobile } from "@hooks/use-mobile"
 import { useChannelList } from "@stores/channels/useChannelList"
-import { useLiveQuery } from "dexie-react-hooks"
-import { db } from "@db"
+import { useUsers } from "@hooks/useUsers"
 import { cn } from "@lib/utils"
 import _ from "@lib/translate"
 
@@ -27,18 +28,38 @@ import _ from "@lib/translate"
 const SavedMessages = () => {
     const [search, setSearch] = useState('')
     const [channel, setChannel] = useState('*all')
-    const [selected, setSelected] = useState<SelectedNotification | null>(null)
     const { channels, dmChannels } = useChannelList()
-    const users = useLiveQuery(() => db.users.toArray(), [])
-    const hasSelection = !!selected
+    const users = useUsers()
+    const isMobile = useIsMobile()
 
-    // Clicking the open row again collapses the pane back to a full-width list.
-    const onSelect = useCallback((selection: SelectedNotification) => {
-        setSelected(prev => prev?.messageID === selection.messageID ? null : selection)
-    }, [])
+    // The open message is ROUTE-driven (same as notifications): `/saved-messages/:channelID/:messageID`
+    // renders NotificationChatRoute in the right pane's Outlet. Being a history entry means
+    // the mobile back chevron / OS back-swipe pop to this list, and refresh restores the chat.
+    const navigate = useNavigate()
+    const selectedMessageID = useMatch("/saved-messages/:channelID/:messageID")?.params.messageID
+    const hasSelection = !!selectedMessageID
 
-    // Esc closes the pane (no visible close button — toggle the row or hit Esc).
-    useHotkeys('esc', () => setSelected(null), { enableOnFormTags: true }, [])
+    const onSelect = (selection: SelectedNotification) => {
+        navigate(
+            `/saved-messages/${encodeURIComponent(selection.channelID)}/${encodeURIComponent(selection.messageID)}`,
+            {
+                // Thread/DM context for the pane — a cold deep-link derives it instead.
+                state: {
+                    isThread: selection.isThread,
+                    isDirectMessage: selection.isDirectMessage,
+                    peerID: selection.peer?.name,
+                },
+                // First open pushes (one back closes the chat); switching between
+                // messages replaces, so back never walks through every chat viewed.
+                replace: hasSelection,
+            },
+        )
+    }
+
+    // Esc closes the open chat — the static right pane falls back to its empty state.
+    useEscHotkey(() => {
+        if (hasSelection) navigate('/saved-messages')
+    }, { enableOnFormTags: true }, [hasSelection])
 
     const searchInput = (
         <div className="relative">
@@ -47,10 +68,8 @@ const SavedMessages = () => {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={_('Search saved messages')}
-                className={cn("pl-9 pr-9 h-8 text-base",
-                    hasSelection && "bg-surface-gray-3 hover:bg-surface-gray-4"
-                )}
-                autoFocus
+                className="pl-9 pr-9 h-9 md:h-8 text-xl md:text-base"
+                autoFocus={!isMobile}
             />
             {search && (
                 <button
@@ -66,22 +85,25 @@ const SavedMessages = () => {
     )
 
     return (
-        <div className={cn(
-            "flex flex-col h-screen overflow-hidden",
-            hasSelection && "bg-surface-gray-1"
-        )}>
-            <div className="flex flex-1 overflow-hidden">
-                {/* Left pane: full width by default; exact half once a row is selected (no divider — the
-                    right pane's gray canvas separates them). */}
-                <div className={cn(
-                    "flex flex-col min-w-0",
-                    hasSelection ? "w-1/2 shrink-0" : "flex-1"
-                )}>
+        // relative on the OUTER column: the mobile chat layer (absolute inset-0 below)
+        // covers list + footer, sliding over the tab bar like a native detail page.
+        // The footer stays MOUNTED and is inerted while covered (see AppMobileFooter).
+        <div className="relative flex flex-col h-dvh overflow-hidden">
+            <div className="flex flex-1 min-h-0 overflow-hidden">
+                {/* Left pane: full width on mobile (the open chat covers it as a layer);
+                    pinned at 45% on desktop beside the static chat pane — mirrors the
+                    threads / notifications split. */}
+                <div
+                    className="relative flex flex-col min-w-0 w-full md:w-[45%] md:max-w-[50%] md:shrink-0 bg-surface-base md:bg-surface-sidebar"
+                    // While covered by the mobile chat layer, keep the list out of
+                    // focus / accessibility order.
+                    inert={isMobile && hasSelection ? true : undefined}
+                >
                     <PageHeader title={_('Saved Messages')} />
 
-                    <div className="shrink-0 px-2 pt-2 pb-3 space-y-2">
+                    <div className="shrink-0 p-2 space-y-3">
                         {searchInput}
-                        <div className="mt-4 flex items-center gap-2">
+                        <div className="flex items-center gap-2">
                             {/* --- Reminders: tabs + add-reminder button (commented until backend support) --- */}
                             {/* <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as SavedMessageStatus)}>
                                 <TabsList variant="subtle" size="sm">
@@ -90,20 +112,14 @@ const SavedMessages = () => {
                                     ))}
                                 </TabsList>
                             </Tabs> */}
-                            <ChannelSelect
+                            <ChannelFilter
                                 channels={channels}
                                 dmChannels={dmChannels}
                                 users={users}
                                 value={channel}
                                 onValueChange={setChannel}
-                                placeholder={_('Channel')}
-                                allowAll
-                                allLabel={_('Any Channel')}
-                                searchable
-                                size="sm"
-                                showLabel={false}
-                                dropdownClassName="w-68"
-                                triggerClassName="w-40"
+                                className={isMobile ? "w-full min-w-0" : undefined}
+                                triggerClassName="w-50"
                             />
                             {/* <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setReminderDialogOpen(true)}>
                                 <Plus className="h-3.5 w-3.5 mr-1.5" />
@@ -117,22 +133,31 @@ const SavedMessages = () => {
                             searchQuery={search}
                             channel={channel}
                             onSelect={onSelect}
-                            selectedID={selected?.messageID}
+                            selectedID={selectedMessageID}
                         />
                     </div>
                 </div>
 
-                {selected && (
-                    <div className="w-1/2 shrink-0 flex flex-col min-h-0 bg-surface-gray-0">
-                        <NotificationChat selected={selected} />
-                    </div>
-                )}
+                {/* Right pane: static on desktop — empty state until a saved message is
+                    selected (mirrors threads / notifications). On mobile it's a full-screen
+                    layer over list + tab bar (inset-0 of the OUTER column) while one is
+                    open, so the list underneath keeps its scroll position. */}
+                <div className={cn(
+                    "flex flex-col min-w-0 min-h-0 bg-surface-gray-1",
+                    "max-md:absolute max-md:inset-0 max-md:z-20 animate-layer-in",
+                    !hasSelection && "max-md:hidden",
+                    "md:flex-1",
+                )}>
+                    {hasSelection
+                        ? <Outlet />
+                        : <NotificationsEmptyState message={_("Select a saved message to view the conversation.")} />}
+                </div>
             </div>
 
             {/* --- Reminder dialog (commented until backend support) --- */}
             {/* <ReminderDialog ... /> */}
 
-            <AppMobileFooter />
+            <AppMobileFooter inert={isMobile && hasSelection ? true : undefined} />
         </div>
     )
 }

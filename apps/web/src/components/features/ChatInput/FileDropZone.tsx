@@ -1,4 +1,4 @@
-import { useState, type DragEvent, type ReactNode } from "react"
+import { useRef, useState, type DragEvent, type ReactNode } from "react"
 import { Upload } from "lucide-react"
 import { useAttachFile } from "./useFileInput"
 import { focusComposer } from "./composerFocus"
@@ -18,27 +18,52 @@ export const FileDropZone = ({ channelID, children, disabled = false }: { channe
     const onAddFile = useAttachFile(channelID)
     const [isDragging, setIsDragging] = useState(false)
 
-    // Disabled (no composer — archived / not a member): render children plainly so a drop can't
-    // stage files there's no way to send.
-    if (disabled) return <div className="relative flex min-h-0 flex-1 flex-col">{children}</div>
+    // Depth COUNTER, not a relatedTarget check. Every element the drag crosses
+    // fires a dragenter/dragleave PAIR that bubbles here, so the count nets out
+    // while moving between children and only hits zero when the drag truly
+    // leaves the pane. The old `contains(relatedTarget)` heuristic flickered on
+    // SAFARI specifically: WebKit never populates relatedTarget on drag events
+    // (long-standing bug), so every child-boundary crossing read as "left the
+    // pane" and the next dragover re-showed the overlay — hide/show at drag-
+    // event frequency. Chrome populates it, which is why only Safari showed it.
+    const dragDepthRef = useRef(0)
 
+    const resetDrag = () => {
+        dragDepthRef.current = 0
+        setIsDragging(false)
+    }
+
+    // IMPORTANT: keep this a single return. There used to be an early-return branch for
+    // `disabled` that rendered `children` in a slightly different tree — React saw that as
+    // a different element tree and REMOUNTED the whole chat pane every time `disabled`
+    // flipped (which happens on every channel open, once membership loads). The remount
+    // silently reset ChatStream's scroll and data state. So: one tree, and when disabled
+    // the handlers below simply do nothing.
     return (
         <div
             className="relative flex min-h-0 flex-1 flex-col"
-            onDragOver={(e) => {
-                if (!isFileDrag(e)) return
-                e.preventDefault() // required for the drop event to fire
+            onDragEnter={(e) => {
+                if (disabled || !isFileDrag(e)) return
+                e.preventDefault()
+                dragDepthRef.current += 1
                 if (!isDragging) setIsDragging(true)
             }}
-            onDragLeave={(e) => {
-                // Hide only when the pointer truly leaves the pane — not while moving
-                // between children. relatedTarget is null when the drag leaves the window.
-                if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setIsDragging(false)
+            onDragOver={(e) => {
+                if (disabled || !isFileDrag(e)) return
+                e.preventDefault() // required (on EVERY dragover) for the drop event to fire
+            }}
+            onDragLeave={() => {
+                // Unpaired leaves (a child that ate the matching enter) just clamp to 0.
+                dragDepthRef.current = Math.max(0, dragDepthRef.current - 1)
+                if (dragDepthRef.current === 0) setIsDragging(false)
             }}
             onDrop={(e) => {
-                if (!isFileDrag(e)) return
+                if (disabled || !isFileDrag(e)) {
+                    resetDrag()
+                    return
+                }
                 e.preventDefault()
-                setIsDragging(false)
+                resetDrag()
                 if (e.dataTransfer.files?.length) {
                     onAddFile(e.dataTransfer.files)
                     // The drag took focus off the editor — hand it back.

@@ -1,6 +1,6 @@
 import { UserAvatar } from '@components/features/message/UserAvatar'
 import { MessageSquareText, Search } from 'lucide-react'
-import { useState } from 'react'
+import { useDebounceValue } from 'usehooks-ts'
 import _ from '@lib/translate'
 import { useSqliteSearch } from '@hooks/useSqliteSearch'
 import { MessageListSkeleton } from '@components/features/dm-channel/DirectMessagePageSkeleton'
@@ -12,13 +12,16 @@ import { Input } from '@components/ui/input'
 
 const ChannelThreads = ({ channelID }: { channelID: string }) => {
 
-    const [searchQuery, setSearchQuery] = useState('')
+    // Debounced at the INPUT (uncontrolled below): keystrokes render nothing;
+    // the tab re-renders once per settled query. The search hooks no longer
+    // debounce internally — this is the one debounce.
+    const [searchQuery, setSearchQuery] = useDebounceValue('', 200)
     const { members } = useChannelMembers(channelID)
 
     const { results, isLoading, error } = useSqliteSearch(searchQuery, {
         channel_id: channelID,
         is_thread: 1
-    }, 100, (r) => r.content)
+    }, 100)
 
 
     return (
@@ -28,7 +31,6 @@ const ChannelThreads = ({ channelID }: { channelID: string }) => {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-ink-gray-4" />
                 <Input
                     placeholder={_("Search threads...")}
-                    value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-9 h-8 text-sm"
                 />

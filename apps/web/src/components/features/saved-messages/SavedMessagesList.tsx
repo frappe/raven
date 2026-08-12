@@ -1,13 +1,17 @@
 import { useMemo } from 'react'
 import { Virtuoso } from 'react-virtuoso'
-import { useFrappeGetCall } from 'frappe-react-sdk'
+import { useFrappeGetCall, useFrappeEventListener } from 'frappe-react-sdk'
 
 import { Message, BaseMessage } from '@raven/types/common/Message'
 import { useMessageRowLookups } from '@hooks/useMessageRowLookups'
+import { useUserCookieData } from '@hooks/useUserCookieData'
 import { MessageListSkeleton } from '@components/features/dm-channel/DirectMessagePageSkeleton'
 import { MessageResultBlock, RESULT_ROW_ACTIVE_CLASS } from '@components/common/MessageResultBlock/MessageResultBlock'
+import { searchResultToSelection } from '@components/common/MessageResultBlock/searchResultToSelection'
 import type { SelectedNotification } from '@pages/notifications/NotificationChat'
 import ErrorBanner from '@components/ui/error-banner'
+import { Bookmark } from 'lucide-react'
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@components/ui/empty'
 import _ from '@lib/translate'
 
 interface SavedMessagesListProps {
@@ -24,6 +28,7 @@ type SavedMessageRow = {
     name: string
     owner: string
     creation: string
+    is_thread: 0 | 1
     text?: string
     channel_id: string
     file?: string
@@ -65,15 +70,33 @@ function savedRowToMessage(r: SavedMessageRow): Message {
     return { ...base, message_type: 'Text', text: r.text ?? '' }
 }
 
+type SavedMessagesResponse = { message: SavedMessageRow[] }
+
 const SavedMessagesList = ({ searchQuery, channel, onSelect, selectedID }: SavedMessagesListProps) => {
     const channelParam = channel && channel !== '*all' ? channel : undefined
+    const { name: currentUser } = useUserCookieData()
 
-    const { data, error, isLoading } = useFrappeGetCall<{ message: SavedMessageRow[] }>(
+    const { data, error, isLoading, mutate } = useFrappeGetCall<SavedMessagesResponse>(
         'raven.api.raven_message.get_saved_messages',
         undefined,
         undefined,
-        { revalidateOnFocus: false },
+        { revalidateOnFocus: true },
     )
+
+    // Live reflection of save/unsave done anywhere (the event is user-scoped). Saving is
+    // infrequent, so this stays lightweight: drop the row on unsave with no refetch; on a
+    // new save, revalidate once to pull the row. `revalidateOnFocus` is the drift backstop.
+    useFrappeEventListener('message_saved', (event: { channel_id: string; message_id: string; liked_by: string }) => {
+        const stillSaved = (JSON.parse(event.liked_by || '[]') as string[]).includes(currentUser)
+        if (!stillSaved) {
+            mutate(
+                (prev) => prev && { message: prev.message.filter((r) => r.name !== event.message_id) },
+                { revalidate: false },
+            )
+        } else {
+            mutate()
+        }
+    })
 
     const { usersById, channelById, dmById, workspaceById } = useMessageRowLookups()
 
@@ -90,9 +113,17 @@ const SavedMessagesList = ({ searchQuery, channel, onSelect, selectedID }: Saved
     if (error) return <ErrorBanner error={error} />
     if (isLoading) return <MessageListSkeleton />
     if (results.length === 0) {
+        // Absolute overlay centers over the whole pane (SavedMessages left pane is `relative`),
+        // matching the notifications / threads / search empty states.
         return (
-            <div className="text-sm text-ink-gray-4 text-center py-8">
-                {_('No saved messages found.')}
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                <Empty>
+                    <EmptyMedia><Bookmark /></EmptyMedia>
+                    <EmptyHeader>
+                        <EmptyTitle>{_('No saved messages')}</EmptyTitle>
+                        <EmptyDescription>{_('Save a message to find it here, or adjust your search.')}</EmptyDescription>
+                    </EmptyHeader>
+                </Empty>
             </div>
         )
     }
@@ -102,10 +133,15 @@ const SavedMessagesList = ({ searchQuery, channel, onSelect, selectedID }: Saved
             data={results}
             style={{ height: '100%' }}
             initialItemCount={Math.min(results.length, 10)}
-            computeItemKey={(_idx, r) => r.name}
+            computeItemKey={(idx, r) => r?.name ?? idx}
             itemContent={(_idx, r) => {
-                // Thread replies live in a thread channel; resolve display against
-                // the real (parent) channel so selection carries the routing-ready id.
+                // Results can shrink between renders (search/channel filters apply per
+                // keystroke) while Virtuoso still holds the old index range — skip the
+                // out-of-range frame; the next render drops the row.
+                if (!r) return null
+                // Display only: thread replies live in a thread channel, so name/workspace
+                // lookups resolve against the real (parent) channel. Routing is handled
+                // separately by searchResultToSelection.
                 const baseChannelId = r.parent_channel_id ?? r.channel_id
                 const channelData = channelById.get(baseChannelId)
                 const dmChannel = dmById.get(baseChannelId)
@@ -119,12 +155,14 @@ const SavedMessagesList = ({ searchQuery, channel, onSelect, selectedID }: Saved
                         peer={peer}
                         workspace={channelData?.workspace ? workspaceById.get(channelData.workspace) : undefined}
                         className={selectedID === r.name ? RESULT_ROW_ACTIVE_CLASS : undefined}
-                        onClick={() => onSelect({
-                            channelID: baseChannelId,
+                        onClick={() => onSelect(searchResultToSelection({
                             messageID: r.name,
+                            channelID: r.channel_id,
+                            parentChannelID: r.parent_channel_id,
+                            isThreadRoot: !!r.is_thread,
                             isDirectMessage: !!dmChannel,
                             peer,
-                        })}
+                        }))}
                     />
                 )
             }}

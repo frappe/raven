@@ -1,4 +1,4 @@
-import { memo, useMemo, useRef } from "react"
+import { memo, useEffect, useMemo, useRef } from "react"
 import { NavLink, useMatch, useNavigate } from "react-router-dom"
 import { useHotkeys } from "react-hotkeys-hook"
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso"
@@ -12,10 +12,13 @@ import { db, type UserData } from "@db"
 import { cn } from "@lib/utils"
 import { formatRelativeDate } from "@lib/date"
 import { getMessageTeaser } from "@utils/messageUtils"
+import { getUserDisplayName, isCurrentUser } from "@utils/userDisplay"
+import { useChannelDraft } from "@components/features/ChatInput/draft"
 import _ from "@lib/translate"
 import type { DMChannelListItem } from "@raven/types/common/ChannelListItem"
-import { useChannelList } from "@stores/channels/useChannelList"
+import { useDMChannels } from "@stores/channels/useChannelList"
 import { useChannelUnread } from "@stores/unread/useChannelUnread"
+import { usePrefetchChannel, setChannelListScrolling } from "@stores/messages/usePrefetchChannel"
 import { useUserCookieData } from "@hooks/useUserCookieData"
 import { MobileSearchButton } from "@components/features/header/QuickSearch/SearchButton"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@components/ui/empty"
@@ -32,15 +35,26 @@ type DMListContext = { showSuggestions: boolean; dmPeerIds: Set<string> }
  * render, so Virtuoso would unmount/remount the footer (re-running
  * ExtraUsersList's live query) on each sidebar render.
  */
-const DMListFooter = ({ context }: { context?: DMListContext }) =>
-    context?.showSuggestions ? <ExtraUsersList dmPeerIds={context.dmPeerIds} /> : null
+const DMListFooter = ({ context }: { context?: DMListContext }) => (
+    <>
+        {context?.showSuggestions && <ExtraUsersList dmPeerIds={context.dmPeerIds} />}
+        {/* Mobile: small breathing pad above the tab bar (the in-flow AppMobileFooter
+            already reserves the bar + home-indicator space). Inside the footer because
+            Virtuoso is its own scroller — wrapper padding would sit outside the scroll. */}
+        <div className="h-2 md:h-0" aria-hidden="true" />
+    </>
+)
 
 const dmListComponents = { Footer: DMListFooter }
 
 export function DMSidebar() {
 
-    const { dmChannels, isLoading } = useChannelList()
+    const { dmChannels, isLoading } = useDMChannels()
     const usersById = useUsersById()
+
+    // Reset scroll-suppression if we unmount mid-scroll (Virtuoso's isScrolling(false) wouldn't
+    // fire), so prefetch isn't left globally suppressed.
+    useEffect(() => () => setChannelListScrolling(false), [])
 
     /**
      * Join channels to peer users BEFORE the virtualizer. Virtuoso items must
@@ -116,7 +130,7 @@ export function DMSidebar() {
             {/* Border on mobile only (full-page list needs the separator);
                 none on desktop where the heading sits cleanly in the column */}
             <div className="flex h-11 md:h-auto shrink-0 items-center justify-between gap-1 border-b md:border-b-0 px-2 py-2">
-                <span className="text-base font-medium text-ink-gray-8 px-1 py-1">{_("Direct Messages")}</span>
+                <span className="md:text-base text-xl font-medium text-ink-gray-8 px-1 py-1">{_("Direct Messages")}</span>
                 <span className="md:hidden">
                     <MobileSearchButton />
                 </span>
@@ -151,6 +165,7 @@ export function DMSidebar() {
                         style={{ height: "100%" }}
                         data={rows}
                         context={{ showSuggestions: rows.length < 5, dmPeerIds }}
+                        isScrolling={setChannelListScrolling}
                         computeItemKey={(_index, row) => row.dm.name}
                         defaultItemHeight={64}
                         overscan={200}
@@ -202,20 +217,23 @@ interface DMRowProps {
 const DMRow = memo(function DMRow({ dmChannel, peerUser }: DMRowProps) {
     const { name: currentUser } = useUserCookieData()
     const { count: unread } = useChannelUnread(dmChannel.name)
+    const prefetchHandlers = usePrefetchChannel(dmChannel.name, unread > 0)
 
-    const isSelf = peerUser.name === currentUser
-    const baseName = peerUser.full_name || peerUser.name
-    const displayName = isSelf ? _("{0} (You)", [baseName]) : baseName
+    const displayName = getUserDisplayName(peerUser.full_name || peerUser.name, isCurrentUser(peerUser.name))
     const date = formatRelativeDate(dmChannel.last_message_timestamp)
     const lastMessage = getMessageTeaser(dmChannel.last_message_details, currentUser)
+    // An unsent draft beats the last message as the preview (WhatsApp-style):
+    // it's the thing you'd want to be reminded of when scanning the list.
+    const draft = useChannelDraft(dmChannel.name)
 
-    return <NavLink to={`/dm-channel/${encodeURIComponent(dmChannel.name)}`} className="block px-2 py-0.5">
+    return <NavLink {...prefetchHandlers} to={`/dm-channel/${encodeURIComponent(dmChannel.name)}`} className="block px-2 py-0.5">
         {({ isActive }) => (
             <DMRowShell
                 user={peerUser}
                 name={displayName}
                 date={date}
-                lastMessage={lastMessage}
+                lastMessage={draft || lastMessage}
+                isDraft={Boolean(draft)}
                 unread={unread}
                 isActive={isActive}
             />
@@ -278,6 +296,8 @@ interface DMRowShellProps {
     name: string
     date?: string
     lastMessage?: string
+    /** The preview line is an unsent draft — prefix it with a "Draft:" label. */
+    isDraft?: boolean
     unread?: number
     isActive: boolean
 }
@@ -287,6 +307,7 @@ function DMRowShell({
     name,
     date = "",
     lastMessage = "",
+    isDraft = false,
     unread = 0,
     isActive,
 }: DMRowShellProps) {
@@ -295,7 +316,7 @@ function DMRowShell({
     return (
         <div
             className={cn(
-                "flex w-full items-center gap-3 px-2 py-3 md:py-2 text-sm rounded transition-colors relative text-left",
+                "flex w-full items-center gap-3 px-2 py-2 md:py-2 text-sm rounded transition-colors relative text-left",
                 "select-none",
                 "hover:bg-surface-gray-3 active:bg-surface-gray-3",
                 isActive && "bg-surface-elevation-3 hover:bg-surface-elevation-3 active:bg-surface-elevation-3 shadow-sm"
@@ -316,14 +337,14 @@ function DMRowShell({
                             // leading-snug: the type scale's 1.15 line-height is too tight to
                             // contain descenders (g/y/p) once `truncate` clips overflow — Safari
                             // cuts them on some DPIs. A looser single-line height fixes it.
-                            "truncate text-base md:text-sm leading-snug text-ink-gray-8",
+                            "truncate text-lg md:text-sm leading-snug text-ink-gray-8",
                             unread > 0 ? "font-semibold" : "font-normal"
                         )}
                     >
                         {name}
                     </span>
                     {date && (
-                        <span className="text-2xs text-ink-gray-4 shrink-0">
+                        <span className="text-sm md:text-2xs text-ink-gray-4 shrink-0">
                             {date}
                         </span>
                     )}
@@ -331,14 +352,20 @@ function DMRowShell({
                 {(lastMessage || unread > 0) && <div className="flex items-center gap-2">
                     {lastMessage && <div
                         className={cn(
-                            // leading-snug: see note on the name above — line-clamp also clips
-                            // descenders at the tight 1.15 line-height on Safari.
-                            "line-clamp-1 text-sm md:text-xs leading-snug flex-1 min-w-0",
+                            // truncate, NOT line-clamp-1: line-clamp truncates per WORD —
+                            // a teaser that starts with a long URL is one unbreakable token
+                            // wider than the row, so the clamp dropped the entire word and
+                            // rendered a bare "…". text-overflow truncates per CHARACTER,
+                            // which is what a one-line preview wants.
+                            // leading-snug: the tight 1.15 line-height clips descenders
+                            // (g/y/p) once overflow is hidden — Safari cuts them.
+                            "truncate text-base md:text-xs leading-snug flex-1 min-w-0",
                             unread > 0
                                 ? "font-medium text-ink-gray-8"
                                 : "text-ink-gray-4"
                         )}
                     >
+                        {isDraft && <span className="font-medium text-ink-gray-6">{_("Draft")}: </span>}
                         {lastMessage}
                     </div>}
                     {unread > 0 && (

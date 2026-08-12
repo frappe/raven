@@ -137,8 +137,8 @@ const buildBlocks = (
             // A batch with 2+ thread parents splits into individual messages so
             // every thread's pill is visible — the rare case of a v2 client (no
             // batching) threading multiple members of a v3 batch. With 0–1
-            // threads it stays grouped (the block shows a pill only if its FIRST
-            // member is the thread — see BatchMessageItem).
+            // threads it stays grouped (the block shows a pill when its NEWEST
+            // member is the thread — that's the action target — see BatchMessageItem).
             const threadParents = members.reduce((count, member) => count + (isThreadParent(member) ? 1 : 0), 0)
 
             if (members.length > 1 && threadParents >= 2) {

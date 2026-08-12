@@ -2,16 +2,17 @@ import { useContext, useRef, useState } from "react"
 import { FrappeConfig, FrappeContext, useFrappeUpdateDoc } from "frappe-react-sdk"
 import { useSetAtom } from "jotai"
 import { EditorContent } from "@tiptap/react"
-import { toast } from "sonner"
+import { linkifyBeforeSend } from "@components/features/editor/linkifyOnSend"
 import { Button } from "@components/ui/button"
 import { TooltipProvider } from "@components/ui/tooltip"
 import { EditorFormattingToolbar } from "@components/features/editor/EditorFormattingToolbar"
 import { useRavenEditor, EDITOR_MIN_H } from "@components/features/editor/useRavenEditor"
 import { channelMessagesStore } from "@stores/messages/store"
 import { editingMessageAtom } from "@utils/channelAtoms"
-import { getErrorMessage } from "@lib/frappe"
 import _ from "@lib/translate"
 import type { Message } from "@raven/types/common/Message"
+import { errorResponseToast } from "@components/ui/error-banner"
+import { useIsMobile } from "@hooks/use-mobile"
 
 type FileLikeMessage = Message & { file?: string }
 
@@ -27,6 +28,7 @@ type FileLikeMessage = Message & { file?: string }
 export const EditMessageComposer = ({ message }: { message: Message }) => {
     const channelID = message.channel_id
     const messageID = message.name
+    const isMobile = useIsMobile()
     const hasFile = !!(message as FileLikeMessage).file
     const setEditing = useSetAtom(editingMessageAtom(channelID))
     const { updateDoc } = useFrappeUpdateDoc()
@@ -49,7 +51,7 @@ export const EditMessageComposer = ({ message }: { message: Message }) => {
 
     // submit/cancel are read through refs by the editor's (build-once) keydown closure,
     // so reassigning them each render keeps Enter/Escape calling the latest handlers.
-    const submitRef = useRef<() => void>(() => {})
+    const submitRef = useRef<() => void>(() => { })
     const cancelRef = useRef<() => boolean>(() => false)
     cancelRef.current = () => {
         close()
@@ -59,7 +61,7 @@ export const EditMessageComposer = ({ message }: { message: Message }) => {
     // ⌘⇧U opens the formatting toolbar's link popover: linkRef bumps a signal the
     // toolbar watches (reset via onLinkConsumed so re-renders don't reopen it).
     const [linkSignal, setLinkSignal] = useState(0)
-    const linkRef = useRef<() => void>(() => {})
+    const linkRef = useRef<() => void>(() => { })
     linkRef.current = () => setLinkSignal((n) => n + 1)
 
     const editor = useRavenEditor({
@@ -73,6 +75,8 @@ export const EditMessageComposer = ({ message }: { message: Message }) => {
 
     const onSave = () => {
         if (!editor) return
+        // Same send-time linkify as ChatInput — edits paste links on mobile too.
+        if (!editor.isEmpty) linkifyBeforeSend(editor)
         const newHTML = editor.isEmpty ? "" : editor.getHTML()
         close()
 
@@ -85,7 +89,7 @@ export const EditMessageComposer = ({ message }: { message: Message }) => {
             channelMessagesStore.messageDeleted(channelID, messageID)
             call.post("raven.api.raven_message.delete_messages", { message_ids: [messageID] }).catch((e) => {
                 if (snapshot) channelMessagesStore.messagesRestored(channelID, [snapshot])
-                toast.error(_("Could not delete message"), { description: getErrorMessage(e) })
+                errorResponseToast(_("Could not delete message"), e)
             })
             return
         }
@@ -101,7 +105,7 @@ export const EditMessageComposer = ({ message }: { message: Message }) => {
                     is_edited: prev.is_edited,
                 })
             }
-            toast.error(_("Could not edit message"), { description: getErrorMessage(e) })
+            errorResponseToast(_("Could not edit message"), e)
         })
     }
     submitRef.current = onSave
@@ -115,7 +119,7 @@ export const EditMessageComposer = ({ message }: { message: Message }) => {
                 <TooltipProvider>
                     {/* Same formatting toolbar as the main composer, so editing has the
                         full bold/italic/list/link set rather than shortcuts only. */}
-                    {editor && (
+                    {editor && !isMobile && (
                         <EditorFormattingToolbar
                             editor={editor}
                             linkSignal={linkSignal}
@@ -125,8 +129,8 @@ export const EditMessageComposer = ({ message }: { message: Message }) => {
                     <div className={EDITOR_MIN_H}>
                         <EditorContent editor={editor} />
                     </div>
-                    <div className="flex items-center gap-2 px-1.5 pb-1.5">
-                        <span className="mr-auto px-1 text-xs text-ink-gray-4">{_("Escape to cancel")}</span>
+                    <div className="flex items-center md:justify-start justify-end gap-2 px-1.5 pb-1.5">
+                        <span className="mr-auto px-1 text-xs text-ink-gray-4 hidden md:block">{_("Esc to cancel")}</span>
                         <Button type="button" variant="ghost" size="sm" onClick={close}>
                             {_("Cancel")}
                         </Button>

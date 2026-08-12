@@ -1,3 +1,4 @@
+import Cookies from "js-cookie"
 import type { Message } from "@raven/types/common/Message"
 import {
     applyInitialPage,
@@ -163,11 +164,20 @@ class ChannelMessagesStore {
         if (state.status !== "ready") return
         let firstUnread: string | null = null
         if (watermark) {
+            // Your own messages are never "new" to you. Sending doesn't advance
+            // last_visit on the server, so without this check the divider often
+            // anchored on the user's own message (most visibly in threads).
+            // Bot messages are the exception: a bot can post with owner set to
+            // the current user, and the user didn't write those — they ARE new.
+            const currentUser = Cookies.get("user_id")
             for (const id of state.order) {
                 const message = state.byId.get(id)
-                // Skip System messages so the divider never anchors on "X joined" and the like —
-                // matches the server anchor (chat_stream.get_messages) and the unread count.
-                if (message && message.message_type !== "System" && message.creation > watermark) {
+                if (!message) continue
+                // Skip System messages so the divider never anchors on "X joined" and
+                // the like — matches the server anchor and the unread count.
+                if (message.message_type === "System") continue
+                if (currentUser && message.owner === currentUser && !message.is_bot_message) continue
+                if (message.creation > watermark) {
                     firstUnread = id
                     break
                 }

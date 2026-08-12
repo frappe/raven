@@ -16,8 +16,11 @@ import { WorkspaceFields } from '@hooks/useWorkspaces'
 import { ChannelListItem, DMChannelListItem } from '@raven/types/common/ChannelListItem'
 import type { SelectedNotification } from '@pages/notifications/NotificationChat'
 import { RESULT_ROW_ACTIVE_CLASS } from '@components/common/MessageResultBlock/MessageResultBlock'
+import { searchResultToSelection } from '@components/common/MessageResultBlock/searchResultToSelection'
 import { cn } from '@lib/utils'
 import { SearchFilters } from '../types'
+import { SearchNoResults } from './SearchNoResults'
+import { SearchHighlightedText, stripSearchHighlights } from '@components/features/message/renderers/SearchTextRenderer'
 
 interface SearchFileResultsProps {
     searchValue?: string
@@ -33,29 +36,27 @@ const SearchFileResults = ({ searchValue, filters, onSelect, selectedID }: Searc
         searchValue,
         { ...filters, message_type: filters.message_type || ['File', 'Image'] },
         100,
-        (r) => r.title
     )
     const { usersById, channelById, dmById, workspaceById } = useMessageRowLookups()
 
     if (error) return <ErrorBanner error={error} />
     if (isLoading || !results) return <MessageListSkeleton />
-    if (results.length === 0) {
-        return (
-            <div className="text-sm text-ink-gray-4 text-center py-8">
-                {_('No files found.')}
-            </div>
-        )
-    }
+    if (results.length === 0) return <SearchNoResults title={_('No files found')} />
 
     return (
         <Virtuoso
             data={results}
             style={{ height: '100%' }}
             initialItemCount={Math.min(results.length, 10)}
-            computeItemKey={(_idx, file) => `${file.id}::${file.internal_link ?? ''}`}
+            computeItemKey={(idx, file) => file ? `${file.id}::${file.internal_link ?? ''}` : idx}
             itemContent={(_idx, file) => {
-                // Thread replies live in a thread channel; resolve display against the
-                // real (parent) channel so selection carries the routing-ready id.
+                // Results can shrink between renders (short-query fallback filters per
+                // keystroke) while Virtuoso still holds the old index range — skip the
+                // out-of-range frame; the next render drops the row.
+                if (!file) return null
+                // Display only: thread replies live in a thread channel, so resolve the
+                // row's channel/avatar against the real (parent) channel. Routing is
+                // handled separately by searchResultToSelection.
                 const baseChannelId = file.parent_channel_id ?? file.channel_id
                 const channel = channelById.get(baseChannelId)
                 const dmChannel = dmById.get(baseChannelId)
@@ -69,12 +70,14 @@ const SearchFileResults = ({ searchValue, filters, onSelect, selectedID }: Searc
                         peer={peer}
                         workspace={channel?.workspace ? workspaceById.get(channel.workspace) : undefined}
                         className={selectedID === file.name ? RESULT_ROW_ACTIVE_CLASS : undefined}
-                        onClick={() => onSelect({
-                            channelID: baseChannelId,
+                        onClick={() => onSelect(searchResultToSelection({
                             messageID: file.name,
+                            channelID: file.channel_id,
+                            parentChannelID: file.parent_channel_id,
+                            isThreadRoot: !!file.is_thread,
                             isDirectMessage: !!dmChannel,
                             peer,
-                        })}
+                        }))}
                     />
                 )
             }}
@@ -96,71 +99,78 @@ interface FileResultRowProps {
 const FileResultRowInner = ({ file, user, channel, dmChannel, peer, workspace, onClick, className }: FileResultRowProps) => {
     const peerName = peer?.full_name ?? dmChannel?.peer_user_id ?? ''
     const isImage = file.message_type === 'Image'
-    const ext = (file.file_type || file.title?.split('.').pop() || '').toLowerCase()
+    // The title is an FTS snippet: the matched terms come wrapped in <mark>, so the plain
+    // filename has to be recovered before anything parses or re-displays it. The extension
+    // is the reason this matters beyond looks — a match on "pdf" would otherwise leave the
+    // ext as "pdf</mark>".
+    const plainTitle = stripSearchHighlights(file.title ?? '')
+    const ext = (file.file_type || plainTitle.split('.').pop() || '').toLowerCase()
     const sizeLabel = file.file_size ? formatBytes(file.file_size) : null
     const relativeDate = formatRelativeDate(file.creation)
 
     return (
         <div className="px-2 py-0.5">
-        <div
-            role="button"
-            tabIndex={0}
-            onClick={onClick}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } }}
-            className={cn(
-                "group flex gap-3 px-2 py-3 md:py-2 rounded transition-colors text-left select-none cursor-pointer hover:bg-surface-gray-3 active:bg-surface-gray-3 focus-visible:bg-surface-gray-3 focus-visible:outline-none",
-                className
-            )}
-        >
-            {user && <UserAvatar user={user} size="md" showStatusIndicator={false} />}
-            <div className="flex-1 min-w-0">
-                <div className="flex items-baseline gap-1.5 flex-wrap text-base md:text-sm">
-                    {user && <span className="font-medium text-ink-gray-8 truncate">{user.full_name}</span>}
-                    <span className="shrink-0 text-xs text-ink-gray-4">{relativeDate}</span>
-                    {workspace && (
-                        <>
-                            <span className="text-ink-gray-4 shrink-0">·</span>
-                            <span className="text-ink-gray-4 truncate min-w-0">{workspace.workspace_name}</span>
-                        </>
-                    )}
-                    {channel && (
-                        <>
-                            <span className="text-ink-gray-4 shrink-0">·</span>
-                            <ChannelIcon type={channel.type} className="h-3 w-3 shrink-0 self-center text-ink-gray-4" />
-                            <span className="text-ink-gray-4 truncate min-w-0 -ml-0.5">{channel.channel_name}</span>
-                        </>
-                    )}
-                    {dmChannel && (
-                        <>
-                            <span className="text-ink-gray-4 shrink-0">·</span>
-                            <MessageSquareMore className="h-3 w-3 shrink-0 self-center text-ink-gray-4" />
-                            <span className="text-ink-gray-4 truncate min-w-0 -ml-0.5">{peerName}</span>
-                        </>
-                    )}
-                </div>
+            <div
+                role="button"
+                tabIndex={0}
+                onClick={onClick}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } }}
+                className={cn(
+                    "group flex gap-3 px-2 py-3 md:py-2 rounded transition-colors text-left select-none cursor-pointer hover:bg-surface-gray-3 active:bg-surface-gray-3 focus-visible:bg-surface-gray-3 focus-visible:outline-none",
+                    className
+                )}
+            >
+                {user && <UserAvatar user={user} size="md" showStatusIndicator={false} />}
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-1.5 flex-wrap text-content">
+                        {user && <span className="font-medium text-ink-gray-8 truncate">{user.full_name}</span>}
+                        <span className="shrink-0 text-xs text-ink-gray-4">{relativeDate}</span>
+                        {workspace && (
+                            <>
+                                <span className="text-ink-gray-4 shrink-0">·</span>
+                                <span className="text-ink-gray-4 truncate min-w-0">{workspace.workspace_name}</span>
+                            </>
+                        )}
+                        {channel && (
+                            <>
+                                <span className="text-ink-gray-4 shrink-0">·</span>
+                                <ChannelIcon type={channel.type} className="h-3 w-3 shrink-0 self-center text-ink-gray-4" />
+                                <span className="text-ink-gray-4 truncate min-w-0 -ml-0.5">{channel.channel_name}</span>
+                            </>
+                        )}
+                        {dmChannel && (
+                            <>
+                                <span className="text-ink-gray-4 shrink-0">·</span>
+                                <MessageSquareMore className="h-3 w-3 shrink-0 self-center text-ink-gray-4" />
+                                <span className="text-ink-gray-4 truncate min-w-0 -ml-0.5">{peerName}</span>
+                            </>
+                        )}
+                    </div>
 
-                <div className="flex gap-3 mt-2">
-                    {isImage && file.internal_link ? (
-                        <img
-                            src={file.internal_link}
-                            alt={file.title ?? ''}
-                            className="w-20 h-20 object-cover rounded-md border border-outline-gray-2 shrink-0 bg-surface-gray-2"
-                            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
-                        />
-                    ) : (
-                        <FileTypeIcon fileType={ext} size="4xl" />
-                    )}
-                    <div className="flex-1 min-w-0">
-                        <h3 className="text-base md:text-sm font-medium text-ink-gray-8 truncate">{file.title || _('Untitled')}</h3>
-                        <div className="flex items-center gap-1.5 text-xs text-ink-gray-4 mt-0.5">
-                            {ext && <span className="uppercase">{ext}</span>}
-                            {ext && sizeLabel && <span>·</span>}
-                            {sizeLabel && <span>{sizeLabel}</span>}
+                    <div className="flex gap-2 items-center mt-2">
+                        {isImage && file.internal_link ? (
+                            <img
+                                src={file.internal_link}
+                                alt={plainTitle}
+                                className="w-8 h-8 object-cover rounded border border-outline-gray-2 shrink-0 bg-surface-gray-2"
+                                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+                            />
+                        ) : (
+                            <FileTypeIcon fileType={ext} size="xl" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                            <h3 className="text-content font-medium text-ink-gray-8 truncate">
+                                {file.title ? <SearchHighlightedText content={file.title} /> : _('Untitled')}
+                            </h3>
+                            <div className="flex items-center gap-1.5 text-xs text-ink-gray-4 mt-0.5">
+                                {ext && <span className="uppercase">{ext}</span>}
+                                {ext && sizeLabel && <span>·</span>}
+                                {sizeLabel && <span>{sizeLabel}</span>}
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
         </div>
     )
 }

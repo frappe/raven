@@ -11,19 +11,26 @@ const RECONCILE_DELAY = 1000
 type UnreadChannelEvent = {
     channel_id: string
     sent_by: string
-    event_type: "new_message" | "message_deleted" | "track_visit"
+    /** message_edited: the DM's LAST message was edited — carries the new teaser
+     *  details but NO timestamp, so only the preview text updates (no re-sort,
+     *  no count change — both count branches below ignore this type). */
+    event_type: "new_message" | "message_deleted" | "track_visit" | "mark_unread" | "message_edited"
     /** Timestamp of the latest message in the channel - sent when creating or deleting a message */
     last_message_timestamp?: string
     /** JSON string of the new last message — present on DM message events. */
     last_message_details?: string
+    /** True when a DM's last message was deleted and none remain — clear the lingering teaser. */
+    last_message_cleared?: boolean
     is_dm_channel?: boolean
     is_thread?: boolean
     play_sound?: boolean
-    /** Sent by the `track_visit` API when the client sends the latest message that the user has seen. 
-     * 
+    /** Sent by the `track_visit` API when the client sends the latest message that the user has seen.
+     *
      * Used to update the last visit timestamp for the channel for the user (channelUnreadStore)
      */
     last_visit?: string
+    /** Sent by mark_channel_as_unread — the unread count to set directly on the badge. */
+    unread_count?: number
 }
 
 /**
@@ -78,16 +85,14 @@ export const useUnreadRealtime = () => {
 
         // 1. Unread counts
         if (event.sent_by === currentUser) {
-            // If the event is published by the current user and has a "last_visit" timestamp
-            // Mark the channel read upto the last_visit timestamp - usually a broadcast to other tabs
-            // This condition is true in two cases - the client calls "track_visit" API 
-            // or the current user sends a message and other tabs need to update the last visit timestamp
-            if (event.last_visit) {
-                // This is coming in from a broadcast to other tabs - so the user may or may not be caught up
+            // Mark-unread: deliberate backward watermark. markRead is forward-only and
+            // would drop it, so route to markUnread with the server-computed count.
+            if (event.event_type === "mark_unread" && event.last_visit) {
+                channelUnreadStore.markUnread(event.channel_id, event.last_visit, event.unread_count ?? 0)
+            } else if (event.last_visit) {
                 channelUnreadStore.markRead(event.channel_id, event.last_visit, false)
             }
 
-            // But if the event is of type "new_message" - then the user is caught up
             if (event.event_type && event.event_type === "new_message" && event.last_message_timestamp) {
                 channelUnreadStore.markRead(event.channel_id, event.last_message_timestamp, true)
             }
@@ -122,6 +127,14 @@ export const useUnreadRealtime = () => {
                 ...(event.last_message_timestamp
                     ? { last_message_timestamp: event.last_message_timestamp }
                     : {}),
+            })
+        } else if (event.last_message_cleared) {
+            // A DM's last (only) message was deleted and none remain — clear the lingering
+            // preview + sort key live (the backend flags this explicitly because a null
+            // details value alone is ambiguous with a non-last delete, which must NOT clear).
+            channelStore.patchChannel(event.channel_id, {
+                last_message_details: null,
+                last_message_timestamp: undefined,
             })
         } else {
             // A regular channel's unread_channel_count_updated event will not have the last_message_details to prevent leaking messages to all users

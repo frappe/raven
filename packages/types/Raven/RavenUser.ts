@@ -1,4 +1,5 @@
 import { RavenPinnedChannels } from './RavenPinnedChannels'
+import { RavenUserPinnedWorkspaces } from './RavenUserPinnedWorkspaces'
 import { RavenChannelGroups } from '../RavenChannelManagement/RavenChannelGroups'
 import { RavenGroupedChannels } from './RavenGroupedChannels'
 
@@ -31,6 +32,8 @@ export interface RavenUser {
 	user_image?: string
 	/**	Pinned Channels : Table - Raven Pinned Channels	*/
 	pinned_channels?: RavenPinnedChannels[]
+	/**	Pinned Workspaces : Table - Raven User Pinned Workspaces — per-user sidebar ordering	*/
+	pinned_workspaces?: RavenUserPinnedWorkspaces[]
 	/**	Channel Groups : Table - Raven Channel Groups	*/
 	channel_groups?: RavenChannelGroups[]
 	/**	Grouped Channels : Table - Raven Grouped Channels	*/
@@ -51,4 +54,6 @@ export interface RavenUser {
 	filter_joined_channels?: 0 | 1
 	/** Sort channels by: Select */
 	sort_channels_by?: "Alphabetical Order" | "Recent Activity" | "Unreads First"
+	/**	Link Previews : Select	*/
+	link_previews?: "Link Hover" | "Preview Card"
 }

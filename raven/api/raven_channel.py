@@ -3,7 +3,16 @@ from frappe import _
 from frappe.query_builder import Order
 
 from raven.api.raven_users import get_current_raven_user
-from raven.utils import get_channel_members, get_raven_user, is_channel_member, track_channel_visit
+from raven.utils import (
+	delete_channel_members_cache,
+	delete_workspace_members_cache,
+	get_channel_members,
+	get_raven_user,
+	get_workspace_member,
+	is_channel_member,
+	is_workspace_member,
+	track_channel_visit,
+)
 
 
 @frappe.whitelist()
@@ -328,3 +337,104 @@ def create_channel(
 		channel.add_members(members)
 
 	return channel.as_dict()
+
+
+@frappe.whitelist(methods=["POST"])
+def transfer_channel_to_workspace(
+	channel_id: str, target_workspace: str, add_missing_members_to_workspace: bool = False
+):
+	"""
+	Move a Public/Private channel from its current workspace to `target_workspace`.
+
+	Caller must be an admin of BOTH workspaces. Channel members who are not in the
+	target workspace are either added to it (add_missing_members_to_workspace) or
+	dropped from the channel. Child threads follow. The channel PK is left
+	unchanged (opaque) — only the `workspace` field moves, so no rename cascade.
+	"""
+	channel = frappe.get_doc("Raven Channel", channel_id)
+
+	# --- Validation ---
+	if channel.type not in ("Public", "Private"):
+		frappe.throw(_("Only Public or Private channels can be transferred"))
+	# Threads are type="Private" (so they pass the check above) — the is_thread
+	# flag is what excludes them; DMs/self-messages (type=None) are already caught.
+	if channel.is_direct_message or channel.is_self_message or channel.is_thread:
+		frappe.throw(_("This channel type cannot be transferred"))
+
+	source_workspace = channel.workspace
+	if target_workspace == source_workspace:
+		frappe.throw(_("The channel is already in this workspace"))
+	if not frappe.db.exists("Raven Workspace", target_workspace):
+		frappe.throw(_("Target workspace does not exist"))
+
+	# Name collision: B must not already have a non-DM channel with this name.
+	if frappe.db.exists(
+		"Raven Channel",
+		{
+			"workspace": target_workspace,
+			"channel_name": channel.channel_name,
+			"is_direct_message": 0,
+		},
+	):
+		frappe.throw(_("A channel with this name already exists in the target workspace"))
+
+	# --- Authorization: admin of BOTH workspaces ---
+	for ws in (source_workspace, target_workspace):
+		member = get_workspace_member(ws, frappe.session.user)
+		if not (member and member.get("is_admin")):
+			frappe.throw(_("You must be an admin of both workspaces"), frappe.PermissionError)
+
+	# --- Reconcile members against the target workspace ---
+	# Explicit channel members (Public/Private). For each member not in B, either
+	# add them to B (opt-in) or drop them from the channel.
+	for user_id in list(get_channel_members(channel_id).keys()):
+		if is_workspace_member(target_workspace, user_id):
+			continue
+		if add_missing_members_to_workspace:
+			frappe.get_doc(
+				{
+					"doctype": "Raven Workspace Member",
+					"workspace": target_workspace,
+					"user": user_id,
+					"is_admin": 0,
+				}
+			).insert(ignore_permissions=True)
+		else:
+			# Raw delete — bypass RavenChannelMember.after_delete, which would post
+			# spurious "X left."/"removed X" system messages, reassign channel admin,
+			# or auto-archive an emptied channel. None of that should happen on a
+			# transfer (members are pruned for workspace access, not leaving).
+			frappe.db.delete("Raven Channel Member", {"channel_id": channel_id, "user_id": user_id})
+
+	# Membership of both workspaces / the channel changed — drop caches.
+	delete_channel_members_cache(channel_id)
+	delete_workspace_members_cache(target_workspace)
+
+	# --- Move (PK unchanged) ---
+	channel.workspace = target_workspace
+	channel.flags.ignore_channel_member_check = True
+	channel.save(ignore_permissions=True)
+	# channel.save() fires Raven Channel.on_update -> publishes "channel_list_updated"
+	# to the global Raven room, so every client refetches its workspace-scoped list
+	# (the channel leaves A's sidebar and appears in B's). No manual event needed.
+
+	# Move child threads. A thread is a Raven Channel whose channel_name is a
+	# message id; its parent is that message's channel. Find threads spawned from
+	# messages in this channel and move their workspace too (PKs stay opaque).
+	message = frappe.qb.DocType("Raven Message")
+	thread = frappe.qb.DocType("Raven Channel")
+	child_threads = (
+		frappe.qb.from_(thread)
+		.join(message)
+		.on(thread.channel_name == message.name)
+		.select(thread.name)
+		.where(thread.is_thread == 1)
+		.where(message.channel_id == channel_id)
+		.run(pluck=True)
+	)
+	if child_threads:
+		frappe.qb.update(thread).set(thread.workspace, target_workspace).where(
+			thread.name.isin(child_threads)
+		).run()
+
+	return "Ok"

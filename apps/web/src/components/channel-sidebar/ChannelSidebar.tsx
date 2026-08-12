@@ -1,11 +1,11 @@
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useSetAtom } from "jotai"
 import { NavLink, useMatch, useNavigate, useParams } from "react-router-dom"
 import { useHotkeys } from "react-hotkeys-hook"
-import { Check, ChevronDown, ChevronRight, Hash, Star } from "lucide-react"
+import { Check, ChevronDown, ChevronRight, Hash, PencilLine, Star } from "lucide-react"
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso"
 import { useLocalStorage } from "usehooks-ts"
-import { useChannelUnread, useGroupUnread, useWorkspaceUnread } from "@stores/unread/useChannelUnread"
+import { useChannelUnread, useGroupUnreadCount, useWorkspaceUnread } from "@stores/unread/useChannelUnread"
 import { Badge } from "@components/ui/badge"
 import { Button } from "@components/ui/button"
 import { Skeleton } from "@components/ui/skeleton"
@@ -26,13 +26,18 @@ import { ChannelIcon } from "@components/common/ChannelIcon/ChannelIcon"
 import { CustomizeSidebarButton } from "@components/features/channel/CustomizeSidebar/CustomizeSidebarButton"
 import { MobileSearchButton } from "@components/features/header/QuickSearch/SearchButton"
 import { useWorkspaces, type WorkspaceFields } from "@hooks/useWorkspaces"
+import { workspacesDrawerAtom } from "@components/features/header/HomeWorkspacesDrawer"
 import { lastChannelAtom, lastWorkspaceAtom } from "@utils/lastVisitedAtoms"
-import { useChannelList } from "@stores/channels/useChannelList"
+import { useChannels } from "@stores/channels/useChannelList"
+import { usePrefetchChannel, setChannelListScrolling } from "@stores/messages/usePrefetchChannel"
 import { useGroupedChannels } from "@raven/lib/hooks/useGroupedChannels"
 import useCurrentRavenUser from "@raven/lib/hooks/useCurrentRavenUser"
 import { cn } from "@lib/utils"
 import _ from "@lib/translate"
+import { useChannelDraft } from "@components/features/ChatInput/draft"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip"
 import type { ChannelListItem } from "@raven/types/common/ChannelListItem"
+import { useIsMobile } from "@hooks/use-mobile"
 
 interface GroupsState {
     [key: string]: boolean
@@ -49,7 +54,7 @@ interface GroupsState {
  * it, so the heading visually belongs to the sidebar surface.
  */
 export function ChannelSidebar() {
-    const { channels, isLoading } = useChannelList()
+    const { channels, isLoading } = useChannels()
     const { myProfile } = useCurrentRavenUser()
     const { workspaceID } = useParams()
     const { groupedChannels, ungroupedChannels } = useGroupedChannels(
@@ -63,6 +68,9 @@ export function ChannelSidebar() {
 
     const navigate = useNavigate()
     const virtuosoRef = useRef<VirtuosoHandle>(null)
+    // Reset the scroll-suppression flag if we unmount mid-scroll (Virtuoso's isScrolling(false)
+    // wouldn't fire), so prefetch isn't left globally suppressed.
+    useEffect(() => () => setChannelListScrolling(false), [])
     // Active channel from the URL (the sidebar mounts above the :id route,
     // so useParams can't see it; end: false tolerates an open thread)
     const currentChannelID = useMatch({ path: "/:workspaceID/:id", end: false })?.params.id
@@ -109,7 +117,7 @@ export function ChannelSidebar() {
         <nav className="flex h-full w-full flex-col bg-surface-base md:bg-surface-sidebar">
             {/* Border on mobile (full-page list needs the separator); none on
                 desktop (the content island carries its own bordered header) */}
-            <div className="flex h-11 md:h-auto shrink-0 items-center justify-between gap-1 border-b md:border-b-0 px-2 py-2 md:pb-0">
+            <div className="flex h-11 md:h-auto shrink-0 items-center justify-between gap-1 border-b md:border-b-transparent px-1 md:py-2">
                 <WorkspaceSwitcher workspaceID={workspaceID} />
                 <div className="flex items-center gap-2">
                     <CustomizeSidebarButton />
@@ -124,7 +132,9 @@ export function ChannelSidebar() {
             ) : isEmpty ? (
                 <EmptyChannels />
             ) : (
-                <div ref={setScrollerRef} className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-1 py-2">
+                // Mobile: the in-flow AppMobileFooter below reserves the tab-bar + home-
+                // indicator space, so the list only needs a small breathing pad of its own.
+                <div ref={setScrollerRef} className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-1 py-2 md:py-0 pb-2 md:pb-0 space-y-1">
                     <ul className="flex flex-col gap-1">
                         {groupedChannels.map(([groupName, groupChannels]) => (
                             <ChannelGroup
@@ -146,6 +156,7 @@ export function ChannelSidebar() {
                             ref={virtuosoRef}
                             customScrollParent={scrollerRef}
                             data={ungroupedChannels}
+                            isScrolling={setChannelListScrolling}
                             computeItemKey={(_index, channel) => channel.name}
                             itemContent={(_index, channel) => (
                                 <div className="pb-1">
@@ -193,10 +204,26 @@ const EmptyChannels = () => {
  */
 const WorkspaceSwitcher = ({ workspaceID }: { workspaceID?: string }) => {
     const { workspaces } = useWorkspaces()
+    const { myProfile } = useCurrentRavenUser()
+
+    // Per-user order from the Raven User's pinned_workspaces child table: rows
+    // come first (in row order), workspaces NOT in the table follow in their
+    // server order — so joining a new workspace never needs a migration, it
+    // just appends until the next drag writes the full order.
+    const myWorkspaces = useMemo(() => {
+        const members = workspaces.filter((workspace) => workspace.workspace_member_name)
+        const position = new Map((myProfile?.pinned_workspaces ?? []).map((row, index) => [row.workspace, index]))
+        if (position.size === 0) return members
+        return [...members].sort(
+            (a, b) => (position.get(a.name) ?? Infinity) - (position.get(b.name) ?? Infinity),
+        )
+    }, [workspaces, myProfile?.pinned_workspaces])
+
     const navigate = useNavigate()
     const setLastWorkspace = useSetAtom(lastWorkspaceAtom)
     const setLastChannel = useSetAtom(lastChannelAtom)
     const current = workspaces.find((workspace) => workspace.name === workspaceID)
+    const isMobile = useIsMobile()
 
     const switchWorkspace = (workspace: WorkspaceFields) => {
         // Persist the choice immediately: on mobile no channel opens after a
@@ -207,17 +234,32 @@ const WorkspaceSwitcher = ({ workspaceID }: { workspaceID?: string }) => {
         navigate(`/${encodeURIComponent(workspace.name)}`)
     }
 
+    const openWorkspacesDrawer = useSetAtom(workspacesDrawerAtom)
+
+    // Mobile: the same trigger opens the workspaces DRAWER (strip + unreads —
+    // hosted by AppMobileFooter, also reachable by long-pressing Home) instead
+    // of a cramped dropdown. Desktop keeps the dropdown.
+    if (isMobile) {
+        return (
+            <Button variant="ghost" size="lg" className="rounded" onClick={() => openWorkspacesDrawer(true)}>
+                {current && <WorkspaceLogo workspace={current} className="size-5" />}
+                <span className="truncate text-ink-gray-8 text-lg-medium">{current?.workspace_name || workspaceID}</span>
+                <ChevronDown className="size-4" />
+            </Button>
+        )
+    }
+
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm">
-                    {current && <WorkspaceLogo workspace={current} />}
-                    <span className="truncate text-ink-gray-8 text-sm-medium">{current?.workspace_name || workspaceID}</span>
-                    <ChevronDown />
+                <Button variant="ghost" size="md" className="rounded">
+                    {current && <WorkspaceLogo workspace={current} className="size-5" />}
+                    <span className="truncate text-ink-gray-8 text-lg-medium md:text-sm">{current?.workspace_name || workspaceID}</span>
+                    <ChevronDown className="size-4" />
                 </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" sideOffset={4} className="min-w-52">
-                {workspaces.filter(w => w.workspace_member_name).map((workspace) => (
+            <DropdownMenuContent align="start" sideOffset={4} className="min-w-64">
+                {myWorkspaces.map((workspace) => (
                     <WorkspaceSwitcherItem
                         key={workspace.name}
                         workspace={workspace}
@@ -242,9 +284,9 @@ const WorkspaceSwitcherItem = ({
     const unread = useWorkspaceUnread(workspace.name)
 
     return (
-        <DropdownMenuItem onClick={onSelect}>
+        <DropdownMenuItem onClick={onSelect} className="py-2">
             <WorkspaceLogo workspace={workspace} />
-            <span className="truncate">{workspace.workspace_name}</span>
+            <span className="truncate text-lg md:text-sm leading-snug">{workspace.workspace_name}</span>
             {/* The current workspace shows the check; the others surface their unread */}
             {isCurrent ? (
                 <Check className="ml-auto h-4 w-4 text-ink-gray-8" />
@@ -259,9 +301,10 @@ const WorkspaceSwitcherItem = ({
     )
 }
 
-/** Small square logo, first-letter fallback — same resolution as the primary rail. */
-const WorkspaceLogo = ({ workspace }: { workspace: WorkspaceFields }) => (
-    <Avatar className="size-4.5 shrink-0 rounded-sm">
+/** Small square logo, first-letter fallback — same resolution as the primary rail.
+ *  Exported for the mobile catch-up drawer (long-press Home). */
+export const WorkspaceLogo = ({ workspace, className }: { workspace: WorkspaceFields, className?: string }) => (
+    <Avatar className={cn("size-4.5 shrink-0 rounded-sm", className)}>
         <AvatarImage src={workspace.logo} alt={workspace.workspace_name} />
         <AvatarFallback className="rounded-none bg-surface-gray-3 text-2xs text-ink-gray-5">
             {workspace.workspace_name.charAt(0)}
@@ -284,9 +327,9 @@ const ChannelGroup = ({
     open: boolean
     onOpenChange: (open: boolean) => void
 }) => {
-    // Group badge counts members with unread (a conversation count) — shown only
-    // while collapsed, when the per-channel badges are hidden with the rows
-    const totalUnread = useGroupUnread(useMemo(() => channels.filter((c) => !c.muted).map((c) => c.name), [channels]))
+    // Group badge sums the unread MESSAGE counts of its channels — it mirrors the
+    // per-channel badges it hides while collapsed, so one noisy channel inflates it.
+    const totalUnread = useGroupUnreadCount(useMemo(() => channels.filter((c) => !c.muted).map((c) => c.name), [channels]))
 
     // Slack-style: collapsing a group never hides where you ARE — the active
     // member stays visible as a single row under the collapsed header
@@ -300,7 +343,7 @@ const ChannelGroup = ({
                 <CollapsibleTrigger asChild>
                     <button
                         type="button"
-                        className="flex h-8 w-full justify-between cursor-pointer select-none items-center gap-2 rounded-md px-2 text-sm text-ink-gray-7 outline-none ring-outline-gray-3 transition-colors hover:bg-surface-gray-2 hover:text-ink-gray-8 focus-visible:ring-2"
+                        className="flex py-2 w-full justify-between cursor-pointer select-none items-center gap-2 rounded md:px-2 px-3 text-ink-gray-7 outline-none ring-outline-gray-3 transition-colors hover:bg-surface-gray-3 hover:text-ink-gray-8 focus-visible:ring-2"
                     >
                         <div className="flex items-center gap-1">
                             <ChannelGroupLabel groupName={groupName} isHighlighted={!open && totalUnread > 0} />
@@ -315,11 +358,11 @@ const ChannelGroup = ({
                                 </Badge>
                             )}
                         </div>
-                        <ChevronRight className="h-4 w-4 shrink-0 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                        <ChevronRight className="h-4 w-4 shrink-0 rtl:rotate-180 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                     </button>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                    <ul className="ml-3.5 flex min-w-0 translate-x-px flex-col gap-1 border-l border-outline-gray-1 px-2 py-0.5">
+                    <ul className="md:ml-3.5 ml-4.5 flex min-w-0 translate-x-px flex-col gap-1 border-l border-outline-gray-1 dark:border-outline-gray-2 pl-2 py-0.5">
                         {channels.map((channel) => (
                             <li key={channel.name}>
                                 <ChannelRow channel={channel} workspaceID={workspaceID} />
@@ -340,12 +383,12 @@ const ChannelGroup = ({
 }
 
 /** Group heading: "Favorites" gets a star, custom groups show their leading emoji. */
-export const ChannelGroupLabel = ({ groupName, isHighlighted }: { groupName: string, isHighlighted: boolean }) => {
+export const ChannelGroupLabel = ({ groupName, isHighlighted = false }: { groupName: string, isHighlighted?: boolean }) => {
     if (groupName === "Favorites") {
         return (
             <span className="flex min-w-0 items-center gap-2">
                 <Star className="h-4 w-4 shrink-0 text-ink-gray-6" />
-                <span className={cn("truncate leading-snug text-sm", isHighlighted ? "text-ink-gray-10 text-sm-medium" : "text-ink-gray-7")}>{_("Favorites")}</span>
+                <span className={cn("truncate leading-snug text-lg md:text-sm", isHighlighted ? "text-ink-gray-10 dark:text-ink-gray-10 font-medium" : "text-ink-gray-6 dark:text-ink-gray-7")}>{_("Favorites")}</span>
             </span>
         )
     }
@@ -359,27 +402,31 @@ export const ChannelGroupLabel = ({ groupName, isHighlighted }: { groupName: str
         <span className="flex min-w-0 items-center gap-1.5">
             {emoji && <span className="shrink-0 text-lg leading-none">{emoji}</span>}
             {/* leading-snug: avoid Safari clipping descenders on the truncated label (1.15 is too tight) */}
-            <span className={cn("truncate leading-snug text-sm", isHighlighted ? "text-ink-gray-10 text-sm-medium" : "text-ink-gray-7")}>{nameWithoutEmoji}</span>
+            <span className={cn("truncate leading-snug text-lg md:text-sm", isHighlighted ? "text-ink-gray-10 font-medium" : "text-ink-gray-7")}>{nameWithoutEmoji}</span>
         </span>
     )
 }
 
 const ChannelRow = ({ channel, workspaceID }: { channel: ChannelListItem; workspaceID?: string }) => {
     const { count: unread } = useChannelUnread(channel.name)
+    const prefetchHandlers = usePrefetchChannel(channel.name, unread > 0)
+    // Channel rows have no preview line — an unsent draft shows as a pencil.
+    const draft = useChannelDraft(channel.name)
 
     return (
         <NavLink
+            {...prefetchHandlers}
             to={`/${encodeURIComponent(workspaceID ?? "")}/${encodeURIComponent(channel.name)}`}
             className={({ isActive }) =>
                 cn(
-                    "flex min-w-0 select-none items-center gap-2 overflow-hidden rounded text-base px-2 text-ink-gray-6 py-1.5",
+                    "flex min-w-0 select-none items-center gap-1.5 overflow-hidden rounded text-base px-3 md:px-2 text-ink-gray-6 dark:text-ink-gray-7 py-2 md:py-1.5",
                     // `transition` (not transition-colors) so box-shadow animates IN SYNC
                     // with the background — Virtuoso recycles rows on workspace switch, and
                     // transition-colors left the shadow popping while the bg cross-faded.
                     "outline-none ring-outline-gray-2 transition focus-visible:ring-2",
                     "hover:bg-surface-gray-3 active:bg-surface-gray-3",
-                    unread > 0 && !channel.muted && "text-ink-gray-7",
-                    isActive && "bg-surface-elevation-3 shadow-sm text-ink-gray-8 hover:bg-surface-elevation-3 active:bg-surface-elevation-3",
+                    unread > 0 && !channel.muted && "text-ink-gray-7 dark:text-ink-gray-8",
+                    isActive && "bg-surface-elevation-3 shadow-sm text-ink-gray-8 dark:text-ink-gray-9 hover:bg-surface-elevation-3 active:bg-surface-elevation-3",
                 )
             }
         >
@@ -389,14 +436,25 @@ const ChannelRow = ({ channel, workspaceID }: { channel: ChannelListItem; worksp
                     // leading-snug: the type scale's 1.15 line-height is too tight to contain
                     // descenders (g/y/p) once `truncate` clips overflow — Safari cuts them on
                     // some DPIs. A looser single-line height fixes it.
-                    "min-w-0 flex-1 truncate text-base md:text-sm leading-snug",
+                    "min-w-0 flex-1 truncate text-lg md:text-sm leading-snug",
                     unread > 0 && !channel.muted ? "font-semibold" : "font-normal",
                 )}
             >
                 {channel.channel_name}
             </span>
+            {draft && (
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <PencilLine className="h-3.5 w-3.5 shrink-0 text-ink-gray-5" />
+                    </TooltipTrigger>
+                    {/* The draft text itself — channel rows have no preview line to show it */}
+                    <TooltipContent side="right" className="max-w-64">
+                        <span className="line-clamp-3 break-words">{_("Draft")}: {draft}</span>
+                    </TooltipContent>
+                </Tooltip>
+            )}
             {unread > 0 && !channel.muted && (
-                <Badge size="sm" variant="ghost" theme="gray" className="shrink-0">
+                <Badge size="sm" variant="ghost" theme="gray" className="shrink-0 px-0 justify-center tabular-nums">
                     {unread > 9 ? "9+" : unread}
                 </Badge>
             )}

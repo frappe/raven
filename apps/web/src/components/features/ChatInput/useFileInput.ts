@@ -5,6 +5,7 @@ import { FrappeConfig, FrappeContext, useFrappeDeleteDoc } from 'frappe-react-sd
 import { useContext } from 'react'
 import { toast } from 'sonner'
 import { formatBytes, getFileExtension } from '@raven/lib/utils/operations'
+import { randomUUID } from '@lib/uuid'
 import _ from '@lib/translate'
 
 /**
@@ -137,7 +138,9 @@ export const useAttachFile = (channelID: string) => {
             file: file,
             uploadProgress: 0,
             status: 'uploading' as const,
-            id: crypto.randomUUID(),
+            // NOT crypto.randomUUID — that's secure-context-only, and it crashing
+            // here silently ate "attach photo" on LAN-IP (http) dev builds.
+            id: randomUUID(),
             fileName: file.name,
             size: file.size,
             timestamp: Date.now()

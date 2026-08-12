@@ -20,6 +20,9 @@ class RavenUser(Document):
 			RavenGroupedChannels,
 		)
 		from raven.raven.doctype.raven_pinned_channels.raven_pinned_channels import RavenPinnedChannels
+		from raven.raven.doctype.raven_user_pinned_workspaces.raven_user_pinned_workspaces import (
+			RavenUserPinnedWorkspaces,
+		)
 		from raven.raven_channel_management.doctype.raven_channel_groups.raven_channel_groups import (
 			RavenChannelGroups,
 		)
@@ -37,7 +40,9 @@ class RavenUser(Document):
 		full_name: DF.Data
 		grouped_channels: DF.Table[RavenGroupedChannels]
 		last_mention_viewed_on: DF.Datetime | None
+		link_previews: DF.Literal["Link Hover", "Preview Card"]
 		pinned_channels: DF.Table[RavenPinnedChannels]
+		pinned_workspaces: DF.Table[RavenUserPinnedWorkspaces]
 		sort_channels_by: DF.Literal["Alphabetical Order", "Recent Activity", "Unreads First"]
 		time_format: DF.Literal["12-hour", "24-hour"]
 		type: DF.Literal["User", "Bot"]
@@ -56,6 +61,17 @@ class RavenUser(Document):
 			self.type = "User"
 		if not self.full_name:
 			self.full_name = self.first_name
+		# A profile rename writes only `full_name`; `first_name` is otherwise
+		# seeded from the linked User (fetch_if_empty) and would stay stale
+		# forever — short displays like the typing indicator read it. Re-derive
+		# it whenever the full name changes, unless this save also set
+		# `first_name` explicitly (an explicit edit wins).
+		if (
+			self.full_name
+			and self.has_value_changed("full_name")
+			and not self.has_value_changed("first_name")
+		):
+			self.first_name = self.full_name.split(" ")[0]
 
 	def validate(self):
 		if self.type == "Bot" and not self.bot:
@@ -63,6 +79,29 @@ class RavenUser(Document):
 
 		if self.type == "User" and not self.user:
 			frappe.throw(_("User is mandatory"))
+
+		self.validate_channel_group_names()
+
+	def validate_channel_group_names(self):
+		"""
+		Group names must be unique per user — grouped_channels references a group
+		by name, so duplicates within one user would corrupt channel assignment.
+		Enforced here because the DB cannot express "unique per parent".
+
+		"Favorites" is reserved: the sidebar renders it as a pseudo-group backed by
+		pinned_channels, not a channel_groups row. A real group with that name would
+		collide with it — clients route "Favorites" assignments to the pin list, so
+		the group could never receive a channel, and empty groups are not rendered.
+		The web client refuses the name; this covers API and older-client writers.
+		"""
+		seen = set()
+		for group in self.channel_groups or []:
+			name = (group.group_name or "").strip().casefold()
+			if name == "favorites":
+				frappe.throw(_("Group name {0} is reserved.").format(frappe.bold(group.group_name)))
+			if name in seen:
+				frappe.throw(_("Group name {0} is already used.").format(frappe.bold(group.group_name)))
+			seen.add(name)
 
 	def before_insert(self):
 		if self.type != "Bot":

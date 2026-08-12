@@ -5,6 +5,7 @@ import { getDateObject } from "@lib/date"
 import { cn } from "@lib/utils"
 import _ from "@lib/translate"
 import { UserAvatar } from "../UserAvatar"
+import { UserProfileHoverCard } from "./UserProfileHoverCard"
 import { timeFormatAtom } from "@utils/preferences"
 import { useAtomValue } from "jotai"
 
@@ -22,7 +23,7 @@ export const useMessageTimes = (creation: string) => {
     return useMemo(() => {
         try {
             const dateObject = getDateObject(creation)
-            let format = "hh:mm A"
+            let format = "h:mm a"
             if (timeFormat === "24-hour") {
                 format = "HH:mm"
             }
@@ -53,7 +54,7 @@ export const MessageRow = ({
             // overflow-hidden clips media to the rounded corners — but while this row
             // holds the inline editor, drop it so the editor's mention/emoji popup
             // (which rises above the box) isn't clipped by the row.
-            "group/message-item w-full overflow-hidden has-[[data-raven-editor]]:overflow-visible relative hover:bg-surface-gray-1 py-2 rounded-md px-3.5 transition-all duration-200",
+            "group/message-item w-full overflow-hidden has-[[data-raven-editor]]:overflow-visible relative hover:bg-surface-gray-1/70 py-2 rounded-md px-3.5 transition-all duration-200",
             className,
         )}
     >
@@ -92,16 +93,29 @@ export const MessageSenderLayout = ({
 
     return (
         <div className="flex items-start gap-3">
-            {user ? (
-                <UserAvatar user={user} size="md" />
-            ) : (
-                <div className="h-8 w-8 shrink-0 rounded-full bg-surface-gray-2 flex items-center justify-center text-xs font-medium text-ink-gray-4">
-                    {displayName.slice(0, 2).toUpperCase()}
+            {/* Avatar triggers the same profile card as the name below. The
+                trigger is the column div, not UserAvatar itself — asChild needs
+                an element that forwards props to the DOM. */}
+            <UserProfileHoverCard id={owner} fallbackLabel={displayName}>
+                <div className="mt-0.5 cursor-pointer">
+                    {user ? (
+                        <UserAvatar user={user} size="md" />
+                    ) : (
+                        <div className="h-8 w-8 shrink-0 rounded-full bg-surface-gray-2 flex items-center justify-center text-xs-medium text-ink-gray-4">
+                            {displayName.slice(0, 2).toUpperCase()}
+                        </div>
+                    )}
                 </div>
-            )}
+            </UserProfileHoverCard>
             <div className="flex-1 min-w-0">
                 <div className="flex items-baseline gap-1">
-                    <span className="font-medium text-sm text-ink-gray-6">{displayName}</span>
+                    {/* Same profile card as hovering a mention — a person's name
+                        opens the same thing wherever it appears in the stream. */}
+                    <UserProfileHoverCard id={owner} fallbackLabel={displayName}>
+                        <span className="font-medium text-content text-ink-gray-6 dark:text-ink-gray-7 cursor-pointer">
+                            {displayName}
+                        </span>
+                    </UserProfileHoverCard>
                     <Tooltip delayDuration={300}>
                         <TooltipTrigger asChild>
                             <span className="text-xs text-ink-gray-5">· {shortTime}</span>

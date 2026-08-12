@@ -14,12 +14,16 @@ import { CreatePollDialog } from "./CreatePollDialog"
 import { uploadedFilesAtom, uploadingFilesAtom, pendingSendAtom, useAttachFile } from "./useFileInput"
 import { registerComposerFocus } from "./composerFocus"
 import { useRavenEditor, EDITOR_MIN_H } from "@components/features/editor/useRavenEditor"
+import { linkifyBeforeSend } from "@components/features/editor/linkifyOnSend"
 import { EditorFormattingToolbar } from "@components/features/editor/EditorFormattingToolbar"
 import { ReplyPreviewBanner } from "./ReplyPreviewBanner"
 import { MentionWarningBanner } from "./MentionWarningBanner"
 import { MobileComposerActions } from "./MobileComposerActions"
 import { loadDraft, saveDraft } from "./draft"
+import { useTypingEmitter } from "@stores/typing/useTypingEmitter"
+import { TypingIndicator } from "./TypingIndicator"
 import { useIsMobile } from "@hooks/use-mobile"
+import { useIsKeyboardOpen } from "@hooks/useIsKeyboardOpen"
 import { enqueueSend } from "@stores/messages/messageSender"
 import { editingMessageAtom, replyToMessageAtom } from "@utils/channelAtoms"
 import { getLastEditableMessage } from "@components/features/message/actions/editTarget"
@@ -30,6 +34,7 @@ import _ from "@lib/translate"
 import { Button } from "@components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@components/ui/tooltip"
 import { cn } from "@lib/utils"
+import { randomUUID } from "@lib/uuid"
 import { Separator } from "@components/ui/separator"
 import AttachFrappeDocumentDialog from "./AttachFrappeDocumentDialog"
 
@@ -124,6 +129,35 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
 
     const editor = useRavenEditor({ submitRef: sendRef, linkRef, filesRef, cancelReplyRef, editLastRef, content: initialDraft || undefined, autofocus: true, placeholder: _("Type a message...") })
 
+    // On mobile the composer bottom padding is keyboard-aware: closed → clear the home
+    // indicator (safe-area inset, with an Android floor); open → just the row's own py-2,
+    // since the composer sits above the keyboard and the inset would be dead space.
+    // Desktop keeps its plain pb-3/pb-4. Scoped to this editor's focus.
+    // Gated to mobile so desktop doesn't attach unused focus + visualViewport listeners.
+    const keyboardOpen = useIsKeyboardOpen(editor, isMobile)
+
+    // Reactive "is there anything worth sending" — text that isn't just whitespace, or a
+    // non-text inline node (mention, emoji, etc.). `editor.isEmpty` treats "   " as content,
+    // so we can't use it here. Drives both the send-button disabled state and the send guard.
+    const editorHasContent = useEditorState({
+        editor,
+        selector: ({ editor: e }) => {
+            // Fast O(1) reject for the blank composer (its resting state) — skip the doc walks.
+            if (!e || e.isEmpty) return false
+            if (e.state.doc.textContent.trim().length > 0) return true
+            // Non-empty but no text: only "content" if there's a non-text inline node (mention/emoji).
+            let hasInlineNonText = false
+            e.state.doc.descendants((node) => {
+                if (!node.isText && node.isInline) {
+                    hasInlineNonText = true
+                    return false
+                }
+                return true
+            })
+            return hasInlineNonText
+        },
+    })
+
     // Persist the draft as the user types (debounced). Stable callback so the
     // debounced instance — and its flush() on unmount — stay identity-stable.
     const persistDraft = useDebounceCallback(
@@ -145,15 +179,36 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
         }
     }, [editor, persistDraft])
 
+    // Broadcast this user's typing state off editor updates. Ref-based — adds
+    // ZERO re-renders per keystroke (see useTypingEmitter); a hard stop fires on
+    // send and on unmount/channel switch (inside the hook). Emptying the input
+    // (select-all delete, backspace to nothing) also reads as "stopped typing" —
+    // there's no draft left that anyone is waiting on.
+    const { onUserType, stopTyping } = useTypingEmitter(channelID)
+    useEffect(() => {
+        if (!editor) return
+        const onUpdate = () => {
+            if (editor.isEmpty) stopTyping()
+            else onUserType()
+        }
+        editor.on("update", onUpdate)
+        return () => {
+            editor.off("update", onUpdate)
+        }
+    }, [editor, onUserType, stopTyping])
+
     /** Build the optimistic batch, clear the composer, and fire the request. */
     const dispatchSend = useCallback(() => {
         if (!editor) return
         const isEmpty = editor.isEmpty
         if (isEmpty && files.length === 0) return
 
+        // Catch URLs the live linkifiers missed (mobile IME paste fires no
+        // ClipboardEvent; autolink waits for a delimiter that send never types).
+        if (!isEmpty) linkifyBeforeSend(editor)
         const content = isEmpty ? "" : editor.getHTML()
         const outgoingFiles = files.map((f) => ({ file_url: f.fileURL, file_size: f.size }))
-        const batchId = crypto.randomUUID()
+        const batchId = randomUUID()
 
         // Reply context: send the linked message id + a snapshot of it so the reply
         // preview renders immediately (the snapshot matches ReplyMessage's expected shape).
@@ -179,13 +234,20 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
         // Drop the saved draft (and any pending debounced write of the old text).
         persistDraft.cancel()
         saveDraft(channelID, "")
-        editor.commands.focus()
-    }, [editor, files, channelID, currentUser, call, setFiles, replyTo, setReplyTo, persistDraft])
+        // The message is sent — stop broadcasting "typing" right away.
+        stopTyping()
+        // Desktop only: refocus so the next message can be typed immediately.
+        // On mobile, sending must never CHANGE keyboard state: SendButton keeps
+        // the keyboard open by not stealing focus (mousedown preventDefault),
+        // and a file-only send with the keyboard closed — including a held send
+        // dispatched later by the uploads-settled effect — must not pop it.
+        if (!isMobile) editor.commands.focus()
+    }, [editor, files, channelID, currentUser, call, setFiles, replyTo, setReplyTo, persistDraft, stopTyping, isMobile])
 
     const handleSend = useCallback(() => {
         if (!editor) return
-        // Nothing to send — no text, no uploaded files, nothing staged (uploading or errored).
-        if (editor.isEmpty && files.length === 0 && !hasUploadsInFlight && !hasFailedUploads) return
+        // Nothing to send — no meaningful text/content, no uploaded files, nothing staged.
+        if (!editorHasContent && files.length === 0 && !hasUploadsInFlight && !hasFailedUploads) return
 
         // Files are still uploading: hold the send. An effect dispatches it once
         // every upload settles, so the in-flight files aren't dropped.
@@ -194,8 +256,20 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
             return
         }
 
+        // A failed upload blocks a DIRECT send too, not just a held one — the
+        // user staged that file as part of this message, so sending without it
+        // silently ships something different from what they wrote. Same toast
+        // as the held path (below) so the two flows can't drift.
+        if (hasFailedUploads) {
+            toast.error(_("Some files failed to upload. Remove them and try again."))
+            return
+        }
+
         dispatchSend()
-    }, [editor, files, hasUploadsInFlight, hasFailedUploads, dispatchSend, setPendingSend])
+    }, [editor, editorHasContent, files, hasUploadsInFlight, hasFailedUploads, dispatchSend, setPendingSend])
+
+    // Disable send when there's genuinely nothing to send (mirrors the handleSend guard).
+    const nothingToSend = !editorHasContent && files.length === 0 && !hasUploadsInFlight && !hasFailedUploads
 
     // Held send: once uploads settle, dispatch (or back off if any failed so the
     // user can remove the bad file and retry — we never send silently without it).
@@ -214,9 +288,18 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
     }, [handleSend])
 
     // When a reply is started (from a message's Reply action), focus the composer.
+    // Desktop only here: on mobile the focus happens synchronously at the GESTURE
+    // site (swipe-to-reply / sheet Reply action, via focusComposer) — iOS only
+    // raises the keyboard for focus() calls made inside a user gesture, and this
+    // effect runs after paint, outside it.
     useEffect(() => {
-        if (replyTo) editor?.commands.focus()
-    }, [replyTo, editor])
+        if (replyTo && !isMobile) editor?.commands.focus()
+    }, [replyTo, editor, isMobile])
+
+    // Keeps the reply banner's content rendered while its collapse animates out.
+    const lastReplyRef = useRef<typeof replyTo>(null)
+    if (replyTo) lastReplyRef.current = replyTo
+    const replyDisplay = replyTo ?? lastReplyRef.current
 
     // Expose this channel's composer focus so the pane-level FileDropZone (and any other
     // attach path outside this subtree) can refocus the editor after a drop.
@@ -227,8 +310,10 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
 
     const cancelReply = useCallback(() => {
         setReplyTo(null)
-        editor?.commands.focus()
-    }, [setReplyTo, editor])
+        if (!isMobile) {
+            editor?.commands.focus()
+        }
+    }, [setReplyTo, editor, isMobile])
 
     // The set of @-mentioned user ids in the draft, as a stable joined string so this
     // only re-renders when the mention set changes (not on every keystroke). Drives
@@ -251,10 +336,9 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
     // the hooks order. App-wide write-blocking is a later, broader effort.
     if (isInReadOnlyMode()) {
         return (
-            <div className="p-3 pb-4 w-full">
-                <div className="flex items-center justify-center gap-2 rounded-lg border border-outline-gray-2 bg-surface-gray-1 px-3 py-3 text-sm text-ink-gray-6">
-                    <Lock className="size-3 shrink-0" />
-                    <span>{_("The site is in read-only mode right now. Please wait while the site is being updated.")}</span>
+            <div className="md:p-3 w-full">
+                <div className="flex flex-col items-center justify-center gap-2 md:rounded-lg rounded-none md:border border-t border-outline-gray-2 bg-surface-gray-1 md:px-3 px-4 py-4 standalone:pb-[max(env(safe-area-inset-bottom),1rem)] text-sm text-ink-gray-6">
+                    <span className="text-p-base text-center">{_("The site is in read-only mode right now. Please wait while the site is being updated.")}</span>
                 </div>
             </div>
         )
@@ -267,8 +351,11 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                 e.preventDefault()
                 handleSend()
             }}
-            className="p-3 pb-4 w-full flex flex-col gap-2"
+            className={cn("relative md:px-3 md:pb-3 w-full flex flex-col gap-1.5")}
         >
+            {/* Absolute overlay above the form — the stream's bottom padding (pb-4)
+                gives it room, so it reads as sitting in the gap, not over content */}
+            <TypingIndicator channelID={channelID} />
             {/* Warning banner is only shown for primary channels, not DMs, threads in DMs. */}
             {!isDM && mentionedIds.length > 0 && <MentionWarningBanner channelID={parentChannelID ?? channelID} mentionedIds={mentionedIds} isThread={parentChannelID ? true : false} />}
             {/* Outer wrapper carries data-raven-editor and is the popup anchor: the
@@ -276,30 +363,57 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                 so they must NOT be clipped. The inner box keeps overflow-y-hidden so the
                 formatting toolbar's square top corners stay within the rounded border. */}
             <div data-raven-editor className="relative w-full">
-                <div className="w-full rounded-lg border border-outline-gray-2 shadow-outline-base bg-surface-white focus-within:border-outline-gray-3 overflow-y-hidden">
+                <div className={cn("w-full md:rounded-lg md:border border-outline-gray-2 shadow-outline-base bg-surface-base focus-within:border-outline-gray-3 overflow-y-hidden")}>
                     <TooltipProvider>
 
-                        {editor && showFormatting && (
+                        {editor && showFormatting && !isMobile && (
                             <EditorFormattingToolbar
                                 editor={editor}
                                 linkSignal={linkSignal}
                                 onLinkConsumed={() => setLinkSignal(0)}
                             />
                         )}
-                        {replyTo && <ReplyPreviewBanner message={replyTo} onCancel={cancelReply} showFormatting={showFormatting} />}
+                        {/* Reply banner slides open/closed (grid-rows 0fr↔1fr — the
+                            animatable "height:auto"). The last reply is snapshotted so
+                            the banner keeps its content while collapsing out. */}
+                        <div className={cn("grid transition-[grid-template-rows] duration-200 ease-out", replyTo ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}>
+                            <div className="min-h-0 overflow-hidden">
+                                {replyDisplay && <ReplyPreviewBanner message={replyDisplay} onCancel={cancelReply} showFormatting={showFormatting} />}
+                            </div>
+                        </div>
                         <InputFileList channelID={channelID} />
                         {/* Reserve the editor's min-height before it mounts (EditorContent is
                             empty until `editor` is ready) so the composer — and the stream's
                             height — don't jump on channel open. Same class as the editor surface. */}
-                        <div className={EDITOR_MIN_H}>
-                            <EditorContent editor={editor} />
-                        </div>
-                        <div className="flex items-center gap-1 px-1 pb-1">
-                            {isMobile ? (
-                                // Mobile: secondary actions collapse into a "+" bottom sheet.
-                                <MobileComposerActions channelID={channelID} onToggleFormatting={() => setShowFormatting((v) => !v)} />
-                            ) : (
-                                <>
+                        {isMobile ? (
+                            // Mobile is a single row: [+] · editor · send. The `[&_.tiptap]` overrides
+                            // deliberately replace the editor surface's default EDITOR_CLASS heights
+                            // (EDITOR_MIN_H etc.) with a compact one-line-that-grows box — these values
+                            // are mobile-specific and intentionally NOT tied to EDITOR_MIN_H.
+                            // Unequal paddings are added to make the entire thing optically balanced since the Plus button is bare (ghost) and does not have a structure.
+                            // max(inset, 0.75rem): iOS reports the 34px home-indicator inset, but
+                            // Android Chrome reports 0 (content doesn't extend under the nav bar),
+                            // which left the composer flush against the screen bottom. Keyboard
+                            // open → no override: the row's own py-2 gives a little breathing
+                            // room above the keyboard.
+                            <div className={cn("flex items-end gap-0 pe-2 ps-1 py-2 border-t border-outline-gray-2 bg-surface-base", isMobile && !keyboardOpen && "standalone:pb-[max(env(safe-area-inset-bottom),0.75rem)]")}>
+                                <div className="flex items-center justify-center h-10">
+                                    <MobileComposerActions channelID={channelID} />
+                                </div>
+                                <div className="flex-1 min-w-0 dark:bg-surface-elevation-2 bg-surface-gray-1 rounded-2xl [&_.tiptap]:min-h-10 [&_.tiptap]:max-h-64 [&_.tiptap]:overflow-y-auto [&_.tiptap]:py-2">
+                                    <EditorContent editor={editor} />
+                                </div>
+                                <div className="flex items-center justify-center h-10 ms-1.5">
+                                    <SendButton onSend={handleSend} loading={pendingSend} disabled={nothingToSend} />
+                                </div>
+
+                            </div>
+                        ) : (
+                            <>
+                                <div className={EDITOR_MIN_H}>
+                                    <EditorContent editor={editor} />
+                                </div>
+                                <div className="flex items-center gap-1 px-1 pb-1">
                                     <AddFileButton channelID={channelID} onAfterAttach={() => editor?.commands.focus()} />
                                     <Tooltip>
                                         <TooltipTrigger asChild>
@@ -327,11 +441,11 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                                     <Separator orientation="vertical" className="mx-1 h-4!" />
                                     <CreatePollDialog channelID={channelID} />
                                     <AttachFrappeDocumentDialog />
-                                </>
-                            )}
-                            <div className="flex-1" />
-                            <SendButton onSend={handleSend} loading={pendingSend} />
-                        </div>
+                                    <div className="flex-1" />
+                                    <SendButton onSend={handleSend} loading={pendingSend} disabled={nothingToSend} />
+                                </div>
+                            </>
+                        )}
                     </TooltipProvider>
                 </div>
             </div>

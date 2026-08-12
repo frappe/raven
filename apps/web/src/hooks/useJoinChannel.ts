@@ -1,11 +1,10 @@
 import useCurrentRavenUser from "@raven/lib/hooks/useCurrentRavenUser";
 import { RavenChannelMember } from "@raven/types/RavenChannelManagement/RavenChannelMember";
-import { ChannelList } from "@raven/types/common/ChannelListItem";
-import { useFrappeCreateDoc, useSWRConfig } from "frappe-react-sdk";
+import { channelStore } from "@stores/channels/store";
+import { useFrappeCreateDoc } from "frappe-react-sdk";
 
 export const useJoinChannel = (channelID: string) => {
   const { createDoc, error, loading } = useFrappeCreateDoc();
-  const { mutate } = useSWRConfig();
   const { myProfile } = useCurrentRavenUser();
 
   const joinChannel = async () => {
@@ -13,26 +12,14 @@ export const useJoinChannel = (channelID: string) => {
       channel_id: channelID,
       user_id: myProfile?.name ?? "",
     }).then((result: RavenChannelMember) => {
-      mutate(
-        "channel_list",
-        (data: { message: ChannelList } | undefined) => {
-          if (data) {
-            return {
-              message: {
-                ...data.message,
-                channels: data.message.channels.map((ch) =>
-                  ch.name === result.channel_id
-                    ? { ...ch, member_id: result.name }
-                    : ch,
-                ),
-              },
-            };
-          }
-        },
-        {
-          revalidate: false,
-        },
-      );
+      // Patch the store directly — consumers read the store, not SWR. This used to
+      // hand-edit the `channel_list` SWR cache and depend on useChannelListSync's
+      // effect to forward it, which only worked while that hook stayed mounted and
+      // silently no-opped when the cache was still cold (the updater fell through and
+      // returned undefined, which with `revalidate: false` left the cache empty).
+      // The server also publishes `channel_list_updated` to this user, so a real
+      // refetch reconciles the store against the truth right after this patch.
+      channelStore.patchChannel(result.channel_id, { member_id: result.name });
     });
   };
   return { joinChannel, error, loading };

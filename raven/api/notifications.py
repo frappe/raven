@@ -1,6 +1,6 @@
 import frappe
 from frappe.query_builder import Order
-from frappe.query_builder.functions import Count, Max, Min
+from frappe.query_builder.functions import Max, Min
 
 
 @frappe.whitelist(methods=["GET"])
@@ -186,11 +186,16 @@ def _get_reaction_notifications(limit, start, unread_only):
 
 
 @frappe.whitelist(methods=["GET"])
-def get_unread_notifications_count():
+def get_unread_notification_message_ids():
 	"""
-	Count of unread notifications for current user: unread mentions + grouped unread reactions
-	(distinct messages with any unread reaction). Matches the access filters used by
-	get_notifications so the badge agrees with the list.
+	Distinct message ids that carry an unread notification for the current user — unread
+	mentions of them, plus messages of theirs with any unread reaction. Same access filters
+	as get_notifications so the set agrees with the list.
+
+	Replaces the old count endpoint: the client keeps this set in a store, derives the badge
+	from its size, and marks entries read as the messages scroll into view. The set is
+	naturally small (unread notifications), so ids cost barely more than the count did —
+	the reaction half of the old count already fetched these ids just to len() them.
 	"""
 	user = frappe.session.user
 	mention = frappe.qb.DocType("Raven Mention")
@@ -204,9 +209,9 @@ def get_unread_notifications_count():
 		(workspace_member.user == user) & (channel.type != "Private")
 	)
 
-	mention_result = (
+	mention_rows = (
 		frappe.qb.from_(mention)
-		.select(Count(mention.name).distinct().as_("mention_count"))
+		.select(message.name)
 		.join(message)
 		.on(mention.parent == message.name)
 		.join(channel)
@@ -219,10 +224,10 @@ def get_unread_notifications_count():
 		.where(mention.is_read == 0)
 		.where(message.owner != user)
 		.where(access_condition)
-	).run(as_dict=True)
-	mention_count = mention_result[0].mention_count if mention_result else 0
+		.distinct()
+	).run(pluck=True)
 
-	reaction_groups = (
+	reaction_rows = (
 		frappe.qb.from_(reaction)
 		.select(reaction.message)
 		.join(message)
@@ -238,10 +243,10 @@ def get_unread_notifications_count():
 		.where(reaction.is_read == 0)
 		.where(access_condition)
 		.distinct()
-	).run()
-	reaction_count = len(reaction_groups)
+	).run(pluck=True)
 
-	return int(mention_count) + int(reaction_count)
+	# A message can carry both an unread mention and unread reactions — dedupe.
+	return list(dict.fromkeys([*mention_rows, *reaction_rows]))
 
 
 @frappe.whitelist(methods=["POST"])
@@ -273,8 +278,17 @@ def mark_all_notifications_read():
 
 
 @frappe.whitelist(methods=["POST"])
-def mark_message_notifications_read(message_id: str):
-	"""Mark all notifications linked to a message as read for current user"""
+def mark_message_notifications_read(message_ids: list):
+	"""
+	Mark all notifications linked to the given messages as read for the current user.
+	Batched: the client collects messages as they scroll into view and flushes them
+	debounced in one call, instead of one POST per message.
+	"""
+	if isinstance(message_ids, str):
+		message_ids = frappe.parse_json(message_ids)
+	if not message_ids:
+		return "ok"
+
 	user = frappe.session.user
 	mention = frappe.qb.DocType("Raven Mention")
 	reaction = frappe.qb.DocType("Raven Message Reaction")
@@ -283,7 +297,7 @@ def mark_message_notifications_read(message_id: str):
 	(
 		frappe.qb.update(mention)
 		.set(mention.is_read, 1)
-		.where(mention.parent == message_id)
+		.where(mention.parent.isin(message_ids))
 		.where(mention.user == user)
 		.where(mention.is_read == 0)
 	).run()
@@ -292,7 +306,7 @@ def mark_message_notifications_read(message_id: str):
 	(
 		frappe.qb.update(reaction)
 		.set(reaction.is_read, 1)
-		.where(reaction.message == message_id)
+		.where(reaction.message.isin(message_ids))
 		.where(reaction.message.isin(user_messages))
 		.where(reaction.owner != user)
 		.where(reaction.is_read == 0)
@@ -300,7 +314,7 @@ def mark_message_notifications_read(message_id: str):
 
 	frappe.publish_realtime(
 		"message_notifications_read",
-		{"message_id": message_id},
+		{"message_ids": message_ids},
 		user=user,
 		after_commit=True,
 	)

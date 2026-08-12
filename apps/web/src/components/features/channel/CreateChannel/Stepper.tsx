@@ -4,6 +4,10 @@ import { cn } from '@lib/utils'
 interface Step {
     id: number
     title: string
+    /** Rendered grayed-out — the step doesn't apply (e.g. Add Members for an
+     *  Open channel, where everyone is already a member). Keeping the step
+     *  visible-but-disabled avoids the layout shift of removing it. */
+    disabled?: boolean
 }
 
 interface StepperProps {
@@ -22,24 +26,28 @@ export const Stepper = ({ steps, currentStep }: StepperProps) => {
                             <div
                                 className={cn(
                                     'flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium transition-all',
-                                    currentStep > index &&
-                                    'bg-ink-gray-8 text-ink-base',
-                                    currentStep === index &&
-                                    'bg-ink-gray-8 text-ink-base ring-2 ring-ink-gray-8/20 ring-offset-2',
-                                    currentStep < index &&
-                                    'bg-surface-gray-2 text-ink-gray-4'
+                                    step.disabled
+                                        ? 'bg-surface-gray-1 text-ink-gray-3'
+                                        : [
+                                            currentStep > index && 'bg-ink-gray-8 text-ink-base',
+                                            currentStep === index && 'bg-ink-gray-8 text-ink-base',
+                                            currentStep < index && 'bg-surface-gray-2 text-ink-gray-4',
+                                        ]
                                 )}
-                                aria-current={currentStep === index ? 'step' : undefined}
+                                aria-current={!step.disabled && currentStep === index ? 'step' : undefined}
+                                aria-disabled={step.disabled || undefined}
                                 aria-label={
-                                    currentStep > index
-                                        ? `${step.title} - Completed`
-                                        : currentStep === index
-                                            ? `${step.title} - Current step`
-                                            : `${step.title} - Not completed`
+                                    step.disabled
+                                        ? `${step.title} - Not applicable`
+                                        : currentStep > index
+                                            ? `${step.title} - Completed`
+                                            : currentStep === index
+                                                ? `${step.title} - Current step`
+                                                : `${step.title} - Not completed`
                                 }
                             >
-                                {currentStep > index ? (
-                                    <CheckIcon className="h-3 w-3" aria-hidden="true" />
+                                {!step.disabled && currentStep > index ? (
+                                    <CheckIcon className="size-4" aria-hidden="true" />
                                 ) : (
                                     <span aria-hidden="true">{step.id}</span>
                                 )}
@@ -48,10 +56,12 @@ export const Stepper = ({ steps, currentStep }: StepperProps) => {
                             {/* Step Title */}
                             <span
                                 className={cn(
-                                    'text-xs font-medium transition-colors',
-                                    currentStep >= index
-                                        ? 'text-ink-gray-8'
-                                        : 'text-ink-gray-4'
+                                    'text-sm-medium transition-colors',
+                                    step.disabled
+                                        ? 'text-ink-gray-3'
+                                        : currentStep >= index
+                                            ? 'text-ink-gray-8'
+                                            : 'text-ink-gray-4'
                                 )}
                                 aria-hidden="true"
                             >

@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from "react"
-import { useFrappePostCall } from "frappe-react-sdk"
-import { toast } from "sonner"
-import { getErrorMessage } from "@lib/frappe"
+import React, { useState } from "react"
+import { useFrappeGetCall, useFrappePostCall } from "frappe-react-sdk"
 import { useUserCookieData } from "@hooks/useUserCookieData"
+import { useUsersById } from "@hooks/useMessageRowLookups"
+import { Spinner } from "@components/ui/spinner"
+import type { PollData } from "./PollMessageContent"
 import { ScrollArea } from "@components/ui/scroll-area"
 import { Button } from "@components/ui/button"
 import { Badge } from "@components/ui/badge"
@@ -16,8 +17,6 @@ import { X, MoreVertical, CheckCircle, LockIcon, ListChecksIcon, HatGlassesIcon 
 import { cn } from "@lib/utils"
 import { UserAvatar } from "../UserAvatar"
 import { getDateObject } from "@lib/date"
-import type { RavenPoll } from "@raven/types/RavenMessaging/RavenPoll"
-import type { RavenPollOption } from "@raven/types/RavenMessaging/RavenPollOption"
 import type { UserData } from "@db"
 import { getOptionPercentage, getPollStatus, isUserVote } from "./poll-components"
 import {
@@ -31,67 +30,106 @@ import {
 } from "@components/ui/alert-dialog"
 import _ from "@lib/translate"
 import { Separator } from "@components/ui/separator"
+import { useAtomValue } from "jotai"
+import { timeFormatAtom } from "@utils/preferences"
+import { errorResponseToast } from "@components/ui/error-banner"
 
 export interface PollDrawerProps {
-    user: UserData
-    poll: RavenPoll & {
-        options: (RavenPollOption & { voters?: { id: string; name: string; full_name?: string; image: string }[] })[]
-    }
-    currentUserVotes: Array<{ option: string }>
+    /**
+     * The poll MESSAGE id — identity only. The drawer subscribes to the same
+     * ["poll", id] SWR cache as the inline card, so it opens instantly (the
+     * card already warmed the cache) and updates LIVE when usePollRealtime
+     * revalidates that key on poll_update events. Receiving poll DATA as a
+     * prop froze the drawer at whatever it looked like when opened.
+     */
+    messageID: string
     onClose: () => void
 }
 
-export const PollDrawer: React.FC<PollDrawerProps> = ({
-    user,
-    poll,
-    currentUserVotes,
-    onClose,
-}) => {
-    const totalVotes = poll.total_votes || 0
-    const { isAnonymous, isDisabled: isPollClosed } = getPollStatus(poll)
-    const hasVoted = currentUserVotes.length > 0
+export const PollDrawer: React.FC<PollDrawerProps> = ({ messageID, onClose }) => {
+    // Key + options identical to PollMessageContent's fetch — one cache entry,
+    // two subscribers, both refreshed by the same realtime mutate.
+    const { data } = useFrappeGetCall<{ message: PollData }>(
+        "raven.api.raven_poll.get_poll",
+        { message_id: messageID },
+        ["poll", messageID],
+        { dedupingInterval: 10000, focusThrottleInterval: 5000 },
+    )
+    const usersById = useUsersById()
 
     // Only the poll's creator can close it.
     const { name: currentUser } = useUserCookieData()
+
+    const { call: retractVote, loading: retracting } = useFrappePostCall("raven.api.raven_poll.retract_vote")
+    const [confirmClose, setConfirmClose] = useState(false)
+    const { call: closePoll, loading: closing } = useFrappePostCall("raven.api.raven_poll.close_poll")
+    const timeFormat = useAtomValue(timeFormatAtom)
+
+    // Rare — the cache is warm whenever the drawer is opened from a poll card
+    if (!data) {
+        return (
+            <div className="flex h-full w-full items-center justify-center">
+                <Spinner />
+            </div>
+        )
+    }
+
+    const { poll: rawPoll, current_user_votes: currentUserVotes, votes } = data.message
+    // Resolve each option's voter ids → user objects (empty for anonymous polls,
+    // where the backend doesn't send voters)
+    const poll = {
+        ...rawPoll,
+        options: rawPoll.options.map((option) => ({
+            ...option,
+            voters: (votes[option.name] ?? [])
+                .map((id) => usersById.get(id))
+                .filter((voter): voter is UserData => voter !== undefined)
+                .map((voter) => ({
+                    id: voter.name,
+                    name: voter.name,
+                    full_name: voter.full_name,
+                    image: voter.user_image ?? "",
+                })),
+        })),
+    }
+    const user = usersById.get(poll.owner)
+    const totalVotes = poll.total_votes || 0
+    const { isAnonymous, isDisabled: isPollClosed } = getPollStatus(poll)
+    const hasVoted = currentUserVotes.length > 0
     const isOwner = poll.owner === currentUser
 
-    // Retract / close both update the inline poll via the `poll_update` realtime event
-    // (usePollRealtime), so we just close the drawer on success.
-    const { call: retractVote, loading: retracting } = useFrappePostCall("raven.api.raven_poll.retract_vote")
+    // Retract / close: the drawer itself is live (poll_update revalidates the
+    // shared cache), closing on success is just the friendlier gesture.
     const onRetract = () => {
         retractVote({ poll_id: poll.name })
             .then(() => onClose())
-            .catch((e) => toast.error(_("Could not retract your vote"), { description: getErrorMessage(e) }))
+            .catch((e) => errorResponseToast(_("Could not retract your vote"), e))
     }
-
-    const [confirmClose, setConfirmClose] = useState(false)
-    const { call: closePoll, loading: closing } = useFrappePostCall("raven.api.raven_poll.close_poll")
     const onClosePoll = () => {
         closePoll({ poll_id: poll.name })
             // Success closes the drawer (which unmounts this dialog); keep it open on error.
             .then(() => onClose())
-            .catch((e) => toast.error(_("Could not close the poll"), { description: getErrorMessage(e) }))
+            .catch((e) => errorResponseToast(_("Could not close the poll"), e))
     }
 
-    const pollStatusBadge: null | { text: string; theme: 'gray' | 'red'; icon?: React.ElementType } = useMemo(() => {
+    // Plain expression, not useMemo: the poll data is LIVE now (a closed poll
+    // must flip the badge), and it's cheap.
+    const pollStatusBadge: null | { text: string; theme: 'gray' | 'red'; icon?: React.ElementType } = (() => {
         if (!poll.end_date) {
             // If the poll does not have an end date, it is open indefinitely
             return null
         }
         if (isPollClosed) {
             return { text: _("Closed"), theme: "red", icon: LockIcon }
-        } else if (poll.end_date) {
-            try {
-                const endDateObj = getDateObject(poll.end_date)
-                const formattedDate = endDateObj.format('MMM D, hh:mm A')
-                return { text: _("Open until {0}", [formattedDate]), theme: "gray" }
-            } catch {
-                return { text: _("Open"), theme: "gray" }
-            }
-        } else {
-            return null
         }
-    }, [])
+        try {
+            const endDateObj = getDateObject(poll.end_date)
+            const formattedDate = endDateObj.format(timeFormat === "12-hour" ? "MMM D, h:mma" : "MMM D, HH:mm")
+            return { text: _("Open until {0}", [formattedDate]), theme: "gray" }
+        } catch {
+            return { text: _("Open"), theme: "gray" }
+        }
+    })()
 
     return (
         <div className="flex flex-col h-full w-full">
@@ -156,13 +194,15 @@ export const PollDrawer: React.FC<PollDrawerProps> = ({
                         <p className="text-p-base-medium text-ink-gray-8">{poll.question}</p>
                         {/* Poll Creator and Creation Time */}
                         <div className="flex items-center gap-2 text-sm text-ink-gray-7">
-                            <UserAvatar
-                                user={user}
-                                size="sm"
-                                showStatusIndicator={false}
-                            />
-                            <span>{user?.full_name || user?.name || "User"}</span>
-                            <span className="text-ink-gray-5 text-xs">{getDateObject(poll.creation).format('MMM D, hh:mm A')}</span>
+                            {user && (
+                                <UserAvatar
+                                    user={user}
+                                    size="sm"
+                                    showStatusIndicator={false}
+                                />
+                            )}
+                            <span>{user?.full_name || poll.owner}</span>
+                            <span className="text-ink-gray-5 text-xs">{getDateObject(poll.creation).format(timeFormat === "12-hour" ? "MMM D, h:mma" : "MMM D, HH:mm")}</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <Badge>

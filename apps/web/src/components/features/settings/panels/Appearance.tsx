@@ -1,4 +1,3 @@
-import { Label } from "@components/ui/label"
 import { Separator } from "@components/ui/separator"
 import { SettingsPanelDescription, SettingsPanelHeader, SettingsPanelTitle, SettingsPanelContent, SettingsFormLabel, SettingsFormDescription, SettingsFormRow } from "@components/ui/settings-dialog"
 import { useTheme } from "@components/theme-provider"
@@ -8,9 +7,9 @@ import _ from "@lib/translate"
 import { useFrappePostCall } from "frappe-react-sdk"
 import { toast } from "sonner"
 import useCurrentRavenUser from "@raven/lib/hooks/useCurrentRavenUser"
-import { getErrorMessage } from "@lib/frappe"
 import { Select, SelectItem, SelectValue, SelectTrigger, SelectContent } from "@components/ui/select"
-import { Grid3x2Icon, ImagesIcon, FileStack, LayoutPanelLeftIcon } from "lucide-react"
+import { ImagesIcon, LayoutPanelLeftIcon, MousePointerClickIcon, PanelBottomIcon } from "lucide-react"
+import { errorResponseToast } from "@components/ui/error-banner"
 
 const Appearance = () => {
 
@@ -35,6 +34,10 @@ const Appearance = () => {
                         <Separator />
 
                         <ImageGroupingBehaviour />
+
+                        <Separator />
+
+                        <LinkPreviewBehaviour />
 
                     </div>
                 </div>
@@ -276,7 +279,7 @@ const LeftRightLayoutSwitcher = () => {
             mutate()
             toast.success(_("Chat style updated"))
         }).catch((e) => {
-            toast.error(getErrorMessage(e))
+            errorResponseToast(_("Could not update chat style"), e)
         })
     }
 
@@ -319,6 +322,61 @@ const LeftRightLayoutSwitcher = () => {
 
 }
 
+type LinkPreviewMode = "Link Hover" | "Preview Card"
+
+/**
+ * How previews for message links appear: a card under the message, or a
+ * floating preview on hover (keeps the stream compact). Desktop-only in
+ * effect — mobile has no hover, a tap always opens the LINK (hijacking
+ * taps to show a preview would make links feel broken), so on mobile
+ * "Preview Card" shows the card and "Link Hover" just keeps the stream
+ * clean. iOS long-press already gives a native link peek for free.
+ */
+const LinkPreviewBehaviour = () => {
+
+    const { myProfile, mutate } = useCurrentRavenUser()
+
+    const { call } = useFrappePostCall('frappe.client.set_value')
+
+    const setLinkPreviewMode = (mode: LinkPreviewMode) => {
+        if (!myProfile?.name) return
+        call({
+            doctype: 'Raven User',
+            name: myProfile.name,
+            fieldname: 'link_previews',
+            value: mode
+        }).then(() => {
+            mutate()
+            toast.success(_("Link preview style updated"))
+        }).catch((e) => {
+            errorResponseToast(_("Could not update link preview style"), e)
+        })
+    }
+
+    // Users from before the field existed have no value — the card is the default.
+    const currentMode: LinkPreviewMode = myProfile?.link_previews || "Preview Card"
+
+    return <SettingsFormRow>
+        <div className="flex flex-col">
+            <SettingsFormLabel htmlFor="link_previews">{_("Link previews")}</SettingsFormLabel>
+            <SettingsFormDescription>
+                {_("Show a preview card under messages with links, or keep the stream compact and preview links on hover. On mobile, previews only appear as cards.")}
+            </SettingsFormDescription>
+        </div>
+        <div className="min-w-40 flex justify-end">
+            <Select onValueChange={(value) => setLinkPreviewMode(value as LinkPreviewMode)} value={currentMode}>
+                <SelectTrigger id="link_previews" className="min-w-32">
+                    <SelectValue placeholder={_("Select link preview style")} />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="Preview Card"><PanelBottomIcon /> {_("Preview card")}</SelectItem>
+                    <SelectItem value="Link Hover"><MousePointerClickIcon /> {_("On hover")}</SelectItem>
+                </SelectContent>
+            </Select>
+        </div>
+    </SettingsFormRow>
+}
+
 const ImageGroupingBehaviour = () => {
 
     const [imageGrouping, setImageGrouping] = useAtom(imageGroupingLayoutAtom)
@@ -328,17 +386,17 @@ const ImageGroupingBehaviour = () => {
         <div className="flex flex-col">
             <SettingsFormLabel htmlFor="sort_channels_by">{_("Image group layout")}</SettingsFormLabel>
             <SettingsFormDescription>
-                {_("Decide how a group of images should appear in the chat stream.")}
+                {_("Decide how a group of images should appear in the chat stream. 4+ images always use the carousel.")}
             </SettingsFormDescription>
         </div>
         <div className="min-w-40 flex justify-end">
             <Select onValueChange={(value) => setImageGrouping(value as "stack" | "grid")} value={imageGrouping}>
                 <SelectTrigger id="time_format" className="min-w-32">
-                    <SelectValue placeholder={_("Select sort order")} />
+                    <SelectValue placeholder={_("Select image group layout")} />
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value="stack"><ImagesIcon /> {_("Stack")}</SelectItem>
-                    <SelectItem value="grid"><LayoutPanelLeftIcon /> {_("Grid/Carousel")}</SelectItem>
+                    <SelectItem value="grid"><LayoutPanelLeftIcon /> {_("Grid")}</SelectItem>
                 </SelectContent>
             </Select>
         </div>

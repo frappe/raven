@@ -73,7 +73,7 @@ export const SingleChoicePollVoting: React.FC<SingleChoicePollVotingProps> = ({
                     )
                 })}
             </RadioGroup>
-            <span className="pt-1.5 px-1 text-sm text-ink-gray-6">{poll.total_votes === 1 ? _("1 vote") : _("{0} votes", [String(poll.total_votes ?? 0)])}</span>
+            <span className="pt-2.5 block px-1 text-sm text-ink-gray-6">{poll.total_votes === 1 ? _("1 vote") : _("{0} votes", [String(poll.total_votes ?? 0)])}</span>
         </>
     )
 }

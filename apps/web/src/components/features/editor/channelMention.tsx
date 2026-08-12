@@ -1,7 +1,8 @@
 import Mention from "@tiptap/extension-mention"
-import { Hash, Lock } from "lucide-react"
+import { ChannelIcon } from "@components/common/ChannelIcon/ChannelIcon"
 import type { ChannelListItem } from "@raven/types/common/ChannelListItem"
 import { channelStore } from "@stores/channels/store"
+import { useWorkspaces } from "@hooks/useWorkspaces"
 import { createMentionSuggestion } from "./createSuggestion"
 import { channelMentionPluginKey } from "./suggestion"
 
@@ -54,15 +55,29 @@ export const ChannelMention = Mention.extend({ name: "channelMention" }).configu
         getItems: getChannelSuggestions,
         toAttrs: (channel) => ({ id: channel.name, label: channel.channel_name || channel.name }),
         getKey: (channel) => channel.name,
-        renderItem: (channel) => (
-            <>
-                {channel.type === "Private" ? (
-                    <Lock className="size-4 shrink-0 text-ink-gray-5" />
-                ) : (
-                    <Hash className="size-4 shrink-0 text-ink-gray-5" />
-                )}
-                <span className="truncate">{channel.channel_name || channel.name}</span>
-            </>
-        ),
+        renderItem: (channel) => <ChannelSuggestionRow channel={channel} />,
     }),
 })
+
+/**
+ * Suggestion row: icon + name, workspace DISPLAY name right-aligned.
+ * Suggestions span all workspaces, so the workspace disambiguates same-named
+ * channels (#general everywhere). A component (not inline JSX in renderItem)
+ * because resolving id → workspace_name needs the useWorkspaces hook — its
+ * SWR cache is long-lived, so 20 rows cost one cached read each.
+ */
+const ChannelSuggestionRow = ({ channel }: { channel: ChannelListItem }) => {
+    const { workspaces } = useWorkspaces()
+    const workspaceName = channel.workspace
+        ? workspaces.find((workspace) => workspace.name === channel.workspace)?.workspace_name ?? channel.workspace
+        : undefined
+    return (
+        <>
+            <ChannelIcon type={channel.type} className="size-4 shrink-0 text-ink-gray-5" />
+            <span className="min-w-0 truncate">{channel.channel_name || channel.name}</span>
+            {workspaceName && (
+                <span className="ml-auto shrink-0 pl-2 text-sm text-ink-gray-5">{workspaceName}</span>
+            )}
+        </>
+    )
+}

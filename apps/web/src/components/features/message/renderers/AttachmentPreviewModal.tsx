@@ -1,6 +1,7 @@
-import { useRef } from "react"
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { useAtomValue, useSetAtom } from "jotai"
 import { useHotkeys } from "react-hotkeys-hook"
+import { useHistoryBackClose } from "@hooks/useHistoryBackClose"
 import { toast } from "sonner"
 import { ChevronLeft, ChevronRight, FileText, Film, Music, MusicIcon } from "lucide-react"
 import { Badge } from "@components/ui/badge"
@@ -8,6 +9,8 @@ import { Button } from "@components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip"
 import { MediaLightbox } from "./MediaLightbox"
 import { MediaPreviewHeader } from "./MediaPreviewHeader"
+import { ZoomableImage } from "./ZoomableImage"
+import { SwipeDownToClose } from "./SwipeDownToClose"
 import { AudioPlayer } from "./AudioPlayer"
 import { useUser } from "@hooks/useUser"
 import { useIsMobile } from "@hooks/use-mobile"
@@ -20,6 +23,9 @@ import FileTypeIcon from "@components/common/FileIcons/FileTypeIcon"
 
 /** Minimum horizontal travel (px) for a touch swipe to count as paging. */
 const SWIPE_THRESHOLD = 50
+
+/** Vertical air between a contained mobile image and the bars (px). */
+const CONTAINED_GUTTER = 12
 
 /**
  * The single, app-wide attachment lightbox. Mounted once at the app shell;
@@ -59,6 +65,55 @@ const AttachmentPreviewContent = ({
     const canEmbedPdf = current.kind === "pdf" && !isMobile
 
     const close = () => setState(null)
+
+    // Escape is handled by the dialog; arrows page through the set
+    const hasMany = attachments.length > 1
+
+    // The lightbox owns the back gesture while open (Android's edge-swipe back
+    // was navigating the page UNDER the still-open preview — this modal is
+    // atom-driven and route-independent, so it survived the navigation).
+    useHistoryBackClose(open, close)
+
+    // Mobile, images only: tapping the photo hides the header + filmstrip +
+    // zoom pill (iOS Photos style); tapping again brings them back. Closing
+    // still works while hidden — swipe-down and the back gesture. Chrome
+    // comes back on reopen and when paging to a non-image (those need their
+    // buttons).
+    const [chromeHidden, setChromeHidden] = useState(false)
+    const toggleChrome = () => setChromeHidden((hidden) => !hidden)
+    useEffect(() => {
+        if (!open || current.kind !== "image") setChromeHidden(false)
+    }, [open, current.kind])
+
+    // Mobile: the media area is inset by the real heights of the two bars, so
+    // the image sits BETWEEN them instead of under them (iOS Photos). Hiding
+    // the chrome drops the insets and the image expands to the full screen.
+    // Measured, not hardcoded — the bars size to their content and rotation.
+    const [headerEl, setHeaderEl] = useState<HTMLDivElement | null>(null)
+    const [filmstripEl, setFilmstripEl] = useState<HTMLDivElement | null>(null)
+    const [chromeInsets, setChromeInsets] = useState({ top: 0, bottom: 0 })
+    // Layout effect, so a (re)opened dialog is measured BEFORE its first paint —
+    // measuring after paint made every open start at full height and then
+    // animate down to the contained size (visible only on tall images, the
+    // height-limited ones). A null element keeps its previous value instead of
+    // resetting: the bars unmount while the dialog is closed, and zeroing there
+    // queued up the same start-at-full-height slide for the next open. The one
+    // real "no bar" case is a single attachment — no filmstrip, bottom = 0.
+    useLayoutEffect(() => {
+        const measure = () =>
+            setChromeInsets((prev) => {
+                const top = headerEl ? headerEl.offsetHeight : prev.top
+                const bottom = hasMany ? (filmstripEl ? filmstripEl.offsetHeight : prev.bottom) : 0
+                // Same numbers → same object, so an unchanged measurement
+                // doesn't re-render the modal.
+                return top === prev.top && bottom === prev.bottom ? prev : { top, bottom }
+            })
+        measure()
+        const observer = new ResizeObserver(measure)
+        if (headerEl) observer.observe(headerEl)
+        if (filmstripEl) observer.observe(filmstripEl)
+        return () => observer.disconnect()
+    }, [headerEl, filmstripEl, hasMany])
     // Wraps at the ends, matching the previous image slideshow behavior
     const step = (direction: 1 | -1) =>
         setState((prev) =>
@@ -66,8 +121,20 @@ const AttachmentPreviewContent = ({
         )
     const selectIndex = (next: number) => setState((prev) => (prev ? { ...prev, index: next } : prev))
 
-    // Escape is handled by the dialog; arrows page through the set
-    const hasMany = attachments.length > 1
+    // Keep the selected thumbnail visible in the (overflowable) filmstrip:
+    // jump to it on open, glide to it while paging. openedRef distinguishes
+    // the two — this content stays mounted across closes (close-flash fix),
+    // so "on open" is the false→true flip, not mount.
+    const activeThumbRef = useRef<HTMLDivElement>(null)
+    const openedRef = useRef(false)
+    useEffect(() => {
+        if (!open) {
+            openedRef.current = false
+            return
+        }
+        activeThumbRef.current?.scrollIntoView({ inline: "center", block: "nearest", behavior: openedRef.current ? "smooth" : "auto" })
+        openedRef.current = true
+    }, [index, open])
     useHotkeys("left", () => step(-1), { enabled: open && hasMany, preventDefault: true }, [open, hasMany])
     useHotkeys("right", () => step(1), { enabled: open && hasMany, preventDefault: true }, [open, hasMany])
 
@@ -94,13 +161,31 @@ const AttachmentPreviewContent = ({
 
     const download = () => downloadFile(current.fileUrl, current.fileName)
     const share = async () => {
-        if ((await shareFile(current.fileUrl, current.fileName)) === "copied") toast.success(_("Link copied"))
+        const result = await shareFile(current.fileUrl, current.fileName)
+        if (result === "copied") toast.success(_("Link copied"))
+        else if (result === "failed") toast.error(_("Could not copy link"))
     }
 
+    // Backdrop fade for the swipe-down-to-close drag: written straight onto the
+    // scrim element per pointer move — no state, no re-render, compositor-only.
+    // "" restores the class opacity (and the overlay's transition animates it).
+    const overlayRef = useRef<HTMLDivElement>(null)
+    const onDismissProgress = useCallback((progress: number) => {
+        const overlay = overlayRef.current
+        if (overlay) overlay.style.opacity = progress === 0 ? "" : String(1 - progress * 0.7)
+    }, [])
+
     return (
-        <MediaLightbox open={open} onOpenChange={(next) => !next && close()} title={current.fileName}>
-            {/* Floating chrome over the scrim */}
-            <div className="shrink-0 p-3">
+        <MediaLightbox open={open} onOpenChange={(next) => !next && close()} title={current.fileName} overlayRef={overlayRef}>
+            {/* Chrome bars. On mobile they are absolute so they can fade without
+                unmounting; while they show, the media box below shrinks its
+                height symmetrically to clear them (see the inner box there).
+                Desktop keeps the in-flow row (the PDF embed needs its reserved
+                space). */}
+            <div ref={setHeaderEl} className={cn(
+                "shrink-0 p-3 transition-opacity duration-150 max-md:absolute max-md:inset-x-0 max-md:top-0 max-md:z-20",
+                chromeHidden && "pointer-events-none opacity-0",
+            )}>
                 <MediaPreviewHeader
                     // Preview mode (composer-staged files): no author, no download/share —
                     // just a "Preview" tag. View mode (sent messages): full chrome.
@@ -126,12 +211,17 @@ const AttachmentPreviewContent = ({
                 PDF <embed>, which fills its box and swallows its own clicks,
                 that frame plus the width cap below is the only backdrop */}
             <div
-                className="relative flex min-h-0 flex-1 items-center justify-center p-4"
-                onClick={close}
+                className="relative flex min-h-0 flex-1 items-center justify-center md:p-4"
+                // Clicking the dark area around the media closes — unless this is
+                // a mobile image with its chrome hidden, where the whole screen is
+                // "the photo" and a tap anywhere brings the chrome back instead.
+                // Taps ON a mobile image never reach here — ZoomableImage stops
+                // their propagation and reports them via onTap (chrome toggle).
+                onClick={isMobile && current.kind === "image" && chromeHidden ? () => setChromeHidden(false) : close}
                 onTouchStart={onTouchStart}
                 onTouchEnd={onTouchEnd}
             >
-                {hasMany && (
+                {hasMany && !isMobile && (
                     <>
                         <Button
                             variant="subtle"
@@ -162,61 +252,115 @@ const AttachmentPreviewContent = ({
                     </>
                 )}
 
+                {/* The iOS containment model: the media stays centered on the TRUE
+                    screen always — this inner box shrinks symmetrically (by the
+                    taller bar, both sides) while the chrome shows, and grows back
+                    to the full screen when it hides. Symmetric is the point: the
+                    center never moves, so a wide image (which never touches the
+                    height limit anyway) doesn't shift or resize on toggle, and a
+                    tall one expands in place. The overshoot in the curve is the
+                    subtle iOS bounce. The bottom band exists even without a
+                    filmstrip — the reserve is max(header, filmstrip) + gutter. */}
+                <div
+                    className={cn(
+                        "flex h-full min-h-0 w-full items-center justify-center",
+                        "max-md:transition-[height] max-md:duration-350 max-md:ease-[cubic-bezier(0.34,1.56,0.64,1)]",
+                    )}
+                    style={isMobile ? {
+                        height: chromeHidden
+                            ? "100%"
+                            : `calc(100% - ${2 * (Math.max(chromeInsets.top, chromeInsets.bottom) + CONTAINED_GUTTER)}px)`,
+                    } : undefined}
+                >
                 {current.kind === "image" ? (
-                    <img
+                    // Zoomable (wheel / pinch / double-tap / drag-pan). Keyed by URL so
+                    // paging remounts it at 1x. While zoomed it stops touch events, which
+                    // is what suspends this container's swipe-paging. Swipe-down-to-close
+                    // is integrated (it must arbitrate against zoom/pinch), unlike the
+                    // other media kinds which share the SwipeDownToClose wrapper below.
+                    <ZoomableImage
+                        key={current.fileUrl}
                         src={current.fileUrl}
                         alt={current.fileName}
-                        className="max-h-full max-w-[90%] object-contain"
-                        onClick={(event) => event.stopPropagation()}
-                    />
-                ) : current.kind === "video" ? (
-                    <video
-                        src={current.fileUrl}
-                        controls
-                        className="max-h-full max-w-[90%]"
-                        onClick={(event) => event.stopPropagation()}
-                    />
-                ) : current.kind === "audio" ? (
-                    // Stop touchstart too, so dragging the seek slider isn't read as a page-swipe
-                    <div className="w-full max-w-sm flex flex-col gap-2">
-                        <div className="flex items-center justify-center aspect-square bg-surface-gray-1 rounded-lg">
-                            <MusicIcon className="size-12" />
-                        </div>
-                        <div
-                            className="rounded-lg bg-surface-gray-1 p-3"
-                            onClick={(event) => event.stopPropagation()}
-                            onTouchStart={(event) => event.stopPropagation()}
-                        >
-                            <AudioPlayer src={current.fileUrl} />
-                        </div>
-                    </div>
-
-                ) : canEmbedPdf ? (
-                    // <embed> = native PDF viewer (toolbar, zoom) at full height.
-                    // max-w caps it so wide screens keep a dark backdrop to click.
-                    <embed
-                        src={current.fileUrl}
-                        type="application/pdf"
-                        className="h-full w-full max-w-5xl rounded-md"
-                        onClick={(event) => event.stopPropagation()}
+                        onDismiss={close}
+                        onDismissProgress={onDismissProgress}
+                        onTap={isMobile ? toggleChrome : undefined}
+                        // iOS style: zooming in hides the chrome, coming back to
+                        // fit brings it back. Fires only at the 1x boundary, so a
+                        // tap-to-show while zoomed isn't fought by pinching.
+                        onZoomedChange={isMobile ? setChromeHidden : undefined}
                     />
                 ) : (
-                    // No inline preview (non-previewable files, or a PDF paged
-                    // into on mobile) — a download/open card, Google-Drive style
-                    <DownloadCard attachment={current} isMobile={isMobile} />
+                    <SwipeDownToClose onDismiss={close} onProgress={onDismissProgress}>
+                        {current.kind === "video" ? (
+                            <video
+                                src={current.fileUrl}
+                                controls
+                                className="max-h-full md:max-w-[90%]"
+                                onClick={(event) => event.stopPropagation()}
+                            />
+                        ) : current.kind === "audio" ? (
+                            // Stop touchstart too, so dragging the seek slider isn't read as a page-swipe
+                            <div className="w-full max-w-sm flex flex-col gap-2">
+                                <div className="flex items-center justify-center aspect-square bg-surface-gray-1 rounded-lg">
+                                    <MusicIcon className="size-12" />
+                                </div>
+                                <div
+                                    className="rounded-lg bg-surface-gray-1 p-3"
+                                    onClick={(event) => event.stopPropagation()}
+                                    onTouchStart={(event) => event.stopPropagation()}
+                                >
+                                    <AudioPlayer src={current.fileUrl} />
+                                </div>
+                            </div>
+                        ) : canEmbedPdf ? (
+                            // <embed> = native PDF viewer (toolbar, zoom) at full height.
+                            // max-w caps it so wide screens keep a dark backdrop to click.
+                            // (Touches INSIDE the embed never reach us — the dismiss drag
+                            // only works from the frame around it; desktop-only anyway.)
+                            <embed
+                                src={current.fileUrl}
+                                type="application/pdf"
+                                className="h-full w-full max-w-5xl rounded-md"
+                                onClick={(event) => event.stopPropagation()}
+                            />
+                        ) : (
+                            // No inline preview (non-previewable files, or a PDF paged
+                            // into on mobile) — a download/open card, Google-Drive style
+                            <div className="px-3 md:px-0 w-full flex items-center justify-center"><DownloadCard attachment={current} isMobile={isMobile} /></div>
+                        )}
+                    </SwipeDownToClose>
                 )}
+                </div>
             </div>
 
             {/* Filmstrip: image thumbnails, icon tiles for PDFs. The empty
                 space beside the tiles is backdrop — clicking it closes; the
                 tiles stop propagation so clicking one only selects. */}
             {hasMany && (
-                <div className="shrink-0 p-3" onClick={close}>
-                    <div className="flex max-w-full justify-center gap-2 overflow-x-auto">
+                <div
+                    ref={setFilmstripEl}
+                    className={cn(
+                        // Absolute on mobile like the header; the media area
+                        // reserves its height while it shows (see above).
+                        "shrink-0 p-3 transition-opacity duration-150 max-md:absolute max-md:inset-x-0 max-md:bottom-0 max-md:z-20",
+                        chromeHidden && "pointer-events-none opacity-0",
+                    )}
+                    onClick={close}
+                >
+                    {/* Centering lives on the INNER w-max wrapper, not the scroller:
+                        justify-center on an overflowing scroller clips the leading
+                        thumbs past the scroll origin — unreachable by scrolling OR
+                        scrollIntoView (the "selected image missing on open" bug).
+                        w-max + mx-auto centers short strips and scrolls long ones
+                        from a true zero. scroll-fade-x dims the overflow edges. */}
+                    <div className="max-w-full overflow-x-auto scroll-fade-x">
+                        <div className="mx-auto flex w-max gap-2">
                         {attachments.map((attachment, thumbIndex) => (
                             <Tooltip key={attachment.id}>
                                 <TooltipTrigger asChild>
                                     <div
+                                        ref={thumbIndex === index ? activeThumbRef : undefined}
                                         className={cn(
                                             "flex h-12 w-12 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md border-2 bg-surface-gray-2 transition-all duration-200",
                                             thumbIndex === index
@@ -243,6 +387,7 @@ const AttachmentPreviewContent = ({
                                 <TooltipContent>{attachment.fileName}</TooltipContent>
                             </Tooltip>
                         ))}
+                        </div>
                     </div>
                 </div>
             )}

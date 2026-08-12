@@ -3,6 +3,7 @@ import { CheckIcon, ChevronRightIcon } from "lucide-react"
 import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui"
 
 import { cn } from "@lib/utils"
+import { Switch } from "@components/ui/switch"
 
 function DropdownMenu({
   ...props
@@ -59,8 +60,8 @@ function DropdownMenuGroup({
 }
 
 const BASE_ITEM_STYLES = `focus-visible:outline-none select-none relative flex cursor-pointer items-center
-gap-2 rounded px-2 py-1.5 text-base text-ink-gray-7 data-[variant=destructive]:text-ink-red-6
-data-[variant=destructive]:*:[svg]:text-ink-red-6! data-[variant=destructive]:focus:bg-surface-red-3 [&_svg:not([class*='text-'])]:text-ink-gray-6 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0
+gap-2 rounded px-2 py-2 md:py-1.5 text-lg md:text-base text-ink-gray-7 data-[variant=destructive]:text-ink-red-6
+data-[variant=destructive]:*:[svg]:text-ink-red-6! data-[variant=destructive]:focus:bg-surface-red-3 [&_svg:not([class*='text-'])]:text-ink-gray-6 [&_svg:not([class*='size-'])]:size-4.5 md:[&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0
 data-disabled:pointer-events-none data-disabled:cursor-not-allowed data-disabled:text-ink-gray-4 data-disabled:data-[variant=destructive]:text-ink-gray-4 data-disabled:data-[variant=destructive]:*:[svg]:text-ink-gray-4! data-disabled:*:[svg]:text-ink-gray-4! focus:bg-surface-gray-2 data-[state=checked]:bg-surface-gray-3 data-inset:ps-8`
 
 function DropdownMenuItem({
@@ -108,6 +109,50 @@ function DropdownMenuCheckboxItem({
           <CheckIcon className="size-4" />
         </DropdownMenuPrimitive.ItemIndicator>
       </span>
+    </DropdownMenuPrimitive.CheckboxItem>
+  )
+}
+
+/**
+ * A menu item with a trailing SWITCH — for settings that live inside a
+ * dropdown (frappe-ui's Dropdown `switch: true` items, ported). Toggling
+ * never closes the menu, so several can be flipped in one visit. Built on
+ * CheckboxItem for the menuitemcheckbox semantics; the Switch is visual only
+ * (a live one would be a second, nested control fighting the item for events).
+ */
+function DropdownMenuSwitchItem({
+  className,
+  children,
+  checked,
+  switchSize = "sm",
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.CheckboxItem> & {
+  /** Trailing switch size — pass "md" on touch surfaces. */
+  switchSize?: React.ComponentProps<typeof Switch>["size"]
+}) {
+  return (
+    <DropdownMenuPrimitive.CheckboxItem
+      data-slot="dropdown-menu-switch-item"
+      className={cn(
+        BASE_ITEM_STYLES,
+        // No checked-row background — the Switch already shows the state, and
+        // several "on" rows all painted gray would read as selection, not state
+        "data-[state=checked]:bg-transparent data-[state=checked]:focus:bg-surface-gray-2 justify-between",
+        className
+      )}
+      checked={checked}
+      {...props}
+      // After the spread ON PURPOSE: toggling must never close the menu
+      onSelect={(event) => event.preventDefault()}
+    >
+      {children}
+      <Switch
+        size={switchSize}
+        checked={checked === true}
+        tabIndex={-1}
+        aria-hidden="true"
+        className="pointer-events-none ms-auto"
+      />
     </DropdownMenuPrimitive.CheckboxItem>
   )
 }
@@ -253,6 +298,7 @@ export {
   DropdownMenuItem,
   DropdownMenuCheckboxItem,
   DropdownMenuRadioGroup,
+  DropdownMenuSwitchItem,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuShortcut,

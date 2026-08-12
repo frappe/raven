@@ -14,17 +14,25 @@ export const MediaLightbox = ({
     open,
     onOpenChange,
     title,
+    overlayRef,
     children,
 }: {
     open: boolean
     onOpenChange: (open: boolean) => void
     /** Accessible name for the dialog (screen readers); rendered sr-only. */
     title: string
+    /** Scrim handle for the swipe-down-to-close backdrop fade (direct style writes, no state). */
+    overlayRef?: React.Ref<HTMLDivElement>
     children: React.ReactNode
 }) => (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
         <DialogPrimitive.Portal>
-            <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black-900 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+            {/* transition-opacity: the dismiss drag writes inline opacity per move —
+                the transition smooths the steps and animates the restore to "" */}
+            <DialogPrimitive.Overlay
+                ref={overlayRef}
+                className="fixed inset-0 z-50 bg-black-900 transition-opacity duration-150 ease-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+            />
             <DialogPrimitive.Content
                 aria-describedby={undefined}
                 // Keep initial focus off the action buttons — they read as pre-selected

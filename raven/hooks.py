@@ -249,11 +249,22 @@ ignore_links_on_delete = ["Raven Message"]
 
 additional_timeline_content = {"*": ["raven.api.raven_message.get_timeline_message_content"]}
 
+# /raven serves the v3 app; the old (v2) app lives on at /raven_v2.
 website_route_rules = [
 	{"from_route": "/raven/<path:app_path>", "to_route": "raven"},
-	{"from_route": "/raven_mobile/<path:app_path>", "to_route": "raven"},
-	{"from_route": "/raven_v3/<path:app_path>", "to_route": "raven_v3"},
+	{"from_route": "/raven_v2/<path:app_path>", "to_route": "raven_v2"},
 ]
+
+# v3 lived at /raven_v3 during the beta — installed PWAs and shared links from
+# that era land on the real mount. Regex source with a capture so deep links
+# keep their path.
+website_redirects = [
+	{"source": r"/raven_v3(/.*)?", "target": r"/raven\1"},
+]
+
+# Serves the v3 service worker at /raven/sw.js (in-scope for page control —
+# offline app shell + share target). See raven/page_renderers.py for why.
+page_renderer = ["raven.page_renderers.RavenV3ServiceWorker"]
 
 permission_query_conditions = {
 	"Raven Channel": "raven.permissions.raven_channel_query",

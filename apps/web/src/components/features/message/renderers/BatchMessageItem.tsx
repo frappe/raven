@@ -4,7 +4,8 @@ import { MessageImages } from "./MessageImages"
 import { MessageFiles } from "./MessageFiles"
 import { MessageVideo } from "./MessageVideo"
 import { MessageAudio } from "./MessageAudio"
-import { EditableMessageBody } from "./MessageContent"
+import { EditableMessageBody, MessageAttributes } from "./MessageContent"
+import { MessageLinkPreview } from "./LinkPreview"
 import { MessageReactionsRow } from "./MessageReactions"
 import { MessageRow, MessageSenderLayout } from "./MessageRow"
 import { MessageThreadPill } from "./ThreadMessage"
@@ -40,10 +41,12 @@ export const BatchMessageItem = ({
     const head = block.messages[0]
     const newest = block.messages[block.messages.length - 1]
 
-    // The selector keeps at most one thread parent in a batch and only the
-    // head matters here: when it's a thread, the batch shows the pill +
-    // connector, same as a single message (the selector splits 2+ thread batches).
-    const showThread = isThreadParent(head)
+    // The selector keeps at most one thread parent in a batch (it splits 2+ into individual
+    // messages), so find that member wherever it sits and show its pill + connector. v3 batch
+    // actions create the thread on the NEWEST member (see blockFromEvent), but finding it by
+    // is_thread (not by position) also covers threads created on any other member — e.g. by a
+    // v2 client — instead of silently dropping the pill.
+    const threadMember = block.messages.find(isThreadParent)
 
     const { ref } = useIntersectionObserver({
         onChange: (isIntersecting) => {
@@ -72,6 +75,18 @@ export const BatchMessageItem = ({
 
     /** A batch carries one caption — whichever member has text (the composer sets it on one). */
     const captionMember = block.messages.find((message) => message.text)
+
+    // Pinned/Forwarded live on individual members (pinning targets one message)
+    // but the batch presents as ONE message, so each badge shows once if any
+    // member carries the flag. Edited needs no aggregate: an edit lands on the
+    // caption member, whose body renders its own inline "(edited)" marker.
+    const attributeFlags = useMemo(
+        () => ({
+            is_pinned: block.messages.some((message) => message.is_pinned === 1) ? (1 as const) : (0 as const),
+            is_forwarded: block.messages.some((message) => message.is_forwarded === 1) ? (1 as const) : (0 as const),
+        }),
+        [block.messages],
+    )
 
     // A batch reply lives on one member (the send API attaches it to the last);
     // render the quote once, at the top of the block.
@@ -104,7 +119,14 @@ export const BatchMessageItem = ({
             {videos.length > 0 && <MessageVideo messages={videos} />}
             {audios.length > 0 && <MessageAudio messages={audios} />}
             {docs.length > 0 && <MessageFiles messages={docs} attachments={attachments} />}
+            {/* Below the media, above the caption — an Edited badge refers to the
+                caption text (that's the only editable part of a batch), so it sits
+                next to what it describes rather than floating above the album. */}
+            <MessageAttributes message={attributeFlags} />
             {captionMember && <EditableMessageBody message={captionMember} />}
+            {/* Links live on the caption member (the server extracts them from its
+                text), so that's where the first-link preview hangs off a batch too. */}
+            {captionMember && <MessageLinkPreview message={captionMember} />}
             <OptimisticStatus message={head} />
             {memberReactions}
         </div>
@@ -112,7 +134,7 @@ export const BatchMessageItem = ({
 
     return (
         <MessageRow ref={ref} className={optimisticRowClass(head)}>
-            {showThread && <div className="absolute left-7 w-6 border-l-2 border-b-2 border-outline-gray-2 rounded-bl-2xl z-0 top-[48px] h-[calc(100%-66px)]" />}
+            {threadMember && <div className="absolute left-7 w-6 border-l-2 border-b-2 border-outline-gray-2 rounded-bl-2xl z-0 top-[48px] h-[calc(100%-66px)]" />}
             <MessageSenderLayout
                 owner={head.is_bot_message ? head.bot || '' : head.owner}
                 creation={head.creation}
@@ -121,7 +143,7 @@ export const BatchMessageItem = ({
                 {content}
             </MessageSenderLayout>
 
-            {showThread && <MessageThreadPill threadID={head.name} />}
+            {threadMember && <MessageThreadPill threadID={threadMember.name} channelID={threadMember.channel_id} />}
         </MessageRow>
     )
 }

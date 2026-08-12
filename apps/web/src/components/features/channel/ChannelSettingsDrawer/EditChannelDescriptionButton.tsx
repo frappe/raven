@@ -1,3 +1,8 @@
+import { useRef, useState } from "react";
+import { Edit } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { useFrappeUpdateDoc, useSWRConfig } from "frappe-react-sdk";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -7,13 +12,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@components/ui/dialog";
-import _ from "@lib/translate";
-import { Edit, Loader2 } from "lucide-react";
-import { useState } from "react";
 import {
-  ChannelList,
-  ChannelListItem,
-} from "@raven/types/common/ChannelListItem";
+  DrawerActionBar,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerNested,
+  DrawerTrigger,
+} from "@components/ui/drawer";
 import {
   Tooltip,
   TooltipContent,
@@ -27,83 +33,85 @@ import {
   FormLabel,
   FormMessage,
 } from "@components/ui/form";
-import { useForm } from "react-hook-form";
-import { useFrappeUpdateDoc, useSWRConfig } from "frappe-react-sdk";
-import { toast } from "sonner";
 import { Button } from "@components/ui/button";
-import { RavenChannel } from "@raven/types/RavenChannelManagement/RavenChannel";
 import ErrorBanner from "@components/ui/error-banner";
+import { useIsMobile } from "@hooks/use-mobile";
+import { useNoDragWhileScrolled } from "@hooks/useNoDragWhileScrolled";
+import _ from "@lib/translate";
+import {
+  ChannelList,
+  ChannelListItem,
+} from "@raven/types/common/ChannelListItem";
+import { RavenChannel } from "@raven/types/RavenChannelManagement/RavenChannel";
 import { ChannelNameInput } from "../CreateChannel/ChannelNameInput";
 import { ChannelDescriptionInput } from "../CreateChannel/ChannelDescriptionInput";
 
+/** Lets the submit button live OUTSIDE the <form> (action bar / dialog footer). */
+const FORM_ID = "edit-channel-form";
+
+type EditChannelFormValues = Pick<ChannelListItem, "channel_name" | "channel_description">;
+
+/**
+ * Edit channel name + description. Dialog on desktop; on mobile a NESTED
+ * bottom sheet (it opens from inside the channel-settings sheet) with the
+ * iOS-style action bar — the keyboard is up the whole time in this form, so
+ * Save must live at the top. Open/close flows through vaul's own
+ * trigger/close components, or the parent sheet wouldn't scale back (see
+ * AddChannelMembers for the long version).
+ */
 export const EditChannelDescriptionButton = ({
   channel,
 }: {
   channel: ChannelListItem;
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <DialogTrigger asChild>
-            <button className="p-1 rounded-sm cursor-pointer">
-              <Edit className="w-4 h-4 text-ink-gray-4 hover:text-ink-gray-8 shrink-0" />
-            </button>
-          </DialogTrigger>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>{_("Edit")}</p>
-        </TooltipContent>
-      </Tooltip>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{_("Edit Channel Name and Description")}</DialogTitle>
-          <DialogDescription className="sr-only">
-            {_("Update the channel name and description")}
-          </DialogDescription>
-        </DialogHeader>
-        <EditChannelNameAndDescriptionForm
-          channel={channel}
-          onClose={() => setIsOpen(false)}
-        />
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-const EditChannelNameAndDescriptionForm = ({
-  channel,
-  onClose,
-}: {
-  channel: ChannelListItem;
-  onClose: () => void;
-}) => {
-  const { updateDoc, loading, error } = useFrappeUpdateDoc();
-
+  const isMobile = useIsMobile();
+  const noDragProps = useNoDragWhileScrolled();
+  const [open, setOpen] = useState(false);
+  const { updateDoc, loading, error, reset: resetCall } = useFrappeUpdateDoc();
   const { mutate } = useSWRConfig();
 
-  const form = useForm<ChannelListItem>({
+  const form = useForm<EditChannelFormValues>({
     defaultValues: {
       channel_name: channel.channel_name,
       channel_description: channel.channel_description,
     },
   });
-  const { handleSubmit, setValue } = form;
 
-  const onSubmit = (data: ChannelListItem) => {
+  const handleOpenChange = (next: boolean) => {
+    // Fresh values every open (the channel may have changed since last time);
+    // stale errors don't survive a close.
+    if (next) {
+      form.reset({
+        channel_name: channel.channel_name,
+        channel_description: channel.channel_description,
+      });
+    } else {
+      resetCall();
+    }
+    setOpen(next);
+  };
+
+  // Programmatic close (after save) routed through vaul on mobile — see the
+  // hidden DrawerClose below.
+  const hiddenCloseRef = useRef<HTMLButtonElement>(null);
+  const close = () => {
+    if (isMobile) hiddenCloseRef.current?.click();
+    else handleOpenChange(false);
+  };
+
+  const onSubmit = (data: EditChannelFormValues) => {
     updateDoc("Raven Channel", channel.name, {
       channel_name: data.channel_name,
       channel_description: data.channel_description,
     }).then((result: RavenChannel) => {
       mutate(
         "channel_list",
-        (data: { message: ChannelList } | undefined) => {
-          if (data) {
+        (cached: { message: ChannelList } | undefined) => {
+          if (cached) {
             return {
               message: {
-                ...data.message,
-                channels: data.message.channels.map((ch) =>
+                ...cached.message,
+                channels: cached.message.channels.map((ch) =>
                   ch.name === result.name
                     ? {
                       ...ch,
@@ -119,16 +127,25 @@ const EditChannelNameAndDescriptionForm = ({
         { revalidate: false },
       );
       toast.success(_("Channel updated"));
-      onClose();
+      close();
+    }).catch(() => {
+      // The banner inside the form shows the error; stays open to retry.
     });
   };
 
-  return (
+  const trigger = (
+    <Button variant="ghost" isIconButton aria-label={_("Edit channel name and description")}>
+      <Edit />
+    </Button>
+  );
+
+  const formBody = (
     <Form {...form}>
       <form
-        onSubmit={handleSubmit(onSubmit)}
-        className="flex flex-col flex-1 min-h-0"
-        aria-label="Edit channel form"
+        id={FORM_ID}
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="flex flex-col gap-4"
+        aria-label={_("Edit channel form")}
       >
         {error ? <ErrorBanner error={error} /> : null}
         <FormField
@@ -170,7 +187,7 @@ const EditChannelNameAndDescriptionForm = ({
           control={form.control}
           name="channel_description"
           render={({ field }) => (
-            <FormItem className="mt-4">
+            <FormItem>
               <FormLabel>{_("Channel description")}</FormLabel>
               <FormControl>
                 <ChannelDescriptionInput
@@ -186,30 +203,91 @@ const EditChannelNameAndDescriptionForm = ({
             </FormItem>
           )}
         />
-        <DialogFooter className="mt-4">
+      </form>
+    </Form>
+  );
+
+  if (isMobile) {
+    return (
+      <DrawerNested open={open} onOpenChange={handleOpenChange}>
+        <DrawerTrigger asChild>{trigger}</DrawerTrigger>
+        <DrawerContent>
+          <DrawerActionBar
+            title={_("Edit channel")}
+            leading={
+              <DrawerClose asChild>
+                <Button variant="ghost" size="md" disabled={loading}>
+                  {_("Cancel")}
+                </Button>
+              </DrawerClose>
+            }
+            trailing={
+              <Button
+                variant="ghost"
+                size="md"
+                className="font-semibold"
+                type="submit"
+                form={FORM_ID}
+                loading={loading}
+              >
+                {_("Save")}
+              </Button>
+            }
+          />
+          <DrawerDescription className="sr-only">
+            {_("Update the channel name and description")}
+          </DrawerDescription>
+          {/* Positional no-drag (see useNoDragWhileScrolled): scrolled form scrolls,
+              pull from the top dismisses. */}
+          <div {...noDragProps} className="overflow-y-auto px-4 pt-2 pb-4">
+            {formBody}
+          </div>
+          {/* Invisible close target for the programmatic close — see close() */}
+          <DrawerClose ref={hiddenCloseRef} className="hidden" tabIndex={-1} aria-hidden="true" />
+        </DrawerContent>
+      </DrawerNested>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DialogTrigger asChild>{trigger}</DialogTrigger>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{_("Edit")}</p>
+        </TooltipContent>
+      </Tooltip>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{_("Edit Channel Name and Description")}</DialogTitle>
+          <DialogDescription className="sr-only">
+            {_("Update the channel name and description")}
+          </DialogDescription>
+        </DialogHeader>
+        {formBody}
+        <DialogFooter>
           <Button
             type="button"
             variant="outline"
-            onClick={onClose}
+            size="md"
+            onClick={() => handleOpenChange(false)}
             disabled={loading}
           >
             {_("Cancel")}
           </Button>
-          <Button type="submit" disabled={loading}>
-            {loading ? (
-              <>
-                <Loader2
-                  className="mr-2 h-4 w-4 animate-spin text-ink-gray-8/80"
-                  aria-hidden
-                />
-                {_("Saving")}
-              </>
-            ) : (
-              _("Save")
-            )}
+          <Button
+            type="submit"
+            form={FORM_ID}
+            size="md"
+            loading={loading}
+            loadingText={_("Saving...")}
+          >
+            {_("Save")}
           </Button>
         </DialogFooter>
-      </form>
-    </Form>
+      </DialogContent>
+    </Dialog>
   );
 };

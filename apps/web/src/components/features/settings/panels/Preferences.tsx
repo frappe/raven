@@ -1,4 +1,3 @@
-import { Label } from "@components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@components/ui/select"
 import { Separator } from "@components/ui/separator"
 import { SettingsPanelDescription, SettingsPanelHeader, SettingsPanelTitle, SettingsPanelContent, SettingsFormLabel, SettingsFormDescription, SettingsFormRow } from "@components/ui/settings-dialog"
@@ -9,13 +8,15 @@ import _ from "@lib/translate"
 import { useFrappePostCall } from "frappe-react-sdk"
 import { toast } from "sonner"
 import useCurrentRavenUser from "@raven/lib/hooks/useCurrentRavenUser"
-import { getErrorMessage } from "@lib/frappe"
 import { ArrowDownAzIcon, BellDotIcon, ClockIcon } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover"
 import { Button } from "@components/ui/button"
 import { useTheme } from "@components/theme-provider"
 import { customEmojiCategoriesAtom } from "@lib/emojiMart"
 import Picker from "@emoji-mart/react"
+import { errorResponseToast } from "@components/ui/error-banner"
+import { LinkSettingsAdminSection } from "./LinkSettingsAdminSection"
+import { Fragment } from "react"
 
 const Preferences = () => {
 
@@ -41,7 +42,7 @@ const Preferences = () => {
                 id: "preferences-updated"
             })
         }).catch((e) => {
-            toast.error(getErrorMessage(e))
+            errorResponseToast(_("Could not update preference"), e)
         })
     }
 
@@ -64,6 +65,7 @@ const Preferences = () => {
                             </div>
                             <div className="flex justify-end">
                                 <Switch
+                                    size="md"
                                     id="filter_recent_activity"
                                     className="dark:disabled:bg-surface-gray-2"
                                     checked={myProfile?.filter_recent_activity === 1}
@@ -83,6 +85,7 @@ const Preferences = () => {
                             </div>
                             <div className="flex justify-end">
                                 <Switch
+                                    size="md"
                                     id="filter_joined_channels"
                                     className="dark:disabled:bg-surface-gray-2"
                                     checked={myProfile?.filter_joined_channels === 1}
@@ -143,6 +146,9 @@ const Preferences = () => {
                         <Separator />
 
                         <QuickEmojis />
+
+                        {/* Renders nothing without the Raven Admin role. */}
+                        <LinkSettingsAdminSection />
                     </div>
 
                 </div>
@@ -202,42 +208,46 @@ const QuickEmojis = () => {
             <SettingsFormDescription>
                 {_("Set your favorite emojis for quick reactions.")}
                 <br />
-                {_("Click on any button to set your favorite emoji for quick reactions.")}
+                {_("First 4 show in the message toolbar on desktop; all 6 on mobile.")}
             </SettingsFormDescription>
         </div>
         <div className="flex gap-2">
             {quickEmojis.map((emoji, index) => (
-                <Popover key={index}>
-                    <PopoverTrigger asChild>
-                        <Button
-                            variant="outline"
-                            size="lg"
-                            isIconButton
-                            className="text-2xl"
-                        >
-                            {emoji.src ? (
-                                <img
-                                    src={emoji.src}
-                                    alt={emoji.id}
-                                    loading="lazy"
-                                    className="h-4.5 w-4.5 object-contain"
-                                    aria-hidden="true"
-                                />
-                            ) : (
-                                // em-emoji renders from the Apple set (initialized in
-                                // App.tsx) so reactions look the same on every platform
-                                <span className="flex h-4.5 w-4.5 items-center justify-center" aria-hidden="true">
-                                    <em-emoji native={emoji.native} set="apple" size="1.1em" fallback={emoji.id} />
-                                </span>
-                            )}
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                        <Picker
-                            onEmojiSelect={(emoji: any) => handleEmojiSelect(index, emoji)} theme={themeValue} set="apple" custom={customEmojis} previewPosition="none"
-                        />
-                    </PopoverContent>
-                </Popover>
+                <Fragment key={index}>
+                    {/* slots 5-6 never show on the desktop hover toolbar (slice(0, 4)) */}
+                    {index === 4 && <Separator orientation="vertical" className="h-6! self-center" />}
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant="outline"
+                                size="lg"
+                                isIconButton
+                                className="text-2xl"
+                            >
+                                {emoji.src ? (
+                                    <img
+                                        src={emoji.src}
+                                        alt={emoji.id}
+                                        loading="lazy"
+                                        className="h-4.5 w-4.5 object-contain"
+                                        aria-hidden="true"
+                                    />
+                                ) : (
+                                    // em-emoji renders from the Apple set (initialized in
+                                    // App.tsx) so reactions look the same on every platform
+                                    <span className="flex h-4.5 w-4.5 items-center justify-center" aria-hidden="true">
+                                        <em-emoji native={emoji.native} set="native" size="1.1em" fallback={emoji.id} />
+                                    </span>
+                                )}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                            <Picker
+                                onEmojiSelect={(emoji: any) => handleEmojiSelect(index, emoji)} theme={themeValue} set="native" custom={customEmojis} previewPosition="none"
+                            />
+                        </PopoverContent>
+                    </Popover>
+                </Fragment>
             ))}
         </div>
     </SettingsFormRow>

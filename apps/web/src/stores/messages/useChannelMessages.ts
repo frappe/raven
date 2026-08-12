@@ -6,10 +6,13 @@ import {
     loadInitialMessages,
     loadNewerMessages,
     loadOlderMessages,
+    reconcileStaleWindow,
+    recomputeUnreadAnchor,
+    MAX_QUIET_RECONCILE_WINDOW,
 } from "./loaders"
 import { selectStreamBlocks } from "./selectors"
 import { channelMessagesStore } from "./store"
-import { channelUnreadStore } from "@stores/unread/store"
+import { isWindowStale, subscribeConnectionEpoch } from "@stores/connectionFreshness"
 
 /**
  * Subscribes a component to a channel's message window and triggers the
@@ -37,6 +40,12 @@ export const useChannelMessages = (
         const current = channelMessagesStore.getState(channelID)
         if (current.status === "idle") {
             loadInitialMessages(client, channelID, initialBaseMessage ?? undefined)
+        } else if (current.status === "error") {
+            // A FAILED window must retry on re-open — without this branch it
+            // fell into the warm-re-entry path below, whose quiet reconcile
+            // only touches loaded windows, so the error card stuck forever.
+            channelMessagesStore.reset(channelID)
+            loadInitialMessages(client, channelID, initialBaseMessage ?? undefined)
         } else if (current.hasNewerMessages) {
             // A hydrated live-edge window renders instantly from memory, but a
             // DETACHED window (user left while reading history) is stale by
@@ -44,27 +53,48 @@ export const useChannelMessages = (
             // deep-link target, if this visit has one).
             channelMessagesStore.reset(channelID)
             loadInitialMessages(client, channelID, initialBaseMessage ?? undefined)
+        } else if (isWindowStale(channelID) && current.order.length > MAX_QUIET_RECONCILE_WINDOW) {
+            // Stale AND too deep for the quiet reconcile to replace safely — treat it
+            // like a detached window: discard and load fresh. (Re-entry lands at the
+            // bottom anyway, so the scrolled-back depth serves nobody. Without this,
+            // a deep stale window would stay stale forever.)
+            channelMessagesStore.reset(channelID)
+            loadInitialMessages(client, channelID, initialBaseMessage ?? undefined)
         } else {
             // Warm live-edge re-entry: NOT refetched, so the unread divider would stay frozen
             // at the first load and linger after you'd read everything. Recompute it against
-            // the furthest-read position — server last_visit at load (serverWatermark) or how
-            // far we've read since (lastSeen), whichever is later. Cleared if caught up; a
-            // fresh line appears before messages that arrived while away.
-            const unread = channelUnreadStore.getState(channelID)
-            const watermark = [channelUnreadStore.getServerWatermark(channelID), unread.lastSeen]
-                .filter((t): t is string => Boolean(t))
-                .sort()
-                .pop() ?? null
-            channelMessagesStore.refreshUnreadAnchor(channelID, watermark)
+            // the furthest-read position — cleared if caught up; a fresh line appears before
+            // messages that arrived while away.
+            recomputeUnreadAnchor(channelID)
+            // The in-memory window is only guaranteed correct if the socket stayed
+            // connected the whole time since it was fetched. If it didn't (phone
+            // locked, app backgrounded), quietly refetch behind the instant render —
+            // this is what brings back reactions/edits/deletes missed while
+            // suspended. If the connection never broke, this does nothing.
+            reconcileStaleWindow(client, channelID)
         }
     }, [channelID])
+
+    // The check above runs when a channel is OPENED — but the connection can also
+    // break while the user is already looking at one (lock the phone on it, come
+    // back). So while this stream is mounted, refetch as soon as a break is
+    // recorded. Does nothing when the window is already up to date.
+    useEffect(
+        () => subscribeConnectionEpoch(() => reconcileStaleWindow(client, channelID)),
+        [channelID],
+    )
 
     const loadOlder = useCallback(() => loadOlderMessages(client, channelID), [channelID])
     const loadNewer = useCallback(() => loadNewerMessages(client, channelID), [channelID])
     const jumpToLatest = useCallback(() => jumpToLatestMessages(client, channelID), [channelID])
-    /** Replaces the window with a page centered on the given message. */
+    /** Replaces the window with the page around the given message. Resolves true if the
+     *  message is in the window once the fetch finishes; false means it isn't there
+     *  (deleted, or the id doesn't belong to this channel) — the caller can stop trying. */
     const jumpToMessage = useCallback(
-        (messageID: string) => loadInitialMessages(client, channelID, messageID),
+        async (messageID: string) => {
+            await loadInitialMessages(client, channelID, messageID)
+            return channelMessagesStore.getState(channelID).byId.has(messageID)
+        },
         [channelID],
     )
 

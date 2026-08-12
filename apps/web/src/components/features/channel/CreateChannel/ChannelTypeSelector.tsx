@@ -1,14 +1,13 @@
 import { RadioGroup, RadioGroupItem } from '@components/ui/radio-group'
-import { Label } from '@components/ui/label'
 import {
     FormControl,
-    FormDescription,
     FormItem,
     FormLabel,
     FormMessage,
 } from '@components/ui/form'
 import { RavenChannel } from '@raven/types/RavenChannelManagement/RavenChannel'
-import { useChannelTypeInfo } from './useChannelTypeInfo'
+import { ChannelIcon } from '@components/common/ChannelIcon/ChannelIcon'
+import { cn } from '@lib/utils'
 import _ from '@lib/translate'
 
 interface ChannelTypeSelectorProps {
@@ -16,9 +15,18 @@ interface ChannelTypeSelectorProps {
     onChange: (value: RavenChannel['type']) => void
 }
 
-export const ChannelTypeSelector = ({ value, onChange }: ChannelTypeSelectorProps) => {
-    const { helperText } = useChannelTypeInfo(value)
+const CHANNEL_TYPES: { value: RavenChannel['type']; label: string; description: string }[] = [
+    { value: 'Public', label: _('Public'), description: _('Anyone can view but is not a member by default') },
+    { value: 'Private', label: _('Private'), description: _('Join by invitation only') },
+    { value: 'Open', label: _('Open'), description: _('Everyone is a member') },
+]
 
+/**
+ * Channel type as selectable CARDS — icon + name + a short description in each
+ * box (the banking RuleForm's transaction-type pattern: sr-only peer radio,
+ * the styled label IS the clickable box).
+ */
+export const ChannelTypeSelector = ({ value, onChange }: ChannelTypeSelectorProps) => {
     return (
         <FormItem>
             <FormLabel>{_('Channel Type')}</FormLabel>
@@ -26,32 +34,36 @@ export const ChannelTypeSelector = ({ value, onChange }: ChannelTypeSelectorProp
                 <RadioGroup
                     onValueChange={onChange}
                     value={value}
-                    className="flex gap-4"
-                    aria-label="Select channel type"
+                    className="flex flex-col gap-2"
+                    aria-label={_('Select channel type')}
                 >
-                    <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="Public" id="public" aria-describedby="channel-type-description" className='cursor-pointer'/>
-                        <Label htmlFor="public" className="font-normal cursor-pointer">
-                            {_('Public')}
-                        </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="Private" id="private" aria-describedby="channel-type-description" className='cursor-pointer'/>
-                        <Label htmlFor="private" className="font-normal cursor-pointer">
-                            {_('Private')}
-                        </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="Open" id="open" aria-describedby="channel-type-description" className='cursor-pointer'/>
-                        <Label htmlFor="open" className="font-normal cursor-pointer">
-                            {_('Open')}
-                        </Label>
-                    </div>
+                    {CHANNEL_TYPES.map((type) => (
+                        <FormItem key={type.value} className="flex">
+                            <FormControl>
+                                <RadioGroupItem value={type.value} className="peer sr-only" />
+                            </FormControl>
+                            <FormLabel
+                                className={cn(
+                                    // items-start + text-left: the ui FormLabel's base items-center would centre the stacked content
+                                    'flex w-full cursor-pointer flex-col items-start gap-1 rounded-md border border-outline-gray-2 p-3 text-left transition-colors hover:bg-surface-gray-1',
+                                    'peer-data-[state=checked]:border-outline-gray-5 peer-data-[state=checked]:bg-surface-gray-2',
+                                    // The radio itself is sr-only, so KEYBOARD focus (Tab into the
+                                    // group, arrows between options) must show on the card instead —
+                                    // without this the group looked unfocusable.
+                                    'peer-focus-visible:ring-2 peer-focus-visible:ring-outline-gray-3 peer-focus-visible:ring-offset-1',
+                                )}
+                            >
+                                <span className="flex items-center gap-1.5 text-sm font-medium text-ink-gray-8">
+                                    <ChannelIcon type={type.value} className="h-4 w-4 text-ink-gray-6" />
+                                    {type.label}
+                                </span>
+                                <span className="text-xs font-normal text-ink-gray-5">{type.description}</span>
+                            </FormLabel>
+                        </FormItem>
+                    ))}
                 </RadioGroup>
             </FormControl>
-            <FormDescription className="min-h-12" id="channel-type-description">{helperText}</FormDescription>
             <FormMessage />
         </FormItem>
     )
 }
-

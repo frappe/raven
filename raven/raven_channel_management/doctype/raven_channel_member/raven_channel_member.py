@@ -6,7 +6,7 @@ from frappe import _
 from frappe.model.document import Document
 
 from raven.notification import subscribe_user_to_topic, unsubscribe_user_to_topic
-from raven.utils import delete_channel_members_cache
+from raven.utils import create_members_added_system_message, delete_channel_members_cache
 
 
 class RavenChannelMember(Document):
@@ -116,18 +116,29 @@ class RavenChannelMember(Document):
 
 			first_member_name = frappe.get_cached_value("Raven User", first_member.user_id, "full_name")
 
-			# Add a system message to the channel mentioning the new admin
+			# Add a system message to the channel mentioning the new admin.
+			# (As everywhere: `json` is the structured event clients translate;
+			# `text` is the plain-English fallback for older clients.)
 			frappe.get_doc(
 				{
 					"doctype": "Raven Message",
 					"channel_id": self.channel_id,
 					"message_type": "System",
 					"text": f"{member_name} was removed by {current_user_name} and {first_member_name} is the new admin of this channel.",
+					"json": frappe.as_json(
+						{
+							"event": "member_removed",
+							"removed_by": frappe.session.user,
+							"user": self.user_id,
+							"new_admin": first_member.user_id,
+						}
+					),
 				}
 			).insert(ignore_permissions=True)
 		else:
 			# If the member who left is the current user, then add a system message to the channel mentioning that the user left
-			if member_name == current_user_name:
+			# (compare IDS, not display names — two users can share a full name)
+			if self.user_id == frappe.session.user:
 				# Add a system message to the channel mentioning the member who left
 				frappe.get_doc(
 					{
@@ -135,6 +146,7 @@ class RavenChannelMember(Document):
 						"channel_id": self.channel_id,
 						"message_type": "System",
 						"text": f"{member_name} left.",
+						"json": frappe.as_json({"event": "user_left", "user": self.user_id}),
 					}
 				).insert(ignore_permissions=True)
 			else:
@@ -145,6 +157,13 @@ class RavenChannelMember(Document):
 						"channel_id": self.channel_id,
 						"message_type": "System",
 						"text": f"{current_user_name} removed {member_name}.",
+						"json": frappe.as_json(
+							{
+								"event": "member_removed",
+								"removed_by": frappe.session.user,
+								"user": self.user_id,
+							}
+						),
 					}
 				).insert(ignore_permissions=True)
 
@@ -203,27 +222,26 @@ class RavenChannelMember(Document):
 		# Don't send a system message to the channel if the channel is open
 		if not is_direct_message and not channel_details.type == "Open":
 
-			# Send a system message to the channel mentioning the member who joined
-			member_name = frappe.get_cached_value("Raven User", self.user_id, "full_name")
-			if self.user_id == frappe.session.user:
+			if self.flags.ignore_system_message:
+				# Bulk addition — the caller (add_channel_members / Raven
+				# Channel.add_members) sends ONE combined message for the whole batch.
+				pass
+			elif self.user_id == frappe.session.user:
+				# Send a system message to the channel mentioning the member who joined.
+				# `json` carries the structured event so clients can render a
+				# translated string; `text` stays as the v2-compatible fallback.
+				member_name = frappe.get_cached_value("Raven User", self.user_id, "full_name")
 				frappe.get_doc(
 					{
 						"doctype": "Raven Message",
 						"channel_id": self.channel_id,
 						"message_type": "System",
 						"text": f"{member_name} joined.",
+						"json": frappe.as_json({"event": "user_joined", "user": self.user_id}),
 					}
 				).insert(ignore_permissions=True)
 			else:
-				current_user_name = frappe.get_cached_value("Raven User", frappe.session.user, "full_name")
-				frappe.get_doc(
-					{
-						"doctype": "Raven Message",
-						"channel_id": self.channel_id,
-						"message_type": "System",
-						"text": f"{current_user_name} added {member_name}.",
-					}
-				).insert(ignore_permissions=True)
+				create_members_added_system_message(self.channel_id, [self.user_id])
 
 		self.invalidate_channel_members_cache()
 
@@ -253,6 +271,13 @@ class RavenChannelMember(Document):
 					"channel_id": self.channel_id,
 					"message_type": "System",
 					"text": text,
+					"json": frappe.as_json(
+						{
+							"event": "admin_status_changed",
+							"user": self.user_id,
+							"is_admin": bool(self.is_admin),
+						}
+					),
 				}
 			).insert(ignore_permissions=True)
 

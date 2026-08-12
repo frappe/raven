@@ -1,5 +1,5 @@
 import { Button } from "@components/ui/button"
-import { SendIcon } from "lucide-react"
+import { SendHorizontalIcon, SendIcon } from "lucide-react"
 import { useIsMobile } from "@hooks/use-mobile"
 import _ from "@lib/translate"
 
@@ -15,19 +15,26 @@ const SendButton = ({ onSend, disabled, loading }: SendButtonProps) => {
     const isMobile = useIsMobile()
     return (
         <Button
-            size="sm"
+            size={isMobile ? "lg" : "sm"}
             type="button"
             onClick={onSend}
+            // Never steal focus from the editor: if the user is typing (keyboard
+            // open), tapping Send keeps it open naturally — no programmatic
+            // focus() needed, which couldn't tell whether the keyboard was open
+            // and would pop it on file-only sends too.
+            onMouseDown={(e) => e.preventDefault()}
             disabled={disabled}
+            variant={isMobile ? "solid" : "subtle"}
             loading={loading}
             loadingText={isMobile ? undefined : _("Sending...")}
             isIconButton={isMobile}
+            className={isMobile ? "rounded-full" : undefined}
             aria-label={_("Send message")}
         >
             {/* While loading the Button shows its own spinner; don't also render content. */}
             {!loading && (
                 <>
-                    <SendIcon />
+                    {isMobile ? <SendHorizontalIcon /> : <SendIcon />}
                     {!isMobile && <span>{_("Send")}</span>}
                 </>
             )}

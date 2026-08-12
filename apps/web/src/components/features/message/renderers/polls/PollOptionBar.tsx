@@ -6,6 +6,7 @@ import type { RavenPollOption } from "@raven/types/RavenMessaging/RavenPollOptio
 import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip"
 import _ from "@lib/translate"
 import { Separator } from "@components/ui/separator"
+import { useIsMobile } from "@hooks/use-mobile"
 
 export interface PollOptionWithVoters extends RavenPollOption {
     voters?: { name: string; full_name: string; user_image?: string }[]
@@ -29,6 +30,8 @@ export const PollOptionBar: React.FC<PollOptionBarProps> = ({
     showVoters = true,
 }) => {
 
+    const isMobile = useIsMobile()
+
     return (
         <Tooltip>
             <TooltipTrigger asChild>
@@ -45,7 +48,7 @@ export const PollOptionBar: React.FC<PollOptionBarProps> = ({
                         )}
                         style={{ width: `${percentage}%` }}
                     />
-                    <div className="relative z-10 text-ellipsis overflow-hidden flex items-center flex-1 px-3.5 py-1.5 gap-2">
+                    <div className="relative z-10 text-ellipsis overflow-hidden flex items-center flex-1 md:px-3 px-2.5 py-1.5 gap-2">
                         <span
                             className={cn(
                                 "truncate text-sm leading-snug",
@@ -54,9 +57,9 @@ export const PollOptionBar: React.FC<PollOptionBarProps> = ({
                         >
                             {option.option}
                         </span>
-                        {isCurrentUserVote && <CheckCircle className="size-3 text-ink-gray-9" />}
+                        {isCurrentUserVote && !isMobile && <CheckCircle className="size-3 text-ink-gray-9" />}
                     </div>
-                    <div className="relative z-10 flex items-center gap-3 pr-4">
+                    <div className={cn("relative z-10 flex items-center sm:gap-2 gap-1", showVoters && option.voters && option.voters.length > 0 ? "pr-1" : "pr-2")}>
                         {option.votes !== undefined && (
                             <span className="text-xs-medium text-ink-gray-6 flex items-center gap-1">
                                 <span>
@@ -67,7 +70,7 @@ export const PollOptionBar: React.FC<PollOptionBarProps> = ({
                             </span>
                         )}
                         {showVoters && option.voters && option.voters.length > 0 && (
-                            <GroupedAvatars users={option.voters} max={4} size="xs" borderColorClass="border-surface-base" />
+                            <GroupedAvatars users={option.voters} max={isMobile ? 3 : 4} size="xs" borderColorClass="border-surface-base" />
                         )}
                     </div>
                 </div>

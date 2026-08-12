@@ -61,9 +61,10 @@ export const ReactionPicker = ({
 
 /**
  * The emoji-mart picker itself. Split out so its subscriptions (theme, custom emojis) only
- * come into play once the popover opens — a closed picker holds none.
+ * come into play once the popover opens — a closed picker holds none. Exported for hosts
+ * that aren't popovers (the mobile action sheet renders it inside the drawer).
  */
-const ReactionPickerPanel = ({ message, onClose }: { message: Message; onClose: () => void }) => {
+export const ReactionPickerPanel = ({ message, onClose, perLine = 9, dynamicWidth = false }: { message: Message; onClose: () => void; perLine?: number; dynamicWidth?: boolean }) => {
     const toggleReaction = useToggleReaction()
     const { themeValue } = useTheme()
     const customEmojis = useAtomValue(customEmojiCategoriesAtom)
@@ -74,5 +75,5 @@ const ReactionPickerPanel = ({ message, onClose }: { message: Message; onClose: 
         onClose()
     }
 
-    return <Picker onEmojiSelect={onSelect} theme={themeValue} set="apple" custom={customEmojis} previewPosition="none" />
+    return <Picker onEmojiSelect={onSelect} theme={themeValue} set="native" custom={customEmojis} skinTonePosition="none" previewPosition="none" perLine={perLine} dynamicWidth={dynamicWidth} />
 }

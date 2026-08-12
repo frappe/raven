@@ -39,6 +39,17 @@ function applyThemeToDocument(value: "light" | "dark") {
     const root = document.documentElement
     root.classList.remove("light", "dark")
     root.classList.add(value)
+
+    // Android paints the PWA status bar from <meta name="theme-color"> (iOS
+    // ignores it in standalone mode and shows the page itself under the status
+    // bar), so the meta must track the active theme. Match --surface-base —
+    // the app body/header background — reading it from CSS so token changes
+    // can't drift; index.html has one meta per prefers-color-scheme for the
+    // pre-JS paint, and we overwrite BOTH so the resolved theme always wins.
+    const surface = getComputedStyle(root).getPropertyValue("--surface-base").trim()
+        || (value === "dark" ? "#171717" : "#ffffff")
+    document.querySelectorAll('meta[name="theme-color"]')
+        .forEach((meta) => meta.setAttribute("content", surface))
 }
 
 function getStoredTheme(defaultTheme: Theme): Theme {

@@ -16,7 +16,7 @@ export const chatStyleAtom = atom<ChatStyle>((window.frappe?.boot?.chat_style as
 /**
  * Time format: "12-hour" displays times like "12:00 PM"; "24-hour" displays times like "12:00" in all messages.
  */
-export const timeFormatAtom = atom<TimeFormat>((window.frappe?.boot?.time_format as TimeFormat | undefined) ?? "12-hour")
+export const timeFormatAtom = atom<TimeFormat>((window.frappe?.boot?.raven_time_format as TimeFormat | undefined) ?? "12-hour")
 
 
 export const imageGroupingLayoutAtom = atomWithStorage<"stack" | "grid">("raven-image-grouping-layout", "stack")
@@ -37,11 +37,29 @@ export const EnterKeyBehaviourAtom = atomWithStorage<EnterKeyBehaviour>(
     { getOnInit: true },
 )
 
-interface QuickEmoji {
+export interface QuickEmoji {
     id: string
     src?: string,
     native?: string
 }
 
 /** Favourite emojis offered as one-tap message reactions. */
-export const QuickEmojisAtom = atomWithStorage<QuickEmoji[]>("raven-quick-emojis-list", [{ id: "👍", native: "👍" }, { id: "✅", native: "✅" }, { id: "👀", native: "👀" }, { id: "🎉", native: "🎉" }])
+export const QuickEmojisAtom = atomWithStorage<QuickEmoji[]>("raven-quick-emojis-list", [
+    { id: "👍", native: "👍" },
+    { id: "✅", native: "✅" },
+    { id: "👀", native: "👀" },
+    { id: "🎉", native: "🎉" },
+    { id: "🔥", native: "🔥" },
+    { id: "🤔", native: "🤔" },
+])
+
+/**
+ * The reaction toggled by double-tapping a message on mobile. getOnInit so the
+ * first double-tap after load already uses the stored choice.
+ */
+export const DoubleTapReactionAtom = atomWithStorage<QuickEmoji>(
+    "raven-double-tap-reaction",
+    { id: "👍", native: "👍" },
+    undefined,
+    { getOnInit: true },
+)

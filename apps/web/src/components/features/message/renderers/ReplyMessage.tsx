@@ -1,5 +1,5 @@
 import { useSetAtom } from "jotai"
-import { messageTargetAtom } from "@utils/channelAtoms"
+import { messageTargetAtom, makeMessageTarget } from "@utils/channelAtoms"
 import { RepliedMessagePreview, type RepliedMessageDetails } from "./RepliedMessagePreview"
 
 export default function ReplyMessage({
@@ -16,7 +16,8 @@ export default function ReplyMessage({
     const setMessageTarget = useSetAtom(messageTargetAtom(channelID))
 
     const jumpToOriginal = () => {
-        if (linkedMessageID) setMessageTarget(linkedMessageID)
+        // makeMessageTarget: a fresh intent object, so re-clicking the same reply re-jumps.
+        if (linkedMessageID) setMessageTarget(makeMessageTarget(linkedMessageID))
     }
 
     return (

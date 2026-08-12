@@ -1,35 +1,34 @@
 import { useMemo } from 'react';
-import { useHotkeys } from 'react-hotkeys-hook';
+import { useEscHotkey } from '@hooks/useEscHotkey';
 import { Button } from '@components/ui/button';
 import { Loader2, X } from 'lucide-react';
 import { useAtom } from 'jotai';
 import { channelDrawerAtom } from '@utils/channelAtoms';
 import { useCurrentChannelID } from '@hooks/useCurrentChannelID';
 import ChannelMembersList from './ChannelMembersList.tsx';
-import AddChannelMembers from './AddChannelMembers.tsx';
 import _ from '@lib/translate';
 import { useChannelMembers } from '@hooks/useChannelMembers';
 import { useChannel } from '@hooks/useChannel.ts';
-import { hasRole } from '@lib/permissions.ts';
+import { canManageChannel } from '@lib/permissions.ts';
 import { Badge } from '@components/ui/badge.tsx';
 
 const ChannelMembersDrawer = () => {
     const channelID = useCurrentChannelID()
     const [, setDrawerType] = useAtom(channelDrawerAtom(channelID))
     const { channel } = useChannel(channelID)
-    const { members, isLoading } = useChannelMembers(channelID)
+    const { members: allMembers, isLoading } = useChannelMembers(channelID)
 
-    const allowSettingChange = useMemo(() => {
-        if (channel?.is_admin == 1) {
-            return true;
-        }
-        if (channel?.member_id && hasRole("Raven Admin")) {
-            return true;
-        }
-        return false;
-    }, [channel]);
+    // Disabled users stay channel MEMBERS on the server (nothing removes their
+    // membership rows), but a deactivated account isn't someone you can message
+    // or manage — showing them here only confuses. Filtered at the drawer (not
+    // in useChannelMembers) so permission checks and thread meta that consume
+    // the raw membership stay untouched; the count badge and the list below
+    // share this one filter so they always agree.
+    const members = useMemo(() => allMembers.filter((member) => member.enabled === 1), [allMembers])
 
-    useHotkeys('esc', () => handleClose(), { enableOnFormTags: true })
+    const allowSettingChange = canManageChannel(channel)
+
+    useEscHotkey(() => handleClose(), { enableOnFormTags: true })
 
     const handleClose = () => {
         setDrawerType('')
@@ -67,10 +66,8 @@ const ChannelMembersDrawer = () => {
                         <Loader2 className="h-4 w-4 animate-spin text-ink-gray-8/80" />
                     </div>
                 ) : (
-                    <ChannelMembersList members={members} channelID={channelID} allowSettingChange={allowSettingChange} />
+                    <ChannelMembersList members={members} channel={channel} allowSettingChange={allowSettingChange} />
                 )}
-
-                {/* <AddChannelMembers memberIds={memberIds} channelID={channelID} onClose={handleClose} /> */}
             </div>
         </div >
     )
