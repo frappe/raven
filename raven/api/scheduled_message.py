@@ -94,12 +94,17 @@ def _dispatch(doc: "RavenScheduledMessage", raise_on_failure: bool = False):
 			frappe.throw(_("This message has already been sent."))
 		return
 	original_user = frappe.session.user
+	# Impersonation guard: only the scheduler (Administrator) or the owner
+	# themself may reach the set_user below — never a switch to someone else.
+	if original_user not in ("Administrator", doc.owner):
+		frappe.throw(_("Not permitted."), frappe.PermissionError)
 	frappe.db.savepoint("raven_scheduled_send")
 	try:
 		# Act as the owner: the message's permission checks and `owner` must be
 		# theirs, and the full insert path (broadcast, unread counts, mentions,
-		# notifications) fires exactly like a live send.
-		frappe.set_user(doc.owner)
+		# notifications) fires exactly like a live send. Scoped by the finally
+		# below, which always restores the original session user.
+		frappe.set_user(doc.owner)  # nosemgrep: frappe-semgrep-rules.rules.security.frappe-setuser
 		message = frappe.get_doc(
 			{
 				"doctype": "Raven Message",
@@ -124,4 +129,4 @@ def _dispatch(doc: "RavenScheduledMessage", raise_on_failure: bool = False):
 		# db_set skips controller hooks, so publish the revalidate signal manually.
 		notify_owner_updated(doc)
 	finally:
-		frappe.set_user(original_user)
+		frappe.set_user(original_user)  # nosemgrep: frappe-semgrep-rules.rules.security.frappe-setuser
