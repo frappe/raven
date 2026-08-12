@@ -1,15 +1,17 @@
 import { useState } from "react"
-import dayjs from "dayjs"
 import { EditorContent } from "@tiptap/react"
-import { CalendarIcon, ChevronDownIcon, Clock } from "lucide-react"
+import { CalendarIcon, Clock } from "lucide-react"
 import { EditorFormattingToolbar } from "@components/features/editor/EditorFormattingToolbar"
 import { EDITOR_MIN_H } from "@components/features/editor/useRavenEditor"
 import { Button } from "@components/ui/button"
 import { Calendar } from "@components/ui/calendar"
+import { Input } from "@components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@components/ui/select"
 import { TooltipProvider } from "@components/ui/tooltip"
 import { useIsMobile } from "@hooks/use-mobile"
+import { formatDate, parseTypedDate, USER_DATE_FORMAT } from "@lib/date"
+import { cn } from "@lib/utils"
 import _ from "@lib/translate"
 import { formatScheduleLabel } from "./scheduleTime"
 import { useScheduledMessageEdit } from "./useScheduledMessageEdit"
@@ -29,56 +31,87 @@ type DatePickerPopoverProps = {
     value: Date
     /** Called with the picked date. */
     onChange: (date: Date) => void
-    /** Button size — the mobile sheet passes "lg" for touch targets; the compact
+    /** Input size — the mobile surfaces pass "lg" for touch targets; the compact
      *  inline editor uses the default "sm". */
     size?: "sm" | "md" | "lg"
+    /** Root wrapper — the row decides the field's width. */
+    className?: string
 }
 
 /**
- * Compact date field for the delivery-time row: a CONTROLLED popover that closes as
- * soon as a date is picked (mirrors DateField in form-elements — an uncontrolled
- * popover would stay open over the time select after picking). Shared by the inline
- * editor and the mobile edit sheet.
+ * Typeable date field + calendar popover — DateField's mechanics without the
+ * react-hook-form binding. Shared by all three schedule-send surfaces.
  */
-export const DatePickerPopover = ({ value, onChange, size = "sm" }: DatePickerPopoverProps) => {
+export const DatePickerPopover = ({ value, onChange, size = "sm", className }: DatePickerPopoverProps) => {
     const [open, setOpen] = useState(false)
+    // Display state only — blur resnaps to `value`, discarding unparseable leftovers.
+    const [text, setText] = useState(() => formatDate(value))
+
+    const commitTyped = (raw: string) => {
+        setText(raw)
+        const parsed = parseTypedDate(raw)
+        if (parsed) onChange(parsed)
+    }
+
     return (
-        <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-                <Button type="button" variant="outline" size={size} className="w-auto justify-start gap-2">
-                    <CalendarIcon className="size-4 shrink-0" />
-                    <span className="truncate">{dayjs(value).format("ddd, MMM D, YYYY")}</span>
-                    <ChevronDownIcon className="size-4 shrink-0 text-ink-gray-5" />
-                </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
-                <Calendar
-                    mode="single"
-                    selected={value}
-                    onSelect={(picked) => {
-                        if (picked) {
-                            onChange(picked)
-                            setOpen(false)
-                        }
-                    }}
-                    disabled={{ before: new Date() }}
-                    // 6 fixed week rows — month navigation must not resize the popover.
-                    fixedWeeks
-                    // 44px date cells on mobile — fingers need more than the 32px default.
-                    className="[--cell-size:--spacing(11)] md:[--cell-size:--spacing(8)]"
-                />
-            </PopoverContent>
-        </Popover>
+        <div className={cn("relative min-w-0", className)}>
+            {/* min-w-0: a text input's intrinsic min-width would beat flex-1's
+                equal share and steal width from the time select. */}
+            <Input
+                inputSize={size}
+                className="w-full min-w-0 pe-9"
+                placeholder={USER_DATE_FORMAT}
+                aria-label={_("Date")}
+                value={text}
+                onChange={(e) => commitTyped(e.target.value)}
+                onBlur={() => setText(formatDate(value))}
+                onKeyDown={(e) => {
+                    if (e.key === "ArrowDown") {
+                        e.preventDefault()
+                        setOpen(true)
+                    }
+                }}
+            />
+            <Popover open={open} onOpenChange={setOpen}>
+                <PopoverTrigger asChild>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="xs"
+                        isIconButton
+                        aria-label={_("Select date")}
+                        className="absolute top-1/2 -translate-y-1/2 ltr:right-1.5 rtl:left-1.5"
+                    >
+                        <CalendarIcon />
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+                    <Calendar
+                        mode="single"
+                        selected={value}
+                        onSelect={(picked) => {
+                            if (picked) {
+                                onChange(picked)
+                                setText(formatDate(picked))
+                                setOpen(false)
+                            }
+                        }}
+                        disabled={{ before: new Date() }}
+                        // 6 fixed week rows — month navigation must not resize the popover.
+                        fixedWeeks
+                        // 44px date cells on mobile — fingers need more than the 32px default.
+                        className="[--cell-size:--spacing(11)] md:[--cell-size:--spacing(8)]"
+                    />
+                </PopoverContent>
+            </Popover>
+        </div>
     )
 }
 
 /**
- * Inline editor swapped in place of a scheduled-message card's body while it's
- * being edited — the chat-stream pattern (EditMessageComposer): one compact bordered
- * unit holding the TipTap editor, a delivery-time row (date popover + time Select +
- * preview) and small footer buttons. LAYOUT ONLY — all behavior (editor wiring,
- * save/cancel, time options) lives in useScheduledMessageEdit, shared with the
- * mobile edit sheet so the two layouts cannot drift.
+ * Inline editor swapped in for a card's body while editing (chat-stream
+ * pattern, EditMessageComposer). Layout only — behavior lives in
+ * useScheduledMessageEdit, shared with the mobile edit sheet.
  */
 export const InlineScheduledMessageEditor = ({ row, onDone, onCancel }: InlineScheduledMessageEditorProps) => {
     const isMobile = useIsMobile()
@@ -87,9 +120,7 @@ export const InlineScheduledMessageEditor = ({ row, onDone, onCancel }: InlineSc
 
     return (
         <div data-raven-editor className="relative w-full py-1 select-text">
-            {/* Same surface styling as EditMessageComposer / the main composer.
-                select-text overrides the card row's select-none so the editor can
-                take a caret / text selection. */}
+            {/* select-text overrides the card row's select-none so the editor can take a caret. */}
             <div className="w-full overflow-y-hidden rounded-lg border border-outline-gray-2 bg-surface-base focus-within:border-outline-gray-3">
                 <TooltipProvider>
                     {editor && !isMobile && (
@@ -105,15 +136,14 @@ export const InlineScheduledMessageEditor = ({ row, onDone, onCancel }: InlineSc
                     <div className="flex flex-col gap-2 px-1.5 pb-1.5">
                         {/* Delivery-time row: compact date popover + time Select + preview. */}
                         <div className="flex flex-wrap items-center gap-2">
-                            <DatePickerPopover value={date} onChange={setDate} />
+                            <DatePickerPopover value={date} onChange={setDate} className="w-40" />
                             <Select value={time} onValueChange={setTime}>
                                 <SelectTrigger aria-label={_("Time")} inputSize="sm" className="w-28">
                                     <Clock />
                                     <SelectValue>{allTimeOptions.find((option) => option.value === time)?.label}</SelectValue>
                                 </SelectTrigger>
                                 <SelectContent align="start" className="min-w-28 max-h-62 overflow-y-auto">
-                                    {/* px-3 + tabular-nums: fuller rows with evenly spaced
-                                        digits (frappe-ui's time-picker look). */}
+                                    {/* tabular-nums + px-3: frappe-ui's time-picker row look. */}
                                     {allTimeOptions.map((option) => (
                                         <SelectItem key={option.value} value={option.value} className="px-3 tabular-nums">
                                             {option.label}

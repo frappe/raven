@@ -398,6 +398,9 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                     open={scheduleOpen}
                     onOpenChange={setScheduleOpen}
                     onConfirm={handleSchedulePick}
+                    // Only read the editor while the dialog is up — getHTML() on every
+                    // composer keystroke would be wasted work.
+                    text={scheduleOpen && editor ? editor.getHTML() : undefined}
                     busy={scheduleBusy}
                 />
             )}

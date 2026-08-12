@@ -44,12 +44,9 @@ type ScheduledMessagesListProps = {
 }
 
 /**
- * The scheduled-messages list: the user's pending + failed scheduled messages as a
- * virtualized list of message cards. Send now + Delete stay internal (behind
- * AlertDialog confirmations); Edit swaps the card's body for the inline editor
- * (chat-stream pattern) via the parent's editingRowId — DESKTOP only. On mobile
- * the editor lives in a bottom sheet (Drawer) hosted here, OUTSIDE the virtualized
- * list, so the Virtuoso-unmount-mid-edit concern disappears on mobile.
+ * Virtualized list of the user's pending + failed scheduled messages.
+ * Desktop edits inline in the card; mobile edits in a sheet hosted here,
+ * outside the virtualizer, so row recycling can't unmount a mid-edit editor.
  */
 const ScheduledMessagesList = ({ channel, editingRowId, onEditingChange, onRowSaved, refresh }: ScheduledMessagesListProps) => {
     const { data, error, isLoading } = useFrappeGetCall<{ message: ScheduledMessageRow[] }>(
@@ -57,14 +54,10 @@ const ScheduledMessagesList = ({ channel, editingRowId, onEditingChange, onRowSa
         channel === "*all" ? undefined : { channel_id: channel },
         `${SCHEDULED_MESSAGES_KEY}-${channel}`,
     )
-    // A realtime event can land at any moment. Unsaved inline-edit state lives in the
-    // ROW component (the InlineScheduledMessageEditor's local date/time/text), so a
-    // refetch-driven reflow while editing must NOT unmount that row mid-edit. Defer
-    // the refetch until editing ends instead of dropping it. (useFrappeEventListener
-    // re-subscribes with a fresh closure each render, so editingRowId is current.)
+    // A refetch-driven reflow would unmount a mid-edit row (its unsaved state
+    // lives there) — defer realtime refetches until editing ends.
     const pendingRefetchRef = useRef(false)
     useFrappeEventListener("raven_scheduled_message_updated", () => {
-        // Server-side lifecycle signal (created / sent / failed / deleted anywhere).
         if (editingRowId !== null) {
             pendingRefetchRef.current = true
             return
@@ -72,7 +65,7 @@ const ScheduledMessagesList = ({ channel, editingRowId, onEditingChange, onRowSa
         refresh()
     })
 
-    // Editing ended: flush any realtime refetch that arrived while a row was editing.
+    // Flush the deferred refetch once editing ends.
     useEffect(() => {
         if (editingRowId === null && pendingRefetchRef.current) {
             pendingRefetchRef.current = false
@@ -92,9 +85,7 @@ const ScheduledMessagesList = ({ channel, editingRowId, onEditingChange, onRowSa
     // API returns Scheduled + Failed only.
     const rows = data?.message ?? []
 
-    // The row being edited, for the mobile bottom-sheet editor. Guarded: the row
-    // can vanish via realtime while the sheet is open — if it does, the sheet
-    // simply unmounts (closes) instead of rendering against a dead row.
+    // Can vanish via realtime while the sheet is open — the sheet then unmounts.
     const editingRow = rows.find((row) => row.name === editingRowId)
 
     const sendNow = (row: ScheduledMessageRow) => {
@@ -161,10 +152,7 @@ const ScheduledMessagesList = ({ channel, editingRowId, onEditingChange, onRowSa
                 )
             }}
         />
-        {/* Mobile-only edit sheet: the editor lives OUTSIDE the virtualized list,
-            so the Virtuoso-unmount-mid-edit concern disappears on mobile (the
-            editor is no longer a recycled row's child). The sheet's dismiss
-            (drag down / overlay tap) maps to cancelling the edit. */}
+        {/* Outside the virtualizer so row recycling can't unmount a mid-edit editor. */}
         {isMobile && editingRow && (
             <EditScheduledMessageSheet
                 row={editingRow}

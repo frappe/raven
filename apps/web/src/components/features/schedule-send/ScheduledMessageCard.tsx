@@ -46,17 +46,10 @@ type ScheduledMessageCardProps = {
 }
 
 /**
- * One scheduled message rendered as a message card. Mirrors MessageResultBlock's
- * markup (avatar, header line, MessageBody body, paddings/hover) because its props
- * can't express a scheduled row: the timestamp slot here shows the SCHEDULED time
- * (not creation), a top-right actions menu must fit, and Failed rows carry a badge +
- * error line under the header. Cards are NOT clickable — no navigation; only the
- * actions menu is interactive. Send now and Delete are gated behind AlertDialog
- * confirmations (the settings destructive-confirm pattern); Edit swaps the body for
- * the inline editor (chat-stream pattern) — while editing, the actions menu hides
- * (like hover actions in the chat stream). On MOBILE the actions are a bottom sheet
- * instead: tapping anywhere on the row opens it (no per-row menu button), and Edit
- * moves the editor to a sheet hosted by the list — the card body never swaps.
+ * One scheduled message as a message card (MessageResultBlock's markup — its
+ * props can't express a scheduled row). Desktop: dropdown menu, Edit swaps the
+ * body for the inline editor. Mobile: tapping the row opens an action sheet,
+ * Edit opens a sheet hosted by the list. Send now / Delete confirm first.
  */
 
 export const ScheduledMessageCard = ({
@@ -76,11 +69,8 @@ export const ScheduledMessageCard = ({
     // Mobile-only action sheet (row tap); desktop keeps the dropdown.
     const [actionsOpen, setActionsOpen] = useState(false)
 
-    // Pending Edit-defer timeout (the DRAWER_EXIT_MS wait), so it can be
-    // cleared if the card unmounts before it fires. The deferred write is UI
-    // state (unlike the drawer precedents' navigate()) — clearing it on unmount
-    // makes it die with the card whenever the dialog closes or Virtuoso
-    // recycles the row, so it can't resurrect the edit sheet later.
+    // Edit-defer timeout — cleared on unmount so a Virtuoso-recycled row
+    // can't resurrect the edit sheet.
     const editDeferRef = useRef<number | null>(null)
     useEffect(() => () => {
         if (editDeferRef.current !== null) {
@@ -89,9 +79,7 @@ export const ScheduledMessageCard = ({
         }
     }, [])
 
-    // Mobile-only: tapping the row opens the action sheet (and the OS context
-    // menu a text long-press can raise is suppressed). Desktop gets none of
-    // this — the dropdown stays the only entry point.
+    // Mobile: row tap opens the action sheet; long-press OS menu suppressed.
     const rowTapHandlers = isMobile && !isEditing ? {
         onClick: () => setActionsOpen(true),
         onContextMenu: (event: React.MouseEvent<HTMLDivElement>) => event.preventDefault(),
@@ -102,9 +90,8 @@ export const ScheduledMessageCard = ({
             <div
                 className={cn(
                     "group flex gap-3 px-2 py-3 md:py-2 rounded transition-colors text-left select-none hover:bg-surface-gray-3",
-                    // Press feedback is pure CSS (:active) — browser-tracked, so a
-                    // Virtuoso-recycled instance can never highlight the wrong row.
-                    // The sheet being open keeps its card lit via real state.
+                    // CSS :active, not state — a Virtuoso-recycled instance can't
+                    // highlight the wrong row.
                     "active:bg-surface-gray-3",
                     actionsOpen && "bg-surface-gray-3",
                 )}
@@ -203,16 +190,12 @@ export const ScheduledMessageCard = ({
                             just-closed sheet is the house confirm pattern). */}
                         <Drawer open={actionsOpen} onOpenChange={setActionsOpen}>
                             <DrawerContent
-                                // Don't restore focus on close: Send now / Delete open
-                                // an AlertDialog in the same tap — the default restore
-                                // would yank focus away from it (same guard as
-                                // MessageActionMenu).
+                                // No focus restore — it would yank focus off the
+                                // AlertDialog these rows open (same as MessageActionMenu).
                                 onCloseAutoFocus={(event) => event.preventDefault()}
                             >
                                 <DrawerTitle className="sr-only">{_("Scheduled message actions")}</DrawerTitle>
-                                {/* Rows mirror MessageActionMenu's SheetActionRow exactly:
-                                    ghost lg Buttons, gray/red themes, destructive group
-                                    separated by a divider. */}
+                                {/* MessageActionMenu's SheetActionRow anatomy. */}
                                 <div className="flex flex-col px-2 pb-6">
                                     <Button
                                         variant="ghost"
@@ -234,14 +217,9 @@ export const ScheduledMessageCard = ({
                                         className="w-full justify-start gap-3 active:bg-surface-gray-2"
                                         onClick={() => {
                                             setActionsOpen(false)
-                                            // Defer entering edit mode until the action sheet's
-                                            // exit animation settles (DRAWER_EXIT_MS): flipping
-                                            // isEditing in the same commit would unmount the
-                                            // still-open sheet (no exit animation) while the
-                                            // edit Drawer mounts on top of it. Same after-close
-                                            // wait as the house drawer-navigation pattern (but the
-                                            // deferred write here is UI state, so it must die with
-                                            // the card — the unmount cleanup clears it).
+                                            // Wait out the sheet's exit animation — flipping
+                                            // isEditing in the same commit would unmount it
+                                            // mid-animation while the edit Drawer mounts.
                                             if (editDeferRef.current !== null) {
                                                 window.clearTimeout(editDeferRef.current)
                                             }

@@ -19,11 +19,8 @@ type ScheduleSendMenuProps = {
 }
 
 /**
- * The "Schedule message" submenu inside SendButton's send-options menu: Today /
- * Tomorrow preset slots plus a custom date & time entry. It renders inside
- * DropdownMenuContent, so it only mounts while the options menu is open; the slot
- * sections are computed inside DropdownMenuSubContent (mounted only when the
- * submenu opens), so the work never runs on plain ChatInput keystrokes.
+ * "Schedule message" submenu in the send-options menu: Today / Tomorrow preset
+ * slots plus a custom date & time entry.
  */
 export const ScheduleSendMenu = ({ onSchedulePick, onScheduleSend, scheduleDisabled }: ScheduleSendMenuProps) => {
     // Bottom-align the schedule submenu to its trigger row: Radix hardcodes
@@ -64,9 +61,8 @@ export const ScheduleSendMenu = ({ onSchedulePick, onScheduleSend, scheduleDisab
 }
 
 /**
- * The preset Today / Tomorrow / (weekend) Monday sections of the schedule submenu.
- * Rendered inside DropdownMenuSubContent so getScheduleMenuSections() runs only
- * while the submenu is open — slot times stay fresh without per-render cost.
+ * Preset sections, computed inside DropdownMenuSubContent so slot times are
+ * fresh on open without per-keystroke cost.
  */
 const ScheduleMenuSections = ({ onSchedulePick }: { onSchedulePick: (pick: SchedulePick) => void }) => {
     const sections = getScheduleMenuSections()

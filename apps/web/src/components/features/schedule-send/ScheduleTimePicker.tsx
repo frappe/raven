@@ -1,80 +1,75 @@
-import { useState } from "react"
-import dayjs from "dayjs"
+import { useEffect, useState } from "react"
+import dayjs, { type Dayjs } from "dayjs"
 import { Clock } from "lucide-react"
 import { Button } from "@components/ui/button"
-import { Calendar } from "@components/ui/calendar"
+import { Label } from "@components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@components/ui/select"
 import { useIsMobile } from "@hooks/use-mobile"
 import _ from "@lib/translate"
-import { getAvailableTimeOptions, TIME_OPTIONS, toServerDatetime, formatScheduleLabel, type SchedulePick } from "./scheduleTime"
+import { getAvailableTimeOptions, toServerDatetime, formatScheduleLabel, type SchedulePick } from "./scheduleTime"
+import { DatePickerPopover } from "./InlineScheduledMessageEditor"
 
 type ScheduleTimePickerProps = {
     /** Fired when the user confirms the custom date + time. */
     onConfirm: (pick: SchedulePick) => void
     /** Renders a Cancel button beside the primary when provided (standard dialog footer). */
     onCancel?: () => void
+    /** Live pick updates (null while incomplete/past) — the dialog's preview pane follows these. */
+    onPickChange?: (picked: Dayjs | null) => void
     busy?: boolean
 }
 
 /**
- * Pick a future delivery time: a calendar date plus a half-hour time Select, with a
- * preview of the resulting datetime and a confirm button that stays disabled until
- * the pick is complete AND in the future. Pure content — the caller owns both the
- * overlay (if any) and the POST.
+ * Date + time row for picking a future delivery time, seeded to today + the
+ * next open slot. Pure content — the caller owns the overlay and the POST.
  */
-export const ScheduleTimePicker = ({ onConfirm, onCancel, busy }: ScheduleTimePickerProps) => {
+export const ScheduleTimePicker = ({ onConfirm, onCancel, onPickChange, busy }: ScheduleTimePickerProps) => {
     const isMobile = useIsMobile()
-    const [date, setDate] = useState<Date | undefined>(undefined)
-    const [time, setTime] = useState("09:00")
+    const [date, setDate] = useState<Date>(() => new Date())
+    // Next open slot today; "09:00" only when today has none left.
+    const [time, setTime] = useState(() => getAvailableTimeOptions(new Date())[0]?.value ?? "09:00")
 
-    // Today hides already-passed slots; other days offer the full list. Picking
-    // today can strand the selected time in the past — the effective time snaps
-    // forward to the first still-available slot (derived, so the Select stays
-    // controlled without mutating state on every date change).
-    const availableOptions = date ? getAvailableTimeOptions(date) : TIME_OPTIONS
+    // A date change can strand the selected time in the past — snap forward to
+    // the first still-available slot (derived, so the Select stays controlled).
+    const availableOptions = getAvailableTimeOptions(date)
     const effectiveTime = availableOptions.some((option) => option.value === time) ? time : availableOptions[0]?.value
     const effectiveOption = availableOptions.find((option) => option.value === effectiveTime)
 
     // The effective date + time as a Dayjs, or null when incomplete or in the past.
     const [hours, minutes] = effectiveTime ? effectiveTime.split(":").map(Number) : [0, 0]
-    const picked = date && effectiveTime ? dayjs(date).hour(hours).minute(minutes).second(0).millisecond(0) : null
+    const picked = effectiveTime ? dayjs(date).hour(hours).minute(minutes).second(0).millisecond(0) : null
     const pick = picked && picked.isAfter(dayjs()) ? picked : null
 
+    // Live pick for the preview pane — keyed on epoch ms, `pick` is rebuilt every render.
+    const pickMs = pick ? pick.valueOf() : null
+    useEffect(() => {
+        onPickChange?.(pickMs === null ? null : dayjs(pickMs))
+    }, [pickMs, onPickChange])
+
     return (
-        // w-fit: the calendar is the widest child and defines the column, so the
-        // full-width time Select and footer line up with it exactly on every screen.
-        <div className="flex flex-col gap-2 w-fit mx-auto">
-            <Calendar
-                mode="single"
-                selected={date}
-                onSelect={setDate}
-                disabled={{ before: new Date() }}
-                // Always render 6 week rows so switching months never changes the
-                // calendar's height (5-row months would otherwise shift the layout).
-                fixedWeeks
-                // 44px date cells on mobile — fingers need more than the 32px default.
-                // rounded-md: outside a popover/card the calendar paints its own
-                // elevation-2 surface, whose square corners show in dark mode.
-                className="rounded-md [--cell-size:--spacing(11)] md:[--cell-size:--spacing(8)]"
-            />
-            <Select value={effectiveTime ?? undefined} onValueChange={setTime} disabled={availableOptions.length === 0}>
-                <SelectTrigger aria-label={_("Time")} className="w-full">
-                    <Clock />
-                    {/* Late tonight every slot may already be past — say so instead of crashing. */}
-                    <SelectValue>{effectiveOption?.label ?? _("No times left today")}</SelectValue>
-                </SelectTrigger>
-                {/* px-3 + tabular-nums with the mobile height bump: fuller rows
-                    with evenly spaced digits (frappe-ui's time-picker look). */}
-                <SelectContent className="max-h-62 overflow-y-auto">
-                    {availableOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value} className="px-3 py-2 md:py-1.5 tabular-nums">
-                            {option.label}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
-            {/* Standard dialog footer: Cancel beside the primary, right-aligned.
-                Mobile: bigger touch targets, sharing the row edge-to-edge. */}
+        <div className="flex w-full flex-col gap-2">
+            <Label>{_("Delivery time")}</Label>
+            {/* Grid, not flex — exact equal halves for the two fields. The pair
+                spans half the dialog; mobile keeps full width for touch. */}
+            <div className="grid grid-cols-2 items-center gap-3 md:w-1/2">
+                <DatePickerPopover value={date} onChange={setDate} size={isMobile ? "lg" : "md"} />
+                <Select value={effectiveTime ?? undefined} onValueChange={setTime} disabled={availableOptions.length === 0}>
+                    <SelectTrigger aria-label={_("Time")} inputSize={isMobile ? "lg" : "md"} className="w-full min-w-0">
+                        <Clock />
+                        {/* Late tonight every slot may already be past — say so instead of crashing. */}
+                        <SelectValue>{effectiveOption?.label ?? _("No times left today")}</SelectValue>
+                    </SelectTrigger>
+                    {/* align="end": the panel can be wider than the trigger. */}
+                    <SelectContent align="end" className="max-h-62 overflow-y-auto">
+                        {availableOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value} className="px-3 py-2 md:py-1.5 tabular-nums">
+                                {option.label}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+            {/* Standard footer; mobile buttons share the row edge-to-edge. */}
             <div className={isMobile ? "flex gap-2 pt-2 [&>*]:flex-1" : "flex justify-end gap-2 pt-2"}>
                 {onCancel && (
                     <Button type="button" variant="outline" size={isMobile ? "lg" : "md"} disabled={busy} onClick={onCancel}>

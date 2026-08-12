@@ -24,44 +24,29 @@ type EditScheduledMessageSheetProps = {
 }
 
 /**
- * Mobile-only bottom-sheet edit layout for a scheduled message: a dedicated sheet
- * with breathing room — labelled sections, a composer-style input (toolbar pinned
- * inside the box, text area growing to a cap then scrolling INTERNALLY so the
- * sheet itself never scrolls), a one-row delivery-time section and a side-by-side
- * footer. All behavior comes from useScheduledMessageEdit (shared with the desktop
- * inline editor) so the two layouts cannot drift. The sheet's dismiss maps to
- * cancelling the edit; Escape is consumed by the editor itself.
+ * Mobile bottom-sheet edit layout for a scheduled message. Layout only —
+ * behavior lives in useScheduledMessageEdit, shared with the desktop inline
+ * editor. Dismissing the sheet cancels the edit.
  */
 export const EditScheduledMessageSheet = ({ row, open, onOpenChange, onDone }: EditScheduledMessageSheetProps) => {
     const { editor, date, setDate, time, setTime, allTimeOptions, picked, canSave, loading, onSave, linkSignal, onLinkConsumed } =
         useScheduledMessageEdit(row, { onDone, onCancel: () => onOpenChange(false) })
 
-    // repositionInputs={false}: vaul's default keyboard handling shrinks the
-    // sheet to the visual viewport, squishing the editor to its floor. Off,
-    // the sheet stays put and the keyboard simply overlays its lower part
-    // (delivery time + footer) — the keyboard's top edge sits right below
-    // the focused input, which is the behavior we want while typing.
+    // repositionInputs={false}: vaul's keyboard handling would shrink the sheet
+    // and squish the editor — off, the keyboard just overlays the lower part.
     return (
         <Drawer open={open} onOpenChange={onOpenChange} repositionInputs={false}>
-            {/* max-h caps the whole sheet; every section except the editor's text area
-                is shrink-proof, so if content ever outgrows the screen the flex chain
-                squeezes ONLY the text area, which then scrolls internally — the sheet
-                itself never scrolls and never outgrows the screen. */}
+            {/* If content outgrows the cap, the flex chain squeezes only the text
+                area (everything else is shrink-proof) — the sheet never scrolls. */}
             <DrawerContent className="max-h-[calc(100dvh-2rem)]">
-                {/* Title lives inside the px-4 body (not DrawerHeader's px-6) so it
-                    left-aligns with the fields — same header treatment as the
-                    Create Channel sheet. */}
+                {/* Title inside the px-4 body so it aligns with the fields (same as
+                    the Create Channel sheet). */}
                 <div className="flex min-h-0 flex-col gap-5 px-4 pt-1 pb-2">
                     <DrawerTitle className="shrink-0 text-left text-2xl-semibold text-ink-gray-9">
                         {_("Edit scheduled message")}
                     </DrawerTitle>
-                    {/* Message: a composer-style input — toolbar pinned at the top INSIDE
-                        the bordered box, text area below it. overflow-hidden clips the
-                        toolbar's opaque band to the box's rounded corners. min-h-0 on the
-                        section and box lets the squeeze reach the text area, which is the
-                        one part that gives way (down to its own min-h-24 floor).
-                        data-raven-editor scopes the editor-only rich-text styles
-                        (placeholder, spoiler, …). */}
+                    {/* Composer-style box: toolbar pinned on top, overflow-hidden clips
+                        its square band to the rounded corners. */}
                     <div className="flex min-h-0 flex-col gap-2">
                         <Label className="shrink-0">{_("Message")}</Label>
                         <div
@@ -79,15 +64,9 @@ export const EditScheduledMessageSheet = ({ row, open, onOpenChange, onDone }: E
                                     </div>
                                 )}
                             </TooltipProvider>
-                            {/* The ONE scroll container for the text. .tiptap ships its own
-                                max-h-[40vh] + overflow-y-auto (useRavenEditor) — max-h-none
-                                neutralizes that so this wrapper is the only scroller (nested
-                                scroll areas fight on touch). No max-h here either: the
-                                wrapper grows with content until the SHEET hits its cap, then
-                                the flex chain squeezes it — min-h-24 (not min-h-0) is the
-                                floor, so the text area always keeps ~4 lines and scrolls
-                                instead of being clipped away. Padding lives on .tiptap
-                                itself. */}
+                            {/* The one scroller. max-h-none neutralizes .tiptap's own
+                                max-h-[40vh] scroll (nested scrollers fight on touch);
+                                min-h-24 keeps a ~4-line floor when squeezed. */}
                             <div className="min-h-24 overflow-y-auto [&_.tiptap]:max-h-none [&_.tiptap]:min-h-24">
                                 <EditorContent editor={editor} />
                             </div>
@@ -96,19 +75,18 @@ export const EditScheduledMessageSheet = ({ row, open, onOpenChange, onDone }: E
                     {/* Delivery time: date + time side by side on one row, preview underneath. */}
                     <div className="flex shrink-0 flex-col gap-2">
                         <Label>{_("Delivery time")}</Label>
-                        <div className="flex items-center gap-3">
+                        {/* Grid, not flex — exact equal halves for the two fields. */}
+                        <div className="grid grid-cols-2 items-center gap-3">
                             <DatePickerPopover value={date} onChange={setDate} size="lg" />
                             <Select value={time} onValueChange={setTime}>
-                                <SelectTrigger aria-label={_("Time")} inputSize="lg" className="flex-1">
+                                <SelectTrigger aria-label={_("Time")} inputSize="lg" className="w-full min-w-0">
                                     <Clock />
                                     <SelectValue>{allTimeOptions.find((option) => option.value === time)?.label}</SelectValue>
                                 </SelectTrigger>
-                                {/* align="end": the panel's min width can exceed the trigger's,
-                                    and the trigger sits at the sheet's right edge — right-align
-                                    so the panel never pokes past it (or off-screen). */}
+                                {/* align="end": the panel can be wider than the trigger,
+                                    which sits at the sheet's right edge. */}
                                 <SelectContent align="end" className="max-h-62 overflow-y-auto">
-                                    {/* px-3/py-2 + tabular-nums: fuller rows with evenly
-                                        spaced digits (frappe-ui's time-picker look). */}
+                                    {/* tabular-nums + px-3: frappe-ui's time-picker row look. */}
                                     {allTimeOptions.map((option) => (
                                         <SelectItem key={option.value} value={option.value} className="px-3 py-2 tabular-nums">
                                             {option.label}

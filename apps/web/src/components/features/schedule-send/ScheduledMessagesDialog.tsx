@@ -16,12 +16,8 @@ type ScheduledMessagesDialogProps = {
 }
 
 /**
- * Settings-dialog-sized popup for managing scheduled messages, opened from the
- * primary sidebar icon. A single list view; editing happens INLINE on the card
- * (chat-stream pattern), with `editingRowId` held here so it survives the list's
- * virtualization. Closing (Esc / outside click / X) is only allowed when nothing is
- * being edited — while a row is editing, all three cancel the edit instead, so
- * mid-edit state is never discarded.
+ * Settings-dialog-sized popup for managing scheduled messages. While a row is
+ * editing, Esc / outside click / X cancel the edit instead of closing.
  */
 const ScheduledMessagesDialog = ({ open, onOpenChange }: ScheduledMessagesDialogProps) => {
     const [editingRowId, setEditingRowId] = useState<string | null>(null)

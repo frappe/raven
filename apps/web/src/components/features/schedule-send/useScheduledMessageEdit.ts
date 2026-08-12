@@ -17,13 +17,9 @@ type UseScheduledMessageEditOptions = {
 }
 
 /**
- * ALL the editing behavior for a scheduled message, shared by the two layouts
- * (the desktop inline editor and the mobile edit sheet) so they cannot drift:
- * seeded date/time, the TipTap editor (Enter saves, Escape cancels and CONSUMES
- * the event so the parent dialog doesn't close on the same key), the delivery
- * time options, save gating and the save itself. Saving also writes
- * `status: "Scheduled"`, which revives a Failed row back into a live one (a
- * no-op for rows already Scheduled).
+ * All editing behavior for a scheduled message, shared by the inline editor and
+ * the mobile sheet. Enter saves; Escape cancels and consumes the event. Saving
+ * writes status: "Scheduled", reviving Failed rows.
  */
 export const useScheduledMessageEdit = (row: ScheduledMessageRow, { onDone, onCancel }: UseScheduledMessageEditOptions) => {
     const isMobile = useIsMobile()
