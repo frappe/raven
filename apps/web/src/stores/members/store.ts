@@ -64,6 +64,32 @@ class ChannelMembersStore {
         this.notify(channelID)
     }
 
+    /**
+     * Insert or update one member without a fetch.
+     *
+     * Why it exists: when the user joins a channel or thread, the join
+     * response already proves they are a member. Writing that in directly
+     * flips the join banner immediately — no refetch to wait on, and no way
+     * for a slow or stale refetch to leave the banner stuck. Marks the entry
+     * loaded even from idle: one confirmed member is better than nothing.
+     */
+    upsertMember(channelID: string, userID: string, meta: MemberMeta) {
+        const prev = this.getEntry(channelID)
+        const existing = prev.members[userID]
+        if (
+            existing &&
+            existing.is_admin === meta.is_admin &&
+            existing.channel_member_name === meta.channel_member_name
+        ) {
+            return
+        }
+        this.entries.set(channelID, {
+            members: { ...prev.members, [userID]: meta },
+            status: "loaded",
+        })
+        this.notify(channelID)
+    }
+
     private notify(channelID: string) {
         this.listeners.get(channelID)?.forEach((listener) => listener())
     }

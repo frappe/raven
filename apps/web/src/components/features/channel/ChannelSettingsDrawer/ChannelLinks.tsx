@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Search } from 'lucide-react'
+import { Search, SearchIcon } from 'lucide-react'
 import { useSetAtom } from 'jotai'
 import { LinkResultContent } from '@components/common/LinkResultBlock/LinkResultContent'
 import { ProviderFilter } from '@components/common/filters/ProviderFilter'
@@ -15,6 +15,8 @@ import { formatRelativeDate } from '@lib/date'
 import ErrorBanner from '@components/ui/error-banner'
 import { LinkSearchResult, useLinkSearch } from '@hooks/useLinkSearch'
 import { Input } from '@components/ui/input'
+import { TAB_SCROLLER } from './tabPanel'
+import { InputGroup, InputGroupAddon } from '@components/ui/input-group'
 
 const ChannelLinks = ({ channelID }: { channelID: string }) => {
     const { members } = useChannelMembers(channelID)
@@ -54,17 +56,20 @@ const ChannelLinks = ({ channelID }: { channelID: string }) => {
     })
 
     return (
-        <div className="px-1 space-y-2">
+        // Flex column: the filter row stays pinned; only the list below scrolls.
+        <div className="flex flex-1 min-h-0 flex-col gap-3">
             {/* Search bar + source picker */}
-            <div className="flex items-center gap-2">
-                <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-ink-gray-4" />
+            <div className="flex shrink-0 items-center gap-2">
+                <InputGroup>
+                    <InputGroupAddon>
+                        <SearchIcon />
+                    </InputGroupAddon>
                     <Input
-                        placeholder={_("Search links...")}
+                        inputSize="sm"
+                        placeholder={_("Search...")}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-9 h-8 text-sm"
                     />
-                </div>
+                </InputGroup>
                 {/* Icon trigger: a labeled trigger's width changes with the
                     selection and would squeeze the search box beside it. */}
                 <ProviderFilter
@@ -77,8 +82,8 @@ const ChannelLinks = ({ channelID }: { channelID: string }) => {
                 />
             </div>
             {error && <ErrorBanner error={error} />}
-            {/* Links List */}
-            <div>
+            {/* Links List — the tab's one scroller (fade + safe-area padding). */}
+            <div className={TAB_SCROLLER}>
                 {isLoading ? <LinkPreviewSkeletonList /> :
                     results.length === 0 ? <div className="text-sm text-ink-gray-4 text-center py-8">{searchQuery || providers.length > 0 ? _("No links found matching your search.") : _("No links shared in this channel yet.")}</div> :
                         <div className='space-y-2'>

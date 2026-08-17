@@ -153,12 +153,22 @@ export const ReadReceiptsList = ({
     // touch-scroll surfaces that are known to work inside vaul sheets (ReactionsBody's
     // max-h tab panels, ChannelMembersList) as closely as possible.
     if (sheet) {
+        // Every branch supplies the sheet's bottom clearance itself (the drawer's
+        // DrawerContent is pb-0): the LIST carries it inside its scroll, so rows
+        // reach the drawer's true edge with scroll-fade softening the cut, and
+        // the non-scrolling branches (skeleton, empty) just pad past the home
+        // indicator.
+        const sheetBottomPad = "pb-[calc(env(safe-area-inset-bottom)+1rem)]"
         return isLoading ? (
-            <ReadersSkeleton rows={skeletonRows} />
+            <div className={sheetBottomPad}>
+                <ReadersSkeleton rows={skeletonRows} />
+            </div>
         ) : isEmpty ? (
-            <p className="px-3 py-2 text-lg text-ink-gray-4">{_("No one has viewed this yet")}</p>
+            <p className={`px-3 pt-2 text-lg text-ink-gray-4 ${sheetBottomPad}`}>
+                {_("No one has viewed this yet")}
+            </p>
         ) : (
-            <div className="max-h-80 overflow-y-auto">
+            <div className={`max-h-80 overflow-y-auto scroll-fade ${sheetBottomPad}`}>
                 {readers.map((reader) => (
                     <ReaderRow key={reader.user_id} reader={reader} />
                 ))}

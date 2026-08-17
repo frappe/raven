@@ -163,6 +163,57 @@ class TestOpenGraphParse(IntegrationTestCase):
 		)
 		self.assertEqual(data["title"], "Plain")
 
+	def test_image_falls_back_to_plain_meta_name(self):
+		# Some blogs declare only <meta name="image"> — no og: or twitter:
+		# prefix. Same informal fallback the description chain uses.
+		html = b"""
+		<html><head>
+		<meta property="og:title" content="Post"/>
+		<meta name="image" content="https://example.com/cover.png"/>
+		</head></html>
+		"""
+		data = parse_open_graph(html, "https://example.com/post")
+		self.assertEqual(data["image"], "https://example.com/cover.png")
+
+	def test_image_url_with_raw_spaces_is_percent_encoded(self):
+		# Real case: a frappe.io page shipped a filename with spaces in its
+		# image meta tag. Browsers forgive that; the dimension probe's HTTP
+		# request must not.
+		html = b"""
+		<html><head>
+		<meta name="image" content="https://example.com/files/a embed -Shot 12.00.08 PM.png"/>
+		</head></html>
+		"""
+		data = parse_open_graph(html, "https://example.com/post")
+		self.assertEqual(
+			data["image"], "https://example.com/files/a%20embed%20-Shot%2012.00.08%20PM.png"
+		)
+
+	def test_image_url_with_narrow_no_break_space_is_percent_encoded(self):
+		# macOS screenshot filenames put a narrow no-break space (U+202F)
+		# before "AM"/"PM". It looks exactly like a space, and copy-paste
+		# turns it into one — which points at a different file that 404s.
+		# We must encode the true character (%E2%80%AF), not a plain space.
+		html = (
+			'<html><head><meta name="image" '
+			'content="https://example.com/files/Screenshot at 12.00.08' + "\u202f" + 'PM.png"/>'
+			"</head></html>"
+		).encode("utf-8")
+		data = parse_open_graph(html, "https://example.com/post")
+		self.assertEqual(
+			data["image"],
+			"https://example.com/files/Screenshot%20at%2012.00.08%E2%80%AFPM.png",
+		)
+
+	def test_already_encoded_image_url_is_not_double_encoded(self):
+		html = b"""
+		<html><head>
+		<meta property="og:image" content="https://example.com/a%20b.png"/>
+		</head></html>
+		"""
+		data = parse_open_graph(html, "https://example.com/post")
+		self.assertEqual(data["image"], "https://example.com/a%20b.png")
+
 	def test_json_ld_extraction(self):
 		# The shape Frappe's blog (and most articles) use: BlogPosting with
 		# an author object and a publish date.
@@ -354,6 +405,50 @@ class TestXStrategy(IntegrationTestCase):
 		# tags on that.
 		self.assertEqual(fetch.call_args_list[1].kwargs.get("user_agent"), PREVIEW_BOT_USER_AGENT)
 
+	def test_tweet_text_keeps_line_breaks_and_drops_attribution(self):
+		import json as json_module
+
+		# Real oEmbed shape: the tweet lives in the <p> (with <br> line
+		# breaks); the rest of the blockquote is an attribution tail the
+		# title already covers.
+		payload = {
+			"author_name": "Nikhil",
+			"html": (
+				'<blockquote><p lang="en">line one<br>line two</p>'
+				"&mdash; Nikhil (@nikhil) "
+				'<a href="https://x.com/nikhil/status/3">August 17, 2026</a></blockquote>'
+			),
+			"provider_name": "X",
+		}
+		oembed = SimpleNamespace(
+			url="https://publish.twitter.com/oembed",
+			content_type="application/json",
+			body=json_module.dumps(payload).encode(),
+		)
+		page_error = LinkFetchError("no page")
+		with patch("raven.link_fetcher.safe_fetch", side_effect=[oembed, page_error]):
+			data = fetch_x("https://x.com/nikhil/status/3")
+
+		self.assertEqual(data["description"], "line one\nline two")
+
+	def test_avatar_og_image_is_dropped(self):
+		# A tweet with no media serves the AUTHOR'S AVATAR as og:image
+		# (under /profile_images/). The card must not banner a giant
+		# profile picture — keep the text, drop the image.
+		page = SimpleNamespace(
+			url="https://x.com/nikhil/status/2",
+			content_type="text/html",
+			body=(
+				b'<meta property="og:image" '
+				b'content="https://pbs.twimg.com/profile_images/12345/nikhil_400x400.jpg"/>'
+			),
+		)
+		with patch("raven.link_fetcher.safe_fetch", side_effect=[self.oembed_response(), page]):
+			data = fetch_x("https://x.com/nikhil/status/2")
+
+		self.assertEqual(data["description"], "hello world")
+		self.assertFalse(data.get("image"))
+
 	def test_image_scrape_is_best_effort(self):
 		# The scrape failing must not cost the tweet its text.
 		with patch(
@@ -392,6 +487,121 @@ class TestFillPreview(IntegrationTestCase):
 		self.assertEqual(preview.title, "Hello")
 		self.assertTrue(preview.stale_after)
 		self.assertFalse(preview.fetch_error)
+
+	def _png_bytes(self, width: int, height: int) -> bytes:
+		import io
+
+		from PIL import Image
+
+		buffer = io.BytesIO()
+		Image.new("RGB", (width, height)).save(buffer, format="PNG")
+		return buffer.getvalue()
+
+	def test_image_without_declared_dims_is_probed_and_measured(self):
+		# The page declares og:image but no og:image:width/height —
+		# frappe.io's blog does exactly this. The fetcher downloads the
+		# image and measures it, so the card can reserve the exact box.
+		page = SimpleNamespace(
+			url="https://example.com/article",
+			content_type="text/html",
+			body=(
+				b'<meta property="og:title" content="Hello"/>'
+				b'<meta property="og:image" content="https://example.com/cover.png"/>'
+			),
+		)
+		cover = SimpleNamespace(
+			url="https://example.com/cover.png",
+			content_type="image/png",
+			body=self._png_bytes(640, 360),
+		)
+
+		def fake_fetch(url, **_kwargs):
+			return cover if url.endswith(".png") else page
+
+		preview = self.make_preview()
+		with patch("raven.link_fetcher.safe_fetch", side_effect=fake_fetch):
+			self.assertTrue(fill_preview(preview))
+
+		self.assertEqual(preview.image_width, 640)
+		self.assertEqual(preview.image_height, 360)
+
+	def test_declared_dims_skip_the_probe(self):
+		page = SimpleNamespace(
+			url="https://example.com/article",
+			content_type="text/html",
+			body=(
+				b'<meta property="og:title" content="Hello"/>'
+				b'<meta property="og:image" content="https://example.com/cover.png"/>'
+				b'<meta property="og:image:width" content="1200"/>'
+				b'<meta property="og:image:height" content="630"/>'
+			),
+		)
+		preview = self.make_preview()
+		with patch("raven.link_fetcher.safe_fetch", return_value=page) as fetch:
+			self.assertTrue(fill_preview(preview))
+
+		# One call: the page. No second call for the image.
+		self.assertEqual(fetch.call_count, 1)
+		self.assertEqual(preview.image_width, 1200)
+		self.assertEqual(preview.image_height, 630)
+
+	def test_oversized_canvas_skips_measuring(self):
+		# Decompression-bomb guard: a small file can decode to a huge
+		# canvas. The cap is patched down so the test image stays tiny.
+		page = SimpleNamespace(
+			url="https://example.com/article",
+			content_type="text/html",
+			body=(
+				b'<meta property="og:title" content="Hello"/>'
+				b'<meta property="og:image" content="https://example.com/cover.png"/>'
+			),
+		)
+		cover = SimpleNamespace(
+			url="https://example.com/cover.png",
+			content_type="image/png",
+			body=self._png_bytes(64, 64),
+		)
+
+		def fake_fetch(url, **_kwargs):
+			return cover if url.endswith(".png") else page
+
+		preview = self.make_preview()
+		with (
+			patch("raven.link_fetcher.safe_fetch", side_effect=fake_fetch),
+			patch("raven.link_fetcher.IMAGE_PROBE_MAX_PIXELS", 100),
+		):
+			self.assertTrue(fill_preview(preview))
+
+		# The preview still fetched; only the measurement was refused.
+		self.assertEqual(preview.status, "Fetched")
+		self.assertEqual(preview.image_width, 0)
+		self.assertEqual(preview.image_height, 0)
+
+	def test_failed_probe_still_fetches_the_preview(self):
+		# The image being unreachable (or on a private IP) must not fail
+		# the preview — the card just uses a fixed clipping box.
+		page = SimpleNamespace(
+			url="https://example.com/article",
+			content_type="text/html",
+			body=(
+				b'<meta property="og:title" content="Hello"/>'
+				b'<meta property="og:image" content="https://example.com/cover.png"/>'
+			),
+		)
+
+		def fake_fetch(url, **_kwargs):
+			if url.endswith(".png"):
+				raise LinkFetchError("image gone")
+			return page
+
+		preview = self.make_preview()
+		with patch("raven.link_fetcher.safe_fetch", side_effect=fake_fetch):
+			self.assertTrue(fill_preview(preview))
+
+		self.assertEqual(preview.status, "Fetched")
+		self.assertEqual(preview.title, "Hello")
+		self.assertEqual(preview.image_width, 0)
+		self.assertEqual(preview.image_height, 0)
 
 	def test_failures_retry_then_go_terminal(self):
 		preview = self.make_preview()

@@ -1,4 +1,5 @@
 import type { Message } from "@raven/types/common/Message"
+import type { LinkPreviewData } from "@stores/linkPreviews/store"
 
 /** Status of a message optimistically inserted on send, before the server ack lands. */
 export type MessageStatus = "sending" | "failed"
@@ -46,6 +47,11 @@ export type MessagesPage = {
     last_visit?: string | null
     /** First unread message id when the load was anchored to unread (drives the "New messages" divider). */
     first_unread_message?: string | null
+    /** Previews for this window's links, keyed by RAW url (the Phase 5
+     *  side-car). Seeds linkPreviewStore before the rows render, so cards
+     *  paint together with their messages. Lives on the response only —
+     *  never persist it with message windows. */
+    previews?: Record<string, LinkPreviewData | null>
 }
 
 /** A date divider between messages from different days. */

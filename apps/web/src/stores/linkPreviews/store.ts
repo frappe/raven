@@ -93,6 +93,42 @@ class LinkPreviewStore {
     }
 
     /**
+     * Apply previews that arrived WITH a message window — the get_messages
+     * side-car (Phase 5 in docs/link-previews-plan.md). Same shape as a
+     * get_previews response: raw url → preview, or null for "nothing stored".
+     *
+     * After seeding, these urls count as known. register() will not fetch
+     * them again — that is the point: the window needs no follow-up call,
+     * so cards render together with their messages.
+     *
+     * Seeded previews also feed the normalized index, so realtime patches
+     * reach them. A seeded null behaves like a fetched null: when a
+     * "previews landed" event arrives, applyRealtime re-asks for it.
+     *
+     * One rule: a null must never REPLACE data we already have. The store
+     * may hold a realtime patch newer than this window's snapshot. Real
+     * data always applies.
+     */
+    seed(entries: Record<string, LinkPreviewData | null>) {
+        for (const [rawUrl, preview] of Object.entries(entries)) {
+            const existing = this.entries.get(rawUrl)
+            if (existing && !preview) continue
+
+            this.pending.delete(rawUrl)
+            this.entries.set(rawUrl, preview ?? null)
+            if (preview) {
+                let raws = this.byNormalized.get(preview.url)
+                if (!raws) {
+                    raws = new Set()
+                    this.byNormalized.set(preview.url, raws)
+                }
+                raws.add(rawUrl)
+            }
+            this.notify(rawUrl)
+        }
+    }
+
+    /**
      * Apply a `link_previews_updated` event. Direct patch for every raw url
      * mapped to the event's normalized urls. Separately, null entries get
      * re-registered: a null often means "the doc didn't exist yet when we

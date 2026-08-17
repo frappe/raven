@@ -163,4 +163,58 @@ describe("linkPreviewStore", () => {
         await vi.runAllTimersAsync()
         expect(linkPreviewStore.get("https://example.com/a")?.title).toBe("Title")
     })
+
+    it("seeded urls are known — register fires no fetch for them", async () => {
+        const client = makeClient()
+        linkPreviewStore.setClient(client.forStore)
+
+        linkPreviewStore.seed({
+            "https://example.com/a": preview(),
+            "https://example.com/none": null,
+        })
+
+        // The whole point of the side-car: the window's urls need no round trip.
+        linkPreviewStore.register("https://example.com/a")
+        linkPreviewStore.register("https://example.com/none")
+        await vi.runAllTimersAsync()
+
+        expect(client.post).not.toHaveBeenCalled()
+        expect(linkPreviewStore.get("https://example.com/a")?.title).toBe("Title")
+        expect(linkPreviewStore.get("https://example.com/none")).toBeNull()
+    })
+
+    it("realtime patches reach seeded urls through the normalized index", () => {
+        // Raw spelling differs from the normalized url the event arrives under.
+        linkPreviewStore.seed({
+            "https://EXAMPLE.com/a?utm_source=x": preview({ status: "Pending", title: "" }),
+        })
+
+        linkPreviewStore.applyRealtime([preview({ title: "Arrived" })])
+
+        expect(linkPreviewStore.get("https://EXAMPLE.com/a?utm_source=x")?.title).toBe("Arrived")
+    })
+
+    it("a seeded null never downgrades existing data", () => {
+        linkPreviewStore.seed({ "https://example.com/a": preview({ title: "Kept" }) })
+        // A later window's snapshot may predate a realtime patch — null must not erase.
+        linkPreviewStore.seed({ "https://example.com/a": null })
+
+        expect(linkPreviewStore.get("https://example.com/a")?.title).toBe("Kept")
+    })
+
+    it("a seeded null re-registers when previews land, like a fetched null", async () => {
+        const client = makeClient()
+        client.respondWith(() => ({ "https://example.com/a": preview({ title: "Now here" }) }))
+        linkPreviewStore.setClient(client.forStore)
+
+        // Window loaded before the background fetch finished: side-car says "nothing yet".
+        linkPreviewStore.seed({ "https://example.com/a": null })
+
+        // The completion event arrives for a url this client had no mapping for —
+        // nulls re-register and one batched refetch resolves them.
+        linkPreviewStore.applyRealtime([preview({ url: "https://example.com/other" })])
+        await vi.runAllTimersAsync()
+
+        expect(linkPreviewStore.get("https://example.com/a")?.title).toBe("Now here")
+    })
 })

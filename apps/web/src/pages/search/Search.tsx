@@ -31,6 +31,7 @@ import { useUsers } from '@hooks/useUsers'
 import { Input } from '@components/ui/input'
 import { Button } from '@components/ui/button'
 import { useIsMobile } from '@hooks/use-mobile'
+import { useLayerInAnimation } from "@hooks/useLayerInAnimation"
 import { cn } from '@lib/utils'
 import _ from '@lib/translate'
 import { InputGroup, InputGroupAddon, InputGroupButton } from '@components/ui/input-group'
@@ -83,6 +84,8 @@ export default function Search() {
     const navigate = useNavigate()
     const selectedMessageID = useMatch("/search/:channelID/:messageID")?.params.messageID
     const hasSelection = !!selectedMessageID
+    // No slide when the chat layer is already open on a BACK arrival — see the hook.
+    const layerAnimation = useLayerInAnimation(hasSelection)
 
     const onSelect = (selection: SelectedNotification) => {
         navigate(
@@ -349,7 +352,8 @@ export default function Search() {
                     list underneath keeps its scroll position. */}
                 <div className={cn(
                     "flex flex-col min-w-0 min-h-0 bg-surface-gray-1",
-                    "max-md:absolute max-md:inset-0 max-md:z-20 animate-layer-in",
+                    "max-md:absolute max-md:inset-0 max-md:z-20",
+                    layerAnimation,
                     !hasSelection && "max-md:hidden",
                     "md:flex-1",
                 )}>

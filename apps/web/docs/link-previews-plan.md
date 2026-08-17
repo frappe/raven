@@ -187,6 +187,76 @@ channel full of links causes at most one `get_previews` call per screen.
   org-specific deployments don't belong in code shipped to every install.
   Until then such links classify as `Frappe` via the subdomain rule.
 
+## Phase 5 — Scroll stability: previews in the first paint
+
+*Cards must never move the stream. Three shift sources, three slices — land in
+this order.*
+
+The diagnosis. Embeds are already height-deterministic (facades and fixed
+per-kind iframe heights; Reddit's one-time shrink-to-fit is the accepted
+exception) — the wobble comes from the fetched-card classes:
+
+1. **The first-paint race** — rows paint from `get_messages`, previews land one
+   batched `get_previews` round-trip later, and each card insertion pushes
+   everything below. The whole-window prefetch only wins when the store is
+   already warm; cold channels race. This is the main wonkiness.
+2. **Async completions** (Pending → Fetched over realtime) — mostly benign at
+   the bottom-anchored live edge, occasionally mid-history via re-share or
+   stale refetch.
+3. **Image loads inside cards** — data present, but the og image's dimensions
+   usually aren't, so the card guesses an aspect and corrects on load.
+
+For calibration: Slack and Discord make the unfurl part of the message object
+(late resolution arrives as a message update); Telegram embeds a webpage object
+with known sizes; WhatsApp has the *sender* bake the preview thumbnail into the
+message payload. The industry norm is "preview data travels with the message" —
+our normalized-URL design just wants the side-car form of it, not the embedded
+form.
+
+- **Slice 1 — side-car seeding.** `get_messages` returns a deduped `previews`
+  side-list for every URL in the window — keyed by RAW url, the exact shape
+  `get_previews` already answers with, so the store seeds through one code
+  path from either source. Server-side it's one indexed `IN` query over the
+  window's child rows (which hold the raw→normalized mapping). The store stays
+  the single owner; realtime keeps updating after the seed; `get_previews`
+  remains the fallback for warm-cached windows, hover mode, and persistence
+  rehydrate. Deliberately NOT embedded per message: that duplicates shared
+  previews across every window, freezes stale snapshots into cached messages
+  (colliding with hydrate-then-reconcile persistence), and couples data that
+  mutates on independent clocks.
+- **Slice 2 — loading skeletons: BUILT, THEN REJECTED (Aug 2026).** The plan
+  was poll-style skeletons for links awaiting their fetch, class-sized
+  (Frappe banner vs generic card) and status-aware. Built, reviewed, and
+  removed on reflection: once the side-car fixed cold loads, the only
+  pop-in left was a FRESH message's card at the bottom-anchored live edge —
+  where arriving content is expected motion, and Slack/Discord/Telegram all
+  just pop the embed in. Meanwhile the skeleton's failure modes concentrate
+  exactly there: a new link is a first-ever fetch, so a failure collapses
+  the skeleton (worse than a pop-in), and the generic card's height is a
+  coin flip (image? banner? description?), so a wrong guess shifts twice.
+  It also carried a drift-prone client mirror of the server's app-path
+  prefixes just to avoid never-resolving skeletons. Decision: fresh cards
+  pop in; no placeholder. Statuses still ride the side-car — they cost
+  nothing and stay useful.
+- **Slice 3 — exact image boxes.** Layer 2 already harvested declared
+  `og:image:width/height` and oEmbed thumbnail dims — but the sites that
+  matter most don't declare them (frappe.io's blog ships og:image with no
+  dimensions at all). So the fetcher now PROBES: when a page declares an
+  image without its size, it downloads the image through safe_fetch (same
+  SSRF guards — the image URL came out of a hostile page) and measures it
+  with PIL, one best-effort attempt, 2MB cap. A failed probe never fails
+  the preview. For the rare card still without dims, the client clips into
+  a fixed box instead of reflowing: the Frappe banner assumes the standard
+  1200x630 og shape, thumbnails become a fixed square. Either way, an
+  image loading can no longer change a card's shape. Phase 4's camo proxy
+  subsumes the probe later (the proxy downloads images anyway).
+
+**Done when:** a cold channel open paints rows and cards in one commit;
+paginating link-heavy history doesn't move the message being read; a fresh
+send's card pops in at the live edge only (accepted, Slack-style); an image
+load never changes a card's height; and `useStreamScroll`'s resize correction
+is a backstop again, not the primary defense it acts as today.
+
 ---
 
 ## Watch items
@@ -199,4 +269,7 @@ channel full of links causes at most one `get_previews` call per screen.
   to junk.
 - **Frontend cache interplay**: when IndexedDB message persistence lands,
   previews stay out of the message cache by design — the store re-validates
-  them independently. Don't "optimize" them back into the message payload.
+  them independently. The line to hold: Phase 5's side-car rides the
+  `get_messages` RESPONSE as a seeding list for the preview store; it never
+  becomes part of message objects, and persisted message windows must not
+  include it — a rehydrated window re-seeds from `get_previews` instead.

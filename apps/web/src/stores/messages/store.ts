@@ -153,6 +153,20 @@ class ChannelMessagesStore {
     }
 
     /**
+     * Forget a channel entirely — for channels that DISAPPEARED from the
+     * channel list (deleted, or the user lost access). Different from reset():
+     * the id leaves the hydrated set, so the room-subscription hook sends the
+     * socket doc_unsubscribe for it. A component still subscribed (a page
+     * mid-redirect) just sees a fresh empty state on its next read.
+     */
+    remove(channelID: string) {
+        if (!this.states.has(channelID)) return
+        this.states.delete(channelID)
+        this.listeners.get(channelID)?.forEach((listener) => listener())
+        this.notifyHydrated()
+    }
+
+    /**
      * Recompute the "New messages" divider anchor against `watermark` (the latest read
      * position). Used on WARM re-entry — a warm channel isn't refetched, so its
      * `firstUnreadMessage` would otherwise stay frozen at the first load and the divider

@@ -62,7 +62,29 @@ export interface Attachment {
  */
 export type AttachmentPreviewMode = "view" | "preview"
 
-export type AttachmentPreviewState = { attachments: Attachment[]; index: number; mode?: AttachmentPreviewMode } | null
+export type AttachmentPreviewState = {
+    attachments: Attachment[]
+    index: number
+    mode?: AttachmentPreviewMode
+    /**
+     * Identifies the surface that opened the viewer (e.g. "channel-files:{id}").
+     * A source uses it to recognize its own session in the atom — so it can
+     * append pages to `attachments` or strip its callbacks on unmount without
+     * touching a viewer some other surface opened. Plain snapshot openers
+     * (the message stream) leave all of this unset and nothing changes.
+     */
+    sourceKey?: string
+    /** Called after paging lands on an item — the source syncs its list scroll. */
+    onIndexChange?: (attachment: Attachment) => void
+    /**
+     * Called when paging gets close to the end of `attachments` while
+     * `hasMore` — the source loads its next page and rewrites `attachments`.
+     * The viewer itself never fetches.
+     */
+    onNearEnd?: () => void
+    /** More items exist beyond the set → paging clamps at the ends instead of wrapping. */
+    hasMore?: boolean
+} | null
 
 export const attachmentPreviewAtom = atom<AttachmentPreviewState>(null)
 

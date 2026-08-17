@@ -85,7 +85,13 @@ const MessageResultBlockInner = ({ message, user, channel, dmChannel, peer, work
                             </>
                         )}
                     </div>
-                    <div className="mt-1 [&_p]:my-0">
+                    {/* Mentions are INERT on mobile (max-md pointer-events-none): the row
+                        is one tap target, and a live mention double-fired — the tap
+                        opened the profile popover AND navigated the row, and the popover
+                        outlived the page (portaled outside the layer that went inert).
+                        Desktop keeps hover cards: hover never conflicts with click
+                        navigation. Same rule as BaseThreadMessage. */}
+                    <div className="mt-1 [&_p]:my-0 max-md:[&_.mention]:pointer-events-none">
                         {/* Polls: render the FTS snippet (question + options, with <mark>
                             highlights) instead of the live poll card — a votable card in a
                             search list would fire get_poll per row and drop the highlight. */}

@@ -25,7 +25,7 @@ import { useNavigate, useParams } from 'react-router'
 import { ChannelListItem } from '@raven/types/common/ChannelListItem'
 import { channelStore } from '@stores/channels/store'
 import { prefetchChannel, type FrappeCallClient } from '@stores/messages/loaders'
-import { DRAWER_EXIT_MS } from '@utils/drawer'
+import { useNavigateFromDrawer } from '@hooks/useNavigateFromDrawer'
 import _ from '@lib/translate'
 import { cn } from '@lib/utils'
 import ErrorBanner from '@components/ui/error-banner'
@@ -69,17 +69,16 @@ export const CreateChannelForm = ({ onClose: onCloseCallback, selectedWorkspace 
      *  closing is all that's left. On mobile the create flow deliberately does
      *  NOT navigate (see onSubmit), so if a channel was created, go to it here
      *  — after the drawer has fully closed, or the drawer gets baked into the
-     *  OS back-swipe screenshot (see DRAWER_EXIT_MS). The prefetch runs during
-     *  the wait so the channel usually opens already loaded. */
+     *  OS back-swipe screenshot (the wait lives in useNavigateFromDrawer). The
+     *  prefetch runs during the wait so the channel usually opens already
+     *  loaded. No close to pass to the hook: onCloseCallback just closed it. */
+    const navigateFromDrawer = useNavigateFromDrawer()
     const onClose = () => {
         onCloseCallback()
         const created = createdChannelRef.current
         if (isMobile && created) {
             prefetchChannel(call as FrappeCallClient, created.name)
-            window.setTimeout(
-                () => navigate(`/${encodeURIComponent(created.workspace)}/${encodeURIComponent(created.name)}`),
-                DRAWER_EXIT_MS,
-            )
+            navigateFromDrawer(`/${encodeURIComponent(created.workspace)}/${encodeURIComponent(created.name)}`)
         }
         createdChannelRef.current = null
         reset()

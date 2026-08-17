@@ -74,26 +74,19 @@ def get_preview_link(urls: list[str] | str):
 MAX_PREVIEW_BATCH = 50
 
 
-@frappe.whitelist(methods=["POST"])
-def get_previews(urls: list[str] | str):
+def previews_for_urls(urls: list[str]) -> dict:
 	"""
-	The v3 read endpoint. Takes RAW urls exactly as they appear in
-	messages, normalizes them server-side (the normalizer lives in one
-	place), and returns stored previews keyed by the raw urls requested.
-	A url with no stored preview maps to None. Never fetches anything —
-	that is the background pipeline's job (raven/links.py).
+	Look up stored previews for a list of RAW urls, exactly as they appear
+	in messages. Returns a dict keyed by those same raw urls. A url with no
+	stored preview maps to None.
 
-	POST although it only reads: a window's batch of urls (up to 50 x 500
-	chars) does not fit safely in a query string.
+	Steps: normalize each url, drop blocked ones, load all matching
+	previews in one query. This never fetches from the internet — that is
+	the background job's work (raven/links.py).
+
+	Shared by the get_previews endpoint and the chat stream's side-car
+	(Phase 5 in docs/link-previews-plan.md), so the two can't drift apart.
 	"""
-	if not urls or urls == "[]":
-		return {}
-
-	if isinstance(urls, str):
-		urls = json.loads(urls)
-
-	urls = urls[:MAX_PREVIEW_BATCH]
-
 	normalized_by_raw = {url: normalize_url(url) for url in urls}
 	# The blocklist beats stored data — a doc may predate the block.
 	lookup = {
@@ -125,6 +118,27 @@ def get_previews(urls: list[str] | str):
 			stored[row.url] = row
 
 	return {url: stored.get(normalized_by_raw.get(url)) for url in urls}
+
+
+@frappe.whitelist(methods=["POST"])
+def get_previews(urls: list[str] | str):
+	"""
+	The v3 read endpoint. Takes RAW urls exactly as they appear in
+	messages and returns stored previews keyed by them — see
+	previews_for_urls for the semantics.
+
+	POST although it only reads: a window's batch of urls (up to 50 x 500
+	chars) does not fit safely in a query string.
+	"""
+	if not urls or urls == "[]":
+		return {}
+
+	frappe.only_for("Raven User")
+
+	if isinstance(urls, str):
+		urls = json.loads(urls)
+
+	return previews_for_urls(urls[:MAX_PREVIEW_BATCH])
 
 
 @frappe.whitelist(methods=["POST"])

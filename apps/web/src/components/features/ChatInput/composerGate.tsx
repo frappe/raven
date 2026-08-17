@@ -1,9 +1,8 @@
-import { useCallback, useContext, useMemo, useSyncExternalStore } from "react"
-import { FrappeConfig, FrappeContext } from "frappe-react-sdk"
+import { useCallback, useMemo, useSyncExternalStore } from "react"
 import { Button } from "@components/ui/button"
 import { useChannelById } from "@stores/channels/useChannelList"
 import { channelStore } from "@stores/channels/store"
-import { useChannelMembers, loadChannelMembers } from "@hooks/useChannelMembers"
+import { useChannelMembers } from "@hooks/useChannelMembers"
 import { useUserCookieData } from "@hooks/useUserCookieData"
 import { useJoinChannel } from "@hooks/useJoinChannel"
 import _ from "@lib/translate"
@@ -56,14 +55,13 @@ export const useComposerGate = (
     const { members, isLoading: membersLoading } = useChannelMembers(channelID, { autoFetch: !isDM })
     const isMember = isDM || members.some((m) => m.name === currentUser)
 
+    // useJoinChannel updates the member store itself (including the roster
+    // refresh), so the banner flips as soon as the join succeeds. Nothing
+    // more to do here.
     const { joinChannel, loading: joining } = useJoinChannel(channelID)
-    const { call } = useContext(FrappeContext) as FrappeConfig
     const onJoin = useCallback(() => {
-        joinChannel()
-            // Refresh the member store so the gate flips to `composer` immediately.
-            .then(() => loadChannelMembers(call, channelID, true))
-            .catch((e) => errorResponseToast(_("Could not join"), e))
-    }, [joinChannel, call, channelID])
+        joinChannel().catch((e) => errorResponseToast(_("Could not join"), e))
+    }, [joinChannel])
 
     let state: ComposerGateState
     if (!channelsLoaded || (!isDM && membersLoading)) state = "loading"

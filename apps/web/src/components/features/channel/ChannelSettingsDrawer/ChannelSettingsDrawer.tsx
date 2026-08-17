@@ -14,8 +14,8 @@ import { useCurrentChannelID } from '@hooks/useCurrentChannelID';
 import { useNoDragWhileScrolled } from '@hooks/useNoDragWhileScrolled';
 import type { UserData } from '@db';
 import _ from '@lib/translate'
-import { Separator } from '@components/ui/separator';
 import ChannelSettingsTab from './ChannelSettingsTab';
+import { TAB_PANEL } from './tabPanel';
 
 interface ChannelSettingsDrawerProps {
     peerUser?: UserData
@@ -42,7 +42,7 @@ const ChannelSettingsDrawer = ({ peerUser }: ChannelSettingsDrawerProps) => {
 
     return (
         <div className="flex flex-col h-full w-full">
-            <div className='flex justify-between items-center px-2.5 pl-5 h-11 md:border-b border-outline-gray-2'>
+            <div className='flex justify-between items-center px-3.5 h-11 md:border-b border-outline-gray-2'>
                 <span className='text-lg-medium'>{isDM ? _('Profile') : _('About')}</span>
                 <div>
                     <Button
@@ -79,34 +79,34 @@ const ChannelSettingsDrawer = ({ peerUser }: ChannelSettingsDrawerProps) => {
                     {!isDM && <TabsTrigger value="settings" className="w-full">{_('Settings')}</TabsTrigger>}
                 </TabsList>
 
-                {/* Positional no-drag (see useNoDragWhileScrolled): on mobile this
-                    drawer lives inside a vaul bottom sheet, which claims vertical touch
-                    drags as sheet gestures — this hands them back to the scroller while
-                    it's scrolled, and a pull-down from the top still dismisses.
-                    (DrawerContent itself pads past the home-indicator safe area.) */}
-                <div
-                    {...noDragProps}
-                    className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-2"
-                >
+                {/* NOT a scroller: each tab pins its filter row and scrolls only its
+                    list (see tabPanel.ts), so search boxes and pickers stay put while
+                    results scroll under them.
+
+                    noDragProps stays here even so (see useNoDragWhileScrolled): its
+                    capture listener stamps whichever inner element actually scrolled,
+                    handing touch drags back to that scroller while it's scrolled — a
+                    pull-down from the top still dismisses the sheet. */}
+                <div {...noDragProps} className="flex flex-1 min-h-0 flex-col pt-1">
                     {!isDM && (
-                        <TabsContent value="settings">
+                        <TabsContent value="settings" className={TAB_PANEL}>
                             <ChannelSettingsTab channelID={channelID} />
                         </TabsContent>
                     )}
 
-                    <TabsContent value="threads">
+                    <TabsContent value="threads" className={TAB_PANEL}>
                         <ChannelThreads channelID={channelID} />
                     </TabsContent>
 
-                    <TabsContent value="files">
+                    <TabsContent value="files" className={TAB_PANEL}>
                         <ChannelFiles channelID={channelID} />
                     </TabsContent>
 
-                    <TabsContent value="links">
+                    <TabsContent value="links" className={TAB_PANEL}>
                         <ChannelLinks channelID={channelID} />
                     </TabsContent>
 
-                    <TabsContent value="pins">
+                    <TabsContent value="pins" className={TAB_PANEL}>
                         <ChannelPins channelID={channelID} />
                     </TabsContent>
                 </div>

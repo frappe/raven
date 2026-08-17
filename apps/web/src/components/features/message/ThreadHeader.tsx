@@ -12,6 +12,10 @@ import { useIsMobile } from "@hooks/use-mobile"
 import { PANE_HOSTS, useMobileBack } from "@hooks/useMobileBack"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip"
 
+/** How long the dropdown's exit animation runs (tailwind animate-out default).
+ *  Menu items that NAVIGATE wait this out — see the go-to-channel item. */
+const MENU_EXIT_MS = 150
+
 export interface ThreadHeaderProps {
     /** Close the thread (route back to the parent channel). */
     onClose: () => void
@@ -54,10 +58,15 @@ export const ThreadHeader = ({ onClose, onOpenChannel, onLeave, onRequestDelete,
             <h2 className="md:text-base md:font-medium text-lg-medium text-ink-gray-8">{_("Thread")}</h2>
         </div>
         <div className="flex items-center gap-2">
+            {/* Desktop: a standalone icon with a tooltip. On mobile the same
+                action lives INSIDE the menu below instead — touch has no
+                tooltips, so a bare arrow icon says nothing, and the tight
+                header doesn't want a second icon button. (ThreadDrawer gives
+                mobile its own target: the channel WITHOUT the thread layer.) */}
             {onOpenChannel && !isMobile && (
                 <Tooltip>
                     <TooltipTrigger asChild>
-                        <Button variant="ghost" size={isMobile ? "lg" : "sm"} isIconButton onClick={onOpenChannel} aria-label={_("Open channel")}>
+                        <Button variant="ghost" size="sm" isIconButton onClick={onOpenChannel} aria-label={_("Open channel")}>
                             <ArrowUpRight />
                         </Button>
                     </TooltipTrigger>
@@ -67,8 +76,9 @@ export const ThreadHeader = ({ onClose, onOpenChannel, onLeave, onRequestDelete,
                 </Tooltip>
 
             )}
-            {/* Only show the menu if there's an action you're allowed to take. */}
-            {(canLeave || canDelete) && (
+            {/* Only show the menu if it has something for you: an action you're
+                allowed to take, or (mobile) the go-to-channel item. */}
+            {(canLeave || canDelete || (isMobile && onOpenChannel)) && (
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size={isMobile ? "lg" : "sm"} isIconButton aria-label={_("Thread settings")}>
@@ -76,6 +86,21 @@ export const ThreadHeader = ({ onClose, onOpenChannel, onLeave, onRequestDelete,
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                        {isMobile && onOpenChannel && (
+                            <DropdownMenuItem
+                                // Navigate AFTER the menu has finished closing.
+                                // Navigating in the click frame unmounts the page
+                                // (and the menu with it) mid-fade — one raw frame
+                                // of the old page flashes before the channel
+                                // mounts. The wait also keeps the open menu out
+                                // of the iOS back-swipe screenshot, same rule as
+                                // drawer navigations (see DRAWER_EXIT_MS).
+                                onSelect={() => window.setTimeout(onOpenChannel, MENU_EXIT_MS)}
+                            >
+                                <ArrowUpRight />
+                                {_("Go to channel")}
+                            </DropdownMenuItem>
+                        )}
                         {canLeave && (
                             <DropdownMenuItem onClick={onLeave} disabled={leaving}>
                                 <LogOut />

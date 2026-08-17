@@ -56,4 +56,6 @@ export interface RavenUser {
 	sort_channels_by?: "Alphabetical Order" | "Recent Activity" | "Unreads First"
 	/**	Link Previews : Select	*/
 	link_previews?: "Link Hover" | "Preview Card"
+	/**	Hide Read Receipts : Check	*/
+	hide_read_receipts?: 0 | 1
 }

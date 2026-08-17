@@ -40,7 +40,13 @@ export const BaseThreadMessage = ({
                     <div className="font-medium text-content text-ink-gray-8 mb-1">
                         {user?.full_name || user?.name || _("User")}
                     </div>
-                    <div className="[&_p]:my-0">
+                    {/* Mentions are INERT on mobile (max-md pointer-events-none): the
+                        whole row is one tap target, and a live mention double-fired —
+                        the tap opened the profile popover AND navigated the row, and
+                        the popover outlived the page (portaled outside the layer that
+                        went inert). Desktop keeps hover cards: hover never conflicts
+                        with click navigation. Same rule as MessageResultBlock. */}
+                    <div className="[&_p]:my-0 max-md:[&_.mention]:pointer-events-none">
                         <MessageContent message={thread as unknown as Message} showLinkPreview={false} />
                     </div>
                 </div>

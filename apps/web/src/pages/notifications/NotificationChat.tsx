@@ -1,6 +1,5 @@
 import { useNavigate } from "react-router-dom"
-import { useFrappeGetDoc } from "frappe-react-sdk"
-import type { Message } from "@raven/types/common/Message"
+import { useMessageBatch } from "@hooks/useMessageBatch"
 import { useChannelById } from "@stores/channels/useChannelList"
 import ChannelHeader from "@components/features/channel/ChannelHeader/ChannelHeader"
 import { DMChannelHeader } from "@components/features/dm-channel/DMChannelHeader"
@@ -69,14 +68,10 @@ export function NotificationPane({
     const channel = useChannelById(channelID)
 
     // Thread pane: resolve the parent channel from the thread's root message (a thread's
-    // id IS its root message's id). Same SWR key as ThreadRootMessage, so this dedupes
-    // with the fetch the drawer makes anyway. Gives the drawer its parent context —
-    // which also enables its "Open channel" button.
-    const { data: rootMessage } = useFrappeGetDoc<Message>(
-        "Raven Message",
-        isThread ? channelID : "",
-        isThread ? `raven_message:${channelID}` : null,
-    )
+    // id IS its root message's id). One get_message_batch call — same SWR key as
+    // ThreadRootMessage, so this dedupes with the fetch the drawer makes anyway. Gives
+    // the drawer its parent context — which also enables its "Open channel" button.
+    const { anchor: rootMessage } = useMessageBatch(isThread ? channelID : null)
 
     if (isThread) {
         return <div className="flex min-h-0 min-w-0 flex-1 flex-row gap-1 p-0 md:p-1">

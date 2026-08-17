@@ -39,6 +39,7 @@ class RavenUser(Document):
 		first_name: DF.Data | None
 		full_name: DF.Data
 		grouped_channels: DF.Table[RavenGroupedChannels]
+		hide_read_receipts: DF.Check
 		last_mention_viewed_on: DF.Datetime | None
 		link_previews: DF.Literal["Link Hover", "Preview Card"]
 		pinned_channels: DF.Table[RavenPinnedChannels]

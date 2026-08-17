@@ -1,6 +1,7 @@
 import { useFrappeEventListener } from "frappe-react-sdk"
 import type { Message } from "@raven/types/common/Message"
 import { channelMessagesStore } from "./store"
+import { broadcastMessageEvent } from "./messageEvents"
 
 type CreatedEvent = { channel_id: string; sender: string; message_id: string; message_details: Message }
 type EditedEvent = { channel_id: string; sender: string; message_id: string; message_details: Partial<Message> }
@@ -23,7 +24,18 @@ type SavedEvent = { channel_id: string; message_id: string; liked_by: string }
  */
 export const useMessagesRealtime = () => {
     useFrappeEventListener("message_created", (event: CreatedEvent) => {
-        if (!event?.message_details || !channelMessagesStore.isHydrated(event.channel_id)) return
+        if (!event?.message_details) return
+        // Rebroadcast for in-app subscribers (see messageEvents) — BEFORE the
+        // store guards below: those exist for the message window (hydration,
+        // own-send dedupe), and subscribers like the files tab want every
+        // event, own sends included.
+        broadcastMessageEvent({
+            kind: "created",
+            channelID: event.channel_id,
+            messageID: event.message_id,
+            messageType: event.message_details.message_type,
+        })
+        if (!channelMessagesStore.isHydrated(event.channel_id)) return
         // This is our own send coming back over the broadcast (the server sends every
         // new message to everyone in the channel, us included). It's already on screen,
         // so ignore this copy — the server's direct response to our send handles it.
@@ -37,7 +49,9 @@ export const useMessagesRealtime = () => {
     })
 
     useFrappeEventListener("message_deleted", (event: DeletedEvent) => {
-        if (!event?.message_id || !channelMessagesStore.isHydrated(event.channel_id)) return
+        if (!event?.message_id) return
+        broadcastMessageEvent({ kind: "deleted", channelID: event.channel_id, messageID: event.message_id })
+        if (!channelMessagesStore.isHydrated(event.channel_id)) return
         channelMessagesStore.messageDeleted(event.channel_id, event.message_id)
     })
 

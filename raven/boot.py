@@ -36,12 +36,13 @@ def boot_session(bootinfo):
 		and frappe.session.user != "Guest"
 		and frappe.db.exists("Raven User", frappe.session.user)
 	):
-		chat_style, time_format = frappe.db.get_value(
-			"Raven User", frappe.session.user, ["chat_style", "time_format"]
+		chat_style, time_format, hide_read_receipts = frappe.db.get_value(
+			"Raven User", frappe.session.user, ["chat_style", "time_format", "hide_read_receipts"]
 		)
 	else:
 		chat_style = "Simple"
 		time_format = "12-hour"
+		hide_read_receipts = 0
 
 	if document_link_override and len(document_link_override) > 0:
 		bootinfo.raven_document_link_override = True
@@ -53,6 +54,7 @@ def boot_session(bootinfo):
 
 	bootinfo.chat_style = chat_style if chat_style else "Simple"
 	bootinfo.raven_time_format = time_format if time_format else "12-hour"
+	bootinfo.raven_hide_read_receipts = 1 if hide_read_receipts else 0
 
 	bootinfo.push_notification_service = (
 		raven_settings.push_notification_service

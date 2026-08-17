@@ -145,28 +145,44 @@ async function updateBadgeFromNotifications(excludeTag) {
     else await navigator.clearAppBadge()
 }
 
-self.addEventListener("push", (event) => {
-    if (!event.data) return
+// Apple platforms revoke a push subscription after a few pushes that show no
+// notification ("silent" pushes, their anti-spam rule). So on Apple, EVERY
+// push must end in showNotification — even ones we'd rather swallow. Chrome
+// has no such rule, so other platforms keep the quieter behavior.
+const isApplePlatform = /iPhone|iPad|iPod|Macintosh/.test(self.navigator.userAgent)
 
+/** Last-resort notification for pushes we can't read — shown on Apple so the
+ *  push still counts as "shown" and the subscription survives. */
+const showFallbackNotification = () =>
+    self.registration.showNotification("Raven", { body: "You have a new message" })
+
+self.addEventListener("push", (event) => {
     // FCM wraps the message as { data: {...}, from, priority, ... }
-    let payload
+    let payload = null
     try {
-        payload = event.data.json()
+        payload = event.data ? event.data.json() : null
     } catch {
-        return
+        // Unreadable payload — handled below (Apple still shows a fallback).
     }
     const data = payload?.data ?? {}
 
     event.waitUntil(
         (async () => {
+            if (!payload) {
+                if (isApplePlatform) await showFallbackNotification()
+                return
+            }
+
             // If the app is visible in some window, the realtime socket already
-            // surfaced this message in-app — showing a system notification too
-            // would double-notify. (Skipping display on a visible client is
-            // also what firebase-messaging-sw does, so Chrome's userVisibleOnly
-            // expectations are satisfied.) includeUncontrolled covers pages
-            // loaded before this SW version activated.
+            // surfaced this message in-app — a system notification on top would
+            // double-notify, so Chrome and friends skip it (same as
+            // firebase-messaging-sw). Apple can't skip (see isApplePlatform):
+            // there the notification shows anyway, and the read-sweep
+            // (raven:notification-shown → useClearReadNotifications) clears it
+            // moments later once the message is read. includeUncontrolled
+            // covers pages loaded before this SW version activated.
             const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true })
-            if (windows.some((client) => client.visibilityState === "visible")) return
+            if (!isApplePlatform && windows.some((client) => client.visibilityState === "visible")) return
 
             // Authoritative badge count, when the server includes it. The page
             // mirrors the badge itself while running — this covers the closed/
@@ -181,7 +197,10 @@ self.addEventListener("push", (event) => {
             // Raven Cloud flattens title/body into `data` for web pushes; the
             // notification-key fallback covers older payload shapes.
             const title = data.title || payload?.notification?.title
-            if (!title) return
+            if (!title) {
+                if (isApplePlatform) await showFallbackNotification()
+                return
+            }
 
             /** @type {NotificationOptions} */
             const options = {
@@ -200,6 +219,12 @@ self.addEventListener("push", (event) => {
             await self.registration.showNotification(title, options)
             // No server count → approximate from what's now on display.
             if (!Number.isFinite(serverCount)) await updateBadgeFromNotifications()
+            // Tell open pages a notification landed, so they can sweep the
+            // tray now. Push arrives seconds after the socket — the user may
+            // have already read this message, and then nothing else would
+            // trigger a sweep to remove it.
+            const pages = await self.clients.matchAll({ type: "window" })
+            for (const page of pages) page.postMessage({ type: "raven:notification-shown" })
         })(),
     )
 })
@@ -211,18 +236,59 @@ self.addEventListener("notificationclose", (event) => {
     event.waitUntil(updateBadgeFromNotifications(event.notification.tag))
 })
 
-// The URL of the last clicked notification, held until the page ASKS for it.
-// The postMessage fired at click time is lost when the window exists but its
-// JS is FROZEN (a backgrounded iOS PWA) — focus() foregrounds the app, but the
-// message lands in a suspended event loop. So the page also PULLS this on
-// resume (visibilitychange → raven:consume-notification-click), with a
-// MessageChannel port reply. Consumed = cleared, so it never re-fires.
-let pendingNotificationClickUrl = null
+// The browser replaced or dropped this device's push subscription (token
+// rotation, or Apple ending it over silent pushes). The worker can't mint a
+// new FCM token itself (that needs the Firebase SDK, which lives in the
+// page) — so tell any open page to re-register right now. A closed app
+// heals on its next launch: startup always re-mints and syncs the token.
+self.addEventListener("pushsubscriptionchange", (event) => {
+    event.waitUntil(
+        (async () => {
+            const pages = await self.clients.matchAll({ type: "window" })
+            for (const page of pages) page.postMessage({ type: "raven:push-subscription-changed" })
+        })(),
+    )
+})
+
+// The URL of the last clicked notification, held until the page asks for it.
+//
+// Why: when the app is backgrounded on iOS, its JS is frozen. The postMessage
+// we send at click time lands in that frozen event loop and is lost. So the
+// page also PULLS the URL when it wakes up (raven:consume-notification-click).
+// Reading it clears it, so a click never navigates twice.
+//
+// It lives in the Cache API, not a variable. The OS can kill this worker in
+// the seconds it takes the page to wake — a variable would come back empty
+// and the click would be lost. Storage survives the worker.
+const PENDING_CLICK_CACHE = "raven-pending-click"
+const PENDING_CLICK_KEY = "/__pending-notification-click"
+
+async function setPendingClick(url) {
+    try {
+        const cache = await caches.open(PENDING_CLICK_CACHE)
+        await cache.put(PENDING_CLICK_KEY, new Response(url))
+    } catch {
+        // Storage unavailable — the live postMessage path still works.
+    }
+}
+
+/** Read + clear (one consumer gets it, repeats get null). */
+async function takePendingClick() {
+    try {
+        const cache = await caches.open(PENDING_CLICK_CACHE)
+        const hit = await cache.match(PENDING_CLICK_KEY)
+        if (!hit) return null
+        await cache.delete(PENDING_CLICK_KEY)
+        return await hit.text()
+    } catch {
+        return null
+    }
+}
 
 self.addEventListener("message", (event) => {
     if (event.data?.type === "raven:consume-notification-click") {
-        event.ports[0]?.postMessage({ url: pendingNotificationClickUrl })
-        pendingNotificationClickUrl = null
+        const port = event.ports[0]
+        event.waitUntil?.(takePendingClick().then((url) => port?.postMessage({ url })))
     }
     if (event.data?.type === "raven:cache-shell") {
         event.waitUntil?.(cacheAppShell())
@@ -239,6 +305,9 @@ self.addEventListener("notificationclick", (event) => {
             // The clicked channel is being addressed — drop its tag from the
             // fallback badge. (The page re-syncs the exact count on focus.)
             await updateBadgeFromNotifications(event.notification.tag)
+            // Store the URL before anything else — the page pulls it when it
+            // wakes up, whichever branch below runs.
+            await setPendingClick(url)
             const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true })
             const existing = windows.find((client) => new URL(client.url).origin === self.location.origin)
             if (existing) {
@@ -246,9 +315,8 @@ self.addEventListener("notificationclick", (event) => {
                 // reload, and illegal for yet-uncontrolled clients anyway). Two
                 // delivery paths:
                 //  - postMessage: instant, works when the page is live (desktop/Android)
-                //  - pendingNotificationClickUrl: pulled by the page on resume,
+                //  - the pending-click store: pulled by the page on resume,
                 //    covering the frozen-PWA case where the postMessage is lost
-                pendingNotificationClickUrl = url
                 await existing.focus()
                 existing.postMessage({ type: "raven:notification-click", url })
             } else {

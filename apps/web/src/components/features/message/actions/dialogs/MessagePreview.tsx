@@ -75,7 +75,7 @@ export const MessagePreview = ({ message }: { message: Message }) => {
                     <FileTypeIcon fileType={extension} size="xl" />
                 )}
                 <div className="min-w-0 flex gap-1 flex-col">
-                    <p className="truncate text-sm text-ink-gray-8">{name}</p>
+                    <p className="truncate text-sm leading-snug text-ink-gray-8">{name}</p>
                     <p className="truncate text-xs text-ink-gray-5">{meta}</p>
                 </div>
             </>
@@ -83,7 +83,7 @@ export const MessagePreview = ({ message }: { message: Message }) => {
     }
     return (
         <>
-            <div className="flex size-8 shrink-0 items-center justify-center rounded bg-surface-gray-1 text-ink-gray-6">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded bg-surface-gray-2 text-ink-gray-6">
                 {message.message_type === "Poll" ? <BarChart3Icon className="size-4" /> : <MessageSquareText className="size-4" />}
             </div>
             <p className="min-w-0 flex-1 text-p-sm text-ink-gray-7 whitespace-pre-wrap wrap-break-words line-clamp-2">{getMessagePreviewText(message)}</p>

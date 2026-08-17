@@ -34,7 +34,8 @@
   "column_break_xlzh",
   "time_format",
   "sort_channels_by",
-  "link_previews"
+  "link_previews",
+  "hide_read_receipts"
  ],
  "fields": [
   {
@@ -210,12 +211,18 @@
    "fieldtype": "Select",
    "label": "Link Previews",
    "options": "Link Hover\nPreview Card"
+  },
+  {
+   "default": "0",
+   "fieldname": "hide_read_receipts",
+   "fieldtype": "Check",
+   "label": "Hide Read Receipts"
   }
  ],
  "grid_page_length": 50,
  "image_field": "user_image",
  "links": [],
- "modified": "2026-08-09 17:02:54.921219",
+ "modified": "2026-08-15 17:43:11.737523",
  "modified_by": "Administrator",
  "module": "Raven",
  "name": "Raven User",

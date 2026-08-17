@@ -11,12 +11,14 @@ type Caller = FrappeConfig["call"]
 /**
  * Fetch + seed a channel's (or thread's) members into the store. Idempotent: a no-op
  * unless the entry is idle or `force` (used by realtime / add-remove to refresh).
+ * Returns a promise that settles when the fetch is done (errors are handled
+ * inside), so a caller can run store writes after it. Undefined when skipped.
  */
 export const loadChannelMembers = (call: Caller, channelID: string, force = false) => {
     if (!channelID) return
     if (!force && channelMembersStore.getEntry(channelID).status !== "idle") return
     channelMembersStore.setStatus(channelID, "loading")
-    call
+    return call
         .get<{ message: Record<string, MemberMeta> }>("raven.api.raven_channel_member.get_channel_members", {
             channel_id: channelID,
         })

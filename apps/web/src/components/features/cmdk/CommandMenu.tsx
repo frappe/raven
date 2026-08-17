@@ -17,6 +17,7 @@ import QuickActions from './CommandList'
 import NavigationList from './NavigationList'
 import { commandMenuOpenAtom } from './atoms'
 import { useHistoryBackClose } from '@hooks/useHistoryBackClose'
+import { useNavigateFromDrawer } from '@hooks/useNavigateFromDrawer'
 import { useChannel } from '@hooks/useChannel'
 import { useUser } from '@hooks/useUser'
 import { ChannelIcon } from '@components/common/ChannelIcon/ChannelIcon'
@@ -105,8 +106,10 @@ const CommandMenu = () => {
 
 const CommandPalette = ({ inDrawer = false }: { inDrawer?: boolean }) => {
     const [text, setText] = useState('')
-    const navigate = useNavigate()
     const setOpen = useSetAtom(commandMenuOpenAtom)
+    // Close first; on mobile navigation waits out the drawer's exit animation
+    // so the sheet can't get baked into the OS back-swipe screenshot.
+    const navigateFromDrawer = useNavigateFromDrawer(() => setOpen(false))
     const location = useLocation()
     const listRef = useRef<HTMLDivElement>(null)
 
@@ -145,8 +148,7 @@ const CommandPalette = ({ inDrawer = false }: { inDrawer?: boolean }) => {
         if (channel || dmChannel) params.set('channel', channelID)
         else if (isDMRoute) params.set('is_dm', '1')
         const qs = params.toString()
-        navigate(qs ? `/search?${qs}` : '/search')
-        setOpen(false)
+        navigateFromDrawer(qs ? `/search?${qs}` : '/search')
     }
 
     // ⌘G with the palette open: the keyboard mirror of the primary search row —
@@ -263,10 +265,7 @@ const CommandPalette = ({ inDrawer = false }: { inDrawer?: boolean }) => {
                         <CommandItem
                             value="raven-global-search-anywhere"
                             forceMount
-                            onSelect={() => {
-                                navigate(text ? `/search?q=${encodeURIComponent(text)}` : '/search')
-                                setOpen(false)
-                            }}
+                            onSelect={() => navigateFromDrawer(text ? `/search?q=${encodeURIComponent(text)}` : '/search')}
                             className='cursor-pointer min-w-0'
                         >
                             <TextSearch className="shrink-0" />

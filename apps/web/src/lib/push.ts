@@ -264,9 +264,19 @@ export const initPushNotifications = () => {
     }
 
     if (!isPushEnabled() || !isRavenPushConfigured()) return
-    if (Notification.permission !== "granted") {
-        // Permission was revoked in browser settings — our token is dead.
+    if (Notification.permission === "denied") {
+        // The user explicitly blocked notifications — our token is dead, and
+        // the toggle should read disabled.
         localStorage.removeItem(TOKEN_STORAGE_KEY)
+        return
+    }
+    if (Notification.permission !== "granted") {
+        // "default" is AMBIGUOUS — it can mean "revoked, ask again", but iOS
+        // also misreports it in windows opened from a notification tap
+        // (WebKit bug), even though permission is granted. Deleting the token
+        // here turned one notification tap into "push toggle switched itself
+        // off". So: skip the refresh this launch, keep the token, and let a
+        // launch with an honest reading carry on as normal.
         return
     }
     // requestIdleCallback is missing in Safari; a timeout keeps it off first paint.
@@ -276,4 +286,14 @@ export const initPushNotifications = () => {
     } else {
         window.setTimeout(refresh, 3000)
     }
+
+    // The worker saw the browser replace/drop our push subscription
+    // (pushsubscriptionchange) — re-register immediately instead of waiting
+    // for the next launch. The stored-token check inside mintAndSyncToken
+    // makes this a no-op when nothing actually changed.
+    navigator.serviceWorker.addEventListener("message", (event) => {
+        if (event.data?.type === "raven:push-subscription-changed") {
+            mintAndSyncToken().catch((e) => console.error("Push re-subscribe failed", e))
+        }
+    })
 }

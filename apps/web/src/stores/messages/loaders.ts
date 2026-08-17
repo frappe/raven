@@ -1,5 +1,6 @@
 import { channelMessagesStore } from "./store"
 import { channelUnreadStore } from "@stores/unread/store"
+import { linkPreviewStore } from "@stores/linkPreviews/store"
 import { channelStore } from "@stores/channels/store"
 import { getConnectionEpoch, isWindowStale, markWindowFresh } from "@stores/connectionFreshness"
 import { MessagesPage } from "./types"
@@ -12,6 +13,17 @@ export type FrappeCallClient = {
 }
 
 type PageResponse = { message: MessagesPage }
+
+/**
+ * Feed a page's side-car previews into the preview store — BEFORE the page
+ * goes into the messages store. The rows then find their previews on their
+ * very first render, so cards paint together with the messages instead of
+ * popping in later and jumping the scroll. The side-car lives on the
+ * response only; nothing persists it.
+ */
+const seedPreviews = (page: MessagesPage) => {
+    if (page.previews) linkPreviewStore.seed(page.previews)
+}
 
 const inFlight = new Set<string>()
 
@@ -96,6 +108,7 @@ export const loadInitialMessages = (
             })
             // A newer initial load started while we were fetching — discard this response.
             if (windowIntent.get(channelID) !== token) return
+            seedPreviews(response.message)
             channelMessagesStore.setInitialPage(channelID, response.message)
             // Baseline the read tracker with the server's last_visit so it won't re-post a
             // watermark already recorded (opening a caught-up channel writes nothing).
@@ -135,6 +148,7 @@ export const loadOlderMessages = async (client: FrappeCallClient, channelID: str
             from_message: oldestID,
             limit: PAGE_SIZE,
         })
+        seedPreviews(response.message)
         channelMessagesStore.setOlderPage(channelID, response.message)
     } catch {
         channelMessagesStore.endPagination(channelID, "older")
@@ -153,6 +167,7 @@ export const loadNewerMessages = async (client: FrappeCallClient, channelID: str
             // last_visit is tracked client-side; don't let the fetch write it (deadlock risk).
             update_last_visit: false,
         })
+        seedPreviews(response.message)
         channelMessagesStore.setNewerPage(channelID, response.message)
     } catch {
         channelMessagesStore.endPagination(channelID, "newer")
@@ -239,6 +254,7 @@ export const reconcileStaleWindow = async (client: FrappeCallClient, channelID: 
         })
         // The user started their own fetch while ours was running — theirs wins.
         if (windowIntent.get(channelID) !== token) return
+        seedPreviews(response.message)
         channelMessagesStore.setInitialPage(channelID, response.message)
         channelUnreadStore.setServerWatermark(channelID, response.message.last_visit)
         // Replacing the window cleared the "New messages" divider — put it back the

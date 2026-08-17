@@ -1,9 +1,8 @@
 import { useCallback } from "react"
 import { useNavigate, useOutletContext, useParams, useSearchParams } from "react-router-dom"
-import { useFrappeGetDoc } from "frappe-react-sdk"
 import ThreadDrawer from "./ThreadDrawer"
 import { focusComposer } from "@components/features/ChatInput/composerFocus"
-import type { Message } from "@raven/types/common/Message"
+import { useMessageBatch } from "@hooks/useMessageBatch"
 
 /**
  * Router glue for ThreadDrawer, used as the element for `:id/thread/:threadID` (channel + DM)
@@ -27,14 +26,11 @@ export default function ThreadDrawerRoute() {
     // The channel/DM views pass the parent via context; the threads page passes it via nav
     // state on click. On a COLD threads-page deep-link there's neither — so resolve it from the
     // thread's root message (Raven Message id = threadID; its channel_id IS the parent channel).
-    // This reuses the SAME doctype/name/key ThreadRootMessage fetches on a deep-link, so SWR
-    // dedupes it to ONE request; skipped entirely (null key) when context already has the parent.
+    // One get_message_batch call serves both this resolution AND the thread header's content
+    // (root + its send batch) — same SWR key as ThreadRootMessage, so SWR dedupes them to ONE
+    // request; skipped entirely (null key) when context already has the parent.
     const needsResolve = !ctxParent && !!threadID
-    const { data: rootMessage } = useFrappeGetDoc<Message>(
-        "Raven Message",
-        needsResolve ? threadID : "",
-        needsResolve ? `raven_message:${threadID}` : null,
-    )
+    const { anchor: rootMessage } = useMessageBatch(needsResolve ? threadID : null)
     const parentChannelID = ctxParent ?? rootMessage?.channel_id
 
     const onClose = useCallback(() => {

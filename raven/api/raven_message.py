@@ -5,6 +5,7 @@ from frappe import _
 from frappe.query_builder import JoinType, Order
 from frappe.query_builder.functions import Coalesce, Count
 
+from raven.api.chat_stream import message_columns
 from raven.api.raven_channel import create_direct_message_channel, get_peer_user_id_from_dm_users
 from raven.utils import get_channel_member, is_channel_member, track_channel_visit
 
@@ -52,9 +53,19 @@ IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "ico", "h
 
 # Inline-image display caps (mirror the web client's reserved box). The stored
 # aspect ratio is what prevents reflow; the absolute thumbnail size only needs
-# to be reasonable.
+# to be reasonable. The client mirrors these values for its optimistic
+# placeholder (optimisticImageThumbnail in messageSender.ts) — keep in sync.
 _IMAGE_THUMBNAIL_MAX_WIDTH = 480
-_IMAGE_THUMBNAIL_MAX_HEIGHT = 320
+_IMAGE_THUMBNAIL_MAX_HEIGHT = 384  # = the client's max-h-96, shared with videos
+
+
+def _sane_dimension(value) -> int | None:
+	"""A plausible pixel dimension from an untrusted client, or None."""
+	try:
+		number = int(value)
+	except (TypeError, ValueError):
+		return None
+	return number if 0 < number <= 10000 else None
 
 
 def _file_message_type(file_url: str) -> str:
@@ -185,6 +196,8 @@ def send_message_with_attachments(
 	`files` is a list of `{"file_url", "file_size"}` for the already-uploaded
 	attachments — the size is denormalized onto each message so the client can show
 	it without a File lookup. (A bare URL string per file is also tolerated.)
+	Videos may also carry `width`/`height`, measured by the client's browser at
+	attach time — stored so the message reserves its display box up front.
 
 	`send_silently` suppresses notifications for the whole batch (the flag is set on
 	every message before insert).
@@ -225,13 +238,24 @@ def send_message_with_attachments(
 	for f in files:
 		file_url = f["file_url"] if isinstance(f, dict) else f
 		file_size = f.get("file_size") if isinstance(f, dict) else None
-		specs.append(
-			{
-				"message_type": _file_message_type(file_url),
-				"file": file_url,
-				"file_size": file_size or 0,
-			}
-		)
+		spec = {
+			"message_type": _file_message_type(file_url),
+			"file": file_url,
+			"file_size": file_size or 0,
+		}
+		# Video dimensions, measured by the CLIENT (the browser reads them from
+		# the container header at attach time — the server has no video
+		# decoder). Stored so the message can reserve its box before the player
+		# loads. Images are skipped on purpose: the server measures those
+		# itself below and stays authoritative. Cosmetic data from an untrusted
+		# client, so clamp to plausible values.
+		if spec["message_type"] == "File" and isinstance(f, dict):
+			width = _sane_dimension(f.get("width"))
+			height = _sane_dimension(f.get("height"))
+			if width and height:
+				spec["thumbnail_width"] = width
+				spec["thumbnail_height"] = height
+		specs.append(spec)
 	if has_body:
 		specs.append({"message_type": "Text", "text": content})
 
@@ -268,6 +292,44 @@ def delete_messages(message_ids: list[str]):
 		if index < len(messages) - 1:
 			doc.flags.skip_channel_summary = True
 		doc.delete(delete_permanently=True)
+
+
+@frappe.whitelist(methods=["GET"])
+def get_message_batch(message_id: str):
+	"""
+	Get a message together with every message sent in the same batch
+	(same message_batch_id — e.g. several files plus a caption sent at once).
+
+	Returns rows with the same columns the chat stream sends, oldest first —
+	no get_doc, so the mentions/links child tables are never loaded. A
+	message with no batch id comes back as a list of one, so callers don't
+	need a separate path.
+
+	Why it exists: the thread header shows the thread's root message. When
+	that root is one member of a batch, showing just the one doc loses the
+	rest of what was sent — the client uses this to show the whole batch.
+	"""
+	anchor = frappe.db.get_value(
+		"Raven Message", message_id, ["channel_id", "message_batch_id"], as_dict=True
+	)
+	if not anchor:
+		frappe.throw(_("Message not found"), frappe.DoesNotExistError)
+
+	# Message access = channel access, and batch members always share one
+	# channel — so one channel check covers everything returned below.
+	if not frappe.has_permission(doctype="Raven Channel", doc=anchor.channel_id, ptype="read"):
+		frappe.throw(_("You don't have permission to view this message"), frappe.PermissionError)
+
+	message = frappe.qb.DocType("Raven Message")
+	query = frappe.qb.from_(message).select(*message_columns(message))
+	if anchor.message_batch_id:
+		query = query.where(
+			(message.channel_id == anchor.channel_id)
+			& (message.message_batch_id == anchor.message_batch_id)
+		)
+	else:
+		query = query.where(message.name == message_id)
+	return query.orderby(message.creation, order=Order.asc).run(as_dict=True)
 
 
 @frappe.whitelist()
@@ -393,7 +455,7 @@ def get_pinned_messages(channel_id: str):
 			"is_thread",
 			"is_forwarded",
 		],
-		order_by="creation asc",
+		order_by="creation desc",
 	)
 
 
@@ -589,20 +651,43 @@ def get_message_readers(message_id: str):
 	record (never visited) does not appear.
 	"""
 	message = frappe.db.get_value(
-		"Raven Message", message_id, ["channel_id", "creation", "owner"], as_dict=True
+		"Raven Message",
+		message_id,
+		["channel_id", "creation", "owner", "message_type", "poll_id"],
+		as_dict=True,
 	)
 	if not message:
 		frappe.throw(_("Message not found"))
 
 	frappe.has_permission("Raven Channel", doc=message.channel_id, throw=True)
 
+	# An anonymous poll gets no read receipts: the reader list crossed with
+	# the vote counts narrows down who voted, defeating the anonymity.
+	if message.message_type == "Poll" and message.poll_id:
+		if frappe.db.get_value("Raven Poll", message.poll_id, "is_anonymous"):
+			frappe.throw(_("Read receipts are not available for anonymous polls."), frappe.PermissionError)
+
+	# Hiding your read receipts is a two-way deal: others can't see yours,
+	# and you can't see theirs. (The client hides the action too — this is
+	# the backstop.)
+	if frappe.db.get_value("Raven User", frappe.session.user, "hide_read_receipts"):
+		frappe.throw(
+			_("You have hidden your read receipts, so you can't view read receipts either."),
+			frappe.PermissionError,
+		)
+
 	member = frappe.qb.DocType("Raven Channel Member")
+	raven_user = frappe.qb.DocType("Raven User")
 	readers = (
 		frappe.qb.from_(member)
+		# Members who hide their read receipts stay out of everyone's list.
+		.join(raven_user)
+		.on(raven_user.name == member.user_id)
 		.select(member.user_id)
 		.where(member.channel_id == message.channel_id)
 		.where(member.last_visit >= message.creation)
 		.where(member.user_id != message.owner)
+		.where(Coalesce(raven_user.hide_read_receipts, 0) == 0)
 		.orderby(member.last_visit, order=Order.desc)
 		.run(as_dict=True)
 	)

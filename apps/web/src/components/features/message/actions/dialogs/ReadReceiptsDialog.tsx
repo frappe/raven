@@ -30,15 +30,19 @@ export const ReadReceiptsDialog = ({
     if (isMobile) {
         return (
             <Drawer open={open} onOpenChange={(next) => !next && onClose()}>
-                <DrawerContent>
+                {/* pb-0: the readers list is the scroller and carries the safe-area
+                    padding inside itself (see ReadReceiptsList's sheet mode), so rows
+                    scroll to the drawer's true bottom edge instead of clipping at a
+                    padding line. */}
+                <DrawerContent className="pb-0">
                     <DrawerTitle className="px-4 pb-4 pt-1 text-left text-2xl-semibold text-ink-gray-9">
                         {_("Read by")}
                     </DrawerTitle>
-<DrawerDescription className="sr-only">{_("Who has read this message")}</DrawerDescription>
+                    <DrawerDescription className="sr-only">{_("Who has read this message")}</DrawerDescription>
                     {/* Positional no-drag (see useNoDragWhileScrolled): the readers list
                         scrolls past its cap; while scrolled the swipe belongs to it, and
                         a pull from the top dismisses the sheet. */}
-                    <div {...noDragProps} className="px-1 pb-4">
+                    <div {...noDragProps} className="px-1">
                         <ReadReceiptsList message={message} sheet />
                     </div>
                 </DrawerContent>

@@ -40,7 +40,7 @@ const ChannelMembersDrawer = () => {
 
     return (
         <div className="flex flex-col h-full w-full">
-            <div className='flex justify-between items-center px-2.5 pl-5 h-11 md:border-b border-outline-gray-2'>
+            <div className='flex justify-between items-center px-3.5 h-11 md:border-b border-outline-gray-2'>
                 <div className='flex items-center gap-2'>
                     <span className='text-lg-medium'>{_('Members')}</span>
                     <Badge size='sm'>{members.length}</Badge>
@@ -59,7 +59,10 @@ const ChannelMembersDrawer = () => {
                 </div>
             </div>
 
-            <div className="flex-1 min-h-0 flex flex-col overflow-x-hidden py-2">
+            {/* pt-2 only — bottom padding here would end the list's scrollport early
+                and hard-clip rows; the list's own footer pads the bottom INSIDE the
+                scroll (see MembersListFooter). */}
+            <div className="flex-1 min-h-0 flex flex-col overflow-x-hidden pt-2">
                 {isLoading ? (
                     <div className="flex items-center justify-center h-full">
                         {/* TODO: Add skeleton loading state */}
