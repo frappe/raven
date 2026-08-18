@@ -19,13 +19,18 @@ export type ReminderRow = {
     message_file?: string | null
 }
 
+/** Explicit SWR key so actions that change unread state (open-completes,
+ *  delete, snooze) can revalidate the badge directly via globalMutate —
+ *  the realtime ping alone must not be the only refresh path. */
+export const UNREAD_REMINDER_COUNT_KEY = "unread_reminder_count"
+
 /** Fired-but-unread count — the Later badge. `raven_reminders_updated` is a
  *  payload-less user-targeted signal: revalidate on every ping. */
 export const useUnreadReminderCount = (): number => {
     const { data, mutate } = useFrappeGetCall<{ message: number }>(
         "raven.api.reminders.get_unread_reminder_count",
         undefined,
-        undefined,
+        UNREAD_REMINDER_COUNT_KEY,
         { revalidateOnFocus: true },
     )
     useFrappeEventListener("raven_reminders_updated", () => mutate())

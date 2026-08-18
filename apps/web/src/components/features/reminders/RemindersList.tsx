@@ -1,6 +1,6 @@
-import { useContext, useMemo, useRef, useState } from "react"
+import { useContext, useEffect, useMemo, useRef, useState } from "react"
 import { Virtuoso } from "react-virtuoso"
-import { FrappeConfig, FrappeContext } from "frappe-react-sdk"
+import { FrappeConfig, FrappeContext, useSWRConfig } from "frappe-react-sdk"
 import { toast } from "sonner"
 import { AlarmClock, Clock, EllipsisVerticalIcon, Pencil, Trash2 } from "lucide-react"
 
@@ -46,7 +46,7 @@ import { cn } from "@lib/utils"
 import { escapeHtml } from "@utils/htmlUtils"
 import { formatDateTimeLabel, fromServerDatetime, getReminderPresets, toServerDatetime } from "@lib/timeUtils"
 import { ReminderDialog } from "./ReminderDialog"
-import { useRemindersList, type ReminderRow } from "./useReminders"
+import { UNREAD_REMINDER_COUNT_KEY, useRemindersList, type ReminderRow } from "./useReminders"
 
 interface RemindersListProps {
     /** Page-level search (shared across tabs) — matches note + message text. */
@@ -100,8 +100,16 @@ function reminderRowToMessage(r: ReminderRow): Message {
 /** Later's reminder lists — one card design (Slack Later pattern) across both modes. */
 const RemindersList = ({ searchQuery, channel, mode, onSelect, selectedID, selectedReminderID }: RemindersListProps) => {
     const { reminders, error, isLoading, mutate } = useRemindersList()
+    const { mutate: globalMutate } = useSWRConfig()
     const { call } = useContext(FrappeContext) as FrappeConfig
     const { usersById, channelById, dmById, workspaceById } = useMessageRowLookups()
+
+    // Cards completed by opening them THIS visit. They stay in the Delivered
+    // section (restyled as read) instead of jumping to Completed mid-look —
+    // the notifications-page pattern. Cleared on tab switch, so the next visit
+    // shows them where they now belong.
+    const [stickyRead, setStickyRead] = useState<Set<string>>(() => new Set())
+    useEffect(() => setStickyRead(new Set()), [mode])
 
     const rows = useMemo<Row[]>(() => {
         const channelParam = channel && channel !== '*all' ? channel : undefined
@@ -122,13 +130,13 @@ const RemindersList = ({ searchQuery, channel, mode, onSelect, selectedID, selec
             .filter((r) => !r.notified)
             .sort((a, b) => a.remind_at.localeCompare(b.remind_at))
         const delivered = visible
-            .filter((r) => r.notified === 1 && !r.is_read)
+            .filter((r) => r.notified === 1 && (!r.is_read || stickyRead.has(r.name)))
             .sort((a, b) => b.remind_at.localeCompare(a.remind_at))
         const out: Row[] = []
         if (upcoming.length) out.push({ kind: "header", label: _("Upcoming") }, ...upcoming.map((reminder) => ({ kind: "reminder" as const, reminder })))
         if (delivered.length) out.push({ kind: "header", label: _("Delivered") }, ...delivered.map((reminder) => ({ kind: "reminder" as const, reminder })))
         return out
-    }, [reminders, searchQuery, channel, mode])
+    }, [reminders, searchQuery, channel, mode, stickyRead])
 
     // `?r=` when present; else first row on the open message (push links carry no `?r=`).
     const activeReminderID = useMemo(() => {
@@ -194,7 +202,10 @@ const RemindersList = ({ searchQuery, channel, mode, onSelect, selectedID, selec
         // Optimistic; failure re-syncs.
         mutate((prev) => prev && { message: prev.message.filter((r) => r.name !== reminder.name) }, { revalidate: false })
         call.post("raven.api.reminders.delete_reminder", { reminder: reminder.name })
-            .then(() => toast.success(_("Reminder deleted")))
+            .then(() => {
+                toast.success(_("Reminder deleted"))
+                globalMutate(UNREAD_REMINDER_COUNT_KEY)
+            })
             .catch((e) => {
                 mutate()
                 errorResponseToast(_("Could not delete the reminder"), e)
@@ -209,6 +220,7 @@ const RemindersList = ({ searchQuery, channel, mode, onSelect, selectedID, selec
             .then(() => {
                 toast.success(_("Reminder set for {0}", [formatDateTimeLabel(remindAt)]))
                 mutate()
+                globalMutate(UNREAD_REMINDER_COUNT_KEY)
             })
             .catch((e) => errorResponseToast(_("Could not snooze the reminder"), e))
     }
@@ -216,6 +228,9 @@ const RemindersList = ({ searchQuery, channel, mode, onSelect, selectedID, selec
     /** Completes ALL fired reminders on the message — the server API is message-keyed. */
     const complete = (reminder: ReminderRow) => {
         if (reminder.is_read) return
+        // Pin the affected cards in place before the read flags flip (see stickyRead).
+        const affected = reminders.filter((r) => r.message === reminder.message && r.notified && !r.is_read)
+        setStickyRead((prev) => new Set([...prev, ...affected.map((r) => r.name)]))
         mutate(
             (prev) => prev && {
                 message: prev.message.map((r) => (r.message === reminder.message && r.notified ? { ...r, is_read: 1 as const } : r)),
@@ -223,7 +238,9 @@ const RemindersList = ({ searchQuery, channel, mode, onSelect, selectedID, selec
             { revalidate: false },
         )
         // Failure just re-syncs — not worth a toast.
-        call.post("raven.api.reminders.mark_reminder_read", { message_id: reminder.message }).catch(() => mutate())
+        call.post("raven.api.reminders.mark_reminder_read", { message_id: reminder.message })
+            .then(() => globalMutate(UNREAD_REMINDER_COUNT_KEY))
+            .catch(() => mutate())
     }
 
     /** Opens the message; a delivered card also completes (open = complete). */

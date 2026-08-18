@@ -4,6 +4,19 @@ from frappe import _
 from raven.utils import get_raven_user
 
 
+def _drop_unreadable(rows: list[dict]) -> list[dict]:
+	"""Drop rows whose channel the user can no longer read — the same containment
+	rule the delivery path applies. Per-channel has_permission is fine at this
+	size (dozens of rows, 30d retention)."""
+	readable = {}
+	for row in rows:
+		if row.channel_id not in readable:
+			readable[row.channel_id] = frappe.has_permission(
+				"Raven Channel", doc=row.channel_id, ptype="read"
+			)
+	return [row for row in rows if readable[row.channel_id]]
+
+
 def _owned_reminder(reminder: str):
 	"""Load a reminder, throwing PermissionError unless it belongs to the current user."""
 	doc = frappe.get_doc("Raven Reminder", reminder)
@@ -62,14 +75,7 @@ def get_reminders() -> list[dict]:
 		.orderby(reminder.remind_at)
 		.run(as_dict=True)
 	)
-	# Per-channel has_permission is fine at this size (dozens of rows, 30d retention).
-	readable = {}
-	for row in rows:
-		if row.channel_id not in readable:
-			readable[row.channel_id] = frappe.has_permission(
-				"Raven Channel", doc=row.channel_id, ptype="read"
-			)
-	return [row for row in rows if readable[row.channel_id]]
+	return _drop_unreadable(rows)
 
 
 @frappe.whitelist(methods=["POST"])
@@ -122,8 +128,12 @@ def mark_reminder_read(message_id: str) -> None:
 
 @frappe.whitelist()
 def get_unread_reminder_count() -> int:
-	"""Fired-but-unread reminders — drives the Later sidebar badge."""
-	return frappe.db.count(
+	"""Fired-but-unread reminders — drives the Later sidebar badge. Same
+	containment rule as get_reminders: a row the list hides must not leave
+	a phantom badge (e.g. access lost after delivery)."""
+	rows = frappe.get_all(
 		"Raven Reminder",
-		{"user": get_raven_user(frappe.session.user), "notified": 1, "is_read": 0},
+		filters={"user": get_raven_user(frappe.session.user), "notified": 1, "is_read": 0},
+		fields=["name", "channel_id"],
 	)
+	return len(_drop_unreadable(rows))

@@ -328,6 +328,12 @@ class TestReminders(IntegrationTestCase):
 		self.assertNotIn(hidden.name, names)  # preview must not leak past lost access
 		self.assertIn(visible.name, names)
 
+		# The badge count applies the same containment — a row the list hides
+		# must not leave a phantom badge.
+		from raven.api.reminders import get_unread_reminder_count
+
+		self.assertEqual(get_unread_reminder_count(), 1)
+
 	def test_send_reminder_skips_row_rearmed_meanwhile(self):
 		"""A future remind_at at delivery time means an edit/snooze raced the sweep —
 		the fresh-read guard must leave the row armed instead of silencing it."""
