@@ -7,7 +7,7 @@ import { getAttachmentKind } from "@utils/attachmentPreview"
 import _ from "@lib/translate"
 import { channelMessagesStore } from "./store"
 import { channelUnreadStore } from "@stores/unread/store"
-import { putOutbox, removeOutbox, setOutboxStatus, isSettling } from "./outbox"
+import { putOutbox, removeOutbox, setOutboxStatus, isSettling, getOutbox } from "./outbox"
 import type { OptimisticMessage } from "./types"
 import { errorResponseToast } from "@components/ui/error-banner"
 
@@ -132,9 +132,11 @@ export const enqueueSend = (
         /** Set when this send is a reply: the message being replied to + a snapshot for the preview. */
         linkedMessage?: string
         repliedMessageDetails?: string
+        /** Send without notifying recipients (skips push notifications server-side). */
+        sendSilently?: boolean
     },
 ) => {
-    const { channelID, batchId, owner, content, files, linkedMessage, repliedMessageDetails } = params
+    const { channelID, batchId, owner, content, files, linkedMessage, repliedMessageDetails, sendSilently } = params
     const creation = optimisticNow()
     const reply = linkedMessage ? { linkedMessage, repliedMessageDetails } : undefined
 
@@ -156,9 +158,10 @@ export const enqueueSend = (
         queued_at: Date.now(),
         linked_message: linkedMessage,
         replied_message_details: repliedMessageDetails,
+        ...(sendSilently ? { send_silently: true } : {}),
     })
 
-    submitSend(client, channelID, batchId, content, files, linkedMessage)
+    submitSend(client, channelID, batchId, content, files, linkedMessage, { sendSilently })
 }
 
 /**
@@ -184,10 +187,11 @@ const inFlight = new Set<string>()
  * Reuses `batchId` (= client_id) so a retry counts as the same message — the server
  * recognises it and won't create a duplicate.
  *
- * `silent` skips the failure toast: the automatic outbox flush passes it because a
- * flush can fail many messages at once (server down, read-only window) and the user
- * didn't just act — the failed bubbles (Retry / Discard) are the right signal there.
- * Interactive sends (send button, manual Retry) keep the toast.
+ * `suppressErrorToast` skips the failure toast: the automatic outbox flush passes it
+ * because a flush can fail many messages at once (server down, read-only window) and
+ * the user didn't just act — the failed bubbles (Retry / Discard) are the right signal
+ * there. Interactive sends (send button, manual Retry) keep the toast.
+ * `sendSilently` posts `send_silently` so the server skips push notifications.
  */
 export const submitSend = (
     client: PostClient,
@@ -196,7 +200,7 @@ export const submitSend = (
     content: string,
     files: OutgoingFile[],
     linkedMessage?: string,
-    opts?: { silent?: boolean },
+    opts?: { suppressErrorToast?: boolean; sendSilently?: boolean },
 ) => {
     inFlight.add(batchId)
     return client
@@ -208,6 +212,7 @@ export const submitSend = (
             // Reply: the backend attaches these to the last message of the batch.
             is_reply: linkedMessage ? 1 : 0,
             linked_message: linkedMessage ?? null,
+            send_silently: opts?.sendSilently ? true : false,
         })
         .then((res) => {
             channelMessagesStore.resolveOptimisticSend(channelID, batchId, res.message ?? [])
@@ -225,7 +230,7 @@ export const submitSend = (
             // been restored) and re-runs this same classification.
             const isPermissionError = error?.exc_type === "PermissionError" || error?.httpStatus === 403
             setOutboxStatus(batchId, isPermissionError ? "rejected" : "failed")
-            if (opts?.silent) return
+            if (opts?.suppressErrorToast) return
             // One shared id means many failures at once show a single error, not a
             // pile of them. (The failed message on screen is the main signal; this
             // error also covers sends the user has scrolled past.)
@@ -235,8 +240,9 @@ export const submitSend = (
 }
 
 /** Re-send a failed message when the user clicks Retry — rebuild what to send from the
- *  message still shown on screen. */
-export const retrySend = (client: PostClient, channelID: string, batchId: string) => {
+ *  message still shown on screen. The silent flag isn't on the placeholders, so it's
+ *  recovered from the saved outbox record (missing record → non-silent). */
+export const retrySend = async (client: PostClient, channelID: string, batchId: string) => {
     const placeholders = channelMessagesStore.getOptimisticMessages(channelID, batchId)
     if (placeholders.length === 0) return
     const content = placeholders.find((m) => m.message_type === "Text")?.text ?? ""
@@ -251,9 +257,15 @@ export const retrySend = (client: PostClient, channelID: string, batchId: string
         .map((m) => (m as { linked_message?: string }).linked_message)
         .find(Boolean)
 
+    const record = await getOutbox(batchId)
+
+    // The await above opens a tick where this batch is in neither inFlight nor
+    // isSettling — if a reconnect flush grabbed it in that window, let that send win.
+    if (inFlight.has(batchId)) return
+
     channelMessagesStore.retryOptimisticSend(channelID, batchId)
     setOutboxStatus(batchId, "sending")
-    submitSend(client, channelID, batchId, content, files, linkedMessage)
+    submitSend(client, channelID, batchId, content, files, linkedMessage, { sendSilently: record?.send_silently })
 }
 
 /** Discard a failed send: remove it both from the screen and from the saved outbox. */
@@ -309,6 +321,9 @@ export const retryOutboxRecord = (client: PostClient, record: OutboxMessage): Pr
     }
 
     setOutboxStatus(record.client_id, "sending")
-    // silent: an automatic flush shouldn't toast — see submitSend.
-    return submitSend(client, record.channel_id, record.client_id, record.content, record.files, record.linked_message, { silent: true })
+    // suppressErrorToast: an automatic flush shouldn't toast — see submitSend.
+    return submitSend(client, record.channel_id, record.client_id, record.content, record.files, record.linked_message, {
+        suppressErrorToast: true,
+        sendSilently: record.send_silently,
+    })
 }

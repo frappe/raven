@@ -125,6 +125,9 @@ export const BatchMessageItem = ({
 
     const content = (
         <div className="space-y-2">
+            {/* Badges sit above everything, same as a single message — the flags
+                describe the whole block (a forwarded batch arrives all-forwarded). */}
+            <MessageAttributes message={attributeFlags} />
             {replyMember && repliedDetails && (
                 <ReplyMessage
                     repliedMessage={repliedDetails}
@@ -133,10 +136,6 @@ export const BatchMessageItem = ({
                 />
             )}
             <BatchMediaGroups messages={block.messages} />
-            {/* Below the media, above the caption — an Edited badge refers to the
-                caption text (that's the only editable part of a batch), so it sits
-                next to what it describes rather than floating above the album. */}
-            <MessageAttributes message={attributeFlags} />
             {captionMember && <EditableMessageBody message={captionMember} />}
             {/* Links live on the caption member (the server extracts them from its
                 text), so that's where the first-link preview hangs off a batch too. */}

@@ -79,7 +79,7 @@ export const AppMobileFooterSkeleton = () => {
 // a few px over 64) made the bar overhang the bottom of every list.
 const AppMobileFooterContainer = ({ children, className, inert }: { children: React.ReactNode, className?: string, inert?: boolean }) => {
 
-    return <div className={cn("md:hidden grid grid-cols-5 shrink-0 bg-surface-elevation-2 border-t border-outline-gray-2 standalone:pb-4", className)} inert={inert}>
+    return <div className={cn("md:hidden grid grid-cols-5 shrink-0 bg-surface-elevation-2 border-t border-outline-gray-2 standalone:pb-[max(env(safe-area-inset-bottom),0.75rem)]", className)} inert={inert}>
         {children}
     </div>
 }

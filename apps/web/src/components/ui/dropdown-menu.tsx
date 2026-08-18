@@ -183,7 +183,7 @@ function DropdownMenuRadioItem({
       {...props}
     >
       {children}
-      <span className="pointer-events-none flex size-4 ps-2 items-center justify-center">
+      <span className="pointer-events-none flex size-4 ps-2 items-center justify-center ms-auto">
         <DropdownMenuPrimitive.ItemIndicator>
           <CheckIcon className="size-4" />
         </DropdownMenuPrimitive.ItemIndicator>

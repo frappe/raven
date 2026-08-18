@@ -269,17 +269,32 @@ class RavenMessage(Document):
 
 	def before_insert(self):
 		"""
-		If the message is a reply, update the replied_message_details field
+		If the message is a reply, snapshot the replied-to message so the reply keeps
+		its quote even after the original is edited or deleted.
+
+		The snapshot holds NO HTML (`text`) — only the plain-text `content`:
+
+		1. Nothing renders it. Every client draws the reply preview from `content`.
+		2. HTML in here breaks the INSERT. This is a JSON column, so MariaDB enforces
+		   CHECK (json_valid(...)) — and Frappe sanitizes JSON fields as if they were
+		   HTML (it used to skip values that parse as JSON; frappe@9bdfcfe599 removed
+		   that guard). The sanitizer re-serializes any embedded tags, re-quoting their
+		   attributes with bare double quotes, which destroys the JSON string escaping
+		   and the row is rejected. Replying to any message containing a mention or a
+		   link failed outright.
+		3. It's a lot of duplication — every reply copied the whole parent body.
+
+		Forwarding a reply still gets a rich quote: it reads the quoted body LIVE from
+		the linked message instead (see build_reply_blockquote in api/raven_message.py).
 		"""
 		if self.is_reply and self.linked_message:
 			details = frappe.db.get_value(
 				"Raven Message",
 				self.linked_message,
-				["text", "content", "file", "message_type", "owner", "creation"],
+				["content", "file", "message_type", "owner", "creation"],
 				as_dict=True,
 			)
 			self.replied_message_details = {
-				"text": details.text,
 				"content": details.content,
 				"file": details.file,
 				"message_type": details.message_type,

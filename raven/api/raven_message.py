@@ -931,17 +931,129 @@ def get_count_for_pagination_of_files(
 	return count[0]["count"]
 
 
+# The Raven Message fields that survive a forward. Everything else (batch id,
+# poll, reactions, reply link, bot fields) belongs to the source conversation or is
+# overridden at insert time by add_forwarded_message_to_channel.
+FORWARDABLE_FIELDS = [
+	"text",
+	"json",
+	"file",
+	"file_thumbnail",
+	"file_size",
+	"message_type",
+	"content",
+	"link_doctype",
+	"link_document",
+	"thumbnail_width",
+	"thumbnail_height",
+	"blurhash",
+	"links",
+	"hide_link_preview",
+	"is_reply",
+	"replied_message_details",
+]
+
+
+def _forward_payloads(message_id: str) -> list[dict]:
+	"""
+	Forward payloads for a message, built from the database. A message that is
+	part of a batch (several files plus a caption sent at once) expands to every
+	member of the batch, oldest first; any other message comes back as a list of
+	one — so the caller doesn't need a separate path.
+
+	The rows come from the database, not from the client, so the caller's access
+	to the source channel is checked here. One channel check covers all members:
+	a batch always lives in one channel.
+	"""
+	anchor = frappe.db.get_value(
+		"Raven Message", message_id, ["channel_id", "message_batch_id"], as_dict=True
+	)
+	if not anchor:
+		frappe.throw(_("Message not found"), frappe.DoesNotExistError)
+
+	if not frappe.has_permission(doctype="Raven Channel", doc=anchor.channel_id, ptype="read"):
+		frappe.throw(_("You don't have permission to view this message"), frappe.PermissionError)
+
+	if anchor.message_batch_id:
+		filters = {"channel_id": anchor.channel_id, "message_batch_id": anchor.message_batch_id}
+	else:
+		filters = {"name": message_id}
+	# linked_message is fetched but NOT forwarded — it points at a message in the source
+	# channel, so the copy can't keep the link. It's only used to read the quoted body.
+	members = frappe.get_all(
+		"Raven Message",
+		filters=filters,
+		fields=[*FORWARDABLE_FIELDS, "linked_message"],
+		order_by="creation asc",
+	)
+
+	payloads = []
+	for member in members:
+		payload = {field: member.get(field) for field in FORWARDABLE_FIELDS if member.get(field) is not None}
+		# Forwarding drops the reply link, so inline the quoted message into `text` up
+		# front. `json` goes with it: it still holds the unquoted body, and the copy
+		# should have one body that carries the quote.
+		if payload.get("is_reply"):
+			quote = build_reply_blockquote(
+				payload.get("replied_message_details"), linked_message=member.get("linked_message")
+			)
+			if quote:
+				payload["text"] = quote + (payload.get("text") or "")
+			payload.pop("json", None)
+			# The copy carries the quote in its body, so it is not a reply: leaving the
+			# snapshot on it would be dead data describing another channel's message.
+			payload.pop("is_reply", None)
+			payload.pop("replied_message_details", None)
+		payloads.append(payload)
+	return payloads
+
+
 @frappe.whitelist(methods=["POST"])
-def forward_message(message_receivers: list[dict], forwarded_message: dict):
+def forward_message(
+	message_receivers: list[dict], forwarded_message: dict | None = None, message_id: str | None = None
+):
 	"""
 	Forward a message to multiple users/ or in multiple channels
 	"""
+	# The v3 client sends just the message id and the payloads are built here,
+	# from the database — including every member when the message is part of a
+	# batch (the client couldn't collect siblings itself: outside the open
+	# channel it only holds the one message). `forwarded_message` remains for
+	# older clients that send the copy's content themselves; those forward the
+	# single message as before.
+	if message_id:
+		payloads = _forward_payloads(message_id)
+		for receiver in message_receivers:
+			if receiver["type"] == "User":
+				channel_id = create_direct_message_channel(receiver["name"])
+			else:
+				channel_id = receiver["name"]
+			# A fresh batch id per destination, so a batch's copies group into one
+			# album there without fusing with any other batch.
+			new_batch_id = frappe.generate_hash(length=12) if len(payloads) > 1 else None
+			for payload in payloads:
+				if new_batch_id:
+					payload = {**payload, "message_batch_id": new_batch_id}
+				add_forwarded_message_to_channel(channel_id, payload)
+		return "messages forwarded"
+
+	if not forwarded_message:
+		frappe.throw(_("Nothing to forward"))
+
 	# Forwarding drops the reply link (linked_message lives in the source channel); inline the
 	# replied message as a blockquote once, up front, so the quote survives every forward.
 	if forwarded_message.get("is_reply"):
-		quote = build_reply_blockquote(forwarded_message.get("replied_message_details"))
+		quote = build_reply_blockquote(
+			forwarded_message.get("replied_message_details"),
+			linked_message=forwarded_message.get("linked_message"),
+		)
 		if quote:
 			forwarded_message["text"] = quote + (forwarded_message.get("text") or "")
+		# Drop the reply markers: the copy carries the quote in its body, and keeping
+		# linked_message would point at another channel — which validate_linked_message
+		# rejects, so a copy that kept it could never be inserted.
+		forwarded_message.pop("linked_message", None)
+		forwarded_message.pop("replied_message_details", None)
 
 	for receiver in message_receivers:
 		if receiver["type"] == "User":
@@ -988,17 +1100,37 @@ def add_forwarded_message_to_channel(channel_id: str, forwarded_message: dict):
 	return "message forwarded"
 
 
-def build_reply_blockquote(replied_message_details) -> str:
+def build_reply_blockquote(replied_message_details=None, linked_message: str | None = None) -> str:
 	"""
-	Build a Tiptap-compatible blockquote (HTML) from a message's replied_message_details,
-	used when forwarding a reply so the quoted message is inlined into the forwarded body.
-	"""
-	if not replied_message_details:
-		return ""
+	Build a Tiptap-compatible blockquote (HTML) from the message a reply points at,
+	used when forwarding a reply so the quote is inlined into the forwarded body.
 
-	details = replied_message_details
-	if isinstance(details, str):
-		details = frappe.parse_json(details)
+	`linked_message` is the preferred source — the quoted message is read LIVE, so the
+	quote keeps its rich body (mentions, formatting, links) and reflects any later edit.
+	No extra permission check is needed: the caller has already been checked for read
+	access to the source channel, and a reply's linked message is always in that same
+	channel (RavenMessage.validate_linked_message).
+
+	`replied_message_details` is the fallback, for older clients that post their own
+	forward payload. Those snapshots only carry HTML if they predate the change that
+	stopped storing it (see RavenMessage.before_insert), so newer ones quote as plain
+	text.
+	"""
+	details = None
+
+	if linked_message:
+		details = frappe.db.get_value(
+			"Raven Message",
+			linked_message,
+			["text", "content", "message_type", "owner"],
+			as_dict=True,
+		)
+
+	if not details:
+		details = replied_message_details
+		if isinstance(details, str):
+			details = frappe.parse_json(details)
+
 	if not details:
 		return ""
 

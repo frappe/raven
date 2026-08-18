@@ -2,7 +2,7 @@ import { Separator } from "@components/ui/separator"
 import { SettingsPanelDescription, SettingsPanelHeader, SettingsPanelTitle, SettingsPanelContent, SettingsFormLabel, SettingsFormDescription, SettingsFormRow } from "@components/ui/settings-dialog"
 import { useTheme } from "@components/theme-provider"
 import { useAtom, useSetAtom } from "jotai"
-import { chatStyleAtom, imageGroupingLayoutAtom, type ChatStyle } from "@utils/preferences"
+import { chatStyleAtom, imageGroupingLayoutAtom, timeFormatAtom, type ChatStyle, type TimeFormat } from "@utils/preferences"
 import _ from "@lib/translate"
 import { useFrappePostCall } from "frappe-react-sdk"
 import { toast } from "sonner"
@@ -31,14 +31,18 @@ const Appearance = () => {
 
                         <LeftRightLayoutSwitcher />
 
-                        <Separator />
+                        <div className="flex flex-col gap-2">
+                            <Separator />
+                            <ImageGroupingBehaviour />
 
-                        <ImageGroupingBehaviour />
+                            <Separator />
 
-                        <Separator />
+                            <TimeFormatSetting />
 
-                        <LinkPreviewBehaviour />
+                            <Separator />
 
+                            <LinkPreviewBehaviour />
+                        </div>
                     </div>
                 </div>
             </SettingsPanelContent>
@@ -371,6 +375,53 @@ const LinkPreviewBehaviour = () => {
                 <SelectContent>
                     <SelectItem value="Preview Card"><PanelBottomIcon /> {_("Preview card")}</SelectItem>
                     <SelectItem value="Link Hover"><MousePointerClickIcon /> {_("On hover")}</SelectItem>
+                </SelectContent>
+            </Select>
+        </div>
+    </SettingsFormRow>
+}
+
+/** Moved from Preferences — how times render is an appearance concern. Writes
+ *  the Raven User field and mirrors into the boot-seeded atom so timestamps
+ *  across the app reformat live, no reload. */
+const TimeFormatSetting = () => {
+
+    const { myProfile, mutate } = useCurrentRavenUser()
+    const setTimeFormatAtomValue = useSetAtom(timeFormatAtom)
+
+    const { call } = useFrappePostCall('frappe.client.set_value')
+
+    const setTimeFormat = (format: TimeFormat) => {
+        if (!myProfile?.name) return
+        call({
+            doctype: 'Raven User',
+            name: myProfile.name,
+            fieldname: 'time_format',
+            value: format
+        }).then(() => {
+            setTimeFormatAtomValue(format)
+            mutate()
+            toast.success(_("Time format updated"))
+        }).catch((e) => {
+            errorResponseToast(_("Could not update time format"), e)
+        })
+    }
+
+    return <SettingsFormRow>
+        <div className="flex flex-col">
+            <SettingsFormLabel htmlFor="time_format">{_("Time format")}</SettingsFormLabel>
+            <SettingsFormDescription>
+                {_("Choose whether to display times in 12-hour or 24-hour format.")}
+            </SettingsFormDescription>
+        </div>
+        <div className="min-w-40 flex justify-end">
+            <Select onValueChange={(value) => setTimeFormat(value as TimeFormat)} value={myProfile?.time_format ? myProfile.time_format : "12-hour"}>
+                <SelectTrigger id="time_format" className="min-w-32">
+                    <SelectValue placeholder={_("Select time format")} />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="12-hour">{_("12 Hour (e.g. 2:00 PM)")}</SelectItem>
+                    <SelectItem value="24-hour">{_("24 Hour (e.g. 14:00)")}</SelectItem>
                 </SelectContent>
             </Select>
         </div>

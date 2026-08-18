@@ -68,8 +68,9 @@ export const useStreamScroll = ({
     const containerRef = useRef<HTMLDivElement>(null)
     /** True while the view should follow the newest message. */
     const pinnedRef = useRef(true)
-    /** Last seen metrics, updated on every scroll — used for prepend compensation. */
-    const metricsRef = useRef({ scrollTop: 0, scrollHeight: 0 })
+    /** Last seen metrics, updated on every scroll — scrollTop/scrollHeight drive
+     *  prepend compensation; clientHeight detects resize-driven scroll events. */
+    const metricsRef = useRef({ scrollTop: 0, scrollHeight: 0, clientHeight: 0 })
     /**
      * The message at the top of the viewport while free-scrolled, plus its offset from
      * the container top. Lets a WIDTH change (e.g. the thread drawer opening, which
@@ -109,7 +110,16 @@ export const useStreamScroll = ({
     const onScroll = useCallback(() => {
         const container = containerRef.current
         if (!container) return
-        metricsRef.current = { scrollTop: container.scrollTop, scrollHeight: container.scrollHeight }
+        // A changed clientHeight means this scroll event came from the container
+        // RESIZING (the composer growing a banner, the keyboard opening), not from
+        // the user scrolling. Resizes must never break the pin — but browsers fire
+        // scroll events BEFORE ResizeObserver callbacks, so this event sees the
+        // shrunk layout while scrollTop still matches the old height. Reading
+        // "distance from bottom" here would unpin, and the observer's re-glue
+        // (which runs right after) only acts while pinned. So on a resize event,
+        // keep whatever pin state we had and let the observer do the correcting.
+        const resized = container.clientHeight !== metricsRef.current.clientHeight
+        metricsRef.current = { scrollTop: container.scrollTop, scrollHeight: container.scrollHeight, clientHeight: container.clientHeight }
         const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight
         const atBottom = distanceFromBottom <= AT_BOTTOM_SLOP
         // Pinning only means something at the LIVE edge — the bottom of a detached
@@ -119,8 +129,12 @@ export const useStreamScroll = ({
         // zone on its first frames — if that armed pinning, the next layout shift
         // would snap the view from the target back to the bottom.
         const targetEngaged = smoothScrollingRef.current || targetAnchorRef.current !== null
-        pinnedRef.current = !targetEngaged && atBottom && !hasNewerMessages
-        setIsAtBottom(atBottom)
+        pinnedRef.current = !targetEngaged && (atBottom || (resized && pinnedRef.current)) && !hasNewerMessages
+        // While pinned we're at the bottom by definition — the observer's glue
+        // lands there this same frame. Without this, a resize event's stale
+        // geometry would flash "not at bottom" (jump pill, read tracker) for a
+        // frame before the glue's own scroll event corrected it.
+        setIsAtBottom(atBottom || pinnedRef.current)
         if (atBottom && !hasNewerMessages) setHasUnseenMessages(false)
 
         // While free, remember the topmost visible message so a width change can keep
@@ -255,7 +269,7 @@ export const useStreamScroll = ({
                 }
             }
         }
-        metricsRef.current = { scrollTop: container.scrollTop, scrollHeight: container.scrollHeight }
+        metricsRef.current = { scrollTop: container.scrollTop, scrollHeight: container.scrollHeight, clientHeight: container.clientHeight }
 
         // A short first page may not fill the viewport — no scrollbar means no
         // scroll events, so trigger the next page directly.

@@ -29,8 +29,9 @@ import { convertFenceLineToCodeBlock } from "./codeBlockFence"
  * caller's latest handler (which closes over fresh state) without rebuilding the editor.
  */
 interface UseRavenEditorOptions {
-    /** Invoked on Enter (without Shift). Shift+Enter inserts a newline. */
-    submitRef: MutableRefObject<() => void>
+    /** Invoked on Enter (without Shift). Shift+Enter inserts a newline.
+     *  Mod+Shift+Enter passes `{ sendSilently: true }` — send without notifications. */
+    submitRef: MutableRefObject<(opts?: { sendSilently?: boolean }) => void>
     /** Invoked on Mod+Shift+U — the caller reveals the formatting toolbar + opens the link popover. */
     linkRef?: MutableRefObject<() => void>
     /** Invoked when files are pasted/dropped into the editor (omit to disable, e.g. inline edit). */
@@ -222,6 +223,14 @@ export const useRavenEditor = ({ submitRef, linkRef, filesRef, cancelReplyRef, e
                     if (isSuggestionPopupOpen()) return false
 
                     const ed = editorRef.current
+
+                    // Mod+Shift+Enter: send silently (no notifications). Must be
+                    // checked before the Shift+Enter newline branch below.
+                    if ((event.metaKey || event.ctrlKey) && event.shiftKey) {
+                        event.preventDefault()
+                        submitRef.current({ sendSilently: true })
+                        return true
+                    }
 
                     // Shift+Enter is always a newline — a PARAGRAPH split (Enter's own
                     // default chain), matching what plain Enter already produces on
