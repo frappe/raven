@@ -14,8 +14,11 @@ class RavenSettings(Document):
 
 	if TYPE_CHECKING:
 		from frappe.types import DF
+
 		from raven.raven.doctype.raven_blocked_links.raven_blocked_links import RavenBlockedLinks
-		from raven.raven_integrations.doctype.raven_hr_company_workspace.raven_hr_company_workspace import RavenHRCompanyWorkspace
+		from raven.raven_integrations.doctype.raven_hr_company_workspace.raven_hr_company_workspace import (
+			RavenHRCompanyWorkspace,
+		)
 
 		auto_add_system_users: DF.Check
 		auto_create_department_channel: DF.Check

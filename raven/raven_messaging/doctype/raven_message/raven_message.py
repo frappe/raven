@@ -981,6 +981,9 @@ class RavenMessage(Document):
 		# delete all the reactions for the message
 		frappe.db.delete("Raven Message Reaction", {"message": self.name})
 
+		# Reminders anchored on this message; send_reminder's missing-source guard covers the race.
+		frappe.db.delete("Raven Reminder", {"message": self.name})
+
 		# The deleted message may be sitting in clients' unread-notification badges:
 		# a mention of someone, or reactions on the owner's message. Those id sets
 		# are kept live by events — the rows vanishing from the DB doesn't reach the

@@ -177,9 +177,17 @@ scheduler_events = {
 		"raven.raven_cloud_notifications.sync_users_tokens_to_raven_cloud",
 	],
 	"cron": {
-		# run every 5 minutes
-		"*/5 * * * *": ["raven.scheduler.close_expired_polls.close_expired_polls"]
+		# run every 5 minutes — remind_at is grid-aligned (validate), so reminders fire on time
+		"*/5 * * * *": [
+			"raven.scheduler.close_expired_polls.close_expired_polls",
+			"raven.scheduler.send_reminders.send_due_reminders",
+		],
 	},
+}
+
+# Auto-registered in Log Settings; RavenReminder.clear_old_logs does the deletion.
+default_log_clearing_doctypes = {
+	"Raven Reminder": 30,
 }
 
 # Testing
@@ -208,7 +216,7 @@ scheduler_events = {
 # Ignore links to specified DocTypes when deleting documents
 # -----------------------------------------------------------
 
-ignore_links_on_delete = ["Raven Message"]
+ignore_links_on_delete = ["Raven Message", "Raven Reminder"]
 
 
 # User Data Protection

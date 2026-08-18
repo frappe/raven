@@ -8,6 +8,7 @@ import { useLogout } from "@hooks/useLogout"
 import { useIsMobile } from "@hooks/use-mobile"
 import { useIsPushNotificationEnabled } from "@hooks/fetchers/useIsPushNotificationEnabled"
 import { ProfileRow } from "@components/features/profile/ProfileRow"
+import { useUnreadReminderCount } from "@components/features/reminders/useReminders"
 import { EditProfileDrawer } from "@components/features/profile/EditProfileDrawer"
 import { PreferencesDrawer } from "@components/features/profile/PreferencesDrawer"
 import { ProfileImageMenu } from "@components/features/profile/ProfileImageMenu"
@@ -31,6 +32,7 @@ const Profile = () => {
     const { logout, isLoggingOut } = useLogout()
     const isMobile = useIsMobile()
     const isPushAvailable = useIsPushNotificationEnabled()
+    const unreadReminders = useUnreadReminderCount()
     const [editOpen, setEditOpen] = useState(false)
     const [prefsOpen, setPrefsOpen] = useState(false)
     const [confirmLogoutOpen, setConfirmLogoutOpen] = useState(false)
@@ -125,9 +127,23 @@ const Profile = () => {
                         in the settings dialog's Preferences panel) */}
                     <ProfileRow icon={SlidersHorizontal} label={_("Preferences")} onClick={() => setPrefsOpen(true)} trailing={<ChevronRight className="size-4" />} />
 
-                    {/* Saved messages */}
-                    <NavLink to="/saved-messages">
-                        <ProfileRow icon={Bookmark} label={_("Saved messages")} chevron />
+                    {/* Later: reminders + saved messages. Unread pill mirrors the
+                        desktop sidebar badge (schedule-send's mobile pattern). */}
+                    <NavLink to="/later">
+                        <ProfileRow
+                            icon={Bookmark}
+                            label={_("Later")}
+                            trailing={
+                                <span className="flex items-center gap-2">
+                                    {unreadReminders > 0 && (
+                                        <span className="h-4 min-w-4 px-1 flex items-center justify-center rounded-full bg-surface-red-6 text-ink-base dark:text-ink-red-1 text-[10px] leading-none">
+                                            {unreadReminders > 9 ? "9+" : unreadReminders}
+                                        </span>
+                                    )}
+                                    <ChevronRight className="size-4" />
+                                </span>
+                            }
+                        />
                     </NavLink>
 
                     <ProfileRow icon={Edit} label={_("Edit profile")} onClick={() => setEditOpen(true)} className="rounded-b-lg" />

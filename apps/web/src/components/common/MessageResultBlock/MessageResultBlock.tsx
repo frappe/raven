@@ -27,9 +27,13 @@ interface MessageResultBlockProps {
     workspace?: WorkspaceFields
     onClick?: () => void
     className?: string
+    /** Unread notification-row treatment: tint, semibold author, avatar dot. */
+    unread?: boolean
+    /** Extra row under the body (e.g. the reminder note). */
+    footer?: React.ReactNode
 }
 
-const MessageResultBlockInner = ({ message, user, channel, dmChannel, peer, workspace, onClick, className }: MessageResultBlockProps) => {
+const MessageResultBlockInner = ({ message, user, channel, dmChannel, peer, workspace, onClick, className, unread, footer }: MessageResultBlockProps) => {
 
     const handleKeyDown = onClick
         ? (e: React.KeyboardEvent) => {
@@ -54,14 +58,21 @@ const MessageResultBlockInner = ({ message, user, channel, dmChannel, peer, work
                 className={cn(
                     "group flex gap-3 px-2 py-3 md:py-2 rounded transition-colors text-left select-none",
                     onClick && "cursor-pointer hover:bg-surface-gray-3 active:bg-surface-gray-3 focus-visible:bg-surface-gray-3 focus-visible:outline-none",
+                    // NotificationItem's unread tint; the active class wins when both apply.
+                    unread && "bg-surface-gray-2/10",
                     className
                 )}
             >
-                {user && <UserAvatar user={user} size="md" showStatusIndicator={false} />}
+                {user && (
+                    <div className="relative shrink-0 self-start">
+                        <UserAvatar user={user} size="md" showStatusIndicator={false} />
+                        {unread && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-surface-blue-5" />}
+                    </div>
+                )}
                 <div className="flex-1 min-w-0">
                     <div className="flex items-baseline gap-1.5 flex-wrap text-content">
                         {user && (
-                            <span className="font-medium text-ink-gray-8 truncate">{user.full_name}</span>
+                            <span className={cn("text-ink-gray-8 truncate", unread ? "font-semibold" : "font-medium")}>{user.full_name}</span>
                         )}
                         <span className="shrink-0 text-xs text-ink-gray-4">{relativeDate}</span>
                         {workspace && (
@@ -85,13 +96,11 @@ const MessageResultBlockInner = ({ message, user, channel, dmChannel, peer, work
                             </>
                         )}
                     </div>
-                    {/* Mentions are INERT on mobile (max-md pointer-events-none): the row
-                        is one tap target, and a live mention double-fired — the tap
-                        opened the profile popover AND navigated the row, and the popover
-                        outlived the page (portaled outside the layer that went inert).
-                        Desktop keeps hover cards: hover never conflicts with click
-                        navigation. Same rule as BaseThreadMessage. */}
-                    <div className="mt-1 [&_p]:my-0 max-md:[&_.mention]:pointer-events-none">
+                    {/* Mentions are INERT on mobile — a live mention double-fired (popover +
+                        row navigation), and the popover outlived the inerted layer. Same
+                        rule as BaseThreadMessage. Unread also bolds the body — the name
+                        alone was easy to miss. */}
+                    <div className={cn("mt-1 [&_p]:my-0 max-md:[&_.mention]:pointer-events-none", unread && "font-semibold [&_p]:text-ink-gray-9")}>
                         {/* Polls: render the FTS snippet (question + options, with <mark>
                             highlights) instead of the live poll card — a votable card in a
                             search list would fire get_poll per row and drop the highlight. */}
@@ -99,6 +108,7 @@ const MessageResultBlockInner = ({ message, user, channel, dmChannel, peer, work
                             ? <MessageBody content={message.text} />
                             : <MessageContent message={message} showLinkPreview={false} />}
                     </div>
+                    {footer}
                 </div>
             </div>
         </div>

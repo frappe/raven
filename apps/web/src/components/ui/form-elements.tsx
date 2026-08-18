@@ -3,8 +3,7 @@ import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessa
 import _ from "@lib/translate"
 import { Input } from "./input"
 import { ComponentProps, useState } from "react"
-import { parseDate } from "chrono-node"
-import { formatDate, USER_DATE_FORMAT, toDate } from "@lib/date"
+import { formatDate, parseTypedDate, USER_DATE_FORMAT, toDate } from "@lib/date"
 import { Popover, PopoverContent, PopoverTrigger } from "./popover"
 import { Button } from "./button"
 import { CalendarIcon } from "lucide-react"
@@ -118,17 +117,10 @@ export const DateField = ({ name, rules, label, isRequired, formDescription, inp
                     onChange={(e) => {
                         setValue(e.target.value)
                         if (e.target.value) {
-                            // On change in value, try computing date usning standard formats first
-                            const dateObj = toDate(e.target.value, userDateFormat)
-                            // If we find a valid date, use it
-                            if (dateObj && !isNaN(dateObj.getTime())) {
-                                field.onChange(formatDate(dateObj, "YYYY-MM-DD"))
-                            } else {
-                                // If not, try parsing using chrono-node for things like "1st July 2025"
-                                const date = parseDate(e.target.value)
-                                if (date) {
-                                    field.onChange(formatDate(date, "YYYY-MM-DD"))
-                                }
+                            // Strict user-format parse first, then natural language
+                            const parsed = parseTypedDate(e.target.value)
+                            if (parsed) {
+                                field.onChange(formatDate(parsed, "YYYY-MM-DD"))
                             }
                         } else {
                             field.onChange("")

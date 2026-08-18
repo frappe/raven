@@ -11,10 +11,7 @@ import type { ChannelListItem, DMChannelListItem } from "@raven/types/common/Cha
 import type { UserData } from "@db"
 import _ from "@lib/translate"
 import { ChannelIcon } from "@components/common/ChannelIcon/ChannelIcon"
-
-/** Escape shared plain text before it goes into the (HTML) composer draft. */
-const escapeHtml = (raw: string) =>
-    raw.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c)
+import { escapeHtml } from "@utils/htmlUtils"
 
 /**
  * Web Share Target landing page. The manifest's `share_target` sends OS share-
