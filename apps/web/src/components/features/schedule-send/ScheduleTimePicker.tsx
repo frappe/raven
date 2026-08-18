@@ -55,9 +55,13 @@ export const ScheduleTimePicker = ({ onConfirm, onCancel, onPickChange, busy }: 
                 <DatePickerPopover value={date} onChange={setDate} size={isMobile ? "lg" : "md"} />
                 <Select value={effectiveTime ?? undefined} onValueChange={setTime} disabled={availableOptions.length === 0}>
                     <SelectTrigger aria-label={_("Time")} inputSize={isMobile ? "lg" : "md"} className="w-full min-w-0">
-                        <Clock />
-                        {/* Late tonight every slot may already be past — say so instead of crashing. */}
-                        <SelectValue>{effectiveOption?.label ?? _("No times left today")}</SelectValue>
+                        {/* Clock INSIDE SelectValue: the trigger is justify-between, so a
+                            third child would strand the time in the middle. */}
+                        <SelectValue>
+                            <Clock />
+                            {/* Late tonight every slot may already be past — say so instead of crashing. */}
+                            {effectiveOption?.label ?? _("No times left today")}
+                        </SelectValue>
                     </SelectTrigger>
                     {/* Panel width locked to the trigger's. */}
                     <SelectContent className="w-[var(--radix-select-trigger-width)] min-w-0 max-h-62 overflow-y-auto">

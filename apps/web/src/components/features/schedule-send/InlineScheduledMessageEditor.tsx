@@ -52,8 +52,12 @@ export const InlineScheduledMessageEditor = ({ row, onDone, onCancel }: InlineSc
                             <DatePickerPopover value={date} onChange={setDate} className="w-40" />
                             <Select value={time} onValueChange={setTime}>
                                 <SelectTrigger aria-label={_("Time")} inputSize="sm" className="w-28">
-                                    <Clock />
-                                    <SelectValue>{allTimeOptions.find((option) => option.value === time)?.label}</SelectValue>
+                                    {/* Clock INSIDE SelectValue: the trigger is justify-between, so a
+                                        third child would strand the time in the middle. */}
+                                    <SelectValue>
+                                        <Clock />
+                                        {allTimeOptions.find((option) => option.value === time)?.label}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 {/* Panel width locked to the trigger's. */}
                                 <SelectContent align="start" className="w-[var(--radix-select-trigger-width)] min-w-0 max-h-62 overflow-y-auto">

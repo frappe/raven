@@ -80,8 +80,12 @@ export const EditScheduledMessageSheet = ({ row, open, onOpenChange, onDone }: E
                             <DatePickerPopover value={date} onChange={setDate} size="lg" />
                             <Select value={time} onValueChange={setTime}>
                                 <SelectTrigger aria-label={_("Time")} inputSize="lg" className="w-full min-w-0">
-                                    <Clock />
-                                    <SelectValue>{allTimeOptions.find((option) => option.value === time)?.label}</SelectValue>
+                                    {/* Clock INSIDE SelectValue: the trigger is justify-between, so a
+                                        third child would strand the time in the middle. */}
+                                    <SelectValue>
+                                        <Clock />
+                                        {allTimeOptions.find((option) => option.value === time)?.label}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 {/* Panel width locked to the trigger's. */}
                                 <SelectContent className="w-[var(--radix-select-trigger-width)] min-w-0 max-h-62 overflow-y-auto">
