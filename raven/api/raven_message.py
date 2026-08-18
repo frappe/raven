@@ -970,7 +970,9 @@ def _forward_payloads(message_id: str) -> list[dict]:
 
 	payloads = []
 	for member in members:
-		payload = {field: member.get(field) for field in FORWARDABLE_FIELDS if member.get(field) is not None}
+		payload = {
+			field: member.get(field) for field in FORWARDABLE_FIELDS if member.get(field) is not None
+		}
 		# Forwarding drops the reply link, so inline the quoted message into `text` up
 		# front. `json` goes with it: it still holds the unquoted body, and the copy
 		# should have one body that carries the quote.
@@ -991,7 +993,9 @@ def _forward_payloads(message_id: str) -> list[dict]:
 
 @frappe.whitelist(methods=["POST"])
 def forward_message(
-	message_receivers: list[dict], forwarded_message: dict | None = None, message_id: str | None = None
+	message_receivers: list[dict],
+	forwarded_message: dict | None = None,
+	message_id: str | None = None,
 ):
 	"""
 	Forward a message to multiple users/ or in multiple channels
