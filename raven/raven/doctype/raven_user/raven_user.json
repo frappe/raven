@@ -35,7 +35,8 @@
   "time_format",
   "sort_channels_by",
   "link_previews",
-  "hide_read_receipts"
+  "hide_read_receipts",
+  "quiet_hours_nudge"
  ],
  "fields": [
   {
@@ -217,12 +218,19 @@
    "fieldname": "hide_read_receipts",
    "fieldtype": "Check",
    "label": "Hide Read Receipts"
+  },
+  {
+   "default": "Nudge",
+   "fieldname": "quiet_hours_nudge",
+   "fieldtype": "Select",
+   "label": "Quiet Hours Nudge",
+   "options": "Nudge\nNo Nudge\nAuto Silent"
   }
  ],
  "grid_page_length": 50,
  "image_field": "user_image",
  "links": [],
- "modified": "2026-08-15 17:43:11.737523",
+ "modified": "2026-08-17 23:03:59.565193",
  "modified_by": "Administrator",
  "module": "Raven",
  "name": "Raven User",

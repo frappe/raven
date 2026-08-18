@@ -112,13 +112,13 @@ const useUserLite = (userID?: string) =>
  *  Link, never nested inside it (nested interactive elements are invalid);
  *  both navigate to the same place. */
 const CardShell = ({ to, action, children }: { to: string; action?: string; children: ReactNode }) => (
-    <div data-media-root="" className="w-full md:max-w-lg sm:max-w-md max-w-sm my-2">
-        <div className="flex items-center gap-3 rounded border border-outline-gray-2 bg-surface-gray-1 p-3 transition-colors hover:border-outline-gray-3 dark:bg-surface-elevation-2">
+    <div data-media-root="" className="w-full max-w-lg my-2">
+        <div className="flex sm:items-center sm:flex-row flex-col gap-3 rounded border border-outline-gray-2 bg-surface-base p-3 transition-colors hover:border-outline-gray-3 dark:bg-surface-elevation-1">
             <Link to={to} className="flex min-w-0 flex-1 items-start gap-3 no-underline">
                 {children}
             </Link>
             {action && (
-                <Button asChild variant="outline" size="sm" className="shrink-0">
+                <Button asChild variant="subtle" size="sm" className="shrink-0">
                     <Link to={to}>{action}</Link>
                 </Button>
             )}
@@ -188,11 +188,11 @@ const MessageLinkCard = ({ messageID, to, label }: { messageID: string; to: stri
                 )}
             </div>
             <div className="min-w-0 flex-1 space-y-0.5">
-                <div className={cn("truncate text-sm text-ink-gray-5", isMobile && "flex flex-col gap-0.5")}>
+                <div className={cn("truncate text-p-sm text-ink-gray-5", isMobile && "flex flex-col gap-0.5")}>
                     <span className="text-sm-medium leading-snug text-ink-gray-8">{label ?? senderName}</span>
                     {context && <span>{isMobile ? "" : " · "} {context}</span>}
                 </div>
-                <div className="line-clamp-2 text-sm leading-snug text-ink-gray-7">
+                <div className="line-clamp-2 text-p-sm text-ink-gray-7">
                     {label ? `${senderName}: ${teaser}` : teaser}
                 </div>
             </div>

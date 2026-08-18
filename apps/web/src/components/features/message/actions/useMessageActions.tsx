@@ -263,24 +263,31 @@ export const useMessageActions = (
                 },
             })
         }
-        clipboard.push({
-            id: "copy-link",
-            label: _("Copy message link"),
-            icon: Link,
-            onSelect: () => {
-                // One canonical shape for EVERY message — the /message resolver route
-                // redirects it to the right place (channel, DM, or thread reply).
-                // Pathname-based links broke inside threads (?message_id belongs to
-                // the channel's stream) and in the notification/search panes (no
-                // channel in the URL at all).
-                const base = import.meta.env.VITE_BASE_NAME ? `/${import.meta.env.VITE_BASE_NAME}` : ""
-                const url = `${window.location.origin}${base}/message/${encodeURIComponent(message.name)}`
-                navigator.clipboard
-                    .writeText(url)
-                    .then(() => toast.success(_("Link copied")))
-                    .catch(() => toast.error(_("Could not copy link")))
-            },
-        })
+        // No "Copy message link" in DMs. The link only opens for the DM's two
+        // participants, and the other one already has the message — there is no
+        // one to share it with. Thread replies keep the action: their channel_id
+        // is the thread, which the channel store never holds, so we can't tell
+        // if the thread lives in a DM.
+        if (parentChannel?.is_direct_message !== 1) {
+            clipboard.push({
+                id: "copy-link",
+                label: _("Copy message link"),
+                icon: Link,
+                onSelect: () => {
+                    // One canonical shape for EVERY message — the /message resolver route
+                    // redirects it to the right place (channel, DM, or thread reply).
+                    // Pathname-based links broke inside threads (?message_id belongs to
+                    // the channel's stream) and in the notification/search panes (no
+                    // channel in the URL at all).
+                    const base = import.meta.env.VITE_BASE_NAME ? `/${import.meta.env.VITE_BASE_NAME}` : ""
+                    const url = `${window.location.origin}${base}/message/${encodeURIComponent(message.name)}`
+                    navigator.clipboard
+                        .writeText(url)
+                        .then(() => toast.success(_("Link copied")))
+                        .catch(() => toast.error(_("Could not copy link")))
+                },
+            })
+        }
 
         // File actions (copy file link, download, download all, attach to document)
         // render as their own group — a divider above them on every surface — so
@@ -403,7 +410,9 @@ export const useMessageActions = (
         // the poll data resolves we treat a poll as anonymous: a briefly
         // missing action beats a briefly exposed one.
         const pollForbidsReceipts = isPoll && (!pollData || Boolean(pollData.message.poll.is_anonymous))
-        if (!hideReadReceipts && !pollForbidsReceipts) {
+        // Also hidden in your self-DM: the only possible reader is you.
+        const isSelfDM = parentChannel?.is_self_message === 1
+        if (!hideReadReceipts && !pollForbidsReceipts && !isSelfDM) {
             organize.push({
                 id: "read-receipts",
                 label: _("Read by"),

@@ -1,70 +1,82 @@
-import { useRef } from "react"
-
-/** Hold this long (without drifting/lifting) to fire. Matches MessageActionMenu. */
-const LONG_PRESS_MS = 450
-/** Finger drift beyond this cancels — it's a scroll, not a hold. */
-const SLOP_PX = 10
-/** Swallow the synthetic click that follows finger-lift for this long after firing. */
-const CLICK_SUPPRESS_MS = 300
+import { useEffect, useRef } from "react"
+import { hapticTick } from "@utils/haptics"
 
 /**
- * Touch long-press detector for elements that are also links/buttons.
+ * Simple long-press for a single control: arm on pointerdown, stand down when
+ * the finger travels (a drag/scroll, not a hold) or settles early, fire after
+ * `ms` with a haptic tick. Spread the returned `handlers` on the element.
  *
- * Standalone extraction of MessageActionMenu's press detector (which is
- * entangled with swipe-to-reply and can't be reused directly): pointerdown
- * starts a timer; drift past the slop or lifting cancels it; when it fires,
- * the click that follows finger-lift is swallowed in the capture phase so a
- * host NavLink doesn't navigate. `contextmenu` is prevented while enabled —
- * Android fires it for touch long-press (iOS never does; the timer is the
- * real path there).
+ * The click that follows a fired long-press must usually be swallowed (the
+ * pointerup still synthesizes one) — call `consumeLongPress()` first thing in
+ * the element's onClick: it reports whether the press fired and clears the
+ * latch, so exactly one click gets eaten per fired press.
  *
- * Spread the returned handlers onto the pressable element:
- *   const longPress = useLongPress(() => setSheetOpen(true), isMobile)
- *   <NavLink {...longPress} ...>
+ * Travel uses pointermove, NOT pointerleave: touch pointers are implicitly
+ * captured by the pressed element, so pointerleave never fires mid-drag.
+ * onContextMenu is suppressed — a long-press is what raises the OS context
+ * menu, and this hook exists to give that hold a different meaning.
+ *
+ * Deliberately NOT used by MessageActionMenu: the message long-press is
+ * interwoven with swipe-to-reply arbitration, a two-stage press highlight and
+ * click-suppression windows — a hook generic enough to host that would obscure
+ * both. The defaults here mirror its timings so the app keeps one rhythm.
  */
-export const useLongPress = (onLongPress: () => void, enabled: boolean = true) => {
-    const pressRef = useRef<{ timer: number; x: number; y: number } | null>(null)
-    /** Window (not a latch): a long hold may produce NO click at all, and a
-     *  latched flag would then eat the next unrelated tap. */
-    const suppressClicksUntilRef = useRef(0)
+export const useLongPress = (
+    onLongPress: () => void,
+    { ms = 450, slopPx = 10, haptic = true }: { ms?: number; slopPx?: number; haptic?: boolean } = {},
+) => {
+    // The timer calls the LATEST handler — the ref keeps it fresh without
+    // rebuilding the handlers each render.
+    const onLongPressRef = useRef(onLongPress)
+    onLongPressRef.current = onLongPress
 
-    const cancel = () => {
-        if (!pressRef.current) return
-        window.clearTimeout(pressRef.current.timer)
-        pressRef.current = null
+    const timerRef = useRef<number | null>(null)
+    const firedRef = useRef(false)
+    const originRef = useRef<{ x: number; y: number } | null>(null)
+
+    const disarm = () => {
+        originRef.current = null
+        if (timerRef.current !== null) {
+            window.clearTimeout(timerRef.current)
+            timerRef.current = null
+        }
     }
 
-    return {
+    // Unmount with a press still held: kill the pending timer so it can't
+    // fire against a dead instance.
+    useEffect(() => disarm, [])
+
+    const handlers = {
         onPointerDown: (event: React.PointerEvent) => {
-            if (!enabled || event.pointerType !== "touch") return
-            cancel()
-            const timer = window.setTimeout(() => {
-                pressRef.current = null
-                suppressClicksUntilRef.current = performance.now() + CLICK_SUPPRESS_MS
-                onLongPress()
-            }, LONG_PRESS_MS)
-            pressRef.current = { timer, x: event.clientX, y: event.clientY }
+            firedRef.current = false
+            disarm()
+            originRef.current = { x: event.clientX, y: event.clientY }
+            timerRef.current = window.setTimeout(() => {
+                timerRef.current = null
+                firedRef.current = true
+                if (haptic) hapticTick()
+                onLongPressRef.current()
+            }, ms)
         },
         onPointerMove: (event: React.PointerEvent) => {
-            const press = pressRef.current
-            if (
-                press &&
-                (Math.abs(event.clientX - press.x) > SLOP_PX ||
-                    Math.abs(event.clientY - press.y) > SLOP_PX)
-            ) {
-                cancel()
+            const origin = originRef.current
+            if (!origin) return
+            if (Math.abs(event.clientX - origin.x) > slopPx || Math.abs(event.clientY - origin.y) > slopPx) {
+                disarm()
             }
         },
-        onPointerUp: cancel,
-        onPointerCancel: cancel,
-        onClickCapture: (event: React.MouseEvent) => {
-            if (performance.now() > suppressClicksUntilRef.current) return
-            suppressClicksUntilRef.current = 0
-            event.preventDefault()
-            event.stopPropagation()
-        },
-        onContextMenu: (event: React.MouseEvent) => {
-            if (enabled) event.preventDefault()
-        },
+        onPointerUp: disarm,
+        onPointerLeave: disarm,
+        onPointerCancel: disarm,
+        onContextMenu: (event: React.MouseEvent) => event.preventDefault(),
     }
+
+    /** True when the last press fired (and swallow it) — see the doc above. */
+    const consumeLongPress = () => {
+        if (!firedRef.current) return false
+        firedRef.current = false
+        return true
+    }
+
+    return { handlers, consumeLongPress }
 }

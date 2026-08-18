@@ -75,11 +75,12 @@ export const uploadingFilesAtom = atomFamily((_channelID: string) => atom<Queued
 export const uploadedFilesAtom = atomFamily((channelID: string) => atomWithStorage<UploadedFile[]>(`uploaded-files-${channelID}`, []))
 
 /**
- * The user pressed send while files were still uploading. We hold the send
- * (don't drop the in-flight files) and dispatch it automatically once every
- * upload settles. Per channel so holding in one DM doesn't block another.
+ * A send that arrived while files were still uploading — held, then dispatched once every
+ * upload settles. Per channel so holding in one DM doesn't block another. Holds the send
+ * options (e.g. silent) so the deferred dispatch sends exactly what the user asked for;
+ * `false` = nothing held.
  */
-export const pendingSendAtom = atomFamily((_channelID: string) => atom<boolean>(false))
+export const pendingSendAtom = atomFamily((_channelID: string) => atom<false | { sendSilently?: boolean }>(false))
 
 
 /**

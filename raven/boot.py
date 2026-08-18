@@ -36,13 +36,16 @@ def boot_session(bootinfo):
 		and frappe.session.user != "Guest"
 		and frappe.db.exists("Raven User", frappe.session.user)
 	):
-		chat_style, time_format, hide_read_receipts = frappe.db.get_value(
-			"Raven User", frappe.session.user, ["chat_style", "time_format", "hide_read_receipts"]
+		chat_style, time_format, hide_read_receipts, quiet_hours_nudge = frappe.db.get_value(
+			"Raven User",
+			frappe.session.user,
+			["chat_style", "time_format", "hide_read_receipts", "quiet_hours_nudge"],
 		)
 	else:
 		chat_style = "Simple"
 		time_format = "12-hour"
 		hide_read_receipts = 0
+		quiet_hours_nudge = "Nudge"
 
 	if document_link_override and len(document_link_override) > 0:
 		bootinfo.raven_document_link_override = True
@@ -55,6 +58,24 @@ def boot_session(bootinfo):
 	bootinfo.chat_style = chat_style if chat_style else "Simple"
 	bootinfo.raven_time_format = time_format if time_format else "12-hour"
 	bootinfo.raven_hide_read_receipts = 1 if hide_read_receipts else 0
+	bootinfo.raven_quiet_hours_nudge = quiet_hours_nudge if quiet_hours_nudge else "Nudge"
+
+	# Quiet hours: outside these working hours the composer nudges toward (or
+	# defaults to, per the user's preference above) silent sends. Only shipped
+	# when the org enabled and configured them — no boot key = feature off.
+	# Times are evaluated against the SITE's timezone (already in standard
+	# boot as time_zone.system), so every client measures the same org clock
+	# regardless of device timezone.
+	if (
+		raven_settings.enable_quiet_hours
+		and raven_settings.working_hours_start
+		and raven_settings.working_hours_end
+	):
+		bootinfo.quiet_hours = {
+			# Time fields read back as timedelta — str() gives "HH:MM:SS".
+			"working_hours_start": str(raven_settings.working_hours_start),
+			"working_hours_end": str(raven_settings.working_hours_end),
+		}
 
 	bootinfo.push_notification_service = (
 		raven_settings.push_notification_service

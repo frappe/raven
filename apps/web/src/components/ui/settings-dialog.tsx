@@ -254,7 +254,7 @@ function SettingsPanelContent({
 
 /** Used to render a row in a form in the settings panel */
 const SettingsFormRow = (props: React.ComponentProps<"div">) => {
-    return <div className="flex justify-between items-center gap-8 py-3" {...props} />
+    return <div className="flex justify-between items-center gap-8 py-2" {...props} />
 }
 
 /** Used to render a label for a form field in the settings panel */
@@ -274,6 +274,14 @@ const SettingsFormDescription = (props: React.ComponentProps<"p">) => {
     )
 }
 
+/** Groups rows under a small heading inside a settings panel. Extra top
+ *  padding separates it from the previous section (none when it's first). */
+const SettingsSectionHeader = ({ className, ...props }: React.ComponentProps<"h3">) => {
+    return (
+        <h3 className={cn("pt-4 text-base text-ink-gray-5 first:pt-0", className)} {...props} />
+    )
+}
+
 export {
     SettingsDialog,
     SettingsTabs,
@@ -287,5 +295,6 @@ export {
     SettingsPanelContent,
     SettingsFormRow,
     SettingsFormLabel,
-    SettingsFormDescription
+    SettingsFormDescription,
+    SettingsSectionHeader
 }

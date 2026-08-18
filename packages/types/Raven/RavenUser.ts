@@ -58,4 +58,6 @@ export interface RavenUser {
 	link_previews?: "Link Hover" | "Preview Card"
 	/**	Hide Read Receipts : Check	*/
 	hide_read_receipts?: 0 | 1
+	/**	Quiet Hours Nudge : Select	*/
+	quiet_hours_nudge?: "Nudge" | "No Nudge" | "Auto Silent"
 }

@@ -18,7 +18,6 @@ import { useWorkspaces } from "@hooks/useWorkspaces"
 import { useCreateDM } from "@hooks/useCreateDM"
 import { useIsMobile } from "@hooks/use-mobile"
 import { errorResponseToast } from "@components/ui/error-banner"
-import { buildForwardPayload } from "./forwardPayload"
 import { cn } from "@lib/utils"
 import _ from "@lib/translate"
 import type { Message } from "@raven/types/common/Message"
@@ -333,7 +332,9 @@ export const ForwardMessageDialog = ({
 
         forwardMessage({
             message_receivers: [{ type: "Channel", name: destination }],
-            forwarded_message: buildForwardPayload(message),
+            // The server builds the copy from the message id — including every
+            // member when the message is part of a batch (an album + caption).
+            message_id: message.name,
         })
             .then(() => {
                 onClose()
@@ -353,7 +354,13 @@ export const ForwardMessageDialog = ({
         <ResponsiveDialog open={open} onClose={onClose}>
             <ResponsiveDialogHeader
                 title={_("Forward message")}
-                description={_("Choose where to forward this message.")}
+                // A batch member forwards its whole album — say so, since the dialog
+                // was opened from just one of its attachments.
+                description={
+                    message?.message_batch_id
+                        ? _("All attachments sent together will be forwarded.")
+                        : _("Choose where to forward this message.")
+                }
             />
 
             <RecipientList selected={recipient} onSelect={setRecipient} sourceChannelID={message?.channel_id} />
