@@ -80,7 +80,6 @@ export const toDate = (date: string, format: string = "YYYY-MM-DD") => {
 /**
  * Parse a typed date: the user's date format first (strict), then chrono-node
  * natural language ("tomorrow", "1st July 2025"). Null when unresolvable.
- * Shared by DateField and the schedule-send DatePickerPopover.
  */
 export const parseTypedDate = (raw: string): Date | null => {
   if (!raw) return null

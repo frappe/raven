@@ -1,6 +1,8 @@
+from datetime import timedelta
+
 import frappe
 from frappe.tests import IntegrationTestCase
-from frappe.utils import add_to_date, now_datetime
+from frappe.utils import add_to_date, get_datetime, now_datetime
 
 EXTRA_TEST_RECORD_DEPENDENCIES = ["User", "Raven User"]
 
@@ -58,6 +60,57 @@ class TestRavenScheduledMessage(IntegrationTestCase):
 		with self.assertRaises(frappe.ValidationError):
 			self._schedule(minutes=-5)
 
+	def test_validate_rounds_scheduled_time_up_to_grid(self):
+		base = now_datetime().replace(minute=0, second=0, microsecond=0) + timedelta(hours=2)
+
+		off_grid = frappe.get_doc(
+			{
+				"doctype": "Raven Scheduled Message",
+				"channel_id": self.channel.name,
+				"text": "<p>later</p>",
+				"scheduled_time": base + timedelta(minutes=7),
+			}
+		).insert()
+		self.assertEqual(get_datetime(off_grid.scheduled_time), base + timedelta(minutes=10))
+
+		aligned = frappe.get_doc(
+			{
+				"doctype": "Raven Scheduled Message",
+				"channel_id": self.channel.name,
+				"text": "<p>later</p>",
+				"scheduled_time": base + timedelta(hours=1),
+			}
+		).insert()
+		self.assertEqual(get_datetime(aligned.scheduled_time), base + timedelta(hours=1))
+
+	def test_clear_old_logs_deletes_only_stale_sent_rows(self):
+		from raven.raven_messaging.doctype.raven_scheduled_message.raven_scheduled_message import (
+			RavenScheduledMessage,
+		)
+
+		stale_sent = self._schedule()
+		stale_sent.db_set(
+			{
+				"status": "Sent",
+				"scheduled_time": add_to_date(now_datetime(), days=-40, as_string=True, as_datetime=True),
+			}
+		)
+		stale_failed = self._schedule()
+		stale_failed.db_set(
+			{
+				"status": "Failed",
+				"scheduled_time": add_to_date(now_datetime(), days=-40, as_string=True, as_datetime=True),
+			}
+		)
+		upcoming = self._schedule()
+
+		RavenScheduledMessage.clear_old_logs(days=30)
+
+		self.assertFalse(frappe.db.exists("Raven Scheduled Message", stale_sent.name))
+		# Failed rows stay user-visible; future Scheduled rows must survive.
+		self.assertTrue(frappe.db.exists("Raven Scheduled Message", stale_failed.name))
+		self.assertTrue(frappe.db.exists("Raven Scheduled Message", upcoming.name))
+
 	def test_sent_rows_are_immutable(self):
 		doc = self._schedule()
 		doc.db_set("status", "Sent")
@@ -82,7 +135,7 @@ class TestRavenScheduledMessage(IntegrationTestCase):
 		self.assertFalse(doc.error)
 
 	def test_send_due_messages_sends_only_due(self):
-		from raven.api.scheduled_message import send_due_messages
+		from raven.scheduler.send_scheduled_messages import send_due_messages
 
 		due = self._schedule()
 		due.db_set("scheduled_time", add_to_date(now_datetime(), minutes=-1))
@@ -103,7 +156,7 @@ class TestRavenScheduledMessage(IntegrationTestCase):
 		self.assertEqual(frappe.session.user, "Administrator")
 
 	def test_failed_dispatch_marks_failed_and_continues(self):
-		from raven.api.scheduled_message import send_due_messages
+		from raven.scheduler.send_scheduled_messages import send_due_messages
 
 		bad = self._schedule()
 		bad.db_set("scheduled_time", add_to_date(now_datetime(), minutes=-2))

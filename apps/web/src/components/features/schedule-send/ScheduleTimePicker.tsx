@@ -6,8 +6,8 @@ import { Label } from "@components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@components/ui/select"
 import { useIsMobile } from "@hooks/use-mobile"
 import _ from "@lib/translate"
-import { getAvailableTimeOptions, toServerDatetime, formatScheduleLabel, type SchedulePick } from "./scheduleTime"
-import { DatePickerPopover } from "./InlineScheduledMessageEditor"
+import { getAvailableTimeOptions, toServerDatetime, formatDateTimeLabel, type SchedulePick } from "@lib/timeUtils"
+import { DatePickerPopover } from "@components/features/reminders/DatePickerPopover"
 
 type ScheduleTimePickerProps = {
     /** Fired when the user confirms the custom date + time. */
@@ -82,7 +82,7 @@ export const ScheduleTimePicker = ({ onConfirm, onCancel, onPickChange, busy }: 
                     size={isMobile ? "lg" : "md"}
                     loading={busy}
                     disabled={!pick}
-                    onClick={() => pick && onConfirm({ serverTime: toServerDatetime(pick), label: formatScheduleLabel(pick) })}
+                    onClick={() => pick && onConfirm({ serverTime: toServerDatetime(pick), label: formatDateTimeLabel(pick) })}
                 >
                     {_("Schedule")}
                 </Button>

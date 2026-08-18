@@ -6,7 +6,7 @@ import { useRavenEditor } from "@components/features/editor/useRavenEditor"
 import { errorResponseToast } from "@components/ui/error-banner"
 import { useIsMobile } from "@hooks/use-mobile"
 import _ from "@lib/translate"
-import { fromServerDatetime, toServerDatetime, formatTimeLabel, getAvailableTimeOptions } from "./scheduleTime"
+import { fromServerDatetime, toServerDatetime, formatTimeLabel, getAvailableTimeOptions } from "@lib/timeUtils"
 import type { ScheduledMessageRow } from "./ScheduledMessagesList"
 
 type UseScheduledMessageEditOptions = {

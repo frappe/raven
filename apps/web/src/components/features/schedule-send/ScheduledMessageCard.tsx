@@ -19,7 +19,7 @@ import { useIsMobile } from "@hooks/use-mobile"
 import { cn } from "@lib/utils"
 import _ from "@lib/translate"
 import { DRAWER_EXIT_MS } from "@utils/drawer"
-import { fromServerDatetime, formatScheduleLabel } from "./scheduleTime"
+import { fromServerDatetime, formatDateTimeLabel } from "@lib/timeUtils"
 import { InlineScheduledMessageEditor } from "./InlineScheduledMessageEditor"
 import type { ScheduledMessageRow } from "./ScheduledMessagesList"
 import type { ChannelListItem, DMChannelListItem } from "@raven/types/common/ChannelListItem"
@@ -105,7 +105,7 @@ export const ScheduledMessageCard = ({
                         )}
                         <span className="shrink-0 text-xs text-ink-gray-4 flex items-baseline gap-1">
                             <CalendarClockIcon className="h-3 w-3 self-center shrink-0 text-ink-gray-4" />
-                            {_("Scheduled for {0}", [formatScheduleLabel(fromServerDatetime(row.scheduled_time))])}
+                            {_("Scheduled for {0}", [formatDateTimeLabel(fromServerDatetime(row.scheduled_time))])}
                         </span>
                         {channel && (
                             <>

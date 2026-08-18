@@ -17,7 +17,7 @@ import { useRavenEditor, EDITOR_MIN_H } from "@components/features/editor/useRav
 import { linkifyBeforeSend } from "@components/features/editor/linkifyOnSend"
 import { EditorFormattingToolbar } from "@components/features/editor/EditorFormattingToolbar"
 import { ScheduleSendDialog } from "@components/features/schedule-send/ScheduleSendDialog"
-import type { SchedulePick } from "@components/features/schedule-send/scheduleTime"
+import type { SchedulePick } from "@lib/timeUtils"
 import { ReplyPreviewBanner } from "./ReplyPreviewBanner"
 import { MentionWarningBanner } from "./MentionWarningBanner"
 import { MobileComposerActions } from "./MobileComposerActions"

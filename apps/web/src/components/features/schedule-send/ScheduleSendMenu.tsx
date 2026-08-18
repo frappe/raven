@@ -6,8 +6,8 @@ import {
 } from "@components/ui/dropdown-menu"
 import { CalendarClockIcon } from "lucide-react"
 import _ from "@lib/translate"
-import { getScheduleMenuSections, toServerDatetime, formatScheduleLabel } from "./scheduleTime"
-import type { SchedulePick } from "./scheduleTime"
+import { getScheduleMenuSections, toServerDatetime, formatDateTimeLabel } from "@lib/timeUtils"
+import type { SchedulePick } from "@lib/timeUtils"
 
 type ScheduleSendMenuProps = {
     /** A preset slot was picked from the submenu — schedule immediately. */
@@ -80,7 +80,7 @@ const ScheduleMenuSections = ({ onSchedulePick }: { onSchedulePick: (pick: Sched
                                 // The menu may have sat open across the slot's boundary — re-check at click
                                 // time so we don't POST a time the server will reject as past.
                                 if (!slot.time.isAfter(dayjs())) return
-                                onSchedulePick({ serverTime: toServerDatetime(slot.time), label: formatScheduleLabel(slot.time) })
+                                onSchedulePick({ serverTime: toServerDatetime(slot.time), label: formatDateTimeLabel(slot.time) })
                             }}
                         >
                             <span>{slot.label}</span>

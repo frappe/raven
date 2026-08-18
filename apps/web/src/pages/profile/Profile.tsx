@@ -8,9 +8,9 @@ import { useLogout } from "@hooks/useLogout"
 import { useIsMobile } from "@hooks/use-mobile"
 import { useIsPushNotificationEnabled } from "@hooks/fetchers/useIsPushNotificationEnabled"
 import { ProfileRow } from "@components/features/profile/ProfileRow"
-import { useScheduledMessagesCount } from "@components/features/schedule-send/useScheduledMessages"
 import { EditProfileDrawer } from "@components/features/profile/EditProfileDrawer"
 import { PreferencesDrawer } from "@components/features/profile/PreferencesDrawer"
+import { useScheduledMessagesCount } from "@components/features/schedule-send/useScheduledMessages"
 import { ProfileImageMenu } from "@components/features/profile/ProfileImageMenu"
 import { PageHeader } from "@components/layout/PageHeader"
 import AppMobileFooter from "@components/features/header/AppMobileFooter"
@@ -123,15 +123,6 @@ const Profile = () => {
                         />
                     )}
 
-                    {/* Composer, sidebar + quick-emoji preferences (desktop keeps these
-                        in the settings dialog's Preferences panel) */}
-                    <ProfileRow icon={SlidersHorizontal} label={_("Preferences")} onClick={() => setPrefsOpen(true)} trailing={<ChevronRight className="size-4" />} />
-
-                    {/* Saved messages */}
-                    <NavLink to="/saved-messages">
-                        <ProfileRow icon={Bookmark} label={_("Saved messages")} chevron />
-                    </NavLink>
-
                     {/* Scheduled messages — the PWA's entry point (no sidebar rail).
                         Hidden when there's nothing scheduled, like the desktop icon. */}
                     {scheduledCount > 0 && (
@@ -150,6 +141,15 @@ const Profile = () => {
                             />
                         </NavLink>
                     )}
+
+                    {/* Composer, sidebar + quick-emoji preferences (desktop keeps these
+                        in the settings dialog's Preferences panel) */}
+                    <ProfileRow icon={SlidersHorizontal} label={_("Preferences")} onClick={() => setPrefsOpen(true)} trailing={<ChevronRight className="size-4" />} />
+
+                    {/* Saved messages */}
+                    <NavLink to="/saved-messages">
+                        <ProfileRow icon={Bookmark} label={_("Saved messages")} chevron />
+                    </NavLink>
 
                     <ProfileRow icon={Edit} label={_("Edit profile")} onClick={() => setEditOpen(true)} className="rounded-b-lg" />
 

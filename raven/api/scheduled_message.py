@@ -2,7 +2,6 @@ from typing import TYPE_CHECKING
 
 import frappe
 from frappe import _
-from frappe.utils import now_datetime
 
 if TYPE_CHECKING:
 	from raven.raven_messaging.doctype.raven_scheduled_message.raven_scheduled_message import (
@@ -67,19 +66,6 @@ def send_now(name: str):
 	if doc.status == "Sent":
 		frappe.throw(_("This message has already been sent."))
 	_dispatch(doc, raise_on_failure=True)
-
-
-def send_due_messages():
-	"""Scheduler job (cron, every minute): deliver every due scheduled message.
-	One row failing must not block the rest."""
-	due = frappe.get_all(
-		"Raven Scheduled Message",
-		filters={"status": "Scheduled", "scheduled_time": ["<=", now_datetime()]},
-		pluck="name",
-		order_by="scheduled_time asc",
-	)
-	for name in due:
-		_dispatch(frappe.get_doc("Raven Scheduled Message", name))
 
 
 def _dispatch(doc: "RavenScheduledMessage", raise_on_failure: bool = False):

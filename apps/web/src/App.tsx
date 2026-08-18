@@ -40,9 +40,9 @@ import WorkspaceLayout from "@pages/workspace/WorkspaceLayout"
 const MessagePermalink = lazy(() => import("@pages/message/MessagePermalink"))
 const ShareTarget = lazy(() => import("@pages/share/ShareTarget"))
 const SavedMessages = lazy(() => import("@pages/saved-messages/SavedMessages"))
-const ScheduledMessages = lazy(() => import("@pages/scheduled-messages/ScheduledMessages"))
 const MobileProfile = lazy(() => import("@pages/profile/Profile"))
 const Search = lazy(() => import("@pages/search/Search"))
+const ScheduledMessages = lazy(() => import("@pages/scheduled-messages/ScheduledMessages"))
 
 /**
  * Home ("/") redirect, evaluated at RENDER time — module-scope reads froze

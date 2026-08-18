@@ -117,11 +117,10 @@ export const DateField = ({ name, rules, label, isRequired, formDescription, inp
                     onChange={(e) => {
                         setValue(e.target.value)
                         if (e.target.value) {
-                            // Strict user-format first, then chrono-node natural language
-                            // ("1st July 2025") — shared with the schedule date field.
-                            const dateObj = parseTypedDate(e.target.value)
-                            if (dateObj) {
-                                field.onChange(formatDate(dateObj, "YYYY-MM-DD"))
+                            // Strict user-format parse first, then natural language
+                            const parsed = parseTypedDate(e.target.value)
+                            if (parsed) {
+                                field.onChange(formatDate(parsed, "YYYY-MM-DD"))
                             }
                         } else {
                             field.onChange("")

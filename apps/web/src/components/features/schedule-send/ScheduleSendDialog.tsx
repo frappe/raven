@@ -14,7 +14,7 @@ import { useUserCookieData } from "@hooks/useUserCookieData"
 import { useIsMobile } from "@hooks/use-mobile"
 import _ from "@lib/translate"
 import { ScheduleTimePicker } from "./ScheduleTimePicker"
-import { formatScheduleLabel, type SchedulePick } from "./scheduleTime"
+import { formatDateTimeLabel, type SchedulePick } from "@lib/timeUtils"
 
 type ScheduleSendDialogProps = {
     open: boolean
@@ -91,7 +91,7 @@ const SchedulePreview = ({ text, picked }: { text: string; picked: Dayjs | null 
                     {user && <span className="truncate font-medium text-ink-gray-8">{user.full_name}</span>}
                     <span className="flex shrink-0 items-baseline gap-1 text-xs text-ink-gray-4">
                         <CalendarClockIcon className="h-3 w-3 shrink-0 self-center" />
-                        {picked ? _("Scheduled for {0}", [formatScheduleLabel(picked)]) : _("Pick a delivery time")}
+                        {picked ? _("Scheduled for {0}", [formatDateTimeLabel(picked)]) : _("Pick a delivery time")}
                     </span>
                 </div>
                 {/* Long messages scroll inside the pane — the picker row sets the dialog's height. */}

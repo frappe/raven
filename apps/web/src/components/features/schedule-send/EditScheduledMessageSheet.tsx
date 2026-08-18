@@ -7,9 +7,9 @@ import { Label } from "@components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@components/ui/select"
 import { TooltipProvider } from "@components/ui/tooltip"
 import _ from "@lib/translate"
-import { formatScheduleLabel } from "./scheduleTime"
+import { formatDateTimeLabel } from "@lib/timeUtils"
 import { useScheduledMessageEdit } from "./useScheduledMessageEdit"
-import { DatePickerPopover } from "./InlineScheduledMessageEditor"
+import { DatePickerPopover } from "@components/features/reminders/DatePickerPopover"
 import type { ScheduledMessageRow } from "./ScheduledMessagesList"
 
 type EditScheduledMessageSheetProps = {
@@ -94,7 +94,7 @@ export const EditScheduledMessageSheet = ({ row, open, onOpenChange, onDone }: E
                                 </SelectContent>
                             </Select>
                         </div>
-                        <p className="text-p-sm text-ink-gray-5">{formatScheduleLabel(picked)}</p>
+                        <p className="text-p-sm text-ink-gray-5">{formatDateTimeLabel(picked)}</p>
                     </div>
                 </div>
                 <DrawerFooter className="flex-row gap-2 [&>*]:flex-1">

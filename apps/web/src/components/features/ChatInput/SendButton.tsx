@@ -9,7 +9,7 @@ import { ChevronDownIcon, SendHorizontalIcon, SendIcon } from "lucide-react"
 import { useIsMobile } from "@hooks/use-mobile"
 import _ from "@lib/translate"
 import { ScheduleSendMenu } from "@components/features/schedule-send/ScheduleSendMenu"
-import type { SchedulePick } from "@components/features/schedule-send/scheduleTime"
+import type { SchedulePick } from "@lib/timeUtils"
 
 type SendButtonProps = {
     onSend: () => void

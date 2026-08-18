@@ -1,6 +1,8 @@
 # Copyright (c) 2026, The Commit Company and contributors
 # For license information, please see license.txt
 
+from datetime import timedelta
+
 import frappe
 from frappe import _
 from frappe.model.document import Document
@@ -61,6 +63,27 @@ class RavenScheduledMessage(Document):
 		if self.is_new() or self.has_value_changed("scheduled_time"):
 			if get_datetime(self.scheduled_time) <= now_datetime():
 				frappe.throw(_("Scheduled time must be in the future."))
+			# Sweep runs every 5 minutes; ceiling scheduled_time onto that grid means
+			# messages go out exactly on time. UI only offers aligned slots — this
+			# is the safety net for direct API callers.
+			scheduled_time = get_datetime(self.scheduled_time)
+			floored = scheduled_time.replace(
+				minute=scheduled_time.minute - scheduled_time.minute % 5, second=0, microsecond=0
+			)
+			self.scheduled_time = floored if floored == scheduled_time else floored + timedelta(minutes=5)
+
+	@staticmethod
+	def clear_old_logs(days=30):
+		"""Log-clearing hook (30d). Only dispatched rows are logs — future Scheduled
+		rows must survive, and Failed rows stay user-visible until acted on."""
+		from frappe.query_builder import Interval
+		from frappe.query_builder.functions import Now
+
+		table = frappe.qb.DocType("Raven Scheduled Message")
+		frappe.db.delete(
+			table,
+			filters=(table.status == "Sent") & (table.scheduled_time < (Now() - Interval(days=days))),
+		)
 
 	def on_update(self):
 		notify_owner_updated(self)
