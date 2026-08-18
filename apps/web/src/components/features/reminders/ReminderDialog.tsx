@@ -14,7 +14,7 @@ import { useIsMobile } from "@hooks/use-mobile"
 import _ from "@lib/translate"
 import type { Message } from "@raven/types/common/Message"
 import { DatePickerPopover } from "./DatePickerPopover"
-import { ceilToStep, formatReminderLabel, fromServerDatetime, getAvailableTimeOptions, toServerDatetime } from "./reminderTime"
+import { ceilToStep, formatDateTimeLabel, fromServerDatetime, getAvailableTimeOptions, toServerDatetime } from "@lib/timeUtils"
 import type { ReminderRow } from "./useReminders"
 
 /** Exact-time + note picker behind the "Remind me" preset submenu; also the
@@ -85,7 +85,7 @@ export const ReminderDialog = ({
         if (!request) return
         request
             .then(() => {
-                toast.success(_("Reminder set for {0}", [formatReminderLabel(remindAt)]))
+                toast.success(_("Reminder set for {0}", [formatDateTimeLabel(remindAt)]))
                 onSaved?.()
                 onClose()
             })

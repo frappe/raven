@@ -44,7 +44,7 @@ import { Message, BaseMessage } from "@raven/types/common/Message"
 import _ from "@lib/translate"
 import { cn } from "@lib/utils"
 import { escapeHtml } from "@utils/htmlUtils"
-import { formatReminderLabel, fromServerDatetime, getReminderPresets, toServerDatetime } from "./reminderTime"
+import { formatDateTimeLabel, fromServerDatetime, getReminderPresets, toServerDatetime } from "@lib/timeUtils"
 import { ReminderDialog } from "./ReminderDialog"
 import { useRemindersList, type ReminderRow } from "./useReminders"
 
@@ -207,7 +207,7 @@ const RemindersList = ({ searchQuery, channel, mode, onSelect, selectedID, selec
             remind_at: toServerDatetime(remindAt),
         })
             .then(() => {
-                toast.success(_("Reminder set for {0}", [formatReminderLabel(remindAt)]))
+                toast.success(_("Reminder set for {0}", [formatDateTimeLabel(remindAt)]))
                 mutate()
             })
             .catch((e) => errorResponseToast(_("Could not snooze the reminder"), e))
@@ -365,7 +365,7 @@ const RemindersList = ({ searchQuery, channel, mode, onSelect, selectedID, selec
                                             <span className="shrink-0">·</span>
                                         </>
                                     )}
-                                    <span className="shrink-0">{formatReminderLabel(fromServerDatetime(reminder.remind_at))}</span>
+                                    <span className="shrink-0">{formatDateTimeLabel(fromServerDatetime(reminder.remind_at))}</span>
                                 </div>
                             }
                             onClick={() => open(reminder)}
@@ -518,7 +518,7 @@ const RemindersList = ({ searchQuery, channel, mode, onSelect, selectedID, selec
                         </div>
                         <div className="mt-0.5 flex items-center gap-1 text-xs text-ink-gray-5">
                             <AlarmClock className="h-3 w-3 shrink-0" />
-                            <span className="shrink-0">{formatReminderLabel(fromServerDatetime(confirmTarget.remind_at))}</span>
+                            <span className="shrink-0">{formatDateTimeLabel(fromServerDatetime(confirmTarget.remind_at))}</span>
                             <span className="shrink-0">·</span>
                             <span className="truncate">{channelLabel(confirmTarget)}</span>
                         </div>

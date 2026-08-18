@@ -40,7 +40,7 @@ import { hideReadReceiptsAtom } from "@utils/preferences"
 import { errorResponseToast } from "@components/ui/error-banner"
 import type { PollData } from "../renderers/PollMessageContent"
 import { useEnabledMessageActions } from "@hooks/useEnabledMessageActions"
-import { formatReminderLabel, getReminderPresets, toServerDatetime } from "@components/features/reminders/reminderTime"
+import { formatDateTimeLabel, getReminderPresets, toServerDatetime } from "@lib/timeUtils"
 
 export type { MessageAction }
 
@@ -381,7 +381,7 @@ export const useMessageActions = (
                     message_id: message.name,
                     remind_at: toServerDatetime(time),
                 })
-                    .then(() => toast.success(_("Reminder set for {0}", [formatReminderLabel(time)])))
+                    .then(() => toast.success(_("Reminder set for {0}", [formatDateTimeLabel(time)])))
                     .catch((e) => errorResponseToast(_("Could not set the reminder"), e))
             }
             organize.push({
