@@ -42,7 +42,7 @@ export const CustomizeSidebarDialog = () => {
         () => workspaces.filter((workspace) => workspace.workspace_member_name),
         [workspaces],
     )
-    // Routes like /saved-messages, /search or /threads carry no :workspaceID, so
+    // Routes like /later, /search or /threads carry no :workspaceID, so
     // fall back to the first member workspace and let the user switch. Without
     // this the grouping filters to workspace `undefined` and the dialog is empty.
     // The URL's workspace only wins when the user is a member of it (they may be

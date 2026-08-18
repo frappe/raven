@@ -2,8 +2,9 @@ from datetime import timedelta
 
 import frappe
 from frappe import _
-from frappe.query_builder import JoinType, Order
+from frappe.query_builder import Case, JoinType, Order
 from frappe.query_builder.functions import Coalesce, Count
+from frappe.utils import cint
 
 from raven.api.chat_stream import message_columns
 from raven.api.raven_channel import create_direct_message_channel, get_peer_user_id_from_dm_users
@@ -460,22 +461,39 @@ def get_pinned_messages(channel_id: str):
 
 
 @frappe.whitelist()
-def get_saved_messages():
+def get_saved_messages(limit=None, start=0, search=None, channel_id=None):
 	"""
-	Fetches list of all messages liked by the user
-	Check if the user has permission to view the message
+	Messages liked (saved) by the user, permission-filtered.
+
+	All params optional — legacy callers (v2) pass none and get the full list in
+	creation ASC. The Later page paginates: `limit`/`start` window, newest first,
+	server-side `search` (message text) and `channel_id` filter — thread replies
+	match their PARENT channel (a thread channel is named after its root message).
 	"""
 
 	raven_message = frappe.qb.DocType("Raven Message")
 	raven_channel = frappe.qb.DocType("Raven Channel")
 	raven_channel_member = frappe.qb.DocType("Raven Channel Member")
+	root_message = frappe.qb.DocType("Raven Message").as_("root_message")
+
+	# Thread replies resolve to the root message's channel; others are their own parent.
+	parent_channel = (
+		Case()
+		.when(raven_channel.is_thread == 1, root_message.channel_id)
+		.else_(raven_message.channel_id)
+	)
 
 	query = (
 		frappe.qb.from_(raven_message)
 		.join(raven_channel, JoinType.left)
 		.on(raven_message.channel_id == raven_channel.name)
 		.join(raven_channel_member, JoinType.left)
-		.on(raven_channel.name == raven_channel_member.channel_id)
+		.on(
+			(raven_channel.name == raven_channel_member.channel_id)
+			& (raven_channel_member.user_id == frappe.session.user)
+		)
+		.join(root_message, JoinType.left)
+		.on(root_message.name == raven_message.channel_id)
 		.select(
 			raven_message.name,
 			raven_message.owner,
@@ -492,31 +510,32 @@ def get_saved_messages():
 			raven_message.thumbnail_height,
 			raven_message.is_bot_message,
 			raven_message.bot,
+			parent_channel.as_("parent_channel_id"),
 		)
-		.where(raven_message._liked_by.like("%" + frappe.session.user + "%"))
+		# _liked_by is a JSON array of quoted user ids — quoting the pattern stops
+		# one user id matching inside another (ravi@… inside gauravi@…).
+		.where(raven_message._liked_by.like(f'%"{frappe.session.user}"%'))
+		# Membership is folded into the JOIN ON (one row per message, no DISTINCT
+		# needed) — the join only yields the current user's own membership row.
 		.where(
-			(raven_channel.type.isin(["Open", "Public"]))
-			| (raven_channel_member.user_id == frappe.session.user)
+			(raven_channel.type.isin(["Open", "Public"])) | (raven_channel_member.user_id.isnotnull())
 		)
-		.orderby(raven_message.creation, order=Order.asc)
-		.distinct()
-	)  # Add DISTINCT keyword to retrieve only unique messages
+	)
 
-	messages = query.run(as_dict=True)
+	if search:
+		query = query.where(raven_message.text.like(f"%{search}%"))
+	if channel_id:
+		query = query.where(parent_channel == channel_id)
 
-	# Resolve each message's real (parent) channel so the client can filter and route
-	# thread replies. A thread message lives in a thread channel (Raven Channel.is_thread = 1)
-	# whose name equals the thread's root message; the parent is that root message's channel.
-	# Non-thread messages are their own parent.
-	for message in messages:
-		is_thread_channel = message.pop("is_thread", 0)
-		if is_thread_channel:
-			parent_channel_id = frappe.db.get_value("Raven Message", message["channel_id"], "channel_id")
-			message["parent_channel_id"] = parent_channel_id or message["channel_id"]
-		else:
-			message["parent_channel_id"] = message["channel_id"]
+	if limit:
+		# Paged mode reads newest-first; the legacy full fetch keeps its ASC order.
+		query = (
+			query.orderby(raven_message.creation, order=Order.desc).limit(cint(limit)).offset(cint(start))
+		)
+	else:
+		query = query.orderby(raven_message.creation, order=Order.asc)
 
-	return messages
+	return query.run(as_dict=True)
 
 
 def parse_messages(messages):

@@ -119,6 +119,8 @@ class RavenUser(Document):
 		Remove the Raven User from all channels
 		"""
 		frappe.db.delete("Raven Channel Member", {"user_id": self.user})
+		# Raven Reminder.user links this doc by name (not the frappe user id)
+		frappe.db.delete("Raven Reminder", {"user": self.name})
 
 	def after_delete(self):
 		"""

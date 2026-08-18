@@ -9,11 +9,6 @@ def after_install():
 		add_all_roles_to("Administrator")
 		create_raven_user_for_administrator()
 		create_general_channel()
-		# Provision the Reminder bot imperatively (no standard-bot mechanism yet — see
-		# get_reminder_bot's docstring). Also run on migrate to backfill existing sites.
-		from raven.scheduler.send_reminders import get_reminder_bot
-
-		get_reminder_bot()
 
 		click.secho("Thank you for installing Raven!", fg="green")
 

@@ -41,7 +41,7 @@ type RavenLink =
 /** Top-level routes that are NOT workspace names — a two-segment path under one
  *  of these is never a channel link. */
 const RESERVED_ROOTS = new Set([
-    "dm-channel", "threads", "notifications", "search", "saved-messages",
+    "dm-channel", "threads", "notifications", "search", "later",
     "profile", "share-target", "message", "settings", "login", "app",
 ])
 

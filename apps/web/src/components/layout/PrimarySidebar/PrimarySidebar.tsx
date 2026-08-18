@@ -6,6 +6,7 @@ import { KeyboardMetaKeyIcon } from "@components/ui/keyboard-keys"
 import { Separator } from "@components/ui/separator"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@components/ui/tooltip"
 import { useUnreadNotificationsCount } from "@hooks/useNotifications"
+import { useUnreadReminderCount } from "@components/features/reminders/useReminders"
 import { useWorkspaces, type WorkspaceFields } from "@hooks/useWorkspaces"
 import { useDMUnread, useWorkspaceUnread } from "@stores/unread/useChannelUnread"
 import { useUnreadThreadsCount } from "@stores/threads/useUnreadThreads"
@@ -72,7 +73,7 @@ const PrimarySidebar = () => {
                     <div className="px-3.5 w-full">
                         <Separator />
                     </div>
-                    <SavedMessageLink />
+                    <LaterLink />
                     <NavUserMenu />
                 </div>
             </div>
@@ -184,11 +185,15 @@ const ThreadsLink = () => {
     </NavLink>
 }
 
-const SavedMessageLink = () => {
-    return <NavLink to="saved-messages">
+const LaterLink = () => {
+    // Fired-but-unread reminders — cleared as they're opened on the In progress tab.
+    const unread = useUnreadReminderCount()
+
+    return <NavLink to="later">
         {({ isActive }) => (
-            <IconBox isActive={isActive} title={_("Saved Messages")}>
+            <IconBox isActive={isActive} title={_("Later")}>
                 <BookmarkIcon />
+                <UnreadBadge count={unread} />
             </IconBox>
         )}
     </NavLink>

@@ -90,9 +90,6 @@ extend_bootinfo = "raven.boot.boot_session"
 
 # before_install = "raven.install.before_install"
 after_install = "raven.install.after_install"
-# Backfills the Reminder bot on existing sites (after_install covers fresh installs).
-# Imperative because Raven has no standard-bot sync yet — see get_reminder_bot's docstring.
-after_migrate = ["raven.scheduler.send_reminders.get_reminder_bot"]
 # after_sync = ""
 
 # Uninstallation
@@ -180,11 +177,17 @@ scheduler_events = {
 		"raven.raven_cloud_notifications.sync_users_tokens_to_raven_cloud",
 	],
 	"cron": {
-		# run every 5 minutes
-		"*/5 * * * *": ["raven.scheduler.close_expired_polls.close_expired_polls"],
-		# run every minute
-		"* * * * *": ["raven.scheduler.send_reminders.send_due_reminders"],
+		# run every 5 minutes — remind_at is grid-aligned (validate), so reminders fire on time
+		"*/5 * * * *": [
+			"raven.scheduler.close_expired_polls.close_expired_polls",
+			"raven.scheduler.send_reminders.send_due_reminders",
+		],
 	},
+}
+
+# Auto-registered in Log Settings; RavenReminder.clear_old_logs does the deletion.
+default_log_clearing_doctypes = {
+	"Raven Reminder": 30,
 }
 
 # Testing
@@ -213,7 +216,7 @@ scheduler_events = {
 # Ignore links to specified DocTypes when deleting documents
 # -----------------------------------------------------------
 
-ignore_links_on_delete = ["Raven Message"]
+ignore_links_on_delete = ["Raven Message", "Raven Reminder"]
 
 
 # User Data Protection

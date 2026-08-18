@@ -39,7 +39,7 @@ import WorkspaceLayout from "@pages/workspace/WorkspaceLayout"
 // the frame stays put and the tabs stay tappable during the load.
 const MessagePermalink = lazy(() => import("@pages/message/MessagePermalink"))
 const ShareTarget = lazy(() => import("@pages/share/ShareTarget"))
-const SavedMessages = lazy(() => import("@pages/saved-messages/SavedMessages"))
+const Later = lazy(() => import("@pages/later/Later"))
 const MobileProfile = lazy(() => import("@pages/profile/Profile"))
 const Search = lazy(() => import("@pages/search/Search"))
 
@@ -123,7 +123,7 @@ const router = createBrowserRouter(
       <Route path="search" element={<Suspense key="search" fallback={<ListPageSkeleton title={_("Search")} />}><Search /></Suspense>}>
         <Route path=":channelID/:messageID" element={<NotificationChatRoute />} />
       </Route>
-      <Route path="saved-messages" element={<Suspense key="saved-messages" fallback={<ListPageSkeleton title={_("Saved Messages")} />}><SavedMessages /></Suspense>}>
+      <Route path="later" element={<Suspense key="later" fallback={<ListPageSkeleton title={_("Later")} />}><Later /></Suspense>}>
         <Route path=":channelID/:messageID" element={<NotificationChatRoute />} />
       </Route>
       {/* Fallback = the page's silhouette WITH the real tab bar: the footer

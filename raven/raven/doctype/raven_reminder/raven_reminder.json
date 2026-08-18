@@ -10,7 +10,7 @@
   "channel_id",
   "column_break_when",
   "remind_at",
-  "status",
+  "notified",
   "is_read",
   "description"
  ],
@@ -21,7 +21,8 @@
    "in_list_view": 1,
    "label": "User",
    "options": "Raven User",
-   "reqd": 1
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "fieldname": "message",
@@ -49,12 +50,11 @@
    "reqd": 1
   },
   {
-   "default": "Scheduled",
-   "fieldname": "status",
-   "fieldtype": "Select",
+   "default": "0",
+   "fieldname": "notified",
+   "fieldtype": "Check",
    "in_list_view": 1,
-   "label": "Status",
-   "options": "Scheduled\nSent"
+   "label": "Notified"
   },
   {
    "default": "0",
@@ -70,7 +70,7 @@
  ],
  "index_web_pages_for_search": 0,
  "links": [],
- "modified": "2026-06-26 00:00:00.000000",
+ "modified": "2026-08-13 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Raven",
  "name": "Raven Reminder",

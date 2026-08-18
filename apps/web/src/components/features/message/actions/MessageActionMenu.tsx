@@ -516,10 +516,9 @@ export const MessageActionMenu = ({
         }
     }
 
-    /** The mobile sheet shows the action list, the full emoji picker, or the pushed
-     *  custom-actions sub-view. `submenu` actions (read receipts) don't push a view
-     *  here — they run onSelect, which opens their own bottom sheet. */
-    const [sheetView, setSheetView] = useState<"actions" | "picker" | "custom">("actions")
+    /** Sheet views: action list, emoji picker, or a pushed sub-view for any
+     *  `children`-bearing action — the string form is that parent action's id. */
+    const [sheetView, setSheetView] = useState<"actions" | "picker" | (string & {})>("actions")
     // Closing ONLY dismisses the sheet — the view it was showing stays until the next open.
     // Resetting on the way out (directly, or off vaul's onAnimationEnd, which fires before
     // the sheet has finished sliding down) swaps the panel back to the action list
@@ -678,27 +677,30 @@ export const MessageActionMenu = ({
                             >
                                 <ReactionPickerPanel perLine={10} message={menuMessage} onClose={closeSheet} />
                             </div>
-                        ) : sheetView === "custom" && menuMessage ? (
-                            <div className="flex flex-col gap-1 p-3 pb-6">
-                                <div className="flex items-center gap-1 px-1 pb-2">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        isIconButton
-                                        aria-label={_("Back")}
-                                        onClick={() => setSheetView("actions")}
-                                    >
-                                        <ChevronLeft />
-                                    </Button>
-                                    <span className="text-base font-medium text-ink-gray-8">{_("Actions")}</span>
-                                </div>
-                                {actionGroups
-                                    .flat()
-                                    .find((action) => action.id === "custom-actions")
-                                    ?.children?.map((child) => (
-                                        <SheetActionRow key={child.id} action={child} onDone={closeSheet} />
-                                    ))}
-                            </div>
+                        ) : sheetView !== "actions" && menuMessage ? (
+                            // Pushed sub-view: the tapped parent action's children.
+                            (() => {
+                                const parent = actionGroups.flat().find((action) => action.id === sheetView)
+                                return (
+                                    <div className="flex flex-col gap-1 p-3 pb-6">
+                                        <div className="flex items-center gap-1 px-1 pb-2">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                isIconButton
+                                                aria-label={_("Back")}
+                                                onClick={() => setSheetView("actions")}
+                                            >
+                                                <ChevronLeft />
+                                            </Button>
+                                            <span className="text-base font-medium text-ink-gray-8">{parent?.label ?? _("Actions")}</span>
+                                        </div>
+                                        {parent?.children?.map((child) => (
+                                            <SheetActionRow key={child.id} action={child} onDone={closeSheet} />
+                                        ))}
+                                    </div>
+                                )
+                            })()
                         ) : (
                             <div className="flex flex-col gap-1 p-3 pb-6">
                                 {/* Quick reactions — one tap reacts and dismisses; the smiley
@@ -756,7 +758,7 @@ export const MessageActionMenu = ({
                                                     variant="ghost"
                                                     size="lg"
                                                     className="w-full justify-start gap-3 active:bg-surface-gray-2"
-                                                    onClick={() => setSheetView("custom")}
+                                                    onClick={() => setSheetView(action.id)}
                                                 >
                                                     {action.icon && <action.icon />}
                                                     {action.label}

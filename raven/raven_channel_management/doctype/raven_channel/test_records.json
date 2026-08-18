@@ -1,36 +1,42 @@
 [
     {
         "doctype": "Raven Channel",
+        "name": "public-workspace-public-workspace-public",
         "channel_name": "public-workspace-public",
         "workspace": "Public Workspace",
         "type": "Public"
     },
     {
         "doctype": "Raven Channel",
+        "name": "public-workspace-public-workspace-private",
         "channel_name": "public-workspace-private",
         "workspace": "Public Workspace",
         "type": "Private"
     },
     {
         "doctype": "Raven Channel",
+        "name": "public-workspace-public-workspace-open",
         "channel_name": "public-workspace-open",
         "workspace": "Public Workspace",
         "type": "Open"
     },
     {
         "doctype": "Raven Channel",
+        "name": "private-workspace-private-workspace-public",
         "channel_name": "private-workspace-public",
         "workspace": "Private Workspace",
         "type": "Public"
     },
     {
         "doctype": "Raven Channel",
+        "name": "private-workspace-private-workspace-private",
         "channel_name": "private-workspace-private",
         "workspace": "Private Workspace",
         "type": "Private"
     },
     {
         "doctype": "Raven Channel",
+        "name": "private-workspace-private-workspace-open",
         "channel_name": "private-workspace-open",
         "workspace": "Private Workspace",
         "type": "Open"

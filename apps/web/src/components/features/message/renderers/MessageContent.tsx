@@ -16,6 +16,7 @@ import { PollMessageContent } from "./PollMessageContent"
 import SearchTextRenderer from "./SearchTextRenderer"
 import { MessageReactionsRow } from "./MessageReactions"
 import { getAttachmentKind } from "@utils/attachmentPreview"
+import { escapeHtml } from "@utils/htmlUtils"
 import _ from "@lib/translate"
 import { Badge } from "@components/ui/badge"
 
@@ -55,10 +56,6 @@ export const EditableMessageBody = ({ message }: { message: Message }) => {
     if (message.is_edited === 1 && message.text?.trim()) return <EditedMessageBody text={message.text} />
     return <MessageBody content={message.text} />
 }
-
-/** Escape the translated label before it goes into the message HTML. */
-const escapeHtml = (value: string) =>
-    value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
 
 /**
  * The body with a small "(edited)" marker, Slack style. A message ending in a

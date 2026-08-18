@@ -16,7 +16,7 @@ import _ from '@lib/translate'
 const GOTO_ITEMS = [
     { value: 'goto-dm-channel', to: '/dm-channel', label: 'Direct Messages', icon: UsersRoundIcon, keywords: ['dm', 'dms', 'direct messages', 'people'] },
     { value: 'goto-threads', to: '/threads', label: 'Threads', icon: MessageSquareTextIcon, keywords: ['threads', 'replies'] },
-    { value: 'goto-saved-messages', to: '/saved-messages', label: 'Saved Messages', icon: BookmarkIcon, keywords: ['saved', 'saved messages', 'bookmarks'] },
+    { value: 'goto-later', to: '/later', label: 'Later', icon: BookmarkIcon, keywords: ['later', 'saved messages', 'reminders'] },
 ] as const
 
 /**
