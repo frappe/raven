@@ -12,5 +12,8 @@
  * closes vaul initiates itself (drag, scrim tap) — controlled closes never
  * trigger it. Internally it's the same thing anyway: vaul "detects" animation
  * end with a 500ms setTimeout, not a real event.
+ *
+ * Don't consume this directly for navigation — use useNavigateFromDrawer,
+ * which owns the close-wait-navigate sequence for every drawer that navigates.
  */
 export const DRAWER_EXIT_MS = 500

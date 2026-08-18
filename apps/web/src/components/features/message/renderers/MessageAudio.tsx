@@ -17,8 +17,8 @@ type FileLikeMessage = Message & { file?: string }
  */
 export const MessageAudio = ({ messages }: { messages: Message[] }) => (
     <div className="space-y-1">
-        {(messages as FileLikeMessage[]).map((message) => (
-            <AudioCard key={message.name} message={message} />
+        {(messages as FileLikeMessage[]).map((message, index) => (
+            <AudioCard key={`${message.file || message.name}:${index}`} message={message} />
         ))}
     </div>
 )

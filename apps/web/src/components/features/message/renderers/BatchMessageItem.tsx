@@ -24,6 +24,41 @@ const kindOf = (message: Message) => {
 }
 
 /**
+ * A batch's media, grouped by kind: images → album, videos/audio → stacked
+ * players, docs → pill grid. Shared by the stream's batch row and the thread
+ * header (whose root message can be one member of a batch). All attachments
+ * form ONE paging set, so the lightbox arrows through the whole batch.
+ */
+export const BatchMediaGroups = ({ messages }: { messages: Message[] }) => {
+    // Partition by media kind (by extension): each group renders coherently —
+    // album / video players / audio players / pill grid — instead of interleaved
+    // one-off rows. pdf + non-previewable both go to the pill grid. Only file-
+    // bearing messages are partitioned; a text caption (no file) is the
+    // caller's to render.
+    const fileMessages = messages.filter((message) => (message as FileLikeMessage).file)
+    const images = fileMessages.filter((message) => kindOf(message) === "image")
+    const videos = fileMessages.filter((message) => kindOf(message) === "video")
+    const audios = fileMessages.filter((message) => kindOf(message) === "audio")
+    const docs = fileMessages.filter((message) => {
+        const kind = kindOf(message)
+        return kind === "pdf" || kind === "file"
+    })
+
+    // One combined set across the whole batch, shared by both renderers so a
+    // mixed batch pages as ONE. Ordered images-first to match the layout.
+    const attachments = useMemo(() => messagesToAttachments(messages), [messages])
+
+    return (
+        <>
+            {images.length > 0 && <MessageImages messages={images} attachments={attachments} />}
+            {videos.length > 0 && <MessageVideo messages={videos} />}
+            {audios.length > 0 && <MessageAudio messages={audios} />}
+            {docs.length > 0 && <MessageFiles messages={docs} attachments={attachments} />}
+        </>
+    )
+}
+
+/**
  * Renders a batch of messages sent together (shared message_batch_id) as one
  * visual block, grouped by media kind: images → album, videos/audio →
  * stacked players, docs → side-by-side pill grid, with one shared caption.
@@ -54,24 +89,6 @@ export const BatchMessageItem = ({
             if (onInView && isIntersecting) onInView(newest)
         },
     })
-
-    // Partition by media kind (by extension): each group renders coherently —
-    // album / video players / audio players / pill grid — instead of interleaved
-    // one-off rows. pdf + non-previewable both go to the pill grid. Only file-
-    // bearing messages are partitioned; the text caption (no file) is rendered
-    // separately below and must not fall into the doc pill grid.
-    const fileMessages = block.messages.filter((message) => (message as FileLikeMessage).file)
-    const images = fileMessages.filter((message) => kindOf(message) === "image")
-    const videos = fileMessages.filter((message) => kindOf(message) === "video")
-    const audios = fileMessages.filter((message) => kindOf(message) === "audio")
-    const docs = fileMessages.filter((message) => {
-        const kind = kindOf(message)
-        return kind === "pdf" || kind === "file"
-    })
-
-    // One combined set across the whole batch, shared by both renderers so a
-    // mixed batch pages as ONE. Ordered images-first to match the layout.
-    const attachments = useMemo(() => messagesToAttachments(block.messages), [block.messages])
 
     /** A batch carries one caption — whichever member has text (the composer sets it on one). */
     const captionMember = block.messages.find((message) => message.text)
@@ -108,6 +125,9 @@ export const BatchMessageItem = ({
 
     const content = (
         <div className="space-y-2">
+            {/* Badges sit above everything, same as a single message — the flags
+                describe the whole block (a forwarded batch arrives all-forwarded). */}
+            <MessageAttributes message={attributeFlags} />
             {replyMember && repliedDetails && (
                 <ReplyMessage
                     repliedMessage={repliedDetails}
@@ -115,14 +135,7 @@ export const BatchMessageItem = ({
                     linkedMessageID={replyMember.linked_message}
                 />
             )}
-            {images.length > 0 && <MessageImages messages={images} attachments={attachments} />}
-            {videos.length > 0 && <MessageVideo messages={videos} />}
-            {audios.length > 0 && <MessageAudio messages={audios} />}
-            {docs.length > 0 && <MessageFiles messages={docs} attachments={attachments} />}
-            {/* Below the media, above the caption — an Edited badge refers to the
-                caption text (that's the only editable part of a batch), so it sits
-                next to what it describes rather than floating above the album. */}
-            <MessageAttributes message={attributeFlags} />
+            <BatchMediaGroups messages={block.messages} />
             {captionMember && <EditableMessageBody message={captionMember} />}
             {/* Links live on the caption member (the server extracts them from its
                 text), so that's where the first-link preview hangs off a batch too. */}

@@ -92,7 +92,7 @@ const FileItem = ({ file, onRemove, onPreview }: { file: FileItemType, onRemove:
                 )}
             </div>
             <div className="flex-1 min-w-0">
-                <h4 className="md:text-xs-medium mb-0.5 text-sm-medium text-ink-gray-8 truncate">
+                <h4 className="md:text-xs-medium mb-0.5 text-sm-medium leading-snug text-ink-gray-8 truncate">
                     {file.fileName}
                 </h4>
                 <p className="md:text-xs text-sm text-ink-gray-5">

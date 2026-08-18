@@ -97,16 +97,29 @@
 /* Code block — bordered container with a header (language + copy) over the
    scrollable code area (MessageCodeBlock). The background and default text use
    Espresso surface/ink tokens (neutral grays, and they flip in dark for free);
-   only the SYNTAX token colors below are the GitHub light/dark theme — raw hex
-   on purpose, since a highlight.js theme is its own palette outside Espresso.
-   `--code-bg` is shared by the <pre> and the collapse fade so they always agree. */
+   only the SYNTAX token colors below are their own theme — raw hex on purpose,
+   since a highlight.js theme is its own palette outside Espresso.
+
+   The syntax theme is the Espresso code-editor palette (a base46 theme built
+   on Espresso: every neutral in it is an exact Espresso gray). That palette is
+   dark-only, so the dark values are used as given and each light value is the
+   same hue darkened until it reads on a light background (contrast >= 4.5 on
+   #f8f8f8, checked). Role map, from the palette itself: orange keywords, teal
+   functions, blue identifiers/members, purple numbers/constants, sun strings,
+   green types/tags, red special/regex, grey punctuation.
+
+   `--code-bg` is shared by the <pre> and the collapse fade so they always
+   agree. The well is one surface step off the page in both modes: below it
+   in light (gray-50 on white), above it in dark (surface-gray-2 on the
+   #171717 pane) — the palette's own editor background is #171717, which
+   would blend into the chat pane. */
 .tiptap .code-block {
-  --code-bg: #f6f8fa;
+  --code-bg: var(--surface-gray-1);
   @apply relative my-2 overflow-hidden rounded border border-outline-gray-2;
 }
 
 .dark .tiptap .code-block {
-  --code-bg: #0d1117;
+  --code-bg: var(--surface-gray-2);
 }
 
 /* Flex row: line-number gutter + code. Horizontal scroll is on <code> below so
@@ -125,12 +138,12 @@
    message (which uses .code-block above). Gives the block a surface so it reads as
    code while typing instead of plain text. */
 [data-raven-editor] .tiptap pre {
-  background: #f6f8fa;
+  background: var(--surface-gray-1);
   @apply my-2 overflow-x-auto rounded-md border border-outline-gray-2 p-3 font-mono text-xs leading-relaxed text-ink-gray-8;
 }
 
 .dark [data-raven-editor] .tiptap pre {
-  background: #0d1117;
+  background: var(--surface-gray-2);
 }
 
 [data-raven-editor] .tiptap pre code {
@@ -178,72 +191,80 @@
   @apply cursor-auto select-auto bg-surface-gray-2 text-ink-gray-7;
 }
 
-/* highlight.js syntax tokens — GitHub light */
+/* highlight.js syntax tokens — Espresso code palette, light derivations.
+   Punctuation and operators are left at the default ink on purpose: the
+   palette de-emphasizes them, and unstyled text already reads as calm gray. */
+
+/* Keywords — orange. */
 .tiptap .hljs-doctag,
 .tiptap .hljs-keyword,
 .tiptap .hljs-meta .hljs-keyword,
-.tiptap .hljs-template-tag,
-.tiptap .hljs-template-variable,
+.tiptap .hljs-template-tag {
+  color: #c04c00;
+}
+
+/* Types, tags and class names — green. */
 .tiptap .hljs-type,
-.tiptap .hljs-variable.language_ {
-  color: #d73a49;
-}
-
-.tiptap .hljs-title,
+.tiptap .hljs-name,
+.tiptap .hljs-selector-tag,
+.tiptap .hljs-selector-pseudo,
 .tiptap .hljs-title.class_,
-.tiptap .hljs-title.class_.inherited__,
-.tiptap .hljs-title.function_ {
-  color: #6f42c1;
+.tiptap .hljs-title.class_.inherited__ {
+  color: #317d58;
 }
 
+/* Functions — teal. */
+.tiptap .hljs-title,
+.tiptap .hljs-title.function_,
+.tiptap .hljs-built_in {
+  color: #0f7d71;
+}
+
+/* Identifiers, members and params — blue. */
 .tiptap .hljs-attr,
 .tiptap .hljs-attribute,
-.tiptap .hljs-literal,
-.tiptap .hljs-meta,
-.tiptap .hljs-number,
-.tiptap .hljs-operator,
+.tiptap .hljs-property,
+.tiptap .hljs-params,
 .tiptap .hljs-variable,
+.tiptap .hljs-template-variable,
 .tiptap .hljs-selector-attr,
 .tiptap .hljs-selector-class,
 .tiptap .hljs-selector-id {
-  color: #005cc5;
+  color: #0073d1;
 }
 
-.tiptap .hljs-regexp,
+/* Numbers, constants and booleans — purple. */
+.tiptap .hljs-number,
+.tiptap .hljs-literal,
+.tiptap .hljs-symbol,
+.tiptap .hljs-meta,
+.tiptap .hljs-bullet {
+  color: #9a47d5;
+}
+
+/* Strings — sun, darkened to amber so it reads on a light well. */
 .tiptap .hljs-string,
 .tiptap .hljs-meta .hljs-string {
-  color: #032f62;
+  color: #9b6700;
 }
 
-.tiptap .hljs-built_in,
-.tiptap .hljs-symbol {
-  color: #e36209;
-}
-
-.tiptap .hljs-comment,
-.tiptap .hljs-code,
-.tiptap .hljs-formula {
-  color: #6a737d;
-}
-
-.tiptap .hljs-name,
-.tiptap .hljs-quote,
-.tiptap .hljs-selector-tag,
-.tiptap .hljs-selector-pseudo {
-  color: #22863a;
-}
-
-.tiptap .hljs-subst {
-  color: #24292e;
+/* Special: regex, language variables (this/self), section headings — red. */
+.tiptap .hljs-regexp,
+.tiptap .hljs-variable.language_ {
+  color: #cc3333;
 }
 
 .tiptap .hljs-section {
-  color: #005cc5;
+  color: #cc3333;
   font-weight: bold;
 }
 
-.tiptap .hljs-bullet {
-  color: #735c0f;
+/* Comments — grey. */
+.tiptap .hljs-comment,
+.tiptap .hljs-code,
+.tiptap .hljs-formula,
+.tiptap .hljs-quote {
+  color: #575757;
 }
 
 .tiptap .hljs-emphasis {
@@ -255,91 +276,91 @@
 }
 
 .tiptap .hljs-addition {
-  color: #22863a;
-  background-color: #f0fff4;
+  color: #317d58;
+  background-color: #e4f2ea;
 }
 
 .tiptap .hljs-deletion {
-  color: #b31d28;
-  background-color: #ffeef0;
+  color: #cc3333;
+  background-color: #fbe9e9;
 }
 
-/* highlight.js — GitHub dark */
+/* highlight.js — Espresso code palette, dark values as given. One liberty:
+   comments use #7a7a7a (the palette's base04) instead of its #575757 comment
+   grey, which only reaches 2.7:1 on this background — too dim for the one
+   token people actually read. */
 .dark .tiptap .hljs-doctag,
 .dark .tiptap .hljs-keyword,
 .dark .tiptap .hljs-meta .hljs-keyword,
-.dark .tiptap .hljs-template-tag,
-.dark .tiptap .hljs-template-variable,
+.dark .tiptap .hljs-template-tag {
+  color: #fa8a40;
+}
+
 .dark .tiptap .hljs-type,
-.dark .tiptap .hljs-variable.language_ {
-  color: #ff7b72;
+.dark .tiptap .hljs-name,
+.dark .tiptap .hljs-selector-tag,
+.dark .tiptap .hljs-selector-pseudo,
+.dark .tiptap .hljs-title.class_,
+.dark .tiptap .hljs-title.class_.inherited__ {
+  color: #7dc5a2;
 }
 
 .dark .tiptap .hljs-title,
-.dark .tiptap .hljs-title.class_,
-.dark .tiptap .hljs-title.class_.inherited__,
-.dark .tiptap .hljs-title.function_ {
-  color: #d2a8ff;
+.dark .tiptap .hljs-title.function_,
+.dark .tiptap .hljs-built_in {
+  color: #51decf;
 }
 
 .dark .tiptap .hljs-attr,
 .dark .tiptap .hljs-attribute,
-.dark .tiptap .hljs-literal,
-.dark .tiptap .hljs-meta,
-.dark .tiptap .hljs-number,
-.dark .tiptap .hljs-operator,
+.dark .tiptap .hljs-property,
+.dark .tiptap .hljs-params,
 .dark .tiptap .hljs-variable,
+.dark .tiptap .hljs-template-variable,
 .dark .tiptap .hljs-selector-attr,
 .dark .tiptap .hljs-selector-class,
 .dark .tiptap .hljs-selector-id {
-  color: #79c0ff;
+  color: #76bef9;
+}
+
+.dark .tiptap .hljs-number,
+.dark .tiptap .hljs-literal,
+.dark .tiptap .hljs-symbol,
+.dark .tiptap .hljs-meta,
+.dark .tiptap .hljs-bullet {
+  color: #c993ef;
+}
+
+.dark .tiptap .hljs-string,
+.dark .tiptap .hljs-meta .hljs-string {
+  color: #f4c25f;
 }
 
 .dark .tiptap .hljs-regexp,
-.dark .tiptap .hljs-string,
-.dark .tiptap .hljs-meta .hljs-string {
-  color: #a5d6ff;
+.dark .tiptap .hljs-variable.language_ {
+  color: #ff7575;
 }
 
-.dark .tiptap .hljs-built_in,
-.dark .tiptap .hljs-symbol {
-  color: #ffa657;
+.dark .tiptap .hljs-section {
+  color: #ff7575;
+  font-weight: bold;
 }
 
 .dark .tiptap .hljs-comment,
 .dark .tiptap .hljs-code,
-.dark .tiptap .hljs-formula {
-  color: #8b949e;
-}
-
-.dark .tiptap .hljs-name,
-.dark .tiptap .hljs-quote,
-.dark .tiptap .hljs-selector-tag,
-.dark .tiptap .hljs-selector-pseudo {
-  color: #7ee787;
-}
-
-.dark .tiptap .hljs-subst {
-  color: #c9d1d9;
-}
-
-.dark .tiptap .hljs-section {
-  color: #1f6feb;
-  font-weight: bold;
-}
-
-.dark .tiptap .hljs-bullet {
-  color: #f2cc60;
+.dark .tiptap .hljs-formula,
+.dark .tiptap .hljs-quote {
+  color: #7a7a7a;
 }
 
 .dark .tiptap .hljs-addition {
-  color: #aff5b4;
-  background-color: #033a16;
+  color: #7dc5a2;
+  background-color: #14231b;
 }
 
 .dark .tiptap .hljs-deletion {
-  color: #ffdcd7;
-  background-color: #67060c;
+  color: #ff7575;
+  background-color: #2a1515;
 }
 
 /* Lists — frappe-ui's tight 4px outer margin works fine for chat. */

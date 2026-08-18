@@ -1,19 +1,33 @@
-import { useEffect, useRef, useState } from "react"
+import { useRef, useState } from "react"
 import { Button } from "@components/ui/button"
 import {
     DropdownMenu,
     DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuShortcut,
     DropdownMenuTrigger,
 } from "@components/ui/dropdown-menu"
-import { ChevronDownIcon, SendHorizontalIcon, SendIcon } from "lucide-react"
+import { BellOffIcon, BellRingIcon, ChevronDownIcon, SendHorizontalIcon, SendIcon } from "lucide-react"
 import { useIsMobile } from "@hooks/use-mobile"
+import { useLongPress } from "@hooks/useLongPress"
+import type { QuietSendMode } from "@hooks/useQuietHours"
+import { KeyboardMetaKeyIcon } from "@components/ui/keyboard-keys"
 import _ from "@lib/translate"
 import { ScheduleSendMenu } from "@components/features/schedule-send/ScheduleSendMenu"
 import type { SchedulePick } from "@lib/timeUtils"
 
 type SendButtonProps = {
     onSend: () => void
-    /** A preset slot was picked from the submenu — schedule immediately. */
+    /** Send without notifying recipients (the server skips push notifications). */
+    onSendSilently: () => void
+    /** Send WITH notifications — the per-message override while quiet hours
+     *  make silent the default (quietMode "auto"). */
+    onSendLoud: () => void
+    /** Quiet hours state. "auto": sends default to silent — the send icon
+     *  becomes the bell-off and the menu offers the loud override. "nudge"
+     *  changes nothing here (the composer banner carries the hint). */
+    quietMode?: QuietSendMode
+    /** A preset slot was picked from the schedule submenu — schedule immediately. */
     onSchedulePick: (pick: SchedulePick) => void
     /** Open the custom date & time dialog. */
     onScheduleSend: () => void
@@ -24,45 +38,75 @@ type SendButtonProps = {
     loading?: boolean
 }
 
-/** How long a touch must be held before it reads as "show send options" (ms). */
-const LONG_PRESS_MS = 500
-
 /**
- * Desktop: a split button — "Send" plus a chevron opening send options (a schedule
- * submenu with Today/Tomorrow preset slots plus a custom date & time entry). Mobile:
- * an icon-only round button; a long-press opens the same options menu, a plain tap sends.
+ * Desktop: a split button — "Send" plus a chevron opening send options (silent
+ * send and a schedule submenu with Today/Tomorrow preset slots plus a custom
+ * date & time entry). Mobile: an icon-only round button; a long-press opens the
+ * same options menu, a plain tap sends.
  */
-const SendButton = ({ onSend, onSchedulePick, onScheduleSend, scheduleDisabled, disabled, loading }: SendButtonProps) => {
+const SendButton = ({
+    onSend,
+    onSendSilently,
+    onSendLoud,
+    quietMode,
+    onSchedulePick,
+    onScheduleSend,
+    scheduleDisabled,
+    disabled,
+    loading,
+}: SendButtonProps) => {
     const isMobile = useIsMobile()
     const [menuOpen, setMenuOpen] = useState(false)
 
-    // Mobile long-press: a timer armed on pointerdown opens the menu; any settle
-    // (up / leave / cancel) before the threshold disarms it. When the long-press
-    // fired, the click that follows the pointerup must NOT also send — the flag
-    // is consumed by the click handler.
-    const longPressTimer = useRef<number | null>(null)
-    const longPressFired = useRef(false)
+    // Mobile: a long-press opens the send-options menu (shared hook — timer,
+    // drag stand-down, haptic; the click that ends a fired press is consumed
+    // in onClick below).
+    const { handlers: longPressHandlers, consumeLongPress } = useLongPress(() => setMenuOpen(true))
 
-    const disarmLongPress = () => {
-        if (longPressTimer.current !== null) {
-            window.clearTimeout(longPressTimer.current)
-            longPressTimer.current = null
-        }
-    }
+    // Whether the menu was OPEN when this press started. A tap on the trigger
+    // while the menu is showing is a DISMISS: Radix closes the menu on that
+    // pointerdown, but the tap's click still lands on the send button — and
+    // without this latch it would fire onSend (dismissing a menu must never
+    // send). Captured at pointerdown, before Radix closes; consumed on click.
+    const menuWasOpenAtPress = useRef(false)
 
-    const armLongPress = () => {
-        longPressFired.current = false
-        disarmLongPress()
-        longPressTimer.current = window.setTimeout(() => {
-            longPressTimer.current = null
-            longPressFired.current = true
-            setMenuOpen(true)
-        }, LONG_PRESS_MS)
-    }
+    // Whatever the current default is, the menu offers the OPPOSITE. Normally
+    // sends are loud and the menu offers silent; in quiet-hours "auto" mode
+    // silent IS the default, so the menu offers the loud override — the urgent
+    // late-night message stays one deliberate gesture away.
+    const notifyItem = quietMode === "auto" ? (
+        <DropdownMenuItem onSelect={onSendLoud}>
+            <BellRingIcon />
+            {_("Send with notification")}
+        </DropdownMenuItem>
+    ) : (
+        <DropdownMenuItem
+            onSelect={onSendSilently}
+        >
+            <BellOffIcon />
+            {_("Send without notification")}
+            {/* The keyboard chord for this action (desktop only — mobile has no
+                keyboard, and this shared item renders in both menus). */}
+            {!isMobile && (
+                <DropdownMenuShortcut>
+                    <KeyboardMetaKeyIcon />⇧↵
+                </DropdownMenuShortcut>
+            )}
+        </DropdownMenuItem>
+    )
 
-    // Unmount with a press still held: kill the pending timer so it can't fire
-    // against a dead instance.
-    useEffect(() => disarmLongPress, [])
+    // Silent send + the schedule submenu, shared by the mobile and desktop menus.
+    const menuItems = (
+        <>
+            {notifyItem}
+            <ScheduleSendMenu onSchedulePick={onSchedulePick} onScheduleSend={onScheduleSend} scheduleDisabled={scheduleDisabled} />
+        </>
+    )
+
+    // Quiet-hours "auto": a plain send WILL be silent, and that must be
+    // visible before the tap — the send icon itself becomes the bell-off.
+    // Nudge mode changes nothing here; the composer banner carries the hint.
+    const autoSilent = quietMode === "auto"
 
     if (isMobile) {
         return (
@@ -80,18 +124,22 @@ const SendButton = ({ onSend, onSchedulePick, onScheduleSend, scheduleDisabled, 
                         size="lg"
                         type="button"
                         onClick={() => {
-                            if (longPressFired.current) {
-                                longPressFired.current = false
+                            // The click that ends the long-press itself.
+                            if (consumeLongPress()) return
+                            // A tap that dismissed the open menu (see the latch).
+                            if (menuWasOpenAtPress.current) {
+                                menuWasOpenAtPress.current = false
                                 return
                             }
                             onSend()
                         }}
-                        onPointerDown={armLongPress}
-                        onPointerUp={disarmLongPress}
-                        onPointerLeave={disarmLongPress}
-                        onPointerCancel={disarmLongPress}
-                        // Suppress the OS context menu a long-press can raise.
-                        onContextMenu={(e) => e.preventDefault()}
+                        {...longPressHandlers}
+                        // Latch the open state BEFORE arming — Radix closes the
+                        // menu on this same pointerdown.
+                        onPointerDown={(event) => {
+                            menuWasOpenAtPress.current = menuOpen
+                            longPressHandlers.onPointerDown(event)
+                        }}
                         // Never steal focus from the editor: if the user is typing
                         // (keyboard open), tapping Send keeps it open naturally.
                         onMouseDown={(e) => e.preventDefault()}
@@ -100,9 +148,9 @@ const SendButton = ({ onSend, onSchedulePick, onScheduleSend, scheduleDisabled, 
                         loading={loading}
                         isIconButton
                         className="rounded-full"
-                        aria-label={_("Send message")}
+                        aria-label={autoSilent ? _("Send message silently") : _("Send message")}
                     >
-                        {!loading && <SendHorizontalIcon />}
+                        {!loading && (autoSilent ? <BellOffIcon /> : <SendHorizontalIcon />)}
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
@@ -113,14 +161,11 @@ const SendButton = ({ onSend, onSchedulePick, onScheduleSend, scheduleDisabled, 
                     // steal focus from the editor. Radix's DropdownMenu.Content TYPE
                     // omits onOpenAutoFocus (menus autofocus for keyboard nav by
                     // design), but the runtime composes it into its FocusScope — so
-                    // it goes in through the type-level suppression below.
+                    // it goes in through a cast.
                     onCloseAutoFocus={(e) => e.preventDefault()}
-                    // Radix's DropdownMenu.Content type omits onOpenAutoFocus (menus autofocus for
-                    // keyboard nav by design), but the runtime composes it into its FocusScope.
-                    // @ts-expect-error -- see above
-                    onOpenAutoFocus={(e: Event) => e.preventDefault()}
+                    {...({ onOpenAutoFocus: (e: Event) => e.preventDefault() } as object)}
                 >
-                    <ScheduleSendMenu onSchedulePick={onSchedulePick} onScheduleSend={onScheduleSend} scheduleDisabled={scheduleDisabled} />
+                    {menuItems}
                 </DropdownMenuContent>
             </DropdownMenu>
         )
@@ -138,12 +183,13 @@ const SendButton = ({ onSend, onSchedulePick, onScheduleSend, scheduleDisabled, 
                 loading={loading}
                 loadingText={_("Sending...")}
                 className="rounded-e-none"
-                aria-label={_("Send message")}
+                aria-label={autoSilent ? _("Send message silently") : _("Send message")}
+                title={autoSilent ? _("Quiet hours - sending silently") : undefined}
             >
                 {/* While loading the Button shows its own spinner; don't also render content. */}
                 {!loading && (
                     <>
-                        <SendIcon />
+                        {autoSilent ? <BellOffIcon /> : <SendIcon />}
                         <span>{_("Send")}</span>
                     </>
                 )}
@@ -168,7 +214,7 @@ const SendButton = ({ onSend, onSchedulePick, onScheduleSend, scheduleDisabled, 
                     align="end"
                     onCloseAutoFocus={(e) => e.preventDefault()}
                 >
-                    <ScheduleSendMenu onSchedulePick={onSchedulePick} onScheduleSend={onScheduleSend} scheduleDisabled={scheduleDisabled} />
+                    {menuItems}
                 </DropdownMenuContent>
             </DropdownMenu>
         </div>

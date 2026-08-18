@@ -114,8 +114,34 @@ export const CodeBlock = ({ code, language }: { code: string; language?: string 
 
             </div>
 
+            {/* The faded area is a click target — users expect clicking the faded
+                lines to expand, not just the chevron. Visual fade and click
+                target are SEPARATE layers: the gradient's top half is nearly
+                transparent, and a click surface reaching that high puts the
+                pointer/I-beam boundary in the middle of readable text — the
+                cursor flips back and forth with no visible reason. So the
+                gradient stays tall (and holds solid for its lower stretch),
+                while the click strip only covers the part where text is
+                clearly obscured. The chevron button below stays as the visible
+                and keyboard/screen-reader control, so this surface is a plain
+                div: a second button would duplicate the announcement. */}
             {collapsed && (
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-[linear-gradient(to_top,var(--code-bg),transparent)]" />
+                <>
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-[linear-gradient(to_top,var(--code-bg)_40%,transparent)]" />
+                    {/* Hovering the strip reveals a centered "Show more" pill, so the
+                        pointer cursor has a visible explanation. Hidden on touch (no
+                        hover) — the chevron is always shown there instead. */}
+                    <div
+                        onClick={toggle}
+                        className="group/fade absolute inset-x-0 bottom-0 flex h-10 cursor-pointer items-end justify-center pb-1.5"
+                    >
+                        {/* One surface step above the code well in each mode (the well
+                            is surface-gray-1 light / surface-gray-2 dark). */}
+                        <span className="pointer-events-none select-none rounded-full border border-outline-gray-2 bg-surface-gray-2 px-2 py-0.5 text-xs text-ink-gray-6 opacity-0 transition-opacity group-hover/fade:opacity-100 dark:bg-surface-gray-3">
+                            {_("Show more")}
+                        </span>
+                    </div>
+                </>
             )}
 
             {collapsible && (

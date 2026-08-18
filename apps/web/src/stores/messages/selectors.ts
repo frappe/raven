@@ -28,13 +28,15 @@ type Decoration = { isContinuation: 0 | 1; isPinned: 0 | 1; decorated: Message }
  */
 const decorationCache = new WeakMap<Message, Decoration>()
 
-/** Returns `message` with continuation/pinned flags applied, reusing the cached copy when the flags are unchanged. */
-const decorate = (message: Message, isContinuation: 0 | 1, isPinned: 0 | 1): Message => {
+/** Returns `message` with continuation/pinned flags applied, reusing the cached copy when the flags are unchanged.
+ *  `renderKey` (default: the message name) is the stream row's React key — see render_key on Message. */
+const decorate = (message: Message, isContinuation: 0 | 1, isPinned: 0 | 1, renderKey?: string): Message => {
+    const key = renderKey ?? message.name
     const cached = decorationCache.get(message)
-    if (cached && cached.isContinuation === isContinuation && cached.isPinned === isPinned) {
+    if (cached && cached.isContinuation === isContinuation && cached.isPinned === isPinned && cached.decorated.render_key === key) {
         return cached.decorated
     }
-    const decorated = { ...message, is_continuation: isContinuation, is_pinned: isPinned }
+    const decorated = { ...message, is_continuation: isContinuation, is_pinned: isPinned, render_key: key }
     decorationCache.set(message, { isContinuation, isPinned, decorated })
     return decorated
 }
@@ -171,7 +173,15 @@ const buildBlocks = (
             }
         }
 
-        blocks.push(decorate(message, isContinuation, pinnedIds.has(message.name) ? 1 : 0))
+        // A single v3-sent message keys its row by BATCH id (= the send's
+        // client id): the ack replaces the optimistic message under the same
+        // key, so the row and its media DOM survive instead of remounting
+        // (remounts made just-sent images flash). Safe here because the batch
+        // run above consumed multi-member batches — a with-batch-id message
+        // reaching this line is its batch's only member in the window. The
+        // SPLIT path keeps name keys (its members share a batch id).
+        const renderKey = message.message_batch_id ? `single-${message.message_batch_id}` : undefined
+        blocks.push(decorate(message, isContinuation, pinnedIds.has(message.name) ? 1 : 0, renderKey))
         previous = message
     }
     return blocks

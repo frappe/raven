@@ -2,6 +2,7 @@ import json
 import mimetypes
 
 import frappe
+from frappe import _
 from frappe.search.sqlite_search import SQLiteSearch
 from pypika import Case, JoinType, Order
 
@@ -167,7 +168,7 @@ class RavenSearch(SQLiteSearch):
 		return content
 
 	def get_list(self, filters=None, limit: int = 20):
-		"""Get list of documents without a search query, applying filters and permissions"""
+		"""Get list of documents without a search query, applying filters and permissions."""
 		if not self.is_search_enabled():
 			return []
 
@@ -238,13 +239,15 @@ class RavenSearch(SQLiteSearch):
 
 		select_clause = ", ".join(select_fields)
 
-		# Execute SQL
+		# Execute SQL. doc_id tiebreaks identical creation values for a
+		# deterministic order. int() on limit: it is interpolated, never
+		# trust it as a string.
 		sql = f"""
 			SELECT {select_clause}
 			FROM search_fts
 			{filter_clause}
-			ORDER BY creation DESC
-			LIMIT {limit}
+			ORDER BY creation DESC, doc_id DESC
+			LIMIT {int(limit)}
 		"""
 		raw_results = self.sql(sql, filter_params, read_only=True)
 
@@ -254,6 +257,7 @@ class RavenSearch(SQLiteSearch):
 
 @frappe.whitelist()
 def sqlite_search(query: str | None = None, filters: str | None = None, limit: int = 20):
+	"""Search (or, without a query, list) indexed messages, capped at limit."""
 	parsed_filters: dict = json.loads(filters) if filters else {}
 
 	if parsed_filters.pop("saved", None):
@@ -268,7 +272,7 @@ def sqlite_search(query: str | None = None, filters: str | None = None, limit: i
 	else:
 		results = search.search(query, filters=parsed_filters)["results"]
 
-	return results[:limit]
+	return results[: int(limit)]
 
 
 def channel_access_condition(perm_channel, perm_member, workspace_member, user):
@@ -288,6 +292,72 @@ def channel_access_condition(perm_channel, perm_member, workspace_member, user):
 		(workspace_member.user == user)
 		& ((perm_channel.type != "Private") | (perm_member.user_id == user))
 	)
+
+
+@frappe.whitelist(methods=["GET"])
+def get_channel_files(
+	channel_id: str,
+	search_text: str | None = None,
+	limit: int = 20,
+	cursor_creation: str | None = None,
+	cursor_id: str | None = None,
+):
+	"""List a channel's File/Image messages straight from MariaDB.
+
+	The channel Files tab used the SQLite search index, which is updated by a
+	background queue every ~5 minutes — so a just-uploaded file did not appear
+	until the queue ran (even on refresh). This reads the source of truth, so
+	a new file shows up immediately.
+
+	Keyset pagination on (creation, name) DESC: pass the last row's creation and
+	name to get the next page — stable when new messages arrive between pages.
+	`search_text` is a filename LIKE (the field stores the file's path/URL).
+	"""
+	# Same single-channel access check the message stream uses.
+	if not frappe.has_permission(doctype="Raven Channel", doc=channel_id, ptype="read"):
+		frappe.throw(_("You do not have permission to access this channel"), frappe.PermissionError)
+
+	message = frappe.qb.DocType("Raven Message")
+
+	# Aliased to the shape the client already consumes (SearchResult): id,
+	# internal_link, author. The filename and extension are derived on the
+	# client from internal_link, the same way message attachments are — no
+	# need to duplicate that here (file_type is not even a stored column).
+	query = (
+		frappe.qb.from_(message)
+		.select(
+			message.name.as_("id"),
+			message.file.as_("internal_link"),
+			message.message_type,
+			message.file_size,
+			message.file_thumbnail,
+			message.thumbnail_width,
+			message.thumbnail_height,
+			message.owner.as_("author"),
+			message.creation,
+		)
+		.where(message.channel_id == channel_id)
+		.where(message.message_type.isin(["File", "Image"]))
+		.orderby(message.creation, order=Order.desc)
+		.orderby(message.name, order=Order.desc)
+		.limit(int(limit))
+	)
+
+	if search_text:
+		query = query.where(message.file.like(f"%{search_text}%"))
+
+	# Keyset cursor: rows strictly older than the cursor row. name breaks ties
+	# on identical creation timestamps so no row is skipped or repeated.
+	if cursor_creation:
+		if cursor_id:
+			query = query.where(
+				(message.creation < cursor_creation)
+				| ((message.creation == cursor_creation) & (message.name < cursor_id))
+			)
+		else:
+			query = query.where(message.creation < cursor_creation)
+
+	return query.run(as_dict=True)
 
 
 @frappe.whitelist()

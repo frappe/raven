@@ -152,7 +152,11 @@ export const AddMembersStep = ({ selectedUsers, onSelectUsers, workspace, exclud
                         </HoverCardTrigger>
                         <HoverCardContent
                             align="start"
-                            className="w-56 p-2"
+                            // Top/left padding only: the roster scrolls to the
+                            // card's bottom edge (fade + inner padding on the
+                            // list) and the scrollbar sits flush right — card
+                            // padding around the ScrollArea would inset it.
+                            className="w-56 p-0"
                             // The hover card portals OUTSIDE the modal create-channel dialog,
                             // whose scroll lock (react-remove-scroll) preventDefaults wheel
                             // events via a bubble-phase document listener — killing wheel
@@ -161,9 +165,11 @@ export const AddMembersStep = ({ selectedUsers, onSelectUsers, workspace, exclud
                             // fix as the emoji picker inside the message action sheet.)
                             onWheel={(e) => e.stopPropagation()}
                         >
-                            <ScrollArea viewportClassName="max-h-64">
-                                {/* pr-1: breathing room under the overlay scrollbar */}
-                                <div className="flex flex-col gap-2.5 py-0.5 pr-1">
+                            <ScrollArea viewportClassName="max-h-64 scroll-fade">
+                                {/* pr-2.5: clears the flush overlay scrollbar (the card
+                                    has no right padding); pb INSIDE the scroll — the
+                                    card itself is pb-0. */}
+                                <div className="flex flex-col gap-2.5 pt-2 pl-2 pb-2 pr-2.5">
                                     {selectedUsers.map((user) => (
                                         <div key={user.name} className="flex items-center gap-2">
                                             <UserAvatar user={user} size="xs" className="shrink-0" showStatusIndicator={false} />
@@ -179,7 +185,7 @@ export const AddMembersStep = ({ selectedUsers, onSelectUsers, workspace, exclud
                     <Button
                         type="button"
                         variant="ghost"
-                        size="sm"
+                        size="xs"
                         onClick={() => {
                             onSelectUsers([])
                             setAnnouncement(_('All members removed from selection'))
@@ -214,47 +220,50 @@ export const AddMembersStep = ({ selectedUsers, onSelectUsers, workspace, exclud
                         itemContent={(_index, user) => {
                             const isSelected = selectedIds.has(user.name)
                             return (
-                                <button
-                                    type="button"
-                                    onClick={() => toggleUser(user)}
-                                    aria-pressed={isSelected}
-                                    className={cn(
-                                        'mb-1 flex w-full cursor-pointer items-center gap-2.5 rounded-md p-2 text-left transition-colors hover:bg-surface-gray-2',
-                                        isSelected && 'bg-surface-gray-1',
-                                    )}
-                                >
-                                    <UserAvatar
-                                        user={user}
-                                        size="sm"
-                                        className="shrink-0"
-                                        showStatusIndicator={false}
-                                    />
-                                    <div className="min-w-0 flex-1">
-                                        <div className="truncate text-sm font-medium leading-tight">
-                                            {user.full_name}
+                                <div className='pb-0.5'>
+                                    <button
+                                        type="button"
+                                        onClick={() => toggleUser(user)}
+                                        aria-pressed={isSelected}
+                                        className={cn(
+                                            'flex w-full cursor-pointer items-center gap-2.5 rounded py-1.5 pl-1.5 pr-3 text-left transition-colors hover:bg-surface-gray-2',
+                                            isSelected && 'bg-surface-gray-1',
+                                        )}
+                                    >
+                                        <UserAvatar
+                                            user={user}
+                                            size="sm"
+                                            className="shrink-0"
+                                            showStatusIndicator={false}
+                                        />
+                                        <div className="min-w-0 flex-1">
+                                            <div className="truncate text-sm font-medium leading-tight">
+                                                {user.full_name}
+                                            </div>
+                                            <div className="truncate text-xs text-ink-gray-4 leading-tight">
+                                                {user.name}
+                                            </div>
                                         </div>
-                                        <div className="truncate text-xs text-ink-gray-4 leading-tight">
-                                            {user.name}
-                                        </div>
-                                    </div>
-                                    {/* Visual state only — the whole row button is the control
+                                        {/* Visual state only — the whole row button is the control
                                         (aria-pressed carries the state). NOT the ui Checkbox: that's
                                         a real <button> (invalid inside this row button), and its
                                         Radix form-sync dispatches a bubbling click on every checked
                                         change — which re-triggered the row's onClick in a loop.
                                         This span mirrors ui/checkbox's checked styling. */}
-                                    <span
-                                        aria-hidden="true"
-                                        className={cn(
-                                            'grid size-4 shrink-0 place-content-center rounded-sm border transition',
-                                            isSelected
-                                                ? 'border-ink-gray-8 bg-ink-gray-8 text-ink-base'
-                                                : 'border-outline-gray-4',
-                                        )}
-                                    >
-                                        {isSelected && <CheckIcon className="size-3" />}
-                                    </span>
-                                </button>
+                                        <span
+                                            aria-hidden="true"
+                                            className={cn(
+                                                'grid size-4 shrink-0 place-content-center rounded-sm border transition',
+                                                isSelected
+                                                    ? 'border-ink-gray-8 bg-ink-gray-8 text-ink-base'
+                                                    : 'border-outline-gray-4',
+                                            )}
+                                        >
+                                            {isSelected && <CheckIcon className="size-3" />}
+                                        </span>
+                                    </button>
+                                </div>
+
                             )
                         }}
                     />

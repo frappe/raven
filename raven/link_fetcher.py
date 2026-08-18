@@ -79,6 +79,7 @@ def fill_preview(preview) -> bool:
 		frappe.log_error(f"Link preview fetch crashed for {preview.url}")
 		_record_failure(preview, "Unexpected error while fetching")
 	else:
+		_measure_image_if_needed(data)
 		_apply(preview, data)
 		fetched = True
 
@@ -91,6 +92,75 @@ def _record_failure(preview, error: str):
 	# Pending previews get retried the next time the link is shared.
 	preview.status = "Failed" if preview.fetch_attempts >= MAX_FETCH_ATTEMPTS else "Pending"
 	preview.fetch_error = error
+
+
+# Image probe limits. 2MB covers almost every og banner; anything bigger
+# just skips the probe and the client uses a fixed box instead.
+IMAGE_CONTENT_TYPES = ("image/",)
+IMAGE_PROBE_MAX_BYTES = 2 * 1024 * 1024
+
+# Decompression-bomb guard. A small file can decode to a huge canvas, and
+# exif_transpose decodes pixels when the image carries a rotation tag. 25M
+# pixels is ~4x a 4K frame — far past any real og image. PIL's own guard
+# only kicks in around 180M pixels, which is already a ~270MB allocation.
+IMAGE_PROBE_MAX_PIXELS = 25_000_000
+
+
+def _measure_image_if_needed(data: dict):
+	"""
+	Fill in image_width and image_height by downloading the image and
+	measuring it — but only when the page did not declare them.
+	og:image:width is optional, and big sites (frappe.io included) omit it.
+
+	Why: the card reserves the image's box from these numbers BEFORE the
+	image loads. Without them, the card changes shape when the image
+	arrives — the last of Phase 5's scroll-shift sources
+	(docs/link-previews-plan.md).
+
+	The image URL came out of a page we just fetched, so it is as hostile
+	as any URL. safe_fetch applies the same SSRF guards it applies to the
+	page itself. Best effort, one attempt: any failure leaves the
+	dimensions empty and the client falls back to a fixed clipping box.
+	"""
+	image_url = data.get("image") or ""
+	if not image_url:
+		return
+	if data.get("image_width") and data.get("image_height"):
+		return
+	# _apply drops image URLs longer than the column — don't probe those.
+	if len(image_url) > 500:
+		return
+
+	try:
+		response = safe_fetch(
+			image_url,
+			allowed_content_types=IMAGE_CONTENT_TYPES,
+			max_bytes=IMAGE_PROBE_MAX_BYTES,
+		)
+	except LinkFetchError:
+		return
+
+	try:
+		import io
+
+		from PIL import Image, ImageOps
+
+		image = Image.open(io.BytesIO(response.body))
+		# Reading .size only parses headers — no pixels decoded yet. Check
+		# the canvas size BEFORE exif_transpose, which does decode.
+		width, height = image.size
+		if width * height > IMAGE_PROBE_MAX_PIXELS:
+			return
+		# Honour EXIF rotation, like the message-image upload path does:
+		# the reserved box must match what the browser will display.
+		image = ImageOps.exif_transpose(image)
+		width, height = image.size
+	except Exception:
+		return
+
+	if width and height:
+		data["image_width"] = width
+		data["image_height"] = height
 
 
 def _apply(preview, data: dict):
@@ -143,10 +213,20 @@ def fetch_oembed(endpoint: str, url: str) -> dict:
 	title = payload.get("title") or ""
 	description = ""
 	# X answers with the tweet as an HTML blockquote and no title. The
-	# blockquote's text is the tweet itself.
+	# tweet's text lives in the blockquote's <p>; the rest of the
+	# blockquote is an attribution tail ("— Author (@handle) date") that
+	# the title already covers. <br> tags become real newlines so the
+	# tweet keeps its line breaks (the client renders them for X).
 	if not title and payload.get("html"):
 		title = payload.get("author_name") or ""
-		description = BeautifulSoup(payload["html"], "html.parser").get_text(" ", strip=True)
+		soup = BeautifulSoup(payload["html"], "html.parser")
+		tweet_text = soup.find("p")
+		if tweet_text:
+			for br in tweet_text.find_all("br"):
+				br.replace_with("\n")
+			description = tweet_text.get_text().strip()
+		else:
+			description = soup.get_text(" ", strip=True)
 
 	return {
 		"title": title or payload.get("author_name") or "",
@@ -184,7 +264,11 @@ def fetch_x(url: str) -> dict:
 	except LinkFetchError:
 		return data
 
-	if scraped.get("image"):
+	# A tweet with NO media serves the author's avatar as its og:image
+	# (under /profile_images/). A giant profile picture is worse than no
+	# image — keep only real tweet media (photos and video thumbnails live
+	# under /media/ and */video_thumb/ paths).
+	if scraped.get("image") and "/profile_images/" not in scraped["image"]:
 		data["image"] = scraped["image"]
 		data["image_width"] = scraped.get("image_width")
 		data["image_height"] = scraped.get("image_height")
@@ -304,9 +388,19 @@ def parse_open_graph(html: bytes | str, base_url: str) -> dict:
 	if not title and soup.title and soup.title.string:
 		title = soup.title.string.strip()
 
-	image = meta("og:image", "twitter:image")
+	# Plain name="image" is the same informal fallback the description
+	# chain already uses — some blogs (frappe.io custom pages included)
+	# declare only that.
+	image = meta("og:image", "twitter:image", "image")
 	if image:
-		image = urljoin(base_url, image)
+		from requests.utils import requote_uri
+
+		# Percent-encode what the page left raw (spaces in filenames are
+		# common). requote_uri leaves already-encoded parts alone, so a
+		# clean URL passes through unchanged. Needed for the dimension
+		# probe's fetch to be a valid request; browsers are forgiving,
+		# servers less so.
+		image = requote_uri(urljoin(base_url, image))
 
 	def as_int(value: str):
 		return int(value) if value.isdigit() else None

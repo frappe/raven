@@ -43,14 +43,34 @@ export const markUnreadSeeded = (kind: "channels" | "threads") => {
     void sweep()
 }
 
-/** Mounted once in AppListeners — re-sweeps whenever either unread store changes. */
+/**
+ * Mounted once in AppListeners. The sweep runs on three signals:
+ *  - an unread store changed — something was read, here or on another device
+ *  - the worker just showed a notification — push arrives seconds after the
+ *    socket, so the message may already be read and no store change is coming
+ *  - the app became visible — the catch-all: a frozen phone misses the
+ *    worker's signal, so the tray is reconciled on every return
+ */
 export const useClearReadNotifications = () => {
     useEffect(() => {
         const unsubChannels = channelUnreadStore.subscribeGlobal(() => void sweep())
         const unsubThreads = unreadThreadsStore.subscribe(() => void sweep())
+
+        const onWorkerMessage = (event: MessageEvent) => {
+            if (event.data?.type === "raven:notification-shown") void sweep()
+        }
+        navigator.serviceWorker?.addEventListener("message", onWorkerMessage)
+
+        const onVisibilityChange = () => {
+            if (document.visibilityState === "visible") void sweep()
+        }
+        document.addEventListener("visibilitychange", onVisibilityChange)
+
         return () => {
             unsubChannels()
             unsubThreads()
+            navigator.serviceWorker?.removeEventListener("message", onWorkerMessage)
+            document.removeEventListener("visibilitychange", onVisibilityChange)
         }
     }, [])
 }

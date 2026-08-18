@@ -30,15 +30,15 @@ import _ from '@lib/translate'
  * Each row shows a summary ("4 links blocked"); the editing happens in a
  * dialog. Renders nothing without the Raven Admin role.
  */
-export const LinkSettingsAdminSection = () => {
+export const LinkSettingsAdminSection = ({ withLeadingSeparator = true }: { withLeadingSeparator?: boolean }) => {
     const isAdmin = hasRole('Raven Admin') || hasRole('System Manager')
     // Gate before the rows component so its hooks never run for
     // non-admins (the settings fetch would 403 anyway).
     if (!isAdmin) return null
-    return <AdminLinkSettingsRows />
+    return <AdminLinkSettingsRows withLeadingSeparator={withLeadingSeparator} />
 }
 
-const AdminLinkSettingsRows = () => {
+const AdminLinkSettingsRows = ({ withLeadingSeparator }: { withLeadingSeparator: boolean }) => {
     const { ravenSettings } = useRavenSettings()
 
     const meetHostCount = (ravenSettings?.frappe_meet_hosted_urls ?? '')
@@ -48,7 +48,9 @@ const AdminLinkSettingsRows = () => {
 
     return (
         <>
-            <Separator />
+            {/* No leading separator under a section header (the header already
+                separates); the between-rows separator below always renders. */}
+            {withLeadingSeparator && <Separator />}
 
             <SettingsFormRow>
                 <div className="flex flex-col">

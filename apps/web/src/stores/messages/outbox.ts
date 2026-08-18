@@ -37,6 +37,13 @@ export const removeOutbox = (clientID: string) => {
 export const setOutboxStatus = (clientID: string, status: OutboxMessage["status"]) =>
     db.outbox.update(clientID, { status }).catch((error) => console.error("outbox update failed", error))
 
+/** Read one saved record (e.g. to recover send options for a manual retry). */
+export const getOutbox = (clientID: string): Promise<OutboxMessage | undefined> =>
+    db.outbox.get(clientID).catch((error) => {
+        console.error("outbox read failed", error)
+        return undefined
+    })
+
 /** How long an unconfirmed send stays retryable/visible: 7 days. Long enough that a
  *  send queued offline over a weekend still goes out; short enough that a resurrected
  *  week-old message doesn't read as a glitch to the recipient. */

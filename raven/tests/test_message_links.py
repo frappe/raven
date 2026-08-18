@@ -143,12 +143,36 @@ class TestLinkNormalization(IntegrationTestCase):
 		self.assertFalse(is_preview_blocked("https://www.youtube.com/watch?v=abc123"))
 
 	def test_links_to_this_site(self):
+		site = frappe.utils.get_url()
+
 		# Raven's own pages get their own provider.
-		raven_url = frappe.utils.get_url() + "/raven/channel/general"
-		self.assertEqual(detect_provider(normalize_url(raven_url)), "Raven Link")
-		# Any other page on this site is a document link.
-		desk_url = frappe.utils.get_url() + "/app/note/some-note"
-		self.assertEqual(detect_provider(normalize_url(desk_url)), "Site Document Link")
+		self.assertEqual(detect_provider(normalize_url(site + "/raven/channel/general")), "Raven Link")
+
+		# App planes on this site are document links — desk (new and old),
+		# the API/file planes, and SPA apps.
+		for path in (
+			"/app/note/some-note",
+			"/desk/note/some-note",
+			"/api/method/frappe.ping",
+			"/private/files/secret.pdf",
+			"/crm/leads/CRM-LEAD-0001",
+			"/helpdesk/tickets/1",
+		):
+			self.assertEqual(detect_provider(normalize_url(site + path)), "Site Document Link", path)
+
+		# The site's public WEBSITE falls through to the provider registry —
+		# a Raven prod hosted on frappe.io must still preview frappe.io blog
+		# posts. On the test site the registry matches nothing, so these read
+		# as any external website would.
+		for path in ("/blog/some-post", "/", "/apps"):
+			provider = detect_provider(normalize_url(site + path))
+			self.assertNotIn(provider, ("Raven Link", "Site Document Link"), path)
+
+		# Prefix match, not substring: a website page that merely shares the
+		# spelling of an app plane is still the website.
+		self.assertNotEqual(
+			detect_provider(normalize_url(site + "/application-process")), "Site Document Link"
+		)
 
 
 class TestMessageLinkRows(IntegrationTestCase):
@@ -255,6 +279,33 @@ class TestMessageLinkRows(IntegrationTestCase):
 		# The payload carries the normalized url — the realtime patch key.
 		self.assertEqual(results[raw_tracked]["url"], preview.url)
 		self.assertIsNone(results["https://nowhere.example/x"])
+
+	def test_get_messages_ships_the_previews_sidecar(self):
+		from raven.api.chat_stream import get_messages
+
+		# A stored preview for a link that a message shares under a TRACKED
+		# raw spelling — the side-car must key by the raw url the message
+		# carries, resolving through normalization.
+		preview = frappe.new_doc("Raven Link Preview")
+		preview.url = f"https://example.com/{frappe.generate_hash(length=12)}"
+		preview.provider = "Other"
+		preview.status = "Fetched"
+		preview.title = "Sidecar Title"
+		preview.insert(ignore_permissions=True)
+
+		raw_url = preview.url + "?utm_source=share"
+		no_preview_url = f"https://nowhere.example/{frappe.generate_hash(length=12)}"
+		self.make_message(
+			f'<p><a href="{raw_url}">article</a> and <a href="{no_preview_url}">unknown</a></p>'
+		)
+
+		result = get_messages(channel_id=self.channel.name, update_last_visit=False)
+
+		# Keyed by the RAW spelling, exactly as the message ships it.
+		self.assertEqual(result["previews"][raw_url]["title"], "Sidecar Title")
+		# A link with no stored preview is an explicit None — the client
+		# marks it known instead of asking again.
+		self.assertIsNone(result["previews"][no_preview_url])
 
 	def test_search_links_filters_by_provider(self):
 		from raven.api.search import search_links

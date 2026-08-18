@@ -14,12 +14,14 @@ import { CreatePollDialog } from "./CreatePollDialog"
 import { uploadedFilesAtom, uploadingFilesAtom, pendingSendAtom, useAttachFile } from "./useFileInput"
 import { registerComposerFocus } from "./composerFocus"
 import { useRavenEditor, EDITOR_MIN_H } from "@components/features/editor/useRavenEditor"
+import { useQuietSendMode } from "@hooks/useQuietHours"
 import { linkifyBeforeSend } from "@components/features/editor/linkifyOnSend"
 import { EditorFormattingToolbar } from "@components/features/editor/EditorFormattingToolbar"
 import { ScheduleSendDialog } from "@components/features/schedule-send/ScheduleSendDialog"
 import type { SchedulePick } from "@lib/timeUtils"
 import { ReplyPreviewBanner } from "./ReplyPreviewBanner"
 import { MentionWarningBanner } from "./MentionWarningBanner"
+import { QuietHoursBanner } from "./QuietHoursBanner"
 import { MobileComposerActions } from "./MobileComposerActions"
 import { loadDraft, saveDraft } from "./draft"
 import { useTypingEmitter } from "@stores/typing/useTypingEmitter"
@@ -94,7 +96,7 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
     const [linkSignal, setLinkSignal] = useState(0)
 
     // The editor's keydown/paste closures (built once) call the latest handlers via these refs.
-    const sendRef = useRef<() => void>(() => { })
+    const sendRef = useRef<(opts?: { sendSilently?: boolean }) => void>(() => { })
     const linkRef = useRef<() => void>(() => { })
     linkRef.current = () => {
         setShowFormatting(true)
@@ -203,7 +205,7 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
     }, [editor, onUserType, stopTyping])
 
     /** Build the optimistic batch, clear the composer, and fire the request. */
-    const dispatchSend = useCallback(() => {
+    const dispatchSend = useCallback((opts?: { sendSilently?: boolean }) => {
         if (!editor) return
         const isEmpty = editor.isEmpty
         if (isEmpty && files.length === 0) return
@@ -212,7 +214,7 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
         // ClipboardEvent; autolink waits for a delimiter that send never types).
         if (!isEmpty) linkifyBeforeSend(editor)
         const content = isEmpty ? "" : editor.getHTML()
-        const outgoingFiles = files.map((f) => ({ file_url: f.fileURL, file_size: f.size }))
+        const outgoingFiles = files.map((f) => ({ file_url: f.fileURL, file_size: f.size, width: f.width, height: f.height }))
         const batchId = randomUUID()
 
         // Reply context: send the linked message id + a snapshot of it so the reply
@@ -220,7 +222,9 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
         const linkedMessage = replyTo?.name
         const repliedMessageDetails = replyTo
             ? JSON.stringify({
-                text: replyTo.text ?? "",
+                // No `text` (HTML): the server's snapshot doesn't store it and the
+                // preview renders `content`, so this stays byte-compatible with what
+                // the server sends back when the send is confirmed.
                 content: replyTo.content ?? "",
                 file: (replyTo as typeof replyTo & { file?: string }).file ?? "",
                 message_type: replyTo.message_type,
@@ -230,7 +234,7 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
             : undefined
 
         // Shows the message on screen, saves it to the outbox, then sends it.
-        enqueueSend(call, { channelID, batchId, owner: currentUser, content, files: outgoingFiles, linkedMessage, repliedMessageDetails })
+        enqueueSend(call, { channelID, batchId, owner: currentUser, content, files: outgoingFiles, linkedMessage, repliedMessageDetails, sendSilently: opts?.sendSilently })
 
         // Clear the composer right away — the message is already on screen
         editor.commands.clearContent()
@@ -277,29 +281,40 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
         }).finally(() => setScheduleBusy(false))
     }, [editor, call, channelID, persistDraft, stopTyping, isMobile])
 
-    const handleSend = useCallback(() => {
+    // Quiet hours: in "auto" mode every send defaults to silent (the send
+    // button advertises it and offers the loud override) — resolved HERE, the
+    // one dispatch gate, so Enter, the button, and held sends all agree.
+    const quietSendMode = useQuietSendMode()
+
+    const handleSend = useCallback((opts?: { sendSilently?: boolean }) => {
         if (!editor) return
         // Nothing to send — no meaningful text/content, no uploaded files, nothing staged.
         if (!editorHasContent && files.length === 0 && !hasUploadsInFlight && !hasFailedUploads) return
 
+        // ?? keeps explicit choices: {sendSilently: false} is the loud
+        // override from the quiet-hours menu, and stays false.
+        const sendSilently = opts?.sendSilently ?? (quietSendMode === "auto" ? true : undefined)
+
         // Files are still uploading: hold the send. An effect dispatches it once
-        // every upload settles, so the in-flight files aren't dropped.
+        // every upload settles, so the in-flight files aren't dropped. The
+        // RESOLVED flag is held — what the user asked for at click time wins,
+        // even if quiet hours end while the uploads finish.
         if (hasUploadsInFlight) {
-            setPendingSend(true)
+            setPendingSend({ sendSilently })
             return
         }
 
         // A failed upload blocks a DIRECT send too, not just a held one — the
         // user staged that file as part of this message, so sending without it
-        // silently ships something different from what they wrote. Same toast
+        // quietly ships something different from what they wrote. Same toast
         // as the held path (below) so the two flows can't drift.
         if (hasFailedUploads) {
             toast.error(_("Some files failed to upload. Remove them and try again."))
             return
         }
 
-        dispatchSend()
-    }, [editor, editorHasContent, files, hasUploadsInFlight, hasFailedUploads, dispatchSend, setPendingSend])
+        dispatchSend({ sendSilently })
+    }, [editor, editorHasContent, files, hasUploadsInFlight, hasFailedUploads, dispatchSend, setPendingSend, quietSendMode])
 
     // Disable send when there's genuinely nothing to send (mirrors the handleSend guard).
     const nothingToSend = !editorHasContent && files.length === 0 && !hasUploadsInFlight && !hasFailedUploads
@@ -308,15 +323,16 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
     const scheduleDisabled = disableSchedule || !editorHasContent || !!replyTo || files.length > 0 || hasUploadsInFlight || hasFailedUploads
 
     // Held send: once uploads settle, dispatch (or back off if any failed so the
-    // user can remove the bad file and retry — we never send silently without it).
+    // user can remove the bad file and retry — we never quietly send without it).
     useEffect(() => {
         if (!pendingSend || hasUploadsInFlight) return
+        const heldOpts = pendingSend
         setPendingSend(false)
         if (hasFailedUploads) {
             toast.error(_("Some files failed to upload. Remove them and send again."))
             return
         }
-        dispatchSend()
+        dispatchSend(heldOpts)
     }, [pendingSend, hasUploadsInFlight, hasFailedUploads, dispatchSend, setPendingSend])
 
     useEffect(() => {
@@ -404,6 +420,7 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                     busy={scheduleBusy}
                 />
             )}
+            <QuietHoursBanner mode={quietSendMode} />
             {/* Warning banner is only shown for primary channels, not DMs, threads in DMs. */}
             {!isDM && mentionedIds.length > 0 && <MentionWarningBanner channelID={parentChannelID ?? channelID} mentionedIds={mentionedIds} isThread={parentChannelID ? true : false} />}
             {/* Outer wrapper carries data-raven-editor and is the popup anchor: the
@@ -454,10 +471,13 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                                 <div className="flex items-center justify-center h-10 ms-1.5">
                                     <SendButton
                                         onSend={handleSend}
+                                        onSendSilently={() => handleSend({ sendSilently: true })}
+                                        onSendLoud={() => handleSend({ sendSilently: false })}
+                                        quietMode={quietSendMode}
                                         onSchedulePick={handleSchedulePick}
                                         onScheduleSend={() => setScheduleOpen(true)}
                                         scheduleDisabled={scheduleDisabled}
-                                        loading={pendingSend}
+                                        loading={!!pendingSend}
                                         disabled={nothingToSend}
                                     />
                                 </div>
@@ -499,10 +519,13 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                                     <div className="flex-1" />
                                     <SendButton
                                         onSend={handleSend}
+                                        onSendSilently={() => handleSend({ sendSilently: true })}
+                                        onSendLoud={() => handleSend({ sendSilently: false })}
+                                        quietMode={quietSendMode}
                                         onSchedulePick={handleSchedulePick}
                                         onScheduleSend={() => setScheduleOpen(true)}
                                         scheduleDisabled={scheduleDisabled}
-                                        loading={pendingSend}
+                                        loading={!!pendingSend}
                                         disabled={nothingToSend}
                                     />
                                 </div>

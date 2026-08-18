@@ -18,6 +18,7 @@ import ChatInput from "@components/features/ChatInput/ChatInput"
 import { FileDropZone } from "@components/features/ChatInput/FileDropZone"
 import { useComposerGate, ComposerArea } from "@components/features/ChatInput/composerGate"
 import ChatStream from "@components/features/message/ChatStream"
+import { useIsMobile } from "@hooks/use-mobile"
 import { ThreadHeader } from "./ThreadHeader"
 import { ThreadRootMessage } from "./ThreadRootMessage"
 import { PollDrawer } from "./renderers/PollDrawer"
@@ -73,10 +74,23 @@ export default function ThreadDrawer({
                 : `/${encodeURIComponent(parentChannel?.workspace ?? "")}/${encodeURIComponent(parentChannelID)}`
             : undefined
 
-    // "Open channel": go to the parent channel with this thread still open and the
-    // thread's ROOT message selected there (the thread id IS the root message id).
+    // "Open channel": go to the parent channel with the thread's ROOT message
+    // selected there (the thread id IS the root message id). Desktop keeps the
+    // thread open beside the channel (`/thread/…` — the layout shows both).
+    // Mobile drops the thread from the route: there the thread route renders
+    // as a full-screen layer COVERING the channel, so keeping it would make
+    // the button appear to do nothing — landing in the channel itself is the
+    // action a phone user asked for.
+    const isMobile = useIsMobile()
     const onOpenChannel = parentChannelBase
-        ? () => navigate(`${parentChannelBase}/thread/${encodeURIComponent(threadID)}?message_id=${encodeURIComponent(threadID)}`)
+        ? () => {
+            const target = encodeURIComponent(threadID)
+            navigate(
+                isMobile
+                    ? `${parentChannelBase}?message_id=${target}`
+                    : `${parentChannelBase}/thread/${target}?message_id=${target}`,
+            )
+        }
         : undefined
 
     // Gate the actions by your membership in the thread (already in the members store, seeded by

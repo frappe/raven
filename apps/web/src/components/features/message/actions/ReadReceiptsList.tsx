@@ -4,6 +4,7 @@ import { Skeleton } from "@components/ui/skeleton"
 import ErrorBanner from "@components/ui/error-banner"
 import { UserAvatar } from "@components/features/message/UserAvatar"
 import { channelMembersStore } from "@stores/members/store"
+import { channelStore } from "@stores/channels/store"
 import { useUser } from "@hooks/useUser"
 import { useIsMobile } from "@hooks/use-mobile"
 import _ from "@lib/translate"
@@ -131,7 +132,40 @@ export const ReadReceiptsList = ({
 
     const readers = data?.message ?? []
 
+    // In a 1:1 DM the reader list can only ever hold the other person, so the
+    // panel collapses to one line: "Seen" or "Not seen yet". Same lazy fetch as
+    // the list — the panel still only mounts when opened. If the other person
+    // hides their read receipts the server returns no readers, so this shows
+    // "Not seen yet" — that's the point of the setting. Self-DMs never reach
+    // here; the action itself is hidden for them. Thread replies fall through
+    // to the list (their channel_id is the thread, unknown to the store).
+    const isDM = channelStore.getChannel(message.channel_id)?.is_direct_message === 1
+
     if (error) return <ErrorBanner error={error} />
+
+    if (isDM) {
+        const seenLine = isLoading ? (
+            <Skeleton className="h-4 w-24" />
+        ) : readers.length > 0 ? (
+            <span className="text-ink-gray-8">{_("Seen")}</span>
+        ) : (
+            <span className="text-ink-gray-4">{_("Not seen yet")}</span>
+        )
+        if (sheet) {
+            return (
+                <div className="flex items-center px-3 pt-2 text-lg pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+                    {seenLine}
+                </div>
+            )
+        }
+        // Fixed one-line height in every state (loading and loaded), so the
+        // submenu never resizes.
+        return (
+            <div className="flex items-center px-3 text-lg md:px-2 md:text-base" style={{ height: isMobile ? EMPTY_HEIGHT.mobile : EMPTY_HEIGHT.desktop }}>
+                {seenLine}
+            </div>
+        )
+    }
 
     const rowHeight = isMobile ? ROW_HEIGHT.mobile : ROW_HEIGHT.desktop
     /* The list hugs its content up to MAX_VISIBLE_ROWS, then scrolls. The scroller
@@ -153,12 +187,22 @@ export const ReadReceiptsList = ({
     // touch-scroll surfaces that are known to work inside vaul sheets (ReactionsBody's
     // max-h tab panels, ChannelMembersList) as closely as possible.
     if (sheet) {
+        // Every branch supplies the sheet's bottom clearance itself (the drawer's
+        // DrawerContent is pb-0): the LIST carries it inside its scroll, so rows
+        // reach the drawer's true edge with scroll-fade softening the cut, and
+        // the non-scrolling branches (skeleton, empty) just pad past the home
+        // indicator.
+        const sheetBottomPad = "pb-[calc(env(safe-area-inset-bottom)+1rem)]"
         return isLoading ? (
-            <ReadersSkeleton rows={skeletonRows} />
+            <div className={sheetBottomPad}>
+                <ReadersSkeleton rows={skeletonRows} />
+            </div>
         ) : isEmpty ? (
-            <p className="px-3 py-2 text-lg text-ink-gray-4">{_("No one has viewed this yet")}</p>
+            <p className={`px-3 pt-2 text-lg text-ink-gray-4 ${sheetBottomPad}`}>
+                {_("No one has viewed this yet")}
+            </p>
         ) : (
-            <div className="max-h-80 overflow-y-auto">
+            <div className={`max-h-80 overflow-y-auto scroll-fade ${sheetBottomPad}`}>
                 {readers.map((reader) => (
                     <ReaderRow key={reader.user_id} reader={reader} />
                 ))}

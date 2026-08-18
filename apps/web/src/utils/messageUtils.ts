@@ -13,6 +13,11 @@ export const isThreadParent = (message: Message): boolean => {
     return value === 1 || value === true || String(value) === "1"
 }
 
+/** "1 attachment" / "N attachments" — shared by the thread header and the
+ *  message link card for batch summaries. */
+export const attachmentCountLabel = (count: number): string =>
+    count === 1 ? _("1 attachment") : _("{0} attachments", [String(count)])
+
 /**
  * Shape of `Raven Channel.last_message_details` — denormalized by the backend
  * on every message insert (see RavenMessage.set_last_message_timestamp).
@@ -67,8 +72,13 @@ const teaserBody = (details: LastMessageDetails, maxLength: number): string => {
             return `📷 ${_("Photo")}`
         case "File":
             return `📎 ${details.content?.trim() || _("File")}`
-        case "Poll":
-            return `📊 ${_("Poll")}`
+        case "Poll": {
+            // A poll message's content is "question\n1. option\n…" (built that
+            // way server-side for search) — the first line IS the question,
+            // which says far more than a generic "Poll".
+            const question = details.content?.split("\n")[0]?.trim()
+            return `📊 ${question || _("Poll")}`
+        }
         default:
             return typeof details.content === "string" && details.content.trim()
                 ? toPlainText(details.content, maxLength)

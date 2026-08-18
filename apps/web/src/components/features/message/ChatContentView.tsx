@@ -13,6 +13,7 @@ import { FileDropZone } from "@components/features/ChatInput/FileDropZone"
 import { useComposerGate, ComposerArea } from "@components/features/ChatInput/composerGate"
 import { pollDrawerAtom, channelDrawerAtom } from "@utils/channelAtoms"
 import { useIsMobile } from "@hooks/use-mobile"
+import { useLayerInAnimation } from "@hooks/useLayerInAnimation"
 import { useChannelPinnedString } from "@stores/channels/useChannelList"
 import _ from "@lib/translate"
 import { cn } from "@lib/utils"
@@ -54,6 +55,8 @@ export function ChatContentView({
     const [channelDrawerType, setChannelDrawer] = useAtom(channelDrawerAtom(channelID))
     const hasContextDrawer = channelDrawerType !== ""
     const hasThread = !!threadDrawer
+    // No slide when the thread layer is already open on a BACK arrival — see the hook.
+    const layerAnimation = useLayerInAnimation(hasThread)
 
     // Skeleton while loading, archived/not-member banner (with Join), or the composer.
     const composerGate = useComposerGate(channelID)
@@ -166,7 +169,7 @@ export function ChatContentView({
                 no thread is open, so it can't cover the channel. Renders the outlet only
                 on mobile — desktop renders it in the side rail above. */}
             {isMobile && (
-                <div className={cn("absolute inset-0 z-10 flex min-h-0 flex-col overflow-hidden bg-surface-base animate-layer-in", !hasThread && "hidden")}>
+                <div className={cn("absolute inset-0 z-10 flex min-h-0 flex-col overflow-hidden bg-surface-base", layerAnimation, !hasThread && "hidden")}>
                     {threadDrawer}
                 </div>
             )}
@@ -187,7 +190,12 @@ export function ChatContentView({
                         </DrawerContent>
                     </Drawer>
                     <Drawer open={hasContextDrawer && !pollDrawerData} onOpenChange={(open) => !open && setChannelDrawer('')}>
-                        <DrawerContent className="h-[85dvh]">
+                        {/* pb-0: this sheet hosts LISTS (members, settings tabs). The
+                            default safe-area padding would end the scrollport above the
+                            drawer's bottom edge, hard-clipping rows mid-air — so the
+                            inner scrollers carry the safe-area padding themselves and
+                            fade the cut (scroll-fade) instead. */}
+                        <DrawerContent className="h-[85dvh] pb-0">
                             <DrawerTitle className="sr-only">{_("Channel details")}</DrawerTitle>
                             <DrawerDescription className="sr-only">{_("Channel information and settings")}</DrawerDescription>
                             <ChannelContextDrawer />

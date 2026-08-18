@@ -62,7 +62,7 @@ const buttonVariants = cva(
       {
         variant: "solid",
         theme: "red",
-        className: "text-ink-base bg-surface-red-7 hover:bg-surface-red-8 active:bg-surface-red-9 disabled:bg-surface-red-2 disabled:text-ink-red-5"
+        className: "text-ink-base dark:text-ink-red-10 bg-surface-red-7 hover:bg-surface-red-8 active:bg-surface-red-9 disabled:bg-surface-red-2 disabled:text-ink-red-5"
       },
       // Subtle Buttons
       {

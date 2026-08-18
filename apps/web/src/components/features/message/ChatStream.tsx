@@ -312,7 +312,7 @@ export default function ChatStream({ channelID, pinnedMessagesString, initialMes
                                                 />
                                             ) : (
                                                 <div
-                                                    key={block.name}
+                                                    key={block.render_key ?? block.name}
                                                     data-message-id={block.name}
                                                     // Deliberately NO content-visibility: placeholder estimates change height
                                                     // after paint and break exact scroll compensation on prepend.

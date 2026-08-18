@@ -40,8 +40,14 @@ export const WorkspaceRedirect = () => {
     }
 
     // Reuse the last channel only if it was visited in THIS workspace — channel
-    // ids don't transfer across workspaces.
-    const lastInWorkspace = lastWorkspace === workspaceID ? lastChannel : ""
+    // ids don't transfer across workspaces — AND it still exists in the loaded
+    // list. A stale id (the channel was deleted, or access was lost) would
+    // otherwise redirect straight into a dead route; while the list is still
+    // loading this check simply fails and the empty-target guard below waits.
+    // Archived channels deliberately PASS this check: they remain viewable,
+    // so reopening one you were reading is fine.
+    const lastStillExists = channels.some((channel) => channel.name === lastChannel)
+    const lastInWorkspace = lastWorkspace === workspaceID && lastStillExists ? lastChannel : ""
     const target = lastInWorkspace || firstChannel
 
     // Nothing to open yet: still loading, or the workspace has no channels (the

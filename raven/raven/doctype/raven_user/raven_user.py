@@ -15,17 +15,10 @@ class RavenUser(Document):
 
 	if TYPE_CHECKING:
 		from frappe.types import DF
-
-		from raven.raven.doctype.raven_grouped_channels.raven_grouped_channels import (
-			RavenGroupedChannels,
-		)
+		from raven.raven.doctype.raven_grouped_channels.raven_grouped_channels import RavenGroupedChannels
 		from raven.raven.doctype.raven_pinned_channels.raven_pinned_channels import RavenPinnedChannels
-		from raven.raven.doctype.raven_user_pinned_workspaces.raven_user_pinned_workspaces import (
-			RavenUserPinnedWorkspaces,
-		)
-		from raven.raven_channel_management.doctype.raven_channel_groups.raven_channel_groups import (
-			RavenChannelGroups,
-		)
+		from raven.raven.doctype.raven_user_pinned_workspaces.raven_user_pinned_workspaces import RavenUserPinnedWorkspaces
+		from raven.raven_channel_management.doctype.raven_channel_groups.raven_channel_groups import RavenChannelGroups
 
 		availability_status: DF.Literal["", "Available", "Away", "Do not disturb", "Invisible"]
 		bot: DF.Link | None
@@ -39,10 +32,12 @@ class RavenUser(Document):
 		first_name: DF.Data | None
 		full_name: DF.Data
 		grouped_channels: DF.Table[RavenGroupedChannels]
+		hide_read_receipts: DF.Check
 		last_mention_viewed_on: DF.Datetime | None
 		link_previews: DF.Literal["Link Hover", "Preview Card"]
 		pinned_channels: DF.Table[RavenPinnedChannels]
 		pinned_workspaces: DF.Table[RavenUserPinnedWorkspaces]
+		quiet_hours_nudge: DF.Literal["No Nudge", "Nudge", "Auto Silent"]
 		sort_channels_by: DF.Literal["Alphabetical Order", "Recent Activity", "Unreads First"]
 		time_format: DF.Literal["12-hour", "24-hour"]
 		type: DF.Literal["User", "Bot"]

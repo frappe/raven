@@ -14,11 +14,8 @@ class RavenSettings(Document):
 
 	if TYPE_CHECKING:
 		from frappe.types import DF
-
 		from raven.raven.doctype.raven_blocked_links.raven_blocked_links import RavenBlockedLinks
-		from raven.raven_integrations.doctype.raven_hr_company_workspace.raven_hr_company_workspace import (
-			RavenHRCompanyWorkspace,
-		)
+		from raven.raven_integrations.doctype.raven_hr_company_workspace.raven_hr_company_workspace import RavenHRCompanyWorkspace
 
 		auto_add_system_users: DF.Check
 		auto_create_department_channel: DF.Check
@@ -30,6 +27,7 @@ class RavenSettings(Document):
 		enable_google_apis: DF.Check
 		enable_local_llm: DF.Check
 		enable_openai_services: DF.Check
+		enable_quiet_hours: DF.Check
 		frappe_meet_hosted_urls: DF.SmallText | None
 		google_processor_location: DF.Literal["us", "eu"]
 		google_project_id: DF.Data | None
@@ -50,6 +48,8 @@ class RavenSettings(Document):
 		tenor_api_key: DF.Data | None
 		use_website_favicon: DF.Check
 		vapid_public_key: DF.Data | None
+		working_hours_end: DF.Time | None
+		working_hours_start: DF.Time | None
 	# end: auto-generated types
 
 	def validate(self):

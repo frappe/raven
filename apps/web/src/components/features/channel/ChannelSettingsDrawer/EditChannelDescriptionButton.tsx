@@ -170,7 +170,7 @@ export const EditChannelDescriptionButton = ({
           }}
           render={({ field }) => (
             <FormItem>
-              <FormLabel>{_("Channel name")}</FormLabel>
+              <FormLabel>{_("Channel Name")}</FormLabel>
               <FormControl>
                 <ChannelNameInput
                   value={field.value}
@@ -188,7 +188,7 @@ export const EditChannelDescriptionButton = ({
           name="channel_description"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>{_("Channel description")}</FormLabel>
+              <FormLabel>{_("Channel Description")}</FormLabel>
               <FormControl>
                 <ChannelDescriptionInput
                   value={field.value ?? ""}
@@ -261,7 +261,7 @@ export const EditChannelDescriptionButton = ({
       </Tooltip>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{_("Edit Channel Name and Description")}</DialogTitle>
+          <DialogTitle>{_("Edit channel details")}</DialogTitle>
           <DialogDescription className="sr-only">
             {_("Update the channel name and description")}
           </DialogDescription>

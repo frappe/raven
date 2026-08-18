@@ -21,7 +21,7 @@ export const useEnabledMessageActions = (): EnabledMessageAction[] => {
             orderBy: { field: "action_name", order: "asc" },
         },
         "message-actions-list",
-        { revalidateOnFocus: false },
+        { revalidateOnFocus: false, revalidateOnReconnect: false, focusThrottleInterval: 5 * 60 * 1000, dedupingInterval: 5 * 60 * 1000 },
     )
     return data ?? NO_ACTIONS
 }

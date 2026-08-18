@@ -10,6 +10,7 @@ import { PageHeader } from "@components/layout/PageHeader"
 import { NotificationsEmptyState, type SelectedNotification } from "@pages/notifications/NotificationChat"
 import { Input } from "@components/ui/input"
 import { useIsMobile } from "@hooks/use-mobile"
+import { useLayerInAnimation } from "@hooks/useLayerInAnimation"
 import { useChannelList } from "@stores/channels/useChannelList"
 import { useUsers } from "@hooks/useUsers"
 import { cn } from "@lib/utils"
@@ -38,6 +39,8 @@ const SavedMessages = () => {
     const navigate = useNavigate()
     const selectedMessageID = useMatch("/saved-messages/:channelID/:messageID")?.params.messageID
     const hasSelection = !!selectedMessageID
+    // No slide when the chat layer is already open on a BACK arrival — see the hook.
+    const layerAnimation = useLayerInAnimation(hasSelection)
 
     const onSelect = (selection: SelectedNotification) => {
         navigate(
@@ -144,7 +147,8 @@ const SavedMessages = () => {
                     open, so the list underneath keeps its scroll position. */}
                 <div className={cn(
                     "flex flex-col min-w-0 min-h-0 bg-surface-gray-1",
-                    "max-md:absolute max-md:inset-0 max-md:z-20 animate-layer-in",
+                    "max-md:absolute max-md:inset-0 max-md:z-20",
+                    layerAnimation,
                     !hasSelection && "max-md:hidden",
                     "md:flex-1",
                 )}>

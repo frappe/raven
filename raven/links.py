@@ -63,6 +63,35 @@ PROVIDER_DOMAINS = [
 # get a preview doc. Truncating them would corrupt the join key.
 MAX_PREVIEW_URL_LENGTH = 500
 
+# Path planes on the SITE'S OWN host that belong to apps, not the public
+# website. Links into these never get a fetched preview: they are
+# authenticated surfaces (desk old and new, the API and file planes, SPA
+# apps like CRM and Helpdesk), so an anonymous fetch could only ever
+# preview a login page. Everything ELSE on the site host — the blog, docs,
+# any published web page — is the public website: it falls through to the
+# provider registry and previews like any external link (on frappe.io that
+# lands on the Frappe provider). safe_fetch stays the SSRF boundary for
+# those fetches — public-IP resolution, pinned connection, no session —
+# not this host check.
+SITE_APP_PATH_PREFIXES = (
+	"/app",
+	"/desk",
+	"/api",
+	"/private",
+	"/files",
+	"/assets",
+	"/login",
+	"/crm",
+	"/helpdesk",
+)
+
+
+def _path_is_under(path: str, prefix: str) -> bool:
+	"""True when `path` is `prefix` itself or nested inside it — never a
+	sibling that merely shares the spelling ("/application" is not "/app")."""
+	return path == prefix or path.startswith(prefix + "/")
+
+
 # Videos Raven refuses to preview, ever. Currently one famous video —
 # a rickroll should stay a surprise. The client skips its embed too
 # (LinkPreview.tsx keeps the same list). Server-side, no preview doc is
@@ -144,13 +173,20 @@ def detect_provider(normalized_url: str | None) -> str:
 	if host in get_frappe_meet_hosts():
 		return "Frappe Meet"
 
-	# A link back to this site itself. Raven's own pages (permalinks,
-	# channels, threads) get their own provider, so a search filter can
-	# tell them apart from links to other documents on the site.
+	# A link back to this site itself. Only the APP PLANES get the site
+	# providers (and with them the no-fetch treatment): Raven's own pages,
+	# then desk/API/file surfaces and SPA apps. The site's public website —
+	# a blog post, a docs page — deliberately falls THROUGH to the provider
+	# registry below, so a Raven prod hosted on frappe.io still previews
+	# frappe.io blog posts. Paths are compared lowercased: Frappe routes are
+	# lowercase, and a case-mangled app path falling through only costs a
+	# junk login-page preview, never a leak (the fetch is anonymous).
 	if host == get_site_host():
-		if parts.path == "/raven" or parts.path.startswith("/raven/"):
+		path = parts.path.lower()
+		if _path_is_under(path, "/raven"):
 			return "Raven Link"
-		return "Site Document Link"
+		if any(_path_is_under(path, prefix) for prefix in SITE_APP_PATH_PREFIXES):
+			return "Site Document Link"
 
 	for provider, domains in PROVIDER_DOMAINS:
 		for domain in domains:

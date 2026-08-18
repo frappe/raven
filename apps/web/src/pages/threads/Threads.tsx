@@ -13,6 +13,7 @@ import { ThreadMessage } from "../../types/ThreadMessage"
 import { useChannelList } from "@stores/channels/useChannelList"
 import { unreadThreadsStore } from "@stores/threads/unreadStore"
 import { useIsMobile } from "@hooks/use-mobile"
+import { useLayerInAnimation } from "@hooks/useLayerInAnimation"
 import _ from "@lib/translate"
 import { cn } from "@lib/utils"
 import { useUsers } from "@hooks/useUsers"
@@ -51,6 +52,9 @@ export default function Threads() {
     // ThreadDrawerRoute resolves it from the thread's (already-fetched) root message instead.
     const parentChannelID = (state as ThreadNavState)?.parentChannelID
     const hasThread = !!threadID
+    // No slide when the thread layer is already open on a BACK arrival (e.g.
+    // returning from "Go to channel") — see the hook.
+    const layerAnimation = useLayerInAnimation(hasThread)
 
     const onThreadClick = useCallback((thread: ThreadMessage) => {
         // Engaging with a thread = reading it: clear its unread dot immediately (optimistic;
@@ -158,7 +162,7 @@ export default function Threads() {
                     {/* The Outlet is null when no thread route is open — hide the empty
                         layer then, so it can't sit over the list and eat taps. Covers
                         the footer too (inset-0 of the outer column). */}
-                    <div className={cn("absolute inset-0 z-20 flex flex-col bg-surface-base animate-layer-in", !hasThread && "hidden")}>
+                    <div className={cn("absolute inset-0 z-20 flex flex-col bg-surface-base", layerAnimation, !hasThread && "hidden")}>
                         <Outlet context={{ parentChannelID, showOpenChannel: true }} />
                     </div>
                 </div>

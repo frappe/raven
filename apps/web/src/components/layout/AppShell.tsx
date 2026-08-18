@@ -31,6 +31,7 @@ import { useReportActiveState } from "@stores/presence/useReportActiveState"
 import { usePushNotificationNavigation } from "@hooks/usePushNotificationNavigation"
 import { useAppBadge } from "@hooks/useAppBadge"
 import { useClearReadNotifications } from "@hooks/useClearReadNotifications"
+import { useRemovedChannelCleanup } from "@hooks/useRemovedChannelCleanup"
 import DocumentTitle from "./DocumentTitle"
 import { AppUpdateAlert } from "./AppUpdateAlert"
 import { SessionBroadcast } from "./SessionBroadcast"
@@ -158,6 +159,10 @@ const AppListeners = ({ children }: { children: React.ReactNode }) => {
     useAppBadge()
     // Sweeps tray notifications for channels/threads that are no longer unread
     useClearReadNotifications()
+    // Tears down state for channels that vanish from the channel list (deleted /
+    // access lost): message store + socket room, stale last-visited, and a
+    // redirect off the dead route if it's on screen
+    useRemovedChannelCleanup()
 
     if (!isReady) {
         return <MainPageSkeleton />
