@@ -2,8 +2,9 @@ import json
 import mimetypes
 
 import frappe
+from frappe import _
 from frappe.search.sqlite_search import SQLiteSearch
-from pypika import JoinType, Order
+from pypika import Case, JoinType, Order
 
 from raven.api.document_link import get_preview_data
 from raven.api.raven_channel import get_channel_list
@@ -167,7 +168,7 @@ class RavenSearch(SQLiteSearch):
 		return content
 
 	def get_list(self, filters=None, limit: int = 20):
-		"""Get list of documents without a search query, applying filters and permissions"""
+		"""Get list of documents without a search query, applying filters and permissions."""
 		if not self.is_search_enabled():
 			return []
 
@@ -238,13 +239,15 @@ class RavenSearch(SQLiteSearch):
 
 		select_clause = ", ".join(select_fields)
 
-		# Execute SQL
+		# Execute SQL. doc_id tiebreaks identical creation values for a
+		# deterministic order. int() on limit: it is interpolated, never
+		# trust it as a string.
 		sql = f"""
 			SELECT {select_clause}
 			FROM search_fts
 			{filter_clause}
-			ORDER BY creation DESC
-			LIMIT {limit}
+			ORDER BY creation DESC, doc_id DESC
+			LIMIT {int(limit)}
 		"""
 		raw_results = self.sql(sql, filter_params, read_only=True)
 
@@ -254,6 +257,7 @@ class RavenSearch(SQLiteSearch):
 
 @frappe.whitelist()
 def sqlite_search(query: str | None = None, filters: str | None = None, limit: int = 20):
+	"""Search (or, without a query, list) indexed messages, capped at limit."""
 	parsed_filters: dict = json.loads(filters) if filters else {}
 
 	if parsed_filters.pop("saved", None):
@@ -268,7 +272,92 @@ def sqlite_search(query: str | None = None, filters: str | None = None, limit: i
 	else:
 		results = search.search(query, filters=parsed_filters)["results"]
 
-	return results[:limit]
+	return results[: int(limit)]
+
+
+def channel_access_condition(perm_channel, perm_member, workspace_member, user):
+	"""
+	The access rule get_channel_list applies, as a WHERE condition for
+	direct-DB search queries. DMs need channel membership. Everything else
+	needs WORKSPACE membership — an Open channel is open to its workspace,
+	not the whole site — plus channel membership when the channel is
+	Private.
+
+	Callers must LEFT join perm_member and workspace_member against the
+	channel this condition checks. For thread messages that is the
+	thread's PARENT channel — thread channels carry no workspace of their
+	own.
+	"""
+	return ((perm_channel.is_direct_message == 1) & (perm_member.user_id == user)) | (
+		(workspace_member.user == user)
+		& ((perm_channel.type != "Private") | (perm_member.user_id == user))
+	)
+
+
+@frappe.whitelist(methods=["GET"])
+def get_channel_files(
+	channel_id: str,
+	search_text: str | None = None,
+	limit: int = 20,
+	cursor_creation: str | None = None,
+	cursor_id: str | None = None,
+):
+	"""List a channel's File/Image messages straight from MariaDB.
+
+	The channel Files tab used the SQLite search index, which is updated by a
+	background queue every ~5 minutes — so a just-uploaded file did not appear
+	until the queue ran (even on refresh). This reads the source of truth, so
+	a new file shows up immediately.
+
+	Keyset pagination on (creation, name) DESC: pass the last row's creation and
+	name to get the next page — stable when new messages arrive between pages.
+	`search_text` is a filename LIKE (the field stores the file's path/URL).
+	"""
+	# Same single-channel access check the message stream uses.
+	if not frappe.has_permission(doctype="Raven Channel", doc=channel_id, ptype="read"):
+		frappe.throw(_("You do not have permission to access this channel"), frappe.PermissionError)
+
+	message = frappe.qb.DocType("Raven Message")
+
+	# Aliased to the shape the client already consumes (SearchResult): id,
+	# internal_link, author. The filename and extension are derived on the
+	# client from internal_link, the same way message attachments are — no
+	# need to duplicate that here (file_type is not even a stored column).
+	query = (
+		frappe.qb.from_(message)
+		.select(
+			message.name.as_("id"),
+			message.file.as_("internal_link"),
+			message.message_type,
+			message.file_size,
+			message.file_thumbnail,
+			message.thumbnail_width,
+			message.thumbnail_height,
+			message.owner.as_("author"),
+			message.creation,
+		)
+		.where(message.channel_id == channel_id)
+		.where(message.message_type.isin(["File", "Image"]))
+		.orderby(message.creation, order=Order.desc)
+		.orderby(message.name, order=Order.desc)
+		.limit(int(limit))
+	)
+
+	if search_text:
+		query = query.where(message.file.like(f"%{search_text}%"))
+
+	# Keyset cursor: rows strictly older than the cursor row. name breaks ties
+	# on identical creation timestamps so no row is skipped or repeated.
+	if cursor_creation:
+		if cursor_id:
+			query = query.where(
+				(message.creation < cursor_creation)
+				| ((message.creation == cursor_creation) & (message.name < cursor_id))
+			)
+		else:
+			query = query.where(message.creation < cursor_creation)
+
+	return query.run(as_dict=True)
 
 
 @frappe.whitelist()
@@ -297,6 +386,12 @@ def get_search_result(
 	channel = frappe.qb.DocType("Raven Channel")
 	message = frappe.qb.DocType("Raven Message")
 	file_doc = frappe.qb.DocType("File")
+	workspace_member = frappe.qb.DocType("Raven Workspace Member")
+	# For thread messages, access is decided by the thread's PARENT
+	# channel — resolved via the root message (its name IS the thread
+	# channel's name).
+	thread_root = frappe.qb.DocType("Raven Message").as_("thread_root")
+	perm_channel = frappe.qb.DocType("Raven Channel").as_("perm_channel")
 
 	# File extension mappings
 	file_extensions = {
@@ -351,11 +446,28 @@ def get_search_result(
 		)
 		.join(channel, JoinType.left)
 		.on(message.channel_id == channel.name)
+		.join(thread_root, JoinType.left)
+		.on(thread_root.name == channel.name)
+		.join(perm_channel, JoinType.left)
+		.on(
+			perm_channel.name
+			== Case().when(channel.is_thread == 1, thread_root.channel_id).else_(channel.name)
+		)
 		.join(channel_member, JoinType.left)
-		.on(channel_member.channel_id == message.channel_id)
+		.on(
+			(channel_member.channel_id == perm_channel.name)
+			& (channel_member.user_id == frappe.session.user)
+		)
+		.join(workspace_member, JoinType.left)
+		.on(
+			(workspace_member.workspace == perm_channel.workspace)
+			& (workspace_member.user == frappe.session.user)
+		)
 		.join(file_doc, JoinType.left)
 		.on(message.name == file_doc.attached_to_name)
-		.where(channel_member.user_id == frappe.session.user)
+		.where(
+			channel_access_condition(perm_channel, channel_member, workspace_member, frappe.session.user)
+		)
 	)
 
 	if filter_type == "File":
@@ -377,10 +489,24 @@ def get_search_result(
 				channel.is_archived,
 			)
 			.join(channel_member, JoinType.left)
-			.on(channel_member.channel_id == channel.name)
+			.on(
+				(channel_member.channel_id == channel.name) & (channel_member.user_id == frappe.session.user)
+			)
+			.join(workspace_member, JoinType.left)
+			.on(
+				(workspace_member.workspace == channel.workspace)
+				& (workspace_member.user == frappe.session.user)
+			)
 			.where(channel.is_direct_message == 0)
-			# .where(doctype.is_thread == 0)
-			.where((channel.type != "Private") | (channel_member.user_id == frappe.session.user))
+			# Thread channels carry no workspace and are not browsable channels.
+			.where(channel.is_thread == 0)
+			# Same rule as get_channel_list: a channel's name is only
+			# visible to its workspace's members (its own members, when
+			# private) — a Public channel of ANOTHER workspace leaked here.
+			.where(
+				(workspace_member.user == frappe.session.user)
+				& ((channel.type != "Private") | (channel_member.user_id == frappe.session.user))
+			)
 			.distinct()
 		)
 
@@ -446,11 +572,17 @@ def search_links(
 	mentions_me: int | None = None,
 	saved: int | None = None,
 	has_reactions: int | None = None,
+	providers: str | None = None,
 	start_after: int = 0,
 	limit: int = 20,
 ):
 	"""
-	Search through Raven Link Previews joined with linked Raven Message.
+	Search through message links, with their stored previews when the
+	pipeline has one. Based on the Raven Message Links child table, so a
+	link is searchable the moment its message is saved — including links
+	that never get preview docs (meeting links, Raven's own links).
+	`providers` is a JSON list of provider names (the child rows carry the
+	provider, precomputed at message save).
 	"""
 
 	user = frappe.session.user
@@ -460,21 +592,36 @@ def search_links(
 	message = frappe.qb.DocType("Raven Message")
 	channel = frappe.qb.DocType("Raven Channel")
 	channel_member = frappe.qb.DocType("Raven Channel Member")
+	workspace_member = frappe.qb.DocType("Raven Workspace Member")
 	# For thread messages, the parent channel of the THREAD CHANNEL is resolved via the Raven Message whose name == thread channel name.
 	thread_root = frappe.qb.DocType("Raven Message").as_("thread_root")
+	# The channel that DECIDES access: the thread's parent for thread
+	# messages (thread channels carry no workspace), the channel itself
+	# otherwise.
+	perm_channel = frappe.qb.DocType("Raven Channel").as_("perm_channel")
 
 	query = (
-		frappe.qb.from_(link_preview)
-		.inner_join(msg_link)
-		.on((msg_link.url == link_preview.name) & (msg_link.parenttype == "Raven Message"))
+		frappe.qb.from_(msg_link)
+		# The join contract: child rows store the normalized url, preview
+		# docs are keyed by it. (The old join matched the raw url against
+		# the preview doc's hash NAME, which never matched Layer-2 docs.)
+		.left_join(link_preview)
+		.on(link_preview.url == msg_link.normalized_url)
 		.inner_join(message)
-		.on(message.name == msg_link.parent)
+		.on((message.name == msg_link.parent) & (msg_link.parenttype == "Raven Message"))
 		.inner_join(channel)
 		.on(channel.name == message.channel_id)
-		.left_join(channel_member)
-		.on((channel_member.channel_id == message.channel_id) & (channel_member.user_id == user))
 		.left_join(thread_root)
 		.on(thread_root.name == channel.name)
+		.left_join(perm_channel)
+		.on(
+			perm_channel.name
+			== Case().when(channel.is_thread == 1, thread_root.channel_id).else_(channel.name)
+		)
+		.left_join(channel_member)
+		.on((channel_member.channel_id == perm_channel.name) & (channel_member.user_id == user))
+		.left_join(workspace_member)
+		.on((workspace_member.workspace == perm_channel.workspace) & (workspace_member.user == user))
 		.select(
 			message.name.as_("id"),
 			message.channel_id,
@@ -485,14 +632,17 @@ def search_links(
 			channel.is_thread,
 			channel.type.as_("channel_type"),
 			thread_root.channel_id.as_("parent_channel_id"),
-			link_preview.name.as_("url"),
+			# The raw link, exactly as written in the message.
+			msg_link.url.as_("url"),
+			msg_link.provider,
 			link_preview.title,
 			link_preview.description,
 			link_preview.image,
 			link_preview.site_name,
 		)
-		# Permission: open channel OR user is member
-		.where((channel.type == "Open") | (channel_member.user_id == user))
+		# Same rule as get_channel_list. The old "Open OR member" clause
+		# leaked Open channels of workspaces the user is not a member of.
+		.where(channel_access_condition(perm_channel, channel_member, workspace_member, user))
 		.distinct()
 	)
 
@@ -502,15 +652,20 @@ def search_links(
 			(link_preview.title.like(like))
 			| (link_preview.description.like(like))
 			| (link_preview.site_name.like(like))
+			# Links without a fetched preview are still findable by URL.
+			| (msg_link.url.like(like))
 		)
+
+	if providers:
+		provider_list = json.loads(providers) if isinstance(providers, str) else providers
+		if provider_list:
+			query = query.where(msg_link.provider.isin(provider_list))
 
 	if channel_id:
 		query = query.where(message.channel_id == channel_id)
 
 	if parent_channel_id:
 		# If message is in a thread channel use thread_root.channel_id, else message.channel_id
-		from pypika import Case
-
 		resolved_parent = (
 			Case().when(channel.is_thread == 1, thread_root.channel_id).else_(message.channel_id)
 		)
@@ -569,21 +724,8 @@ def search_links(
 
 	results = query.run(as_dict=True)
 
-	# Lazy backfill: enqueue preview fetch for rows with no title (likely brought in by
-	# the v3 link migration patch which bulk-inserted Raven Link Preview rows without
-	# triggering before_insert -> fetch_preview). One job per call, dedup via job_name.
-	blank_urls = [r["url"] for r in results if not r.get("title") and r.get("url")]
-	if blank_urls:
-		from frappe.utils.background_jobs import enqueue, is_job_enqueued
-
-		# Cap to avoid huge jobs; remaining rows get backfilled on subsequent reads.
-		blank_urls = blank_urls[:50]
-		job_id = f"search_links_backfill_{frappe.session.user}"
-		if not is_job_enqueued(job_id):
-			enqueue(
-				method="raven.api.preview_links.update_link_previews",
-				urls=json.dumps(blank_urls),
-				job_name=job_id,
-			)
+	# Rows with no title are links whose preview has not been fetched (or
+	# never will be — meeting links, Raven's own links). The client shows
+	# the raw URL for those.
 
 	return results

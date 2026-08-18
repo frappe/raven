@@ -10,9 +10,18 @@
   "title",
   "description",
   "image",
+  "image_preview",
+  "image_width",
+  "image_height",
   "site_name",
+  "metadata",
   "url",
-  "fetched_on"
+  "provider",
+  "status",
+  "fetch_attempts",
+  "fetch_error",
+  "fetched_on",
+  "stale_after"
  ],
  "fields": [
   {
@@ -51,12 +60,63 @@
    "fieldname": "fetched_on",
    "fieldtype": "Datetime",
    "label": "Fetched On"
+  },
+  {
+   "fieldname": "provider",
+   "fieldtype": "Select",
+   "label": "Provider",
+   "options": "Other\nWikipedia\nFrappe\nSite Document Link\nRaven Link\nFrappe Meet\nGoogle Meet\nZoom\nYouTube\nYouTube Music\nSpotify\nApple Music\nApple Podcasts\nSoundCloud\nLoom\nVimeo\nReddit\nFigma\nX\nGitHub\nHacker News"
+  },
+  {
+   "default": "Pending",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Pending\nFetched\nFailed\nBlocked"
+  },
+  {
+   "fieldname": "fetch_attempts",
+   "fieldtype": "Int",
+   "label": "Fetch Attempts"
+  },
+  {
+   "fieldname": "fetch_error",
+   "fieldtype": "Small Text",
+   "label": "Fetch Error"
+  },
+  {
+   "fieldname": "stale_after",
+   "fieldtype": "Datetime",
+   "label": "Stale After"
+  },
+  {
+   "fieldname": "image_width",
+   "fieldtype": "Int",
+   "label": "Image Width"
+  },
+  {
+   "fieldname": "image_height",
+   "fieldtype": "Int",
+   "label": "Image Height"
+  },
+  {
+   "fieldname": "image_preview",
+   "fieldtype": "Image",
+   "label": "image_preview",
+   "options": "image"
+  },
+  {
+   "fieldname": "metadata",
+   "fieldtype": "JSON",
+   "label": "Metadata"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-06-21 02:28:27.730565",
+ "modified": "2026-08-09 16:28:54.232620",
  "modified_by": "Administrator",
  "module": "Raven Messaging",
  "name": "Raven Link Preview",

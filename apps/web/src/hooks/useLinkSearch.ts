@@ -13,6 +13,7 @@ export type LinkSearchResult = {
     channel_type: string
     parent_channel_id?: string
     url: string
+    provider?: string
     title?: string
     description?: string
     image?: string
@@ -41,6 +42,13 @@ const buildParams = (query: string | undefined, filters: SearchFilters | undefin
         if (Array.isArray(v)) continue
         out[k] = v as string | number
     }
+
+    // Picker option ids ARE the server's provider names — one vocabulary
+    // end to end (option id, URL param, API filter).
+    if (filters.link_provider?.length) {
+        out.providers = JSON.stringify(filters.link_provider)
+    }
+
     return out
 }
 

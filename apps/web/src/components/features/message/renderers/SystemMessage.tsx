@@ -56,8 +56,13 @@ const parseData = (data: SystemMessageProps["data"]): SystemMessageData | null =
 const OthersRoster = ({ ids }: { ids: string[] }) => {
     const usersById = useUsersById()
     return (
-        <ScrollArea viewportClassName="max-h-64">
-            <div className="flex flex-col gap-2.5 py-0.5 pr-1">
+        // The card pads only the top and left (see the content classNames
+        // below): rows scroll to the card's bottom edge (scroll-fade dims the
+        // cut) and the scrollbar sits flush against its right edge — Radix
+        // pins the bar to this ScrollArea's edge, so any card padding around
+        // it reads as a gap. The row padding lives INSIDE the scroll instead.
+        <ScrollArea viewportClassName="max-h-64 scroll-fade">
+            <div className="flex flex-col gap-2.5 pt-2 pl-2 pb-2 pr-2.5">
                 {ids.map((id) => {
                     const user = usersById.get(id)
                     return (
@@ -111,7 +116,7 @@ const SystemMessage: React.FC<SystemMessageProps> = ({ message, time, data }) =>
                         {isMobile ? (
                             <Popover>
                                 <PopoverTrigger asChild>{othersLabel}</PopoverTrigger>
-                                <PopoverContent align="start" className="w-56 p-2">
+                                <PopoverContent align="start" className="w-56 p-0">
                                     <OthersRoster ids={restIDs} />
                                 </PopoverContent>
                             </Popover>
@@ -120,7 +125,7 @@ const SystemMessage: React.FC<SystemMessageProps> = ({ message, time, data }) =>
                                 <HoverCardTrigger asChild>{othersLabel}</HoverCardTrigger>
                                 {/* stopPropagation: wheel inside the card must scroll the card,
                                     not the chat stream underneath. */}
-                                <HoverCardContent align="start" className="w-56 p-2" onWheel={(e) => e.stopPropagation()}>
+                                <HoverCardContent align="start" className="w-56 p-0" onWheel={(e) => e.stopPropagation()}>
                                     <OthersRoster ids={restIDs} />
                                 </HoverCardContent>
                             </HoverCard>

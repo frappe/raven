@@ -6,6 +6,7 @@ import { useContext } from 'react'
 import { toast } from 'sonner'
 import { formatBytes, getFileExtension } from '@raven/lib/utils/operations'
 import { randomUUID } from '@lib/uuid'
+import { measureMediaDimensions } from '@lib/mediaDimensions'
 import _ from '@lib/translate'
 
 /**
@@ -58,6 +59,11 @@ export interface UploadedFile {
     size: number,
     /** When the file was uploaded in milliseconds */
     timestamp: number
+    /** Display size, measured in-browser for videos and images (see
+     *  measureMediaDimensions) — rides the send so the message and its
+     *  optimistic placeholder reserve the box up front. */
+    width?: number
+    height?: number
 }
 
 
@@ -155,6 +161,8 @@ export const useAttachFile = (channelID: string) => {
         const isStillTracked = (id: string) => store.get(uploadingFilesAtom(channelID)).some((item) => item.id === id)
 
         for (const f of filesToBeUploaded) {
+            // Measured in parallel with the upload — resolved long before it.
+            const dimensions = measureMediaDimensions(f.file)
             file.uploadFile(f.file, {
                 doctype: 'Raven Message',
                 isPrivate: true
@@ -167,8 +175,9 @@ export const useAttachFile = (channelID: string) => {
                     if (!current || current.uploadProgress === progressPercentage) return prevFiles
                     return prevFiles.map((item) => item.id === f.id ? { ...item, uploadProgress: progressPercentage, status: 'uploading' as const } : item)
                 })
-            }).then(res => {
+            }).then(async res => {
                 if (!isStillTracked(f.id)) return
+                const dims = await dimensions
                 // When upload is finished, add the file to the uploaded files atom and remove from the uploading files atom
                 setUploadedFiles((prevFiles) => [...prevFiles, {
                     fileID: res.data.message.name,
@@ -177,7 +186,9 @@ export const useAttachFile = (channelID: string) => {
                     fileName: f.fileName,
                     // Prefer the server's File.file_size (authoritative); fall back to the browser size.
                     size: res.data.message.file_size ?? f.size,
-                    timestamp: f.timestamp
+                    timestamp: f.timestamp,
+                    width: dims?.width,
+                    height: dims?.height,
                 }])
                 setUploadingFiles((prevFiles) => prevFiles.filter((item) => item.id !== f.id))
 

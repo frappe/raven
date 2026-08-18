@@ -2,6 +2,7 @@ import { useMemo, useState } from "react"
 import { Element, Text, domToReact, htmlToDOM, type DOMNode, type HTMLReactParserOptions } from "html-react-parser"
 import { UserMention, ChannelMention } from "./MessageMention"
 import { CodeBlock } from "./MessageCodeBlock"
+import { MessageLink } from "./LinkPreviewCard"
 import { cn } from "@lib/utils"
 import _ from "@lib/translate"
 
@@ -137,12 +138,14 @@ const options: HTMLReactParserOptions = {
         }
 
         // Sanitize links: safe scheme only, always open in a new tab.
+        // MessageLink renders the same anchor, plus the floating preview
+        // when the user chose "Link Hover" mode.
         if (node.name === "a") {
             const href = (node.attribs?.href ?? "").trim()
             return (
-                <a href={SAFE_HREF.test(href) ? href : undefined} target="_blank" rel="noopener noreferrer nofollow">
+                <MessageLink href={SAFE_HREF.test(href) ? href : undefined}>
                     {domToReact(node.children as DOMNode[], options)}
-                </a>
+                </MessageLink>
             )
         }
     },

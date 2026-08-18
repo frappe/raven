@@ -3,7 +3,7 @@ import { Separator } from "@components/ui/separator"
 import { SettingsPanelDescription, SettingsPanelHeader, SettingsPanelTitle, SettingsPanelContent, SettingsFormLabel, SettingsFormDescription, SettingsFormRow } from "@components/ui/settings-dialog"
 import { Switch } from "@components/ui/switch"
 import { useAtom, useAtomValue, useSetAtom } from "jotai"
-import { EnterKeyBehaviourAtom, QuickEmojisAtom, TimeFormat, timeFormatAtom } from "@utils/preferences"
+import { EnterKeyBehaviourAtom, QuickEmojisAtom, TimeFormat, hideReadReceiptsAtom, timeFormatAtom } from "@utils/preferences"
 import _ from "@lib/translate"
 import { useFrappePostCall } from "frappe-react-sdk"
 import { toast } from "sonner"
@@ -15,6 +15,8 @@ import { useTheme } from "@components/theme-provider"
 import { customEmojiCategoriesAtom } from "@lib/emojiMart"
 import Picker from "@emoji-mart/react"
 import { errorResponseToast } from "@components/ui/error-banner"
+import { LinkSettingsAdminSection } from "./LinkSettingsAdminSection"
+import { Fragment } from "react"
 
 const Preferences = () => {
 
@@ -23,6 +25,8 @@ const Preferences = () => {
     const { call } = useFrappePostCall('frappe.client.set_value')
 
     const setTimeFormatAtomValue = useSetAtom(timeFormatAtom)
+    // Read + write the atom (boot-seeded) — hot paths read it instead of the profile cache.
+    const [hideReadReceipts, setHideReadReceipts] = useAtom(hideReadReceiptsAtom)
 
     const updateValue = (fieldname: string, value: string | number) => {
         if (!myProfile?.name) return;
@@ -34,6 +38,9 @@ const Preferences = () => {
         }).then(() => {
             if (fieldname === 'time_format') {
                 setTimeFormatAtomValue(value as TimeFormat)
+            }
+            if (fieldname === 'hide_read_receipts') {
+                setHideReadReceipts(value === 1)
             }
             mutate()
             toast.success(_("Settings updated"), {
@@ -63,6 +70,7 @@ const Preferences = () => {
                             </div>
                             <div className="flex justify-end">
                                 <Switch
+                                    size="md"
                                     id="filter_recent_activity"
                                     className="dark:disabled:bg-surface-gray-2"
                                     checked={myProfile?.filter_recent_activity === 1}
@@ -82,10 +90,34 @@ const Preferences = () => {
                             </div>
                             <div className="flex justify-end">
                                 <Switch
+                                    size="md"
                                     id="filter_joined_channels"
                                     className="dark:disabled:bg-surface-gray-2"
                                     checked={myProfile?.filter_joined_channels === 1}
                                     onCheckedChange={(checked) => updateValue("filter_joined_channels", checked ? 1 : 0)}
+                                />
+                            </div>
+                        </SettingsFormRow>
+
+                        <Separator />
+
+                        <SettingsFormRow>
+                            <div className="flex flex-col">
+                                <SettingsFormLabel htmlFor="hide_read_receipts">{_("Read receipts")}</SettingsFormLabel>
+                                <SettingsFormDescription>
+                                    {_("When off, others won't see when you've read messages - and you won't be able to view read receipts on messages either.")}
+                                </SettingsFormDescription>
+                            </div>
+                            <div className="flex justify-end">
+                                {/* The switch reads POSITIVELY (on = receipts visible, the
+                                    default) while the stored field is hide_read_receipts —
+                                    hence the inversion both ways. */}
+                                <Switch
+                                    size="md"
+                                    id="hide_read_receipts"
+                                    className="dark:disabled:bg-surface-gray-2"
+                                    checked={!hideReadReceipts}
+                                    onCheckedChange={(checked) => updateValue("hide_read_receipts", checked ? 0 : 1)}
                                 />
                             </div>
                         </SettingsFormRow>
@@ -142,6 +174,9 @@ const Preferences = () => {
                         <Separator />
 
                         <QuickEmojis />
+
+                        {/* Renders nothing without the Raven Admin role. */}
+                        <LinkSettingsAdminSection />
                     </div>
 
                 </div>
@@ -201,42 +236,46 @@ const QuickEmojis = () => {
             <SettingsFormDescription>
                 {_("Set your favorite emojis for quick reactions.")}
                 <br />
-                {_("Click on any button to set your favorite emoji for quick reactions.")}
+                {_("First 4 show in the message toolbar on desktop; all 6 on mobile.")}
             </SettingsFormDescription>
         </div>
         <div className="flex gap-2">
             {quickEmojis.map((emoji, index) => (
-                <Popover key={index}>
-                    <PopoverTrigger asChild>
-                        <Button
-                            variant="outline"
-                            size="lg"
-                            isIconButton
-                            className="text-2xl"
-                        >
-                            {emoji.src ? (
-                                <img
-                                    src={emoji.src}
-                                    alt={emoji.id}
-                                    loading="lazy"
-                                    className="h-4.5 w-4.5 object-contain"
-                                    aria-hidden="true"
-                                />
-                            ) : (
-                                // em-emoji renders from the Apple set (initialized in
-                                // App.tsx) so reactions look the same on every platform
-                                <span className="flex h-4.5 w-4.5 items-center justify-center" aria-hidden="true">
-                                    <em-emoji native={emoji.native} set="native" size="1.1em" fallback={emoji.id} />
-                                </span>
-                            )}
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                        <Picker
-                            onEmojiSelect={(emoji: any) => handleEmojiSelect(index, emoji)} theme={themeValue} set="native" custom={customEmojis} previewPosition="none"
-                        />
-                    </PopoverContent>
-                </Popover>
+                <Fragment key={index}>
+                    {/* slots 5-6 never show on the desktop hover toolbar (slice(0, 4)) */}
+                    {index === 4 && <Separator orientation="vertical" className="h-6! self-center" />}
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant="outline"
+                                size="lg"
+                                isIconButton
+                                className="text-2xl"
+                            >
+                                {emoji.src ? (
+                                    <img
+                                        src={emoji.src}
+                                        alt={emoji.id}
+                                        loading="lazy"
+                                        className="h-4.5 w-4.5 object-contain"
+                                        aria-hidden="true"
+                                    />
+                                ) : (
+                                    // em-emoji renders from the Apple set (initialized in
+                                    // App.tsx) so reactions look the same on every platform
+                                    <span className="flex h-4.5 w-4.5 items-center justify-center" aria-hidden="true">
+                                        <em-emoji native={emoji.native} set="native" size="1.1em" fallback={emoji.id} />
+                                    </span>
+                                )}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                            <Picker
+                                onEmojiSelect={(emoji: any) => handleEmojiSelect(index, emoji)} theme={themeValue} set="native" custom={customEmojis} previewPosition="none"
+                            />
+                        </PopoverContent>
+                    </Popover>
+                </Fragment>
             ))}
         </div>
     </SettingsFormRow>

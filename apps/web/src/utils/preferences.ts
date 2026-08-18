@@ -18,6 +18,15 @@ export const chatStyleAtom = atom<ChatStyle>((window.frappe?.boot?.chat_style as
  */
 export const timeFormatAtom = atom<TimeFormat>((window.frappe?.boot?.raven_time_format as TimeFormat | undefined) ?? "12-hour")
 
+/**
+ * Whether the user hides read receipts (two-way: theirs are invisible AND
+ * they can't view others' — enforced server-side in get_message_readers).
+ * Seeded from boot and written by the Preferences panel on toggle, so hot
+ * paths (the message action menu) read a plain atom instead of subscribing
+ * to the profile SWR cache. Stored on Raven User as `hide_read_receipts`.
+ */
+export const hideReadReceiptsAtom = atom<boolean>(Boolean(window.frappe?.boot?.raven_hide_read_receipts))
+
 
 export const imageGroupingLayoutAtom = atomWithStorage<"stack" | "grid">("raven-image-grouping-layout", "stack")
 

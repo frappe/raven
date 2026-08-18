@@ -109,6 +109,8 @@ export function useLogout(): { logout: () => Promise<void>; isLoggingOut: boolea
             await caches.delete("raven-app-shell")
             await caches.delete("raven-avatars")
             await caches.delete("raven-media")
+            // Unconsumed notification-click URL (sw.js pending-click store).
+            await caches.delete("raven-pending-click")
         } catch {
             // Cache API unavailable (older browser) — nothing was cached either.
         }

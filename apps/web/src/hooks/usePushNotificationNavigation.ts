@@ -42,7 +42,15 @@ export const usePushNotificationNavigation = () => {
 
         const consumePending = () => {
             consumePendingNotificationClick().then((url) => {
-                if (url) navigateToUrl(url)
+                if (url) return navigateToUrl(url)
+                // Nothing yet — look once more shortly. A waking PWA can ask
+                // BEFORE the worker has finished handling the click; without
+                // this second look that click would be lost.
+                window.setTimeout(() => {
+                    consumePendingNotificationClick().then((late) => {
+                        if (late) navigateToUrl(late)
+                    })
+                }, 600)
             })
         }
 

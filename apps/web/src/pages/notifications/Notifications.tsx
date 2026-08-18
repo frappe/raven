@@ -16,6 +16,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@components/ui/empty"
 import { Skeleton } from "@components/ui/skeleton"
 import { useIsMobile } from "@hooks/use-mobile"
+import { useLayerInAnimation } from "@hooks/useLayerInAnimation"
 import { PageHeader } from "@components/layout/PageHeader"
 import AppMobileFooter from "@components/features/header/AppMobileFooter"
 import { NotificationsEmptyState, type SelectedNotification } from "./NotificationChat"
@@ -50,6 +51,8 @@ export default function Notifications() {
     const navigate = useNavigate()
     const selectedMessageID = useMatch("/notifications/:channelID/:messageID")?.params.messageID
     const hasSelection = !!selectedMessageID
+    // No slide when the chat layer is already open on a BACK arrival — see the hook.
+    const layerAnimation = useLayerInAnimation(hasSelection)
 
     const tab: "all" | "mention" | "reaction" =
         activeTab === "mentions" ? "mention" : activeTab === "reactions" ? "reaction" : "all"
@@ -243,7 +246,8 @@ export default function Notifications() {
                     outer column). Desktop: a normal column beside the list. */}
                 <div className={cn(
                     "flex min-w-0 min-h-0 flex-col bg-surface-gray-1",
-                    "max-md:absolute max-md:inset-0 max-md:z-20 animate-layer-in",
+                    "max-md:absolute max-md:inset-0 max-md:z-20",
+                    layerAnimation,
                     !hasSelection && "max-md:hidden",
                     "md:flex-1",
                 )}>

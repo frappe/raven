@@ -7,7 +7,12 @@ import { UserMinus, SearchIcon, Crown, MessagesSquareIcon, Ellipsis } from 'luci
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@components/ui/dropdown-menu';
 import _ from '@lib/translate';
 import { ChannelMemberData, loadChannelMembers } from '@hooks/useChannelMembers';
+import { useNoDragWhileScrolled } from '@hooks/useNoDragWhileScrolled';
 import { useCreateDM } from '@hooks/useCreateDM';
+import { useNavigateFromDrawer } from '@hooks/useNavigateFromDrawer';
+import { useIsMobile } from '@hooks/use-mobile';
+import { useSetAtom } from 'jotai';
+import { channelDrawerAtom } from '@utils/channelAtoms';
 import { Virtuoso } from 'react-virtuoso';
 import { useContext } from 'react';
 import { FrappeConfig, FrappeContext, useFrappeDeleteDoc, useFrappeUpdateDoc } from 'frappe-react-sdk';
@@ -21,6 +26,7 @@ import { ChannelListItem } from '@raven/types/common/ChannelListItem';
 const ChannelMembersList = ({ members, channel, allowSettingChange }: { members: ChannelMemberData[], channel: ChannelListItem, allowSettingChange: boolean }) => {
 
     const [searchQuery, setSearchQuery] = useDebounceValue('', 200)
+    const noDragProps = useNoDragWhileScrolled()
 
     const filteredMembers = useMemo(() => {
         if (!searchQuery) return members
@@ -58,10 +64,12 @@ const ChannelMembersList = ({ members, channel, allowSettingChange }: { members:
                     </p>
                 </div>
             ) : (
-                // data-vaul-no-drag: on mobile this list lives inside a vaul bottom
-                // sheet, which claims vertical touch drags as sheet gestures — the
-                // list never scrolled. This hands the touches back to the scroller.
-                <div className="flex-1 min-h-0 px-2" data-vaul-no-drag>
+                // Positional no-drag (see useNoDragWhileScrolled): on mobile this list
+                // lives inside a vaul bottom sheet, which claimed vertical touch drags
+                // as sheet gestures — the list never scrolled. The attribute hands
+                // touches back to the scroller, but only WHILE it's scrolled, so a
+                // pull-down from the top still dismisses the sheet.
+                <div {...noDragProps} className="flex-1 min-h-0 px-2">
                     <MembersList filteredMembers={filteredMembers} channelID={channel.name} allowSettingChange={allowSettingChange} />
                 </div>
             )}
@@ -69,11 +77,15 @@ const ChannelMembersList = ({ members, channel, allowSettingChange }: { members:
     )
 }
 
-/** Breathing room under the last member row. Inside the footer because Virtuoso is
- *  its own scroller — wrapper padding would sit outside the scroll. (DrawerContent
- *  pads past the home-indicator safe area on mobile.) Module-level so Virtuoso's
- *  component type stays stable. */
-const MembersListFooter = () => <div className="h-2" aria-hidden="true" />
+/** Breathing room under the last member row, PLUS the home-indicator safe area on
+ *  mobile (the sheet's DrawerContent is pb-0 so the list can scroll to the drawer's
+ *  true edge — container padding would hard-clip rows mid-air). Inside the footer
+ *  because Virtuoso is its own scroller — wrapper padding would sit outside the
+ *  scroll. On desktop env() is 0 and this is the old h-2. Module-level so
+ *  Virtuoso's component type stays stable. */
+const MembersListFooter = () => (
+    <div className="h-[calc(env(safe-area-inset-bottom)+0.5rem)]" aria-hidden="true" />
+)
 const membersListComponents = { Footer: MembersListFooter }
 
 const MembersList = ({ filteredMembers, channelID, allowSettingChange }: { filteredMembers: ChannelMemberData[], channelID: string, allowSettingChange: boolean }) => {
@@ -83,6 +95,22 @@ const MembersList = ({ filteredMembers, channelID, allowSettingChange }: { filte
     // Same "message this person" behaviour as the mention card / command menu:
     // routes to the existing DM (no request) or creates it first.
     const { createDM } = useCreateDM()
+    // On mobile this list lives in a bottom sheet — close it and let the
+    // navigation wait out its exit animation (see the hook), or the sheet gets
+    // baked into the OS back-swipe screenshot. On desktop the panel stays
+    // open on purpose: panels are furniture there, and navigating away simply
+    // leaves this channel's panel state behind.
+    const isMobile = useIsMobile()
+    const setDrawerType = useSetAtom(channelDrawerAtom(channelID))
+    const navigateFromDrawer = useNavigateFromDrawer(isMobile ? () => setDrawerType('') : undefined)
+
+    // The sheet stays open until the DM resolves — a failure (createDM toasts
+    // it) leaves the user in the member list instead of nowhere. Success
+    // closes and navigates through the hook.
+    const messageMember = (member: ChannelMemberData) =>
+        createDM(member.name, { navigate: false }).then((dmChannelID) => {
+            if (dmChannelID) navigateFromDrawer(`/dm-channel/${encodeURIComponent(dmChannelID)}`)
+        })
 
     const handleRemoveMember = (member: ChannelMemberData) => {
         if (!member.channel_member_name) return
@@ -108,6 +136,9 @@ const MembersList = ({ filteredMembers, channelID, allowSettingChange }: { filte
     return (
         <Virtuoso
             style={{ height: '100%', width: '100%' }}
+            // scroll-fade lands on Virtuoso's own scroller element, softening the
+            // edge where rows scroll past instead of a hard cut.
+            className="scroll-fade"
             data={filteredMembers}
             overscan={200}
             components={membersListComponents}
@@ -147,7 +178,7 @@ const MembersList = ({ filteredMembers, channelID, allowSettingChange }: { filte
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => createDM(member.name)}>
+                            <DropdownMenuItem onClick={() => messageMember(member)}>
                                 <MessagesSquareIcon />
                                 {_("Message")}
                             </DropdownMenuItem>

@@ -10,6 +10,10 @@ export interface BaseMessage {
     message_type: 'Text' | 'File' | 'Image' | 'Poll' | 'System',
     message_reactions?: string | null,
     is_continuation: 1 | 0
+    /** Stable React key for the stream row (stream selector decoration). A
+     *  v3 send keeps ONE key across the optimistic→ack swap (batch-id based),
+     *  so the row — and its media DOM — survives instead of remounting. */
+    render_key?: string
     is_reply: 1 | 0
     linked_message?: string | null
     link_doctype?: string

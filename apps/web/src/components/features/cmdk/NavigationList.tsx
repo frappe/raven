@@ -27,7 +27,7 @@ const GOTO_ITEMS = [
  * keywords-only filter already scores them — an item's `value` stays a stable
  * unique id and all the searchable text lives in `keywords`.
  */
-const NavigationList = () => {
+const NavigationList = ({ text }: { text: string }) => {
     const navigate = useNavigate()
     const setOpen = useSetAtom(commandMenuOpenAtom)
 
@@ -62,46 +62,48 @@ const NavigationList = () => {
         setOpen(false)
     }
 
+    const workspaceRows = myWorkspaces.length > 1 ? myWorkspaces.map((workspace) => (
+        <CommandItem
+            key={workspace.name}
+            value={`workspace-${workspace.name}`}
+            keywords={[workspace.workspace_name, 'workspace']}
+            onSelect={() => openWorkspace(workspace.name)}
+            className='cursor-pointer'
+        >
+            <WorkspaceLogo workspace={workspace} className="size-4 rounded" />
+            <span className="truncate">{workspace.workspace_name}</span>
+            {workspace.name === firstSegment && (
+                <Badge variant="subtle" size="sm" className="ml-auto">
+                    {_("Current")}
+                </Badge>
+            )}
+        </CommandItem>
+    )) : null
+
+    const gotoRows = GOTO_ITEMS.map((item) => (
+        <CommandItem
+            key={item.value}
+            value={item.value}
+            keywords={[...item.keywords]}
+            onSelect={() => {
+                navigate(item.to)
+                setOpen(false)
+            }}
+            className='cursor-pointer'
+        >
+            <item.icon className="h-4 w-4" />
+            <span>{_(item.label)}</span>
+        </CommandItem>
+    ))
+
+    // While searching, rows go bare into the palette's single ranking group
+    // (see CommandPalette). Browsing keeps the labeled sections.
+    if (text) return <>{workspaceRows}{gotoRows}</>
+
     return (
         <>
-            {myWorkspaces.length > 1 && (
-                <CommandGroup heading={_("Workspaces")}>
-                    {myWorkspaces.map((workspace) => (
-                        <CommandItem
-                            key={workspace.name}
-                            value={`workspace-${workspace.name}`}
-                            keywords={[workspace.workspace_name, 'workspace']}
-                            onSelect={() => openWorkspace(workspace.name)}
-                            className='cursor-pointer'
-                        >
-                            <WorkspaceLogo workspace={workspace} className="size-4 rounded" />
-                            <span className="truncate text-base">{workspace.workspace_name}</span>
-                            {workspace.name === firstSegment && (
-                                <Badge variant="subtle" size="sm" className="ml-auto">
-                                    {_("Current")}
-                                </Badge>
-                            )}
-                        </CommandItem>
-                    ))}
-                </CommandGroup>
-            )}
-            <CommandGroup heading={_("Go to")}>
-                {GOTO_ITEMS.map((item) => (
-                    <CommandItem
-                        key={item.value}
-                        value={item.value}
-                        keywords={[...item.keywords]}
-                        onSelect={() => {
-                            navigate(item.to)
-                            setOpen(false)
-                        }}
-                        className='cursor-pointer'
-                    >
-                        <item.icon className="h-4 w-4" />
-                        <span className="text-base">{_(item.label)}</span>
-                    </CommandItem>
-                ))}
-            </CommandGroup>
+            {workspaceRows && <CommandGroup heading={_("Workspaces")}>{workspaceRows}</CommandGroup>}
+            <CommandGroup heading={_("Go to")}>{gotoRows}</CommandGroup>
         </>
     )
 }

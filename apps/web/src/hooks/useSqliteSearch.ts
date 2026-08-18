@@ -25,6 +25,10 @@ export type SearchResult = {
     file_type?: string;
     file_size?: number;
     internal_link?: string;
+    /** Small stored preview of an image file — render THIS in tiles/rows, not the original. */
+    file_thumbnail?: string;
+    thumbnail_width?: number;
+    thumbnail_height?: number;
     preview_data?: string;
 };
 

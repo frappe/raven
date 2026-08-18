@@ -2,6 +2,7 @@ import { Outlet, Navigate, useMatch } from "react-router-dom"
 import { DMSidebar } from "@components/dm-sidebar/DMSidebar"
 import { useDMChannels } from "@stores/channels/useChannelList"
 import { useIsMobile } from "@hooks/use-mobile"
+import { useLayerInAnimation } from "@hooks/useLayerInAnimation"
 import _ from "@lib/translate"
 import { cn } from "@lib/utils"
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from "@components/ui/empty"
@@ -45,6 +46,8 @@ export default function DirectMessages() {
     // mobile sidebar never hid. Match the path instead (end: false keeps
     // matching while a thread extends the URL).
     const id = useMatch({ path: "/dm-channel/:id", end: false })?.params.id
+    // No slide when the chat layer is already open on a BACK arrival — see the hook.
+    const layerAnimation = useLayerInAnimation(!!id)
 
     // Mobile is STACKED navigation (same as WorkspaceLayout): the DM list is the page,
     // and an open DM renders as a full-screen layer on top of it. The list stays mounted
@@ -67,7 +70,8 @@ export default function DirectMessages() {
                 a normal flex column beside the list. */}
             <div className={cn(
                 "flex min-w-0 min-h-0 flex-col bg-surface-gray-1",
-                "max-md:absolute max-md:inset-0 max-md:z-20 animate-layer-in",
+                "max-md:absolute max-md:inset-0 max-md:z-20",
+                layerAnimation,
                 !id && "max-md:hidden",
                 "md:flex-1",
             )}>

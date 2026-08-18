@@ -43,7 +43,7 @@ const FileMessage = ({
                 </div>
 
                 <div className="flex-1 min-w-0">
-                    <h4 className="text-sm text-ink-gray-8 truncate" title={file.fileName}>
+                    <h4 className="text-sm leading-snug text-ink-gray-8 truncate" title={file.fileName}>
                         {file.fileName}
                     </h4>
                     {file.fileSize && (

@@ -12,8 +12,9 @@ import { channelUnreadStore } from "@stores/unread/store"
 import { useWorkspaces, type WorkspaceFields } from "@hooks/useWorkspaces"
 import useCurrentRavenUser from "@raven/lib/hooks/useCurrentRavenUser"
 import { lastChannelAtom, lastWorkspaceAtom } from "@utils/lastVisitedAtoms"
-import { DRAWER_EXIT_MS } from "@utils/drawer"
+import { useNavigateFromDrawer } from "@hooks/useNavigateFromDrawer"
 import { useHistoryBackClose } from "@hooks/useHistoryBackClose"
+import { useNoDragWhileScrolled } from "@hooks/useNoDragWhileScrolled"
 import type { ChannelListItem } from "@raven/types/common/ChannelListItem"
 import { cn } from "@lib/utils"
 import _ from "@lib/translate"
@@ -50,7 +51,6 @@ export const HomeWorkspacesDrawer = ({
     open: boolean
     onOpenChange: (open: boolean) => void
 }) => {
-    const navigate = useNavigate()
 
     // The open drawer owns the system back gesture (atom-driven overlay hosted
     // above the routes — back would otherwise navigate the page underneath it).
@@ -58,25 +58,15 @@ export const HomeWorkspacesDrawer = ({
     // channel-open navigation below.
     useHistoryBackClose(open, () => onOpenChange(false))
 
-    // Navigation waits for the drawer to FINISH closing, or the drawer gets
-    // baked into the OS back-swipe screenshot and haunts the next back gesture
-    // (the full mechanism is documented on DRAWER_EXIT_MS).
+    // CHANNEL opens pay the drawer-exit wait: navigation waits for the drawer
+    // to FINISH closing, or the drawer gets baked into the OS back-swipe
+    // screenshot and haunts the next back gesture (see useNavigateFromDrawer).
     //
-    // Only CHANNEL opens pay the wait. A workspace switch navigates instantly:
-    // it lands on the same list page (WorkspaceLayout and this footer stay
-    // mounted across it), so the drawer simply finishes closing over the NEW
-    // workspace's list — no dead-feeling pause. That does leave the drawer in
-    // the back-entry screenshot, but back-swiping between workspace lists is a
-    // rare gesture; back-swiping out of a just-opened channel is constant,
-    // which is why the channel path keeps the wait.
-    const handleNavigate = (to: string, options?: { instant?: boolean }) => {
-        onOpenChange(false)
-        if (options?.instant) {
-            navigate(to)
-            return
-        }
-        window.setTimeout(() => navigate(to), DRAWER_EXIT_MS)
-    }
+    // A WORKSPACE switch does NOT use that hook (see openWorkspace) — it lands
+    // on the same list page under the closing drawer, and routing through the
+    // close-then-navigate hook lost a race with useHistoryBackClose's back()
+    // (workspace switching broke). It navigates directly, then closes.
+    const handleNavigate = useNavigateFromDrawer(() => onOpenChange(false))
 
     return (
         <Drawer open={open} onOpenChange={onOpenChange}>
@@ -89,7 +79,7 @@ export const HomeWorkspacesDrawer = ({
                 </DrawerHeader>
                 {/* Content only mounts while open (vaul unmounts closed drawers),
                     so the store subscription below never runs in the background. */}
-                <DrawerBody onNavigate={handleNavigate} />
+                <DrawerBody onNavigate={handleNavigate} onClose={() => onOpenChange(false)} />
             </DrawerContent>
         </Drawer>
     )
@@ -97,7 +87,12 @@ export const HomeWorkspacesDrawer = ({
 
 type UnreadRow = { channel: ChannelListItem; workspace: WorkspaceFields; count: number }
 
-const DrawerBody = ({ onNavigate }: { onNavigate: (to: string, options?: { instant?: boolean }) => void }) => {
+const DrawerBody = ({ onNavigate, onClose }: {
+    onNavigate: (to: string) => void
+    onClose: () => void
+}) => {
+    const navigate = useNavigate()
+    const noDragProps = useNoDragWhileScrolled()
     const { workspaces } = useWorkspaces()
     const { channels } = useChannels()
     const { myProfile } = useCurrentRavenUser()
@@ -147,9 +142,15 @@ const DrawerBody = ({ onNavigate }: { onNavigate: (to: string, options?: { insta
         // list IS the page), so the Channel page's pair-write never fires.
         setLastWorkspace(workspace.name)
         setLastChannel("")
-        // Instant: the switch swaps the list already under the closing drawer
-        // (see handleNavigate) — waiting here would just feel broken.
-        onNavigate(`/${encodeURIComponent(workspace.name)}`, { instant: true })
+        // Navigate FIRST, then close — order matters. navigate() pushes the
+        // workspace entry synchronously, so useHistoryBackClose's cleanup sees
+        // its overlay entry is no longer on top and skips its back(). Closing
+        // first (as useNavigateFromDrawer does) let that async back() fire
+        // AFTER the instant navigate and pop the workspace right back off —
+        // that was the broken switch. The switch just swaps the list under the
+        // closing drawer, so no exit-wait is needed here.
+        navigate(`/${encodeURIComponent(workspace.name)}`)
+        onClose()
     }
 
     const openChannel = (row: UnreadRow) => {
@@ -220,11 +221,13 @@ const DrawerBody = ({ onNavigate }: { onNavigate: (to: string, options?: { insta
                         should stay within thumb reach, not ride up the screen.
                         dvh, not vh: in a browser tab vh ignores the collapsing
                         URL bar and would overshoot. */}
-                    <div className="max-h-[35dvh] min-h-0 overflow-y-auto px-2 pb-2" data-vaul-no-drag>
+                    {/* Positional no-drag (see useNoDragWhileScrolled): the channel list
+                        scrolls while scrolled; a pull from its top dismisses the sheet. */}
+                    <div {...noDragProps} className="max-h-[35dvh] min-h-0 overflow-y-auto px-2 pb-2">
                         {sections.map(({ workspace, rows }) => (
                             <section key={workspace.name} className="mb-2">
                                 {showSectionHeaders && (
-                                    <p className="px-2 text-xs-medium text-ink-gray-4">
+                                    <p className="px-2 text-xs-medium pb-px text-ink-gray-4">
                                         {workspace.workspace_name}
                                     </p>
                                 )}

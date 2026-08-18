@@ -213,6 +213,7 @@ const CACHE_KEYS = [
   "raven.api.login.get_context",
   "workspaces_list",
   "channel_list",
+  "message-actions-list",
 ]
 
 function localStorageProvider() {

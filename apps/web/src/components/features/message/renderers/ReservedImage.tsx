@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useLayoutEffect, useRef, useState } from "react"
 import { cn } from "@lib/utils"
 
 /**
@@ -19,10 +19,22 @@ export const ReservedImage = ({
     className?: string
 }) => {
     const [loaded, setLoaded] = useState(false)
+    const imgRef = useRef<HTMLImageElement>(null)
+
+    // An already-cached image shows at once, no fade. Without this, any
+    // REMOUNT of the same image replayed the fade from transparent — most
+    // visibly when the server ack replaces an optimistic message (new React
+    // key, same file URL) and the just-sent photo blinked. Layout effect so
+    // the check runs before paint: the transparent frame never shows.
+    useLayoutEffect(() => {
+        const img = imgRef.current
+        setLoaded(Boolean(img && img.complete && img.naturalWidth > 0))
+    }, [src])
 
     return (
         <div className="relative h-full w-full overflow-hidden">
             <img
+                ref={imgRef}
                 src={src}
                 alt={alt}
                 loading="lazy"
@@ -43,7 +55,7 @@ export const ReservedImage = ({
  * so the box is fully determined before the image loads. Falls back to a
  * fixed 4:3 box when dimensions are missing (old messages).
  */
-export const fitImageBox = (width?: number, height?: number, maxWidth = 480, maxHeight = 420) => {
+export const fitImageBox = (width?: number, height?: number, maxWidth = 480, maxHeight = 384) => {
     if (!width || !height) {
         return { width: 320, aspectRatio: "4 / 3" }
     }

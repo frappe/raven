@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
+import { forwardRef, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
+import { Virtuoso, type VirtuosoHandle } from "react-virtuoso"
 import { useAtomValue, useSetAtom } from "jotai"
 import { useHotkeys } from "react-hotkeys-hook"
 import { useHistoryBackClose } from "@hooks/useHistoryBackClose"
@@ -26,6 +27,9 @@ const SWIPE_THRESHOLD = 50
 
 /** Vertical air between a contained mobile image and the bars (px). */
 const CONTAINED_GUTTER = 12
+
+/** How many items before the end of a paginated set to request the next page. */
+const NEAR_END_PREFETCH = 5
 
 /**
  * The single, app-wide attachment lightbox. Mounted once at the app shell;
@@ -68,6 +72,14 @@ const AttachmentPreviewContent = ({
 
     // Escape is handled by the dialog; arrows page through the set
     const hasMany = attachments.length > 1
+
+    // A "gallery" source (the paginated files tab) supplies onNearEnd. Its
+    // strip VIRTUALIZES: tiles load full-res originals (no stored thumbnails
+    // yet), so only the visible ones must mount. A plain message keeps the
+    // all-rendered centered strip — few images, no perf issue. Chosen by
+    // SOURCE, not count, so it never flips mid-session as pages load.
+    const galleryStrip = display.onNearEnd != null
+    const filmstripVirtuosoRef = useRef<VirtuosoHandle>(null)
 
     // The lightbox owns the back gesture while open (Android's edge-swipe back
     // was navigating the page UNDER the still-open preview — this modal is
@@ -114,17 +126,58 @@ const AttachmentPreviewContent = ({
         if (filmstripEl) observer.observe(filmstripEl)
         return () => observer.disconnect()
     }, [headerEl, filmstripEl, hasMany])
-    // Wraps at the ends, matching the previous image slideshow behavior
+    // Wraps at the ends, matching the previous image slideshow behavior —
+    // unless the source says more items exist beyond the loaded set
+    // (hasMore): then the last loaded item is NOT the real end, so paging
+    // clamps there and waits for the source to append the next page.
     const step = (direction: 1 | -1) =>
-        setState((prev) =>
-            prev ? { ...prev, index: (prev.index + direction + prev.attachments.length) % prev.attachments.length } : prev,
-        )
+        setState((prev) => {
+            if (!prev) return prev
+            const next = prev.index + direction
+            if (prev.hasMore) {
+                const clamped = Math.min(Math.max(next, 0), prev.attachments.length - 1)
+                return clamped === prev.index ? prev : { ...prev, index: clamped }
+            }
+            return { ...prev, index: (next + prev.attachments.length) % prev.attachments.length }
+        })
     const selectIndex = (next: number) => setState((prev) => (prev ? { ...prev, index: next } : prev))
 
-    // Keep the selected thumbnail visible in the (overflowable) filmstrip:
-    // jump to it on open, glide to it while paging. openedRef distinguishes
-    // the two — this content stays mounted across closes (close-flash fix),
-    // so "on open" is the false→true flip, not mount.
+    // Source sync (see AttachmentPreviewState): tell the opener where paging
+    // landed so it can keep its list scrolled to the current item, and ask it
+    // for the next page while the user is still a few items from the end —
+    // by the time they get there, the set has usually already grown.
+    // Only PAGING syncs — on open the clicked item is already on screen, and
+    // scrolling it (to center) would move the list under the user for nothing.
+    const syncedIndexRef = useRef<number | null>(null)
+    useEffect(() => {
+        if (!open) {
+            syncedIndexRef.current = null
+            return
+        }
+        if (syncedIndexRef.current === null) {
+            // Just opened — adopt the starting index without scrolling.
+            syncedIndexRef.current = index
+            return
+        }
+        if (syncedIndexRef.current === index) return
+        syncedIndexRef.current = index
+        display.onIndexChange?.(current)
+        // display/current are stable for a given index — reacting to index is enough.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [index, open])
+    useEffect(() => {
+        if (!open || !display.hasMore) return
+        if (index >= attachments.length - NEAR_END_PREFETCH) display.onNearEnd?.()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [index, open, attachments.length, display.hasMore])
+
+    // Keep the selected thumbnail centered in the filmstrip: jump to it on
+    // open, glide to it while paging. openedRef distinguishes the two — this
+    // content stays mounted across closes (close-flash fix), so "on open" is
+    // the false→true flip, not mount. Only index CHANGES re-center, so
+    // scrubbing the strip by hand isn't fought. The virtualized gallery strip
+    // centers via Virtuoso (the active tile may be unmounted); the plain strip
+    // scrolls its live element.
     const activeThumbRef = useRef<HTMLDivElement>(null)
     const openedRef = useRef(false)
     useEffect(() => {
@@ -132,9 +185,14 @@ const AttachmentPreviewContent = ({
             openedRef.current = false
             return
         }
-        activeThumbRef.current?.scrollIntoView({ inline: "center", block: "nearest", behavior: openedRef.current ? "smooth" : "auto" })
+        const behavior = openedRef.current ? "smooth" : "auto"
+        if (galleryStrip) {
+            filmstripVirtuosoRef.current?.scrollToIndex({ index, align: "center", behavior })
+        } else {
+            activeThumbRef.current?.scrollIntoView({ inline: "center", block: "nearest", behavior })
+        }
         openedRef.current = true
-    }, [index, open])
+    }, [index, open, galleryStrip])
     useHotkeys("left", () => step(-1), { enabled: open && hasMany, preventDefault: true }, [open, hasMany])
     useHotkeys("right", () => step(1), { enabled: open && hasMany, preventDefault: true }, [open, hasMany])
 
@@ -161,7 +219,9 @@ const AttachmentPreviewContent = ({
 
     const download = () => downloadFile(current.fileUrl, current.fileName)
     const share = async () => {
-        if ((await shareFile(current.fileUrl, current.fileName)) === "copied") toast.success(_("Link copied"))
+        const result = await shareFile(current.fileUrl, current.fileName)
+        if (result === "copied") toast.success(_("Link copied"))
+        else if (result === "failed") toast.error(_("Could not copy link"))
     }
 
     // Backdrop fade for the swipe-down-to-close drag: written straight onto the
@@ -197,8 +257,11 @@ const AttachmentPreviewContent = ({
                     onClose={close}
                 >
                     {hasMany && (
-                        <span className="px-1 text-xs">
-                            {_("{0} of {1}", [String(index + 1), String(attachments.length)])}
+                        // Hidden on mobile: it crowds the action row and wraps to
+                        // two lines there, and the filmstrip already shows position.
+                        <span className="hidden whitespace-nowrap px-1 text-xs md:inline">
+                            {/* "+" = more beyond the loaded set (pages in as you swipe) */}
+                            {_("{0} of {1}", [String(index + 1), String(attachments.length) + (display.hasMore ? "+" : "")])}
                         </span>
                     )}
                 </MediaPreviewHeader>
@@ -221,10 +284,14 @@ const AttachmentPreviewContent = ({
             >
                 {hasMany && !isMobile && (
                     <>
+                        {/* Paginated sets clamp at the ends (no wrap), so the
+                            chevrons disable there — Next at the last loaded
+                            item re-enables the moment the next page lands. */}
                         <Button
                             variant="subtle"
                             size="md"
                             isIconButton
+                            disabled={!!display.hasMore && index === 0}
                             onClick={(event) => {
                                 event.stopPropagation()
                                 step(-1)
@@ -238,6 +305,7 @@ const AttachmentPreviewContent = ({
                             variant="subtle"
                             size="md"
                             isIconButton
+                            disabled={!!display.hasMore && index === attachments.length - 1}
                             onClick={(event) => {
                                 event.stopPropagation()
                                 step(1)
@@ -332,61 +400,88 @@ const AttachmentPreviewContent = ({
                 </div>
             </div>
 
-            {/* Filmstrip: image thumbnails, icon tiles for PDFs. The empty
-                space beside the tiles is backdrop — clicking it closes; the
-                tiles stop propagation so clicking one only selects. */}
+            {/* Filmstrip: image thumbnails, icon tiles for PDFs. Only a click
+                on the backdrop AROUND the strip closes (target === the padding
+                container itself) — a click on the strip's own area, including
+                the gap between tiles, is a child target and must not close. */}
             {hasMany && (
                 <div
                     ref={setFilmstripEl}
                     className={cn(
                         // Absolute on mobile like the header; the media area
                         // reserves its height while it shows (see above).
-                        "shrink-0 p-3 transition-opacity duration-150 max-md:absolute max-md:inset-x-0 max-md:bottom-0 max-md:z-20",
+                        // Extra bottom padding on mobile = the home-indicator
+                        // safe area, so the tiles sit clear of the OS home /
+                        // app-switch swipe zone (zero on devices without one).
+                        "shrink-0 p-3 transition-opacity duration-150 max-md:absolute max-md:inset-x-0 max-md:bottom-0 max-md:z-20 max-md:pb-[calc(0.75rem+env(safe-area-inset-bottom))]",
                         chromeHidden && "pointer-events-none opacity-0",
                     )}
-                    onClick={close}
+                    onClick={(event) => { if (event.target === event.currentTarget) close() }}
                 >
-                    {/* Centering lives on the INNER w-max wrapper, not the scroller:
-                        justify-center on an overflowing scroller clips the leading
-                        thumbs past the scroll origin — unreachable by scrolling OR
-                        scrollIntoView (the "selected image missing on open" bug).
-                        w-max + mx-auto centers short strips and scrolls long ones
-                        from a true zero. scroll-fade-x dims the overflow edges. */}
-                    <div className="max-w-full overflow-x-auto scroll-fade-x">
-                        <div className="mx-auto flex w-max gap-2">
-                        {attachments.map((attachment, thumbIndex) => (
-                            <Tooltip key={attachment.id}>
-                                <TooltipTrigger asChild>
-                                    <div
-                                        ref={thumbIndex === index ? activeThumbRef : undefined}
-                                        className={cn(
-                                            "flex h-12 w-12 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md border-2 bg-surface-gray-2 transition-all duration-200",
-                                            thumbIndex === index
-                                                ? "border-outline-blue-4"
-                                                : "border-transparent hover:border-outline-gray-3",
-                                        )}
-                                        onClick={(event) => {
-                                            event.stopPropagation()
-                                            selectIndex(thumbIndex)
-                                        }}
-                                    >
-                                        {attachment.kind === "image" ? (
-                                            <img
-                                                src={attachment.thumbnail || attachment.fileUrl}
-                                                alt={attachment.fileName}
-                                                className="h-full w-full object-cover"
-                                                loading="lazy"
-                                            />
-                                        ) : (
-                                            <ThumbIcon kind={attachment.kind} />
-                                        )}
-                                    </div>
-                                </TooltipTrigger>
-                                <TooltipContent>{attachment.fileName}</TooltipContent>
-                            </Tooltip>
-                        ))}
+                    {galleryStrip ? (
+                        // Paginated gallery: virtualized horizontal strip, so
+                        // only visible tiles mount and load their (full-res)
+                        // image. Scrolling to the end pages in more (endReached);
+                        // increaseViewportBy prefetches a screenful each side so
+                        // there is always content beside the active tile and the
+                        // pagination fires before a blank edge shows. Paging the
+                        // main image re-centers via scrollToIndex (above).
+                        <Virtuoso
+                            ref={filmstripVirtuosoRef}
+                            horizontalDirection
+                            data={attachments}
+                            className="w-full scroll-fade-x"
+                            style={{ height: 48 }}
+                            increaseViewportBy={800}
+                            // Open centered on the active tile. Radix unmounts
+                            // the dialog on close, so this strip REMOUNTS every
+                            // open — and the scrollToIndex effect (above) fires
+                            // before Virtuoso has measured, so it no-ops until
+                            // the first swipe. initialTopMostItemIndex is
+                            // Virtuoso's own mount-time scroll and lands it
+                            // correctly; the effect then handles later swipes.
+                            initialTopMostItemIndex={{ index, align: "center" }}
+                            endReached={() => display.onNearEnd?.()}
+                            // Virtuoso lays horizontal items out as inline-block,
+                            // which align to each other by BASELINE — an image
+                            // tile and an icon tile have different baselines, so
+                            // icon tiles dropped low and overflowed the row (the
+                            // stray vertical scroll). StripItem pins them to top.
+                            components={{ Item: StripItem }}
+                            itemContent={(thumbIndex, attachment) => (
+                                // pr-2 is the inter-tile gap Virtuoso can measure.
+                                <div className="pr-2">
+                                    <FilmstripThumb
+                                        attachment={attachment}
+                                        isActive={thumbIndex === index}
+                                        onSelect={() => selectIndex(thumbIndex)}
+                                    />
+                                </div>
+                            )}
+                        />
+                    ) : (
+                        // Message strip: few images, so render them all. Centering
+                        // lives on the INNER w-max wrapper, not the scroller —
+                        // justify-center on an overflowing scroller clips the
+                        // leading thumbs past the scroll origin, unreachable by
+                        // scrolling OR scrollIntoView (the "selected image missing
+                        // on open" bug). w-max + mx-auto centers short strips and
+                        // scrolls long ones from a true zero. scroll-fade-x dims
+                        // the overflow edges.
+                        <div className="max-w-full overflow-x-auto scroll-fade-x">
+                            <div className="mx-auto flex w-max items-center gap-2">
+                            {attachments.map((attachment, thumbIndex) => (
+                                <FilmstripThumb
+                                    key={attachment.id}
+                                    ref={thumbIndex === index ? activeThumbRef : undefined}
+                                    attachment={attachment}
+                                    isActive={thumbIndex === index}
+                                    onSelect={() => selectIndex(thumbIndex)}
+                                />
+                            ))}
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
             )}
         </MediaLightbox>
@@ -398,6 +493,53 @@ const ThumbIcon = ({ kind }: { kind: Attachment["kind"] }) => {
     const Icon = kind === "video" ? Film : kind === "audio" ? Music : FileText
     return <Icon className="h-5 w-5 text-ink-gray-5" />
 }
+
+/** One filmstrip tile — image thumbnail or a kind icon, with a filename
+ *  tooltip. Cheap now that tiles use stored thumbnails (not full-res), so a
+ *  Radix tooltip per loaded tile is fine at the counts we page in. forwardRef
+ *  so the strip can point activeThumbRef at the selected tile for scrollIntoView. */
+const FilmstripThumb = forwardRef<HTMLDivElement, {
+    attachment: Attachment
+    isActive: boolean
+    onSelect: () => void
+}>(({ attachment, isActive, onSelect }, ref) => (
+    <Tooltip>
+        <TooltipTrigger asChild>
+            <div
+                ref={ref}
+                className={cn(
+                    "flex h-12 w-12 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md border-2 bg-surface-gray-2 transition-all duration-200",
+                    isActive ? "border-outline-blue-4" : "border-transparent hover:border-outline-gray-3",
+                )}
+                onClick={(event) => {
+                    event.stopPropagation()
+                    onSelect()
+                }}
+            >
+                {attachment.kind === "image" ? (
+                    <img
+                        src={attachment.thumbnail || attachment.fileUrl}
+                        alt={attachment.fileName}
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                    />
+                ) : (
+                    <ThumbIcon kind={attachment.kind} />
+                )}
+            </div>
+        </TooltipTrigger>
+        <TooltipContent>{attachment.fileName}</TooltipContent>
+    </Tooltip>
+))
+FilmstripThumb.displayName = "FilmstripThumb"
+
+/** Virtuoso horizontal item wrapper. align-top defeats the inline-block
+ *  baseline alignment that dropped icon tiles below image tiles (and forced a
+ *  vertical scrollbar). Spreads Virtuoso's positioning props/ref untouched. */
+const StripItem = forwardRef<HTMLDivElement, React.ComponentProps<"div">>((props, ref) => (
+    <div {...props} ref={ref} className={cn("align-top", props.className)} />
+))
+StripItem.displayName = "StripItem"
 
 /**
  * Centered "no preview" card for attachments we can't render inline — other

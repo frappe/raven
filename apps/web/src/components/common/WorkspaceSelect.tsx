@@ -30,7 +30,10 @@ export const WorkspaceSelect = ({
         <Select value={value} onValueChange={onValueChange}>
             <SelectTrigger
                 inputSize="sm"
-                className={cn("w-40 shrink-0 px-0.5 pr-1 **:data-[slot=select-value]:truncate **:data-[slot=select-value]:block", className)}
+                // No padding override: this sits in a filter row beside plain selects, and
+                // tightening it to 2px/4px made the logo look jammed against the border while
+                // its text-only neighbours kept the trigger's standard 8px.
+                className={cn("w-40 shrink-0 **:data-[slot=select-value]:truncate **:data-[slot=select-value]:block", className)}
             >
                 <SelectValue placeholder={_('Select a workspace')} />
             </SelectTrigger>

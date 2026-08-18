@@ -8,7 +8,7 @@ import { Button } from "@components/ui/button"
 import { Input } from "@components/ui/input"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@components/ui/form"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@components/ui/select"
-import { Drawer, DrawerContent, DrawerTitle } from "@components/ui/drawer"
+import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from "@components/ui/drawer"
 import { FrappeError } from "frappe-react-sdk"
 import { cn } from "@lib/utils"
 import _ from "@lib/translate"
@@ -70,6 +70,7 @@ export function EditProfileDrawer({ open, onOpenChange }: { open: boolean; onOpe
         <Drawer open={open} onOpenChange={onOpenChange}>
             <DrawerContent>
                 <DrawerTitle className="sr-only">{_("Edit profile")}</DrawerTitle>
+                <DrawerDescription className="sr-only">{_("Update your name, photo and profile details")}</DrawerDescription>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4 p-4 pb-2">
                         <h2 className="text-xl font-medium text-ink-gray-8">{_("Edit profile")}</h2>

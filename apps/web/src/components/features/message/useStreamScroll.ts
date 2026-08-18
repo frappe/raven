@@ -268,16 +268,19 @@ export const useStreamScroll = ({
     // Stay anchored through any resize. Two cases:
     //  - Pinned (at the live edge): the input growing, the keyboard opening, media
     //    settling — keep glued to the bottom.
-    //  - Free + a WIDTH change (the thread drawer opening/closing reflows every row):
-    //    keep the message the user was looking at in place. Height-only resizes in
-    //    free mode are left to the content layout-effect / native behaviour.
+    //  - Free: keep the message the user was looking at in place, whatever
+    //    resized. Width changes (the thread drawer reflowing every row) and
+    //    height changes (a link preview card resolving above the viewport,
+    //    a Reddit embed shrinking to fit) both move content, and native
+    //    anchoring is off (overflow-anchor: none), so this is the only
+    //    thing holding the view steady. The correction restores the anchor
+    //    message's OFFSET, so it is idempotent: after the content effect's
+    //    exact prepend compensation the offset is already right and this
+    //    no-ops. Changes below the anchor no-op the same way.
     useEffect(() => {
         const container = containerRef.current
         if (!container) return
-        let lastWidth = container.clientWidth
         const observer = new ResizeObserver(() => {
-            const widthChanged = container.clientWidth !== lastWidth
-            lastWidth = container.clientWidth
 
             // Keep a just-arrived target centered while nearby content finishes loading
             // (see targetAnchorRef). Checked BEFORE the pinned branch on purpose: while
@@ -307,7 +310,7 @@ export const useStreamScroll = ({
             }
 
             // Don't fight an in-progress target glide.
-            if (!widthChanged || smoothScrollingRef.current) return
+            if (smoothScrollingRef.current) return
 
             const anchor = topAnchorRef.current
             if (!anchor) return

@@ -22,19 +22,36 @@ export const useHistoryBackClose = (open: boolean, onClose: () => void) => {
     useEffect(() => {
         if (!open) return
         let popped = false
-        // Keep the router's own state (its `idx` position counter) in our extra
-        // entry. Dropping it poisoned every navigation made FROM this entry
-        // (picking a workspace from the switcher drawer, a command menu jump):
-        // the router computed the next idx from a missing one, wrote idx: null,
-        // and from then on "is there in-app history?" checks failed — mobile
-        // back buttons fell back to their default routes instead of popping.
-        window.history.pushState({ ...window.history.state, ravenOverlay: true }, "")
+        let pushed = false
         const onPop = () => {
             popped = true
             onCloseRef.current()
         }
-        window.addEventListener("popstate", onPop)
+        // Deferred one tick on purpose. StrictMode (dev) replays this effect
+        // synchronously on mount: setup → cleanup → setup. Pushing right here
+        // made the replay push an entry, compensate with history.back(), and
+        // push again — and the back()'s ASYNC popstate then landed on the
+        // second setup's listener, which read it as a user back gesture and
+        // closed the overlay it had just opened (the "opens then immediately
+        // closes" flash on every first open in dev). Deferring means the
+        // replayed setup is cancelled before history was touched — exactly
+        // one push, one listener, in dev and prod alike.
+        const timer = window.setTimeout(() => {
+            pushed = true
+            // Keep the router's own state (its `idx` position counter) in our
+            // extra entry. Dropping it poisoned every navigation made FROM
+            // this entry (picking a workspace from the switcher drawer, a
+            // command menu jump): the router computed the next idx from a
+            // missing one, wrote idx: null, and from then on "is there in-app
+            // history?" checks failed — mobile back buttons fell back to
+            // their default routes instead of popping.
+            window.history.pushState({ ...window.history.state, ravenOverlay: true }, "")
+            window.addEventListener("popstate", onPop)
+        }, 0)
         return () => {
+            window.clearTimeout(timer)
+            // Never pushed (cancelled within the tick) — nothing to undo.
+            if (!pushed) return
             window.removeEventListener("popstate", onPop)
             if (popped) return
             // Only remove our extra entry if it is still the current one.

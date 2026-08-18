@@ -207,7 +207,7 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
         // ClipboardEvent; autolink waits for a delimiter that send never types).
         if (!isEmpty) linkifyBeforeSend(editor)
         const content = isEmpty ? "" : editor.getHTML()
-        const outgoingFiles = files.map((f) => ({ file_url: f.fileURL, file_size: f.size }))
+        const outgoingFiles = files.map((f) => ({ file_url: f.fileURL, file_size: f.size, width: f.width, height: f.height }))
         const batchId = randomUUID()
 
         // Reply context: send the linked message id + a snapshot of it so the reply

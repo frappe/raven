@@ -16,10 +16,13 @@ export type PostClient = {
     post: <T>(method: string, params?: Record<string, unknown>) => Promise<T>
 }
 
-/** An already-uploaded attachment going out with a send: its stable URL + size. */
+/** An already-uploaded attachment going out with a send: its stable URL + size,
+ *  and (for videos) the display size measured in-browser at attach time. */
 export type OutgoingFile = {
     file_url: string
     file_size: number
+    width?: number
+    height?: number
 }
 
 /**
@@ -30,6 +33,25 @@ export type OutgoingFile = {
  * — the sent message then sorts above older messages (or below later ones)
  * until the server copy replaces it.
  */
+/**
+ * Mirror of the server's image thumbnail caps (_IMAGE_THUMBNAIL_MAX_WIDTH /
+ * _IMAGE_THUMBNAIL_MAX_HEIGHT in raven_message.py — keep in sync). The ack
+ * replaces the placeholder with the server's capped pair; stamping the same
+ * pair here keeps the box identical through the swap. Math.floor matches the
+ * server's int().
+ */
+const IMAGE_THUMBNAIL_MAX_WIDTH = 480
+const IMAGE_THUMBNAIL_MAX_HEIGHT = 384
+
+const optimisticImageThumbnail = (width: number, height: number) => {
+    if (width > height) {
+        const thumbnailWidth = Math.min(width, IMAGE_THUMBNAIL_MAX_WIDTH)
+        return { thumbnail_width: thumbnailWidth, thumbnail_height: Math.floor((height * thumbnailWidth) / width) }
+    }
+    const thumbnailHeight = Math.min(height, IMAGE_THUMBNAIL_MAX_HEIGHT)
+    return { thumbnail_width: Math.floor((width * thumbnailHeight) / height), thumbnail_height: thumbnailHeight }
+}
+
 const optimisticNow = () => dayjs().tz(SYSTEM_TIMEZONE).format("YYYY-MM-DD HH:mm:ss.SSS") + "000"
 
 /**
@@ -57,14 +79,25 @@ export const buildOptimisticMessages = (
             ...extra,
         }) as unknown as OptimisticMessage
 
-    const messages = files.map((file, i) =>
-        base({
+    const messages = files.map((file, i) => {
+        const isImage = getAttachmentKind(file.file_url) === "image"
+        return base({
             name: `${batchId}-${i}`,
-            message_type: getAttachmentKind(file.file_url) === "image" ? "Image" : "File",
+            message_type: isImage ? "Image" : "File",
             file: file.file_url,
             file_size: file.file_size,
-        }),
-    )
+            // The placeholder reserves the same box the server copy will have.
+            // Videos: the server stores the client dims as-is, so stamp them
+            // as-is. Images: the server stores a CAPPED thumbnail pair — stamp
+            // the same capped pair, or a portrait placeholder renders taller
+            // than the ack and shrinks when it lands.
+            ...(file.width && file.height
+                ? isImage
+                    ? optimisticImageThumbnail(file.width, file.height)
+                    : { thumbnail_width: file.width, thumbnail_height: file.height }
+                : {}),
+        })
+    })
     if (content) {
         messages.push(base({ name: `${batchId}-text`, message_type: "Text", text: content }))
     }

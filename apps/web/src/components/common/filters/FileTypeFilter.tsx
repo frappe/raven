@@ -21,7 +21,8 @@ export const expandFileTypeGroups = (groups: string[]): string[] => {
     return [...out]
 }
 
-const FILE_TYPE_OPTIONS = [
+/** Shared with the mobile filter sheet, which renders these as chips. */
+export const FILE_TYPE_OPTIONS = [
     { id: 'pdf', label: 'PDFs', icon: FileText },
     { id: 'doc', label: 'Documents', icon: FileText },
     { id: 'ppt', label: 'Presentations', icon: Presentation },
@@ -32,13 +33,18 @@ const FILE_TYPE_OPTIONS = [
 /**
  * Selected ids as "PDFs, Images". Listed in FILE_TYPE_OPTIONS order rather than the order
  * boxes were ticked, so the wording is stable — the trigger and the active-filter badge
- * both read from here and can't word the same selection differently.
+ * both read from here and can't word the same selection differently. `maxNamed` caps the
+ * list: past it the tail becomes "and N more".
  */
-export const formatFileTypeNames = (ids: string[]): string =>
-    FILE_TYPE_OPTIONS
+export const formatFileTypeNames = (ids: string[], maxNamed?: number): string => {
+    const names = FILE_TYPE_OPTIONS
         .filter((option) => ids.includes(option.id))
         .map((option) => _(option.label))
-        .join(', ')
+    if (maxNamed && names.length > maxNamed) {
+        return _('{0} and {1} more', [names.slice(0, maxNamed).join(', '), String(names.length - maxNamed)])
+    }
+    return names.join(', ')
+}
 
 /**
  * Up to this many selections are named in the trigger; past it the label is a count.
@@ -51,6 +57,8 @@ interface FileTypeFilterProps {
     /** Selected group ids ("pdf", "image", …). Multi-select, so an array. */
     value: string[]
     onValueChange: (value: string[]) => void
+    /** Trigger text while nothing is picked — see UserFilter's placeholder. */
+    placeholder?: string
     /** The trigger's width, which its row decides. The popover doesn't follow it. */
     triggerClassName?: string
     /** Root wrapper — width/shrink control so the filter can flex down in a shared row. */
@@ -63,7 +71,7 @@ interface FileTypeFilterProps {
  * shell's trigger and row styles instead, which is what keeps the three filters in
  * the row looking like one set. Five fixed options need no search field.
  */
-export function FileTypeFilter({ value, onValueChange, triggerClassName, className }: FileTypeFilterProps) {
+export function FileTypeFilter({ value, onValueChange, placeholder, triggerClassName, className }: FileTypeFilterProps) {
     const selected = value
     const checkedCount = selected.length
     const [open, setOpen] = useState(false)
@@ -79,7 +87,7 @@ export function FileTypeFilter({ value, onValueChange, triggerClassName, classNa
     // reshuffle as boxes are ticked; the span's `truncate` clips the last one when the
     // trigger is too narrow for all three.
     const triggerLabel = checkedCount === 0
-        ? _('File Type')
+        ? placeholder ?? _('File Type')
         : checkedCount <= MAX_NAMED_TYPES
             ? formatFileTypeNames(selected)
             : _('{0} Types', [String(checkedCount)])
@@ -114,7 +122,7 @@ export function FileTypeFilter({ value, onValueChange, triggerClassName, classNa
                     // the same "row 1 looks pre-chosen" problem FilterCombobox avoids. Nothing
                     // here needs focus on open; Tab still walks the rows.
                     onOpenAutoFocus={(event) => event.preventDefault()}
-                    className={cn("min-w-(--radix-popover-trigger-width) p-1 shadow-2xl", FILTER_DROPDOWN_WIDTH)}
+                    className={cn("min-w-(--radix-popover-trigger-width) p-1 shadow-2xl flex flex-col gap-0.5", FILTER_DROPDOWN_WIDTH)}
                 >
                     {FILE_TYPE_OPTIONS.map((fileType) => {
                         const IconComponent = fileType.icon

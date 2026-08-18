@@ -47,7 +47,10 @@ export function TablePagination({
                 <div className="flex items-center gap-2">
                     <span className="text-sm text-ink-gray-4">{_("Rows per page")}</span>
                     <Select value={String(pageSize)} onValueChange={(value) => onPageSizeChange(Number(value))}>
-                        <SelectTrigger inputSize="sm">
+                        {/* text-sm: the trigger's own type step is 14px, which left the page
+                            size a size larger than everything beside it — its own label and
+                            the "Showing x-y of n" count are both 13px. */}
+                        <SelectTrigger inputSize="sm" className="text-sm">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>

@@ -7,7 +7,9 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "url"
+  "url",
+  "normalized_url",
+  "provider"
  ],
  "fields": [
   {
@@ -16,13 +18,25 @@
    "in_list_view": 1,
    "label": "URL",
    "reqd": 1
+  },
+  {
+   "fieldname": "normalized_url",
+   "fieldtype": "Small Text",
+   "label": "Normalized URL"
+  },
+  {
+   "fieldname": "provider",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Provider",
+   "options": "Other\nWikipedia\nFrappe\nSite Document Link\nRaven Link\nFrappe Meet\nGoogle Meet\nZoom\nYouTube\nYouTube Music\nSpotify\nApple Music\nApple Podcasts\nSoundCloud\nLoom\nVimeo\nReddit\nFigma\nX\nGitHub\nHacker News"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-07-04 18:55:29.312914",
+ "modified": "2026-08-09 18:59:29.312914",
  "modified_by": "Administrator",
  "module": "Raven Messaging",
  "name": "Raven Message Links",

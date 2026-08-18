@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { ChannelFilter } from '@components/common/filters/ChannelFilter'
 import { UserFilter } from '@components/common/filters/UserFilter'
 import { FileTypeFilter } from '@components/common/filters/FileTypeFilter'
+import { ProviderFilter } from '@components/common/filters/ProviderFilter'
 import { SearchFilters as SearchFiltersType } from './types'
 import { ChannelListItem, DMChannelListItem } from '@raven/types/common/ChannelListItem'
 import _ from '@lib/translate'
@@ -21,10 +22,13 @@ interface SearchFiltersProps {
     onChannelChange: (value: string) => void
     onUserChange: (value: string) => void
     onFileTypeChange: (value: string[]) => void
+    onProviderChange: (value: string[]) => void
     /** File type only narrows file results — the other tabs have no use for it. */
     showFileTypeFilter?: boolean
+    /** Provider only narrows link results — shown on the links tab. */
+    showProviderFilter?: boolean
 }
-export function SearchFiltersBar({ filters, channels, dmChannels, onChannelChange, onUserChange, onFileTypeChange, showFileTypeFilter }: SearchFiltersProps) {
+export function SearchFiltersBar({ filters, channels, dmChannels, onChannelChange, onUserChange, onFileTypeChange, onProviderChange, showFileTypeFilter, showProviderFilter }: SearchFiltersProps) {
     const users = useUsers()
     const { members, isLoading: isMembersLoading } = useChannelMembers(filters.channel_id || '')
 
@@ -40,52 +44,74 @@ export function SearchFiltersBar({ filters, channels, dmChannels, onChannelChang
     }, [filters.channel_id, filters.owner, members, isMembersLoading, onUserChange])
 
     return (
-        // Three equal columns, always — file type only appears on the files tab, and a flex
-        // row would have let the other two grow into its space and jump width on every tab
-        // switch. The empty third column keeps them still.
-        // Clearing them all at once lives with the active-filter badges below, which is the
-        // line that already says what's on.
-        <div className="grid grid-cols-3 items-center gap-2">
-            {/* Each filter fills its wrapper (trigger w-full + truncates); the wrapper does
-                the sizing. The popovers are wider than their triggers and collision-padded,
-                so a narrow trigger never costs readability in the open list. */}
-            <div className={FILTER_WIDTH}>
+        // A vertical stack: this lives inside the filter POPOVER now, not a
+        // page row. Full-width triggers, one control per line, each with a
+        // label — the triggers' placeholders can then say the neutral value
+        // ("Anyone") instead of repeating the field's name. Clearing
+        // everything at once lives with the active-filter badges on the
+        // page, which is the line that already says what's on.
+        <div className="flex flex-col gap-3">
+            {/* Each filter fills the popover's width; their own dropdowns are
+                collision-padded, so nesting popovers costs no readability. */}
+            <Field label={_("Person")}>
                 <UserFilter
                     users={userFilterOptions}
                     value={filters.owner || ''}
                     onValueChange={onUserChange}
+                    placeholder={_("Anyone")}
                     triggerClassName="w-full"
                     className="w-full min-w-0"
                 />
-            </div>
-            <div className={FILTER_WIDTH}>
+            </Field>
+            <Field label={_("Channel")}>
                 <ChannelFilter
                     channels={channels}
                     dmChannels={dmChannels}
                     users={users}
                     value={filters.channel_id || ""}
                     onValueChange={onChannelChange}
-                    // Shortest of the three placeholders by necessity: equal-width triggers
-                    // leave 73px of label on a phone, and "Any Channel" needs 84. Threads and
-                    // saved-messages keep the longer "Any Channel" — their triggers are wider.
-                    allLabel={_("Channel")}
+                    allLabel={_("Any channel")}
                     triggerClassName="w-full"
                     className="w-full min-w-0"
                 />
-            </div>
-            {/* A selection made here survives a tab switch — it stays in the URL, and the
-                badge row keeps showing (and removing) it while the control is away. */}
+            </Field>
+            {/* Tab-scoped: leaving the files tab clears this selection
+                (see onTabChange) — its badge lingering on other tabs read
+                like a filter that wasn't filtering. */}
             {showFileTypeFilter && (
-                <div className={FILTER_WIDTH}>
+                <Field label={_("File type")}>
                     <FileTypeFilter
                         value={filters.file_type || []}
                         onValueChange={onFileTypeChange}
+                        placeholder={_("Any type")}
                         triggerClassName="w-full"
                         className="w-full min-w-0"
                     />
-                </div>
+                </Field>
+            )}
+            {/* The links tab's counterpart to file type. */}
+            {showProviderFilter && (
+                <Field label={_("Source")}>
+                    <ProviderFilter
+                        value={filters.link_provider || []}
+                        onValueChange={onProviderChange}
+                        placeholder={_("Any source")}
+                        triggerClassName="w-full"
+                        className="w-full min-w-0"
+                    />
+                </Field>
             )}
             {/* TODO: Add date range filter capability to sqlite search, either Frappe side or override in Raven */}
+        </div>
+    )
+}
+
+/** A labelled field in the popover stack. */
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+    return (
+        <div className={`flex flex-col gap-1 ${FILTER_WIDTH}`}>
+            <span className="text-sm text-ink-gray-6">{label}</span>
+            {children}
         </div>
     )
 }

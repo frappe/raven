@@ -1,4 +1,5 @@
 import { RavenHRCompanyWorkspace } from '../RavenIntegrations/RavenHRCompanyWorkspace'
+import { RavenBlockedLinks } from './RavenBlockedLinks'
 
 export interface RavenSettings{
 	creation: string
@@ -73,4 +74,8 @@ export interface RavenSettings{
 	livekit_api_key?: string
 	/**	LiveKit API Secret : Password	*/
 	livekit_api_secret?: string
+	/**	Frappe Meet Hosted URLs : Small Text	*/
+	frappe_meet_hosted_urls?: string
+	/**	Blocked Links : Table - Raven Blocked Links	*/
+	blocked_links?: RavenBlockedLinks[]
 }

@@ -8,53 +8,11 @@ import _ from "@lib/translate"
 import { useCopyToClipboard } from "usehooks-ts"
 import { toast } from "sonner"
 import { matchRavenLink, RavenLinkCard } from "./RavenLinkPreview"
+import { MessageLinkPreviewCard } from "./LinkPreviewCard"
+import { useHasBeenInView } from "@hooks/useHasBeenInView"
+import { useLinkPreview } from "@stores/linkPreviews/useLinkPreview"
 
-/**
- * Brand glyphs served by the backend (raven/public/brand_icons). Most are
- * monochrome simple-icons paths, painted in the brand colour via CSS mask
- * (an <img> can't be tinted). `color: null` = full-colour logo, rendered as a
- * plain <img>. Wikipedia + Figma are pre-registered for their upcoming
- * card-based providers.
- */
-const BRAND_ICON_BASE = "/assets/raven/brand_icons/"
-type BrandSpec = { file: string; color: string | null }
-const BRAND = {
-    youtube: { file: "youtube.svg", color: "#FF0000" },
-    youtubeMusic: { file: "youtubemusic.svg", color: "#FF0000" },
-    spotify: { file: "spotify.svg", color: "#1ED760" },
-    appleMusic: { file: "applemusic.svg", color: "#FA243C" },
-    applePodcasts: { file: "applepodcasts.svg", color: "#9933CC" },
-    soundcloud: { file: "soundcloud.svg", color: "#FF5500" },
-    loom: { file: "loom.svg", color: "#625DF5" },
-    vimeo: { file: "vimeo.svg", color: "#1AB7EA" },
-    reddit: { file: "reddit.svg", color: "#FF4500" },
-    zoom: { file: "zoom.svg", color: "#0B5CFF" },
-    googleMeet: { file: "Google_Meet.svg", color: null },
-    wikipedia: { file: "wikipedia.svg", color: "#000000" },
-    figma: { file: "Figma.svg", color: null },
-    frappeMeet: { file: "frappemeet.svg", color: null },
-} satisfies Record<string, BrandSpec>
-
-const BrandIcon = ({ brand, className }: { brand: BrandSpec; className?: string }) =>
-    brand.color ? (
-        <span
-            aria-hidden
-            className={cn("inline-block size-12", className)}
-            style={{
-                backgroundColor: brand.color,
-                maskImage: `url(${BRAND_ICON_BASE}${brand.file})`,
-                maskRepeat: "no-repeat",
-                maskPosition: "center",
-                maskSize: "contain",
-                WebkitMaskImage: `url(${BRAND_ICON_BASE}${brand.file})`,
-                WebkitMaskRepeat: "no-repeat",
-                WebkitMaskPosition: "center",
-                WebkitMaskSize: "contain",
-            }}
-        />
-    ) : (
-        <img src={`${BRAND_ICON_BASE}${brand.file}`} alt="" className={cn("size-12", className)} />
-    )
+import { BRAND, BrandIcon, type BrandSpec } from "./BrandIcons"
 
 /**
  * Link preview under a message.
@@ -67,13 +25,13 @@ const BrandIcon = ({ brand, className }: { brand: BrandSpec; className?: string 
  * its embed — YouTube (videos incl. Music tracks, playlists), Spotify, Apple
  * Music + Podcasts, Loom, Vimeo, SoundCloud, Reddit. Every embed is a fixed-size
  * lazy iframe (or a click-to-play facade), so message heights stay deterministic
- * for the scroll engine and offscreen messages cost nothing.
- * TODO(link-previews): Wikipedia (REST summary card, needs a viewport-gated
- * fetch) and a generic OpenGraph card (raven.api.preview_links) as the fallback
- * for plain links. Figma is deliberately NOT a provider: team files are mostly
- * private, and third-party-cookie partitioning means the embed shows a login
- * wall that doesn't even survive a refresh — it'll come back as a workspace
- * OAuth integration with server-side unfurl instead (Slack-style).
+ * for the scroll engine and offscreen messages cost nothing. Links no embed
+ * matches fall through to the generic preview card (LinkPreviewCard, fed by
+ * the server-fetched store — Wikipedia summaries land there too).
+ * Figma is deliberately NOT a provider: team files are mostly private, and
+ * third-party-cookie partitioning means the embed shows a login wall that
+ * doesn't even survive a refresh — it'll come back as a workspace OAuth
+ * integration with server-side unfurl instead (Slack-style).
  */
 export const MessageLinkPreview = ({ message }: { message: Message }) => {
     const href = message.hide_link_preview ? undefined : firstLink(message.links)
@@ -84,11 +42,19 @@ export const MessageLinkPreview = ({ message }: { message: Message }) => {
     //      React bails out of reconciling the whole embed subtree.
     return useMemo(() => {
         if (!href) return null
+        // Admin blocklist (Raven Settings → Blocked Links), domain rows
+        // only: kills embeds AND the card. Exact-URL rows need no client
+        // logic — the server never hands out their data, so the card
+        // never materialises (and those links have no embeds to kill).
+        if (isBlockedPreviewDomain(href)) return null
         for (const render of PROVIDERS) {
             const embed = render(href)
             if (embed) return embed
         }
-        return null
+        // No provider embed — the generic preview card (blogs, articles,
+        // HN …). Unlike embeds, this one is governed by the user's
+        // link_previews preference; the component handles that itself.
+        return <MessageLinkPreviewCard href={href} />
     }, [href])
 }
 
@@ -164,12 +130,17 @@ const EmbedFrame = ({
  * null for anything else, including unparseable URLs (playlists are matched
  * separately — they have no video id).
  */
+/** Videos that never get a preview — a rickroll should stay a surprise.
+ *  The server keeps the same list (raven/links.py) and never fetches them. */
+const NEVER_PREVIEW_VIDEO_IDS = new Set(["dQw4w9WgXcQ"])
+
 const matchYouTube = (href: string): { videoID: string; isMusic: boolean } | null => {
     try {
         const url = new URL(href)
         const isMusic = url.hostname.startsWith("music.")
         const host = url.hostname.replace(/^(www|m|music)\./, "")
-        const found = (id: string | null | undefined) => (id && /^[\w-]{6,}$/.test(id) ? { videoID: id, isMusic } : null)
+        const found = (id: string | null | undefined) =>
+            id && /^[\w-]{6,}$/.test(id) && !NEVER_PREVIEW_VIDEO_IDS.has(id) ? { videoID: id, isMusic } : null
         if (host === "youtu.be") return found(url.pathname.split("/")[1])
         if (host === "youtube.com" || host === "youtube-nocookie.com") {
             if (url.pathname === "/watch") return found(url.searchParams.get("v"))
@@ -208,7 +179,7 @@ const matchYouTubePlaylist = (href: string): { listID: string } | null => {
  * hqdefault is 4:3 → 12.5%), and object-cover on a square box crops exactly that
  * much per side — the bars trim themselves away in either case.
  */
-const YouTubeEmbed = ({ videoID, square }: { videoID: string; square?: boolean }) => {
+const YouTubeEmbed = ({ videoID, square, href }: { videoID: string; square?: boolean; href: string }) => {
     const [playing, setPlaying] = useState(false)
     // Best-available thumbnail: maxresdefault only exists for newer/HD videos, so
     // fall back to hqdefault (always present). A missing maxres surfaces either as
@@ -216,8 +187,16 @@ const YouTubeEmbed = ({ videoID, square }: { videoID: string; square?: boolean }
     // via naturalWidth (the placeholder is 120px; every real thumb is wider).
     const [thumb, setThumb] = useState<"maxresdefault" | "hqdefault">("maxresdefault")
     const fallback = () => setThumb("hqdefault")
+    // The video's title, from the stored preview (the server's oEmbed
+    // fetch). Asked for only once the facade is near the viewport, and
+    // drawn as an OVERLAY on the thumbnail — the box never changes height,
+    // whether the title exists, arrives late, or never comes.
+    const { ref, hasBeenInView } = useHasBeenInView()
+    const preview = useLinkPreview(hasBeenInView ? href : undefined)
+    const title = preview?.status === "Fetched" ? preview.title : ""
     return (
         <div
+            ref={ref}
             data-media-root=""
             className={cn(
                 "w-full overflow-hidden rounded-md [corner-shape:squircle] bg-surface-gray-2 my-2",
@@ -244,6 +223,7 @@ const YouTubeEmbed = ({ videoID, square }: { videoID: string; square?: boolean }
                         src={`https://i.ytimg.com/vi/${videoID}/${thumb}.jpg`}
                         alt=""
                         loading="lazy"
+                        decoding="async"
                         onError={fallback}
                         onLoad={(e) => {
                             if (thumb === "maxresdefault" && e.currentTarget.naturalWidth <= 120) fallback()
@@ -253,6 +233,11 @@ const YouTubeEmbed = ({ videoID, square }: { videoID: string; square?: boolean }
                     <span className="absolute inset-0 m-auto flex size-14 items-center justify-center rounded-full bg-black-700 transition-colors group-hover:bg-black-800">
                         <Play className="size-6 fill-white text-white" />
                     </span>
+                    {title && (
+                        <span className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-black-800 to-transparent p-2 pb-6 text-left">
+                            <p className="line-clamp-1 text-p-sm font-medium text-white">{title}</p>
+                        </span>
+                    )}
                 </button>
             )}
         </div>
@@ -492,7 +477,7 @@ const formatMeetingNumber = (n: string) => {
  * A meeting can't be embedded, so the preview is a join card; `detail` is the
  * human identity shown on it — the formatted meeting number or the room name.
  */
-const matchZoom = (href: string): { href: string; detail: string } | null => {
+export const matchZoom = (href: string): { href: string; detail: string } | null => {
     try {
         const url = new URL(href)
         if (!/(^|\.)zoom\.us$/.test(url.hostname)) return null
@@ -508,7 +493,7 @@ const matchZoom = (href: string): { href: string; detail: string } | null => {
 }
 
 /** meet.google.com/xxx-yyyy-zzz — the code IS the meeting's human identity. */
-const matchGoogleMeet = (href: string): { href: string; detail: string } | null => {
+export const matchGoogleMeet = (href: string): { href: string; detail: string } | null => {
     try {
         const url = new URL(href)
         if (url.hostname !== "meet.google.com") return null
@@ -526,6 +511,25 @@ const matchGoogleMeet = (href: string): { href: string; detail: string } | null 
  * host. Read lazily on FIRST use and cached: boot isn't populated yet when this
  * module is imported in dev, and it never changes within a page load.
  */
+/**
+ * Domain-wide preview blocks from Raven Settings, via boot (same lazy
+ * read as the Frappe Meet hosts below). Suffix matching, like the
+ * provider registry: blocking frappe.io covers its subdomains.
+ */
+let blockedPreviewDomains: string[] | null = null
+const isBlockedPreviewDomain = (href: string): boolean => {
+    if (blockedPreviewDomains === null) {
+        blockedPreviewDomains = (window.frappe?.boot?.link_preview_blocked_domains ?? []) as string[]
+    }
+    if (blockedPreviewDomains.length === 0) return false
+    try {
+        const host = new URL(href).hostname.toLowerCase()
+        return blockedPreviewDomains.some((domain) => host === domain || host.endsWith(`.${domain}`))
+    } catch {
+        return false
+    }
+}
+
 let frappeMeetHosts: string[] | null = null
 const getFrappeMeetHosts = (): string[] => {
     if (frappeMeetHosts) return frappeMeetHosts
@@ -546,7 +550,7 @@ const getFrappeMeetHosts = (): string[] => {
 }
 
 /** <configured-host>/meet/<meeting-id> → join card, like Google Meet. */
-const matchFrappeMeet = (href: string): { href: string; detail: string } | null => {
+export const matchFrappeMeet = (href: string): { href: string; detail: string } | null => {
     try {
         const url = new URL(href)
         if (!getFrappeMeetHosts().includes(url.host)) return null
@@ -607,7 +611,7 @@ const PROVIDERS: Array<(href: string) => ReactElement | null> = [
     (href) => {
         const yt = matchYouTube(href)
         // Keyed by video so an edit that swaps the link resets playing + thumbnail state.
-        return yt ? <YouTubeEmbed key={yt.videoID} videoID={yt.videoID} square={yt.isMusic} /> : null
+        return yt ? <YouTubeEmbed key={yt.videoID} videoID={yt.videoID} square={yt.isMusic} href={href} /> : null
     },
     (href) => {
         const playlist = matchYouTubePlaylist(href)

@@ -1,7 +1,7 @@
 import { cn } from "@lib/utils"
 import { useIsMobile } from "@hooks/use-mobile"
 import { useHasBeenInView } from "@hooks/useHasBeenInView"
-import { type ImageFile } from "./ImageMessage"
+import { PHONE_SCREENSHOT_TALLNESS, type ImageFile } from "./ImageMessage"
 import { ReservedImage } from "./ReservedImage"
 
 /**
@@ -23,6 +23,24 @@ const hashString = (s: string) => {
 }
 
 /**
+ * A card is never taller than this × its width. Very tall, narrow images (a
+ * full-PAGE screenshot) would otherwise drive the whole stack's height —
+ * their card box is capped at this tallness and the image renders
+ * object-contain inside it (the viewer has the full thing). Phone
+ * screenshots sit under the shared threshold and stay ordinary full-bleed
+ * cards (see PHONE_SCREENSHOT_TALLNESS for the reasoning and edge cases).
+ */
+const MAX_CARD_TALLNESS = PHONE_SCREENSHOT_TALLNESS
+
+/**
+ * The tallest card's on-screen height is capped at these (px). The cap is
+ * applied by SHRINKING the container (max-width below), never by squashing
+ * the layout math. Desktop matches fitImageBox's single-image maxHeight;
+ * mobile is tighter because the cascade stacks card heights into one run.
+ */
+const CARD_MAX_HEIGHT = { desktop: 420, mobile: 360 }
+
+/**
  * Normalizes each image into a unit square (longest side = 1), aspect preserved,
  * with a 4:3 fallback for old messages. The pile is then laid out as percentages
  * of a responsive container, so cards keep their own width AND height (the
@@ -33,7 +51,16 @@ const unitDims = (image: ImageFile) => {
     const w = image.width || 4
     const h = image.height || 3
     const s = 1 / Math.max(w, h)
-    return { w: w * s, h: h * s }
+    const unitW = w * s
+    const unitH = h * s
+    // Tallness cap: widen the BOX, not the image. Flagged cards render
+    // object-contain — the full image letterboxed inside the 1:2 box, the
+    // card's gray surface showing as side gutters (tried object-top cover
+    // cropping first; contain won for showing the whole screenshot).
+    // Unflagged cards keep plain cover — their box matches their ratio, so
+    // nothing is cropped or letterboxed.
+    const cropped = unitH / MAX_CARD_TALLNESS > unitW
+    return { w: cropped ? unitH / MAX_CARD_TALLNESS : unitW, h: unitH, cropped }
 }
 
 // Only stacking order is tied to depth.
@@ -150,8 +177,29 @@ export const ImageStack = ({ images, onImageClick }: { images: ImageFile[]; onIm
     })
     const runH = isMobile ? tops[tops.length - 1] + norm[norm.length - 1].h : boxH
 
+    // Height clamp for portrait batches. The container has a FIXED responsive
+    // width and derives its height from the aspect ratio — for tall narrow
+    // cards that height is unbounded (two full-height portraits would fill the
+    // viewport). The cap works like fitImageBox does for single images, but at
+    // the stack level: shrink the WIDTH until the tallest card's height lands
+    // on CARD_MAX_HEIGHT. A max-width leaves normal batches untouched (their
+    // computed max exceeds the base width) and keeps every card's %-based
+    // size and seam intact — the whole pile just scales down together.
+    //
+    // Derivation: a card's height = containerWidth * (n.h / boxW), so the
+    // tallest (n.h = boxH) stays under the cap when
+    // containerWidth <= cap * boxW / boxH. The tallness cap in unitDims
+    // bounds boxW/boxH at 1/MAX_CARD_TALLNESS, so this can never shrink the
+    // stack past half the cap — no separate width floor needed.
+    const cardMaxHeight = isMobile ? CARD_MAX_HEIGHT.mobile : CARD_MAX_HEIGHT.desktop
+    const maxWidth = Math.round(cardMaxHeight * (boxW / boxH))
+
     /** Which side the TOP card leans — random per batch, alternated down the pile. */
-    const startRight = hashString(cards[0].name + ":side") % 2 === 0
+    // All seeds + keys hash the FILE URL, not the message name: an optimistic
+    // send's names change when the server ack lands, and name-based seeds made
+    // the pile visibly reshuffle its tilts at that moment (name-based keys
+    // remounted the cards outright). File URLs are stable through the swap.
+    const startRight = hashString(cards[0].file_url + ":side") % 2 === 0
 
 
     return (
@@ -178,7 +226,7 @@ export const ImageStack = ({ images, onImageClick }: { images: ImageFile[]; onIm
                 // bounding box on desktop, box + vertical run on mobile).
                 ref={inViewRef}
                 className="group relative w-64 cursor-pointer md:w-72 lg:w-80"
-                style={{ aspectRatio: boxW / runH }}
+                style={{ aspectRatio: boxW / runH, maxWidth }}
                 onClick={() => onImageClick(top)}
             >
                 {/* Quiet placeholder until the pile nears the viewport */}
@@ -199,17 +247,19 @@ export const ImageStack = ({ images, onImageClick }: { images: ImageFile[]; onIm
                     // so two images never lean the same way. Magnitudes stay seeded
                     // per image, so the amount of tilt still varies.
                     const right = depth % 2 === 0 ? startRight : !startRight
-                    const mag = hashString(image.name) % 3
+                    const mag = hashString(image.file_url) % 3
                     const x = isTop ? "translate-x-0" : right ? xRight[mag] : xLeft[mag]
                     const r = isTop
-                        ? (right ? topTiltRight : topTiltLeft)[hashString(image.name + ":t") % topTiltRight.length]
+                        ? (right ? topTiltRight : topTiltLeft)[hashString(image.file_url + ":t") % topTiltRight.length]
                         : right ? rotRight[mag] : rotLeft[mag]
                     const y = yByDepth[depth]
                     // Top card lifts gently on hover (desktop only); the rest fan via their palettes.
                     const hover = isTop ? "md:group-hover:-translate-y-1.5" : ""
                     return (
                         <div
-                            key={image.name}
+                            // Index suffix: duplicate attachments can share a URL;
+                            // batch order is stable across the ack swap, so the key stays stable.
+                            key={`${image.file_url}:${index}`}
                             // Desktop centers each card (inset-0 m-auto); mobile places them
                             // top-down at their run offsets (inset-x-0 mx-auto + top%). No
                             // frame border — depth comes from the shadow. will-change promotes
@@ -241,7 +291,11 @@ export const ImageStack = ({ images, onImageClick }: { images: ImageFile[]; onIm
                                     : undefined
                             }
                         >
-                            <ReservedImage src={image.file_thumbnail || image.file_url} alt={image.file_name} />
+                            <ReservedImage
+                                src={image.file_thumbnail || image.file_url}
+                                alt={image.file_name}
+                                className={n.cropped ? "object-contain" : undefined}
+                            />
                         </div>
                     )
                 })}

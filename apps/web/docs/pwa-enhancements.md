@@ -48,8 +48,16 @@ Notes for a blog post. Each item: what we did, and the non-obvious reason why.
    operating-system level — below anything we can rewrite. A swipe can still
    reach that blank page. We tried routing cold opens through the app's home
    page to bury it; on real devices iOS slid straight past our repair onto the
-   blank page anyway, so we reverted. Filed under "the platform always gets the
-   last word".
+   blank page anyway, so we reverted. Retested Aug 2026 with a freshly
+   reinstalled PWA (ruling out a stale install's captured default URL): same
+   result — the gesture reaches the blank page no matter what URL the worker
+   opens or what history we synthesize. This matches WebKit bug 268797 (the
+   openWindow'd app carries a stale about:blank window client; open since iOS
+   16.4). The remaining path is Declarative Web Push (iOS 18.4+), where the
+   SYSTEM performs the notification's navigation and no worker-created window
+   ever exists — blocked for now on the Raven Cloud relay's payload contract,
+   which v2 clients share. Filed under "the platform always gets the last
+   word".
 6. **Panels behave differently per device — on purpose.** On desktop, opening the
    members panel and switching channels keeps it open when you return: it's a
    workspace, panels are furniture. On mobile the same panel is a bottom sheet,
@@ -277,6 +285,24 @@ Notes for a blog post. Each item: what we did, and the non-obvious reason why.
     like this exists, audit every drawer that navigates — the second offender
     is always somewhere.
 
+    That audit eventually happened in full, and the second offender was five
+    offenders: the command palette (every selection — channels, DMs,
+    new-DM-then-navigate, both search rows), "create thread" in the message
+    action sheet (which navigated whenever the server answered, racing the
+    sheet's close), and the members sheet's "Message" button. The mechanism
+    now lives in one hook — `useNavigateFromDrawer`: close the drawer, wait
+    out its exit animation on mobile, then navigate; instant on desktop. It
+    also accepts a *promise* of a destination, so a server round-trip can run
+    during the close animation instead of after it — the same overlap trick
+    as the prefetch. One judgment call per flow: "create thread" uses the
+    overlap (the action sheet closes on every tap by idiom, so there is
+    nothing to hold open), but the DM flows wait for the server FIRST — the
+    palette or member list stays open with its spinner, and only a
+    successful resolve closes and navigates, so a failure leaves you where
+    you were instead of on the page with nothing but a toast. The two
+    original hand-rolled fixes were folded into it, and the rule is now one
+    sentence: a drawer that navigates, navigates through the hook.
+
     Three lessons: anything visible around the
     instant of navigation can be frozen into the back-swipe; when you're racing
     another process's clock, don't cut it fine — buy margin you can see; and
@@ -295,6 +321,14 @@ Notes for a blog post. Each item: what we did, and the non-obvious reason why.
     own declared scope, which per spec makes the browser throw the scope away
     entirely and treat the whole site as the app. An invalid config that
     accidentally looked correct, hiding the trap for the valid one.
+    Epilogue (Aug 2026): the start_url had its own slash problem — it was
+    `/raven/`, and PRODUCTION 301-redirects that form to `/raven` (the dev
+    bench serves both, which hid it). So every cold launch on prod paid a
+    redirect, and any browser logic that compares URLs against the app's
+    "default URL" (e.g. WebKit's notification-open window matching) was
+    comparing against a moving target. start_url is now `/raven`, matching
+    the scope and the canonical route. Installed apps pick the change up on
+    their next manifest refresh; a reinstall applies it immediately.
 34. **The long-press that fired twice — but only on some Androids.** Holding a
     reaction pill opens "who reacted". Holding a message opens the action
     sheet. On certain Android phones, holding a pill opened *both* — stacked
@@ -564,6 +598,96 @@ Notes for a blog post. Each item: what we did, and the non-obvious reason why.
     all remember. The lesson is a sharper version of an old one: on iOS, the
     chrome around your app is a mirror, not a setting. You influence it by
     what you draw, and some flickers are the honest cost of drawing near it.
+46. **Bands across a white photo while panning — the GPU showing you its
+    tiles.** Zoom into an image in the viewer on a phone and drag it around:
+    on busy photos everything looks fine, but on a flat white image, faint
+    bands crawl across the picture as you pan. The mechanism is rasterization,
+    not layout: the image moves via `transform: translate(...) scale(...)`,
+    but nothing promoted it to its own compositor layer — so instead of
+    sliding a cached texture, mobile WebKit *re-rasterizes the scaled image
+    every frame, tile by tile*, mid-gesture. Adjacent tiles get sampled at
+    fractionally different offsets, and the seams between them differ by a
+    hair of brightness. A photo's texture hides that hair; a flat white
+    surface is a precision instrument for displaying it. (Desktop GPUs
+    re-raster fast enough that you never catch the tiles mid-update — which
+    is why the bug report says "on mobile".) The fix is one property:
+    `will-change: transform` promotes the image to a compositor layer, and
+    panning becomes a pure texture transform with nothing to re-rasterize.
+    The trade-off to know about: during a pinch the browser samples the
+    cached texture, so the image can look slightly soft mid-gesture and
+    sharpens on release — the same behavior as native photo viewers. The
+    general lesson: content that animates via transforms every frame should
+    live on its own layer, and flat, bright test images are worth keeping
+    around — they reveal compositor artifacts that real photos camouflage.
+
+47. **A notification click gets three chances to land.** Tap a notification
+    while the app is open but backgrounded, and the app should open that
+    conversation. Sounds like one line of code; on a phone it fails three
+    different ways. The service worker's first move is to message the page
+    with the target URL — but a backgrounded iOS PWA has its JS frozen, and
+    a message sent into a frozen page is simply lost. So the worker also
+    writes the URL down, and the page asks for it when it wakes up. But
+    "writes it down" has a trap of its own: a variable in the worker dies
+    with the worker, and the OS routinely kills the worker in the seconds it
+    takes the frozen page to thaw — so the note goes into Cache API storage,
+    which outlives it. And even then there's a race: sometimes the page
+    wakes and asks *before* the worker has finished writing. So an
+    empty-handed first ask looks once more a moment later. Three paths for
+    one click — each one exists because we watched the previous one fail on
+    a real device. None of them is removable.
+
+48. **Read notifications sweep themselves out of the tray — if you sweep at
+    the right moments.** Open a channel and its system notifications should
+    disappear. The sweep ran whenever an unread count changed — which sounds
+    complete, until you notice that push is SLOW: the socket delivers a
+    message instantly, the push notification arrives seconds later. Read
+    the message in those seconds (you were already in the channel), and the
+    notification lands in the tray AFTER the last unread change — and
+    nothing ever sweeps again. So the worker now pings the page right after
+    showing any notification ("sweep now"), which kills an already-stale
+    notification within milliseconds of it appearing. And because a frozen
+    phone misses that ping, the app also sweeps every time it becomes
+    visible — the catch-all that reconciles the tray on every return. The
+    lesson generalizes: a cleanup that runs "on change" misses everything
+    that arrives after the last change.
+
+49. **The users whose notifications quietly died — for being active.** Reports
+    came in: some users get notifications for a while, then nothing. The
+    mechanism is Apple's anti-spam rule: a push that doesn't SHOW a
+    notification is a "silent push", and after a few of those, the
+    subscription is revoked — permanently, without telling anyone. Our
+    handler had four paths that ended without showing anything, and the
+    worst was the most well-intentioned: "the app is visible, the socket
+    already showed this message in-app, skip the system notification." On
+    Chrome that's good manners (Firebase's own worker does it). On iOS,
+    every one of those skips was a strike — so the users who used the app
+    the MOST accumulated strikes the fastest, got revoked, went silent
+    until their next launch re-registered them, and then the cycle
+    restarted. Now the worker never ends an Apple push without showing
+    something: the in-app case shows anyway (the read-sweep clears it
+    within moments), and unreadable payloads get a generic fallback. A
+    `pushsubscriptionchange` handler also tells any open page to
+    re-register on the spot when the browser swaps the subscription.
+    The lesson: platform politeness rules differ so much that identical
+    code is a courtesy on one platform and self-destruction on another.
+
+50. **The toggle that switched itself off.** Users reported the "push
+    notifications" toggle flipping back to disabled on its own, seemingly
+    after updates. The toggle's source of truth is simple: is the push token
+    stored on this device. And startup had a cleanup that read "if
+    notification permission isn't granted, delete the token — it's dead."
+    Reasonable — except iOS has a bug where a window opened from a
+    notification tap MISREPORTS the permission as "default" even though it's
+    granted. So: tap a notification while the app is closed, the app boots
+    in a lying window, the cleanup wipes the token, and the toggle reads
+    disabled from then on. One tap, permanent-looking damage — and it got
+    blamed on updates because updates are when people tap notifications and
+    relaunch. The fix is about ambiguity, not iOS: "denied" is an explicit
+    user decision and still deletes; "default" is ambiguous (revoked? or a
+    platform lie?), so now it just skips the refresh for that launch and
+    keeps the token. The lesson: never let a destructive cleanup key off a
+    reading that has a known lying state — destroy only on unambiguous
+    signals.
 
 ## What's still on the list
 

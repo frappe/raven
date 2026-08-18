@@ -1,6 +1,6 @@
 import { useMemo } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@components/ui/dialog"
-import { Drawer, DrawerContent, DrawerTitle } from "@components/ui/drawer"
+import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from "@components/ui/drawer"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@components/ui/tabs"
 import { UserAvatar } from "@components/features/message/UserAvatar"
 import { useUser } from "@hooks/useUser"
@@ -14,6 +14,13 @@ import { Badge } from "@components/ui/badge"
 
 /** A custom emoji's readable name, shortcode-style. */
 const customEmojiLabel = (reaction: ReactionObject) => `:${reaction.emoji_name}:`
+
+/** The tab panels ARE the scrollers — shared by the desktop dialog and the mobile
+ *  sheet. Safe-area padding is mobile-only (max-md): the sheet's DrawerContent is
+ *  pb-0 so rows can scroll to its true bottom edge, scroll-fade softening the cut.
+ *  Desktop keeps its old edge-to-edge panel (env() has no home indicator there). */
+const PANEL_SCROLLER =
+    "max-h-80 min-h-80 overflow-y-auto px-4 md:px-6 scroll-fade max-md:pb-[calc(env(safe-area-inset-bottom)+1rem)]"
 
 /** Renders one reaction's glyph — a custom emoji image, or the Apple-set native emoji. */
 const EmojiGlyph = ({ reaction }: { reaction: ReactionObject }) =>
@@ -76,8 +83,12 @@ const ReactionsBody = ({ reactions }: { reactions: ReactionObject[] }) => {
                 resize the whole sheet on every switch. Pinned via MIN/MAX, not
                 h-80 — the ui TabsContent's flex-1 (flex-basis: 0%) overrides a
                 plain height as the flex main size, but min/max still clamp it.
-                Desktop keeps the range — a dialog resizing in place is fine. */}
-            <TabsContent value="all" className="max-h-80 min-h-80 overflow-y-auto px-4 md:px-6">
+                Desktop keeps the range — a dialog resizing in place is fine.
+
+                The panels are the scrollers, so THEY carry the mobile sheet's
+                safe-area padding (its DrawerContent is pb-0 — container padding
+                would hard-clip rows mid-air) and fade the scroll edge. */}
+            <TabsContent value="all" className={PANEL_SCROLLER}>
                 {[...reactorsByUser].map(([userID, used]) => (
                     <ReactorRow
                         key={userID}
@@ -94,7 +105,7 @@ const ReactionsBody = ({ reactions }: { reactions: ReactionObject[] }) => {
             </TabsContent>
 
             {reactions.map((reaction) => (
-                <TabsContent key={reaction.emoji_name} value={reaction.emoji_name} className="max-h-80 min-h-80 overflow-y-auto px-4 md:px-6">
+                <TabsContent key={reaction.emoji_name} value={reaction.emoji_name} className={PANEL_SCROLLER}>
                     {/* A custom emoji's glyph doesn't say what it is — its panel opens
                         with the name. Native emojis need no caption. */}
                     {reaction.is_custom ? (
@@ -127,13 +138,15 @@ export const ReactionsDialog = ({ message, open, onClose }: { message: Message |
     if (isMobile) {
         return (
             <Drawer open={open} onOpenChange={(next) => !next && onClose()}>
-                <DrawerContent>
+                {/* pb-0: the tab panels are lists — they carry the safe-area padding
+                    inside their own scroll (see PANEL_SCROLLER), so rows scroll to the
+                    drawer's true bottom edge instead of clipping at a padding line. */}
+                <DrawerContent className="pb-0">
                     <DrawerTitle className="px-4 pb-4 pt-1 text-left text-2xl-semibold text-ink-gray-9">
                         {_("Reactions")}
                     </DrawerTitle>
-                    <div className="pb-4">
-                        <ReactionsBody reactions={reactions} />
-                    </div>
+                    <DrawerDescription className="sr-only">{_("Who reacted to this message")}</DrawerDescription>
+                    <ReactionsBody reactions={reactions} />
                 </DrawerContent>
             </Drawer>
         )

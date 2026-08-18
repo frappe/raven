@@ -1,5 +1,5 @@
-import { useNavigate } from "react-router";
-import { Loader2 } from "lucide-react";
+import { useState } from "react";
+import { ArchiveIcon, ArchiveRestoreIcon, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useFrappeUpdateDoc, useSWRConfig } from "frappe-react-sdk";
 import { Button } from "@components/ui/button";
@@ -21,20 +21,29 @@ import {
   ChannelListItem,
 } from "@raven/types/common/ChannelListItem";
 import { RavenChannel } from "@raven/types/RavenChannelManagement/RavenChannel";
+import { channelStore } from "@stores/channels/store";
 
 export interface ArchiveChannelButtonProps {
   channel: ChannelListItem;
 }
 
 export function ArchiveChannelButton({ channel }: ArchiveChannelButtonProps) {
-  const navigate = useNavigate();
   const { mutate } = useSWRConfig();
   const { updateDoc, loading, error } = useFrappeUpdateDoc();
+  // Controlled so success can CLOSE the dialog: nothing navigates anymore
+  // (the page flips archived/live in place), and an uncontrolled dialog
+  // would stay open — re-rendered against the flipped is_archived, i.e. as
+  // the opposite prompt. Errors keep it open for the banner.
+  const [open, setOpen] = useState(false);
 
   const toggleArchiveChannel = async () => {
     return updateDoc("Raven Channel", channel.name, {
       is_archived: channel?.is_archived === 0 ? 1 : 0,
     }).then((result: RavenChannel) => {
+      // Patch the STORE directly — the SWR patch below only reaches it a
+      // flush later (through useChannelListSync's effect), and the page
+      // should flip to its archived read-only state immediately.
+      channelStore.patchChannel(channel.name, { is_archived: result.is_archived });
       mutate(
         "channel_list",
         (data: { message: ChannelList } | undefined) => {
@@ -53,13 +62,24 @@ export function ArchiveChannelButton({ channel }: ArchiveChannelButtonProps) {
         },
         { revalidate: false },
       );
-      toast.success(_(`${channel.is_archived === 0 ? "Archived" : "Unarchived"} channel`));
-      navigate(`/${channel.workspace}`);
+      if (result.is_archived === 1) {
+        toast.success(_(`Channel {0} archived`, [channel.channel_name]), {
+          icon: <ArchiveIcon className="size-4" />
+        });
+      } else {
+        toast.success(_(`Channel {0} restored`, [channel.channel_name]), {
+          icon: <ArchiveRestoreIcon className="size-4" />
+        });
+      }
+      // No navigation: archived channels remain viewable, so the user stays
+      // where they are and the page just turns read-only in place (and turns
+      // live again on unarchive).
+      setOpen(false);
     });
   };
 
   return (
-    <AlertDialog>
+    <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
         <PrefActionRow
           label={

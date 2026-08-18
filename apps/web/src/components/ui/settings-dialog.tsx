@@ -142,7 +142,7 @@ function SettingsTabItem({
                     )}
                     <span
                         className={cn(
-                            "flex-1 shrink-0 truncate text-sm duration-300 ease-in-out w-auto opacity-100 text-ink-gray-6",
+                            "flex-1 shrink-0 truncate text-sm leading-snug duration-300 ease-in-out w-auto opacity-100 text-ink-gray-6",
                             icon && "ms-2"
                         )}
                     >

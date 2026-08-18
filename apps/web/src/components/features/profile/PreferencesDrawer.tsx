@@ -4,7 +4,7 @@ import Picker from "@emoji-mart/react"
 import { useFrappePostCall } from "frappe-react-sdk"
 import { ArrowDownAzIcon, ClockIcon, ImagesIcon, LayoutPanelLeftIcon } from "lucide-react"
 import useCurrentRavenUser from "@raven/lib/hooks/useCurrentRavenUser"
-import { Drawer, DrawerContent, DrawerTitle } from "@components/ui/drawer"
+import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from "@components/ui/drawer"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@components/ui/select"
 import { Switch } from "@components/ui/switch"
 import { Button } from "@components/ui/button"
@@ -95,6 +95,7 @@ export const PreferencesDrawer = ({ open, onOpenChange }: { open: boolean; onOpe
                 ) : (
                     <div className="flex max-h-[85dvh] flex-col gap-5 overflow-y-auto p-4 pb-10">
                         <DrawerTitle>{_("Preferences")}</DrawerTitle>
+                        <DrawerDescription className="sr-only">{_("Quick reactions and composer preferences")}</DrawerDescription>
                         <PrefSection>
                             <PrefRow
                                 asLabel

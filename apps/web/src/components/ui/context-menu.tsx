@@ -77,8 +77,8 @@ function ContextMenuContent({
 }
 
 const BASE_ITEM_STYLES = `focus-visible:outline-none select-none relative flex cursor-pointer items-center
-gap-2 rounded px-2 py-1.5 text-base text-ink-gray-7 data-[variant=destructive]:text-ink-red-6
-data-[variant=destructive]:*:[svg]:text-ink-red-6! data-[variant=destructive]:focus:bg-surface-red-3 [&_svg:not([class*='text-'])]:text-ink-gray-6 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0
+gap-2 rounded px-2 py-1.5 text-base text-ink-gray-7 data-[variant=destructive]:text-ink-red-8
+data-[variant=destructive]:*:[svg]:text-ink-red-8! data-[variant=destructive]:focus:bg-surface-red-3 [&_svg:not([class*='text-'])]:text-ink-gray-6 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0
 data-disabled:pointer-events-none data-disabled:cursor-not-allowed data-disabled:text-ink-gray-4 data-disabled:*:[svg]:text-ink-gray-4! focus:bg-surface-gray-2 data-[state=checked]:bg-surface-gray-3 data-inset:ps-8`
 
 function ContextMenuItem({
