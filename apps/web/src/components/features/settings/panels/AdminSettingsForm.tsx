@@ -18,7 +18,7 @@ import type { RavenSettings } from "@raven/types/Raven/RavenSettings"
 import _ from "@lib/translate"
 
 /** Only Raven Admins / System Managers may edit Raven Settings. */
-const isRavenSettingsAdmin = () => hasRole("Raven Admin") || hasRole("System Manager")
+export const isRavenSettingsAdmin = () => hasRole("Raven Admin") || hasRole("System Manager")
 
 /**
  * Shared scaffold for the admin-facing Raven Settings panels (AI, HR, Notifications).
