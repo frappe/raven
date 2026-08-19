@@ -133,6 +133,19 @@ const ReactionButton = ({
         onToggle()
     }
 
+    const onContextMenu = (event: React.MouseEvent) => {
+        // Pills have no context menu, ever. Android (never iOS) fires a native
+        // contextmenu for a touch long-press on its own OEM-dependent schedule;
+        // if it bubbled to the stream wrapper, the message ACTION sheet would
+        // open on top of the who-reacted view — two stacked drawers from one
+        // hold. Suppressing unconditionally (rather than only while our own
+        // hold timer is armed) removes every timing assumption; the cost is
+        // that a desktop right-click on a pill does nothing, which is fine —
+        // the rest of the message is the right-click target for the menu.
+        event.preventDefault()
+        event.stopPropagation()
+    }
+
     return (
         <Tooltip>
             <TooltipTrigger asChild>
@@ -150,6 +163,7 @@ const ReactionButton = ({
                             : "bg-surface-gray-2 text-ink-gray-6 hover:bg-surface-gray-3",
                     )}
                     onClick={onClick}
+                    onContextMenu={onContextMenu}
                     onPointerDown={onPointerDown}
                     onPointerMove={onPointerMove}
                     onPointerUp={cancelPress}

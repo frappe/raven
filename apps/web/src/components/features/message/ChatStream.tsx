@@ -16,6 +16,7 @@ import { claimWindowForTarget, releaseWindowClaim } from "@stores/messages/loade
 import { useChannelOutbox } from "@stores/messages/useChannelOutbox"
 import { useChannelReadTracker } from "@stores/unread/useChannelReadTracker"
 import { usePollRealtime } from "@hooks/usePollRealtime"
+import { useWindowLinkPreviewPrefetch } from "@stores/linkPreviews/useLinkPreview"
 import { useStreamScroll } from "./useStreamScroll"
 import { MessageActionMenu } from "./actions/MessageActionMenu"
 import { messageTargetAtom, messageActionTargetAtom, messagePressTargetAtom, makeMessageTarget } from "@utils/channelAtoms"
@@ -186,6 +187,11 @@ export default function ChatStream({ channelID, pinnedMessagesString, initialMes
     // Scoped to this stream, so background channels' polls aren't refetched.
     usePollRealtime(channelID)
 
+    // Fetch link previews for the whole window as soon as its blocks land —
+    // one batched call — so preview cards render WITH their rows instead of
+    // popping in mid-scroll and shifting the layout.
+    useWindowLinkPreviewPrefetch(blocks)
+
     /** When the window is detached from the live edge, "down" means refetching the latest page. */
     const onJumpToPresent = () => {
         if (hasNewerMessages) {
@@ -211,6 +217,13 @@ export default function ChatStream({ channelID, pinnedMessagesString, initialMes
         [blocks],
     )
     useEffect(() => tracker.setOrder(dateOrder), [tracker, dateOrder])
+
+    // The conversation's very FIRST date separator drops its line: a full-width
+    // rule with nothing above it reads as clutter (right under a thread's root
+    // message, or at the top of a channel's history). Only when the real start
+    // is loaded — with older history still above, the topmost separator is
+    // just a window edge, not "the first".
+    const plainDateName = !hasOlderMessages ? dateOrder[0]?.name : undefined
 
     // The pill shows while scrolling and fades out shortly after the user stops.
     const scrollIdleTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
@@ -264,7 +277,7 @@ export default function ChatStream({ channelID, pinnedMessagesString, initialMes
                                             would collapse that to just the changed rows. Do with profiling. */}
                                         {blocks.map((block) =>
                                             block.message_type === "date" ? (
-                                                <DateSeparator label={block.creation} name={block.name} key={block.name} />
+                                                <DateSeparator label={block.creation} name={block.name} key={block.name} showLine={block.name !== plainDateName} />
                                             ) : block.message_type === "unread" ? (
                                                 <UnreadSeparator key={block.name} />
                                             ) : block.message_type === "batch" ? (
@@ -299,7 +312,7 @@ export default function ChatStream({ channelID, pinnedMessagesString, initialMes
                                                 />
                                             ) : (
                                                 <div
-                                                    key={block.name}
+                                                    key={block.render_key ?? block.name}
                                                     data-message-id={block.name}
                                                     // Deliberately NO content-visibility: placeholder estimates change height
                                                     // after paint and break exact scroll compensation on prepend.

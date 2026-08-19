@@ -10,6 +10,11 @@
   "auto_add_system_users",
   "show_raven_on_desk",
   "use_website_favicon",
+  "blocked_links",
+  "quiet_hours_section",
+  "enable_quiet_hours",
+  "working_hours_start",
+  "working_hours_end",
   "integrations_tab",
   "integrations_section",
   "tenor_api_key",
@@ -293,13 +298,43 @@
    "fieldname": "frappe_meet_hosted_urls",
    "fieldtype": "Small Text",
    "label": "Frappe Meet Hosted URLs"
+  },
+  {
+   "description": "The system will not generate link previews for these links if they appear in messages.",
+   "fieldname": "blocked_links",
+   "fieldtype": "Table",
+   "label": "Blocked Links",
+   "options": "Raven Blocked Links"
+  },
+  {
+   "fieldname": "quiet_hours_section",
+   "fieldtype": "Section Break",
+   "label": "Quiet Hours"
+  },
+  {
+   "default": "0",
+   "fieldname": "enable_quiet_hours",
+   "fieldtype": "Check",
+   "label": "Enable Quiet Hours"
+  },
+  {
+   "default": "09:00:00",
+   "fieldname": "working_hours_start",
+   "fieldtype": "Time",
+   "label": "Working Hours Start"
+  },
+  {
+   "default": "18:00:00",
+   "fieldname": "working_hours_end",
+   "fieldtype": "Time",
+   "label": "Working Hours End"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-07-05 06:01:58.752266",
+ "modified": "2026-08-18 12:12:06.954523",
  "modified_by": "Administrator",
  "module": "Raven",
  "name": "Raven Settings",

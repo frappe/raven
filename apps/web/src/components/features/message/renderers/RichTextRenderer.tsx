@@ -2,6 +2,7 @@ import { useMemo, useState } from "react"
 import { Element, Text, domToReact, htmlToDOM, type DOMNode, type HTMLReactParserOptions } from "html-react-parser"
 import { UserMention, ChannelMention } from "./MessageMention"
 import { CodeBlock } from "./MessageCodeBlock"
+import { MessageLink } from "./LinkPreviewCard"
 import { cn } from "@lib/utils"
 import _ from "@lib/translate"
 
@@ -94,6 +95,13 @@ const options: HTMLReactParserOptions = {
             return <Spoiler>{domToReact(node.children as DOMNode[], options)}</Spoiler>
         }
 
+        // The inline "(edited)" marker, injected into the final paragraph by
+        // EditedMessageBody. A data-* marker for the same reason as spoilers:
+        // classes don't survive the strip above.
+        if (node.name === "span" && node.attribs?.["data-edited"] !== undefined) {
+            return <span className="ml-1 text-sm text-ink-gray-5">{domToReact(node.children as DOMNode[], options)}</span>
+        }
+
         // Custom emoji: an inline <img data-type="customEmoji">. Render it sized like an
         // emoji (the author class is stripped above), src-sanitized to a safe scheme.
         if (node.name === "img" && node.attribs?.["data-type"] === "customEmoji") {
@@ -130,12 +138,14 @@ const options: HTMLReactParserOptions = {
         }
 
         // Sanitize links: safe scheme only, always open in a new tab.
+        // MessageLink renders the same anchor, plus the floating preview
+        // when the user chose "Link Hover" mode.
         if (node.name === "a") {
             const href = (node.attribs?.href ?? "").trim()
             return (
-                <a href={SAFE_HREF.test(href) ? href : undefined} target="_blank" rel="noopener noreferrer nofollow">
+                <MessageLink href={SAFE_HREF.test(href) ? href : undefined}>
                     {domToReact(node.children as DOMNode[], options)}
-                </a>
+                </MessageLink>
             )
         }
     },
@@ -210,6 +220,16 @@ const isJumbomoji = (html: string, dom: DOMNode[]): boolean => {
     }
     return count >= 1 && count <= JUMBOMOJI_MAX
 }
+
+/**
+ * Parse-and-check for callers outside the renderer. The inline "(edited)"
+ * marker must NOT be injected into a jumbomoji paragraph — the added text
+ * would fail the emoji-only walk above and shrink the emojis. The length
+ * gate skips the parse for anything that can't be jumbomoji anyway.
+ */
+export const isJumbomojiHtml = (html: string): boolean =>
+    html.length <= JUMBOMOJI_HTML_MAX_LENGTH &&
+    isJumbomoji(html, htmlToDOM(html, { lowerCaseAttributeNames: false }))
 
 export const RichTextRenderer = ({ html, jumbomoji = false }: { html: string; jumbomoji?: boolean }) => {
     const { tree, jumbo } = useMemo(() => {

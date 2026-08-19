@@ -31,7 +31,7 @@ const ChannelMembers = ({ onClick, channelID }: ChannelMembersProps) => {
         const shuffled = [...members]
         for (let i = shuffled.length - 1; i > 0; i--) {
             const j = Math.floor(random() * (i + 1))
-            ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+                ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
         }
         return shuffled
     }, [members, channelID])
@@ -43,7 +43,14 @@ const ChannelMembers = ({ onClick, channelID }: ChannelMembersProps) => {
                     onClick={onClick}
                     className="cursor-pointer hover:opacity-80 transition-opacity"
                 >
-                    {isLoading ? <Skeleton className="h-6 w-6 rounded-full" /> : <GroupedAvatars size="sm" users={shuffledMembers} />}
+                    {isLoading ?
+                        <div className="flex items-center -space-x-2">
+                            <Skeleton className="size-7 rounded-full" />
+                            <Skeleton className="size-7 rounded-full" />
+                            <Skeleton className="size-7 rounded-full" />
+                            <Skeleton className="size-7 rounded-full" />
+                        </div>
+                        : <GroupedAvatars size="sm" users={shuffledMembers} />}
                 </div>
             </TooltipTrigger>
             <TooltipContent>

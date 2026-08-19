@@ -3,6 +3,10 @@ import Channel from "@pages/workspace/Channel"
 import Notifications from "@pages/notifications/Notifications"
 import NotificationChatRoute from "@pages/notifications/NotificationChatRoute"
 import { MessagePermalinkSkeleton } from "@pages/message/MessagePermalinkSkeleton"
+import { ProfilePageSkeleton } from "@pages/profile/ProfilePageSkeleton"
+import { ShareTargetSkeleton } from "@pages/share/ShareTargetSkeleton"
+import { ListPageSkeleton } from "@components/layout/ListPageSkeleton"
+import _ from "@lib/translate"
 import ErrorPage from "@pages/ErrorPage"
 import Threads from "@pages/threads/Threads"
 import DirectMessages, { DirectMessagesIndex } from "@pages/dm-channel/DirectMessages"
@@ -10,6 +14,7 @@ import DirectMessage from "@pages/dm-channel/DirectMessage"
 import ThreadDrawerRoute from "@components/features/message/ThreadDrawerRoute"
 import { WorkspaceRedirect } from "@components/workspace-switcher/WorkspaceRedirect"
 import { FrappeProvider } from 'frappe-react-sdk'
+import { redirectToLoginIfSessionDied } from '@lib/authRecovery'
 import { initEmojiMart } from '@lib/emojiMart'
 import Cookies from 'js-cookie'
 import { Toaster } from "@components/ui/sonner"
@@ -28,9 +33,10 @@ import WorkspaceLayout from "@pages/workspace/WorkspaceLayout"
 // rendering the route until its module resolves — a blank screen on the COLD
 // entries these pages mostly get (shared links, the OS share sheet) — while
 // Suspense paints the app shell + fallback immediately.
-// TODO: review the Suspense fallbacks/skeletons for these routes as a set —
-// most are `null` today; each page should get a silhouette of its own layout
-// (like MessagePermalinkSkeleton) so chunk-load never flashes blank.
+// Every lazy route gets a silhouette of its own layout as its Suspense
+// fallback — chunk-load must never flash blank. On mobile the tab bar lives
+// INSIDE each page's chunk, so the fallbacks mount the real (eager) footer:
+// the frame stays put and the tabs stay tappable during the load.
 const MessagePermalink = lazy(() => import("@pages/message/MessagePermalink"))
 const ShareTarget = lazy(() => import("@pages/share/ShareTarget"))
 const SavedMessages = lazy(() => import("@pages/saved-messages/SavedMessages"))
@@ -48,20 +54,26 @@ const IndexRedirect = () => {
   const isMobile = useIsMobile()
   const { workspaces, isLoading } = useWorkspaces()
 
-  if (lastWorkspace) {
-    // Desktop reopens the exact channel; mobile lands on the workspace's
-    // channel list (the channel pair is written together, so it's consistent)
+  // Decide only once the workspace list is known — otherwise a deleted
+  // lastWorkspace can't be told apart from one that just hasn't loaded yet.
+  if (isLoading) return null
+
+  // Reopen the remembered workspace only if it STILL EXISTS — it may have been
+  // deleted (here or by another admin) or the user removed from it, leaving the
+  // atom stale. Desktop reopens the exact channel; mobile lands on the
+  // workspace's channel list (the channel pair is written together).
+  const lastExists = lastWorkspace && workspaces.some((w) => w.name === lastWorkspace)
+  if (lastExists) {
     if (lastChannel && !isMobile) {
       return <Navigate to={`/${encodeURIComponent(lastWorkspace)}/${encodeURIComponent(lastChannel)}`} replace />
     }
     return <Navigate to={`/${encodeURIComponent(lastWorkspace)}`} replace />
   }
 
-  // No remembered workspace — fresh install, or an installed PWA's isolated
-  // storage on first launch. Fall back to the first workspace the user belongs
-  // to instead of rendering nothing: a blank index has no desktop sidebar to
-  // mask it on mobile, so `return null` here shows as a black screen.
-  if (isLoading) return null
+  // No valid remembered workspace — fresh install, an installed PWA's isolated
+  // storage on first launch, or a stale/deleted one. Fall back to the first
+  // workspace the user belongs to instead of rendering nothing: a blank index
+  // has no desktop sidebar to mask it on mobile, so `return null` shows black.
   const fallback = workspaces.find((w) => w.workspace_member_name) ?? workspaces[0]
   if (!fallback) return null
   return <Navigate to={`/${encodeURIComponent(fallback.name)}`} replace />
@@ -101,15 +113,25 @@ const router = createBrowserRouter(
       <Route path="threads" element={<Threads />}>
         <Route path=":threadID" element={<ThreadDrawerRoute />} />
       </Route>
-      <Route path="search" element={<Suspense fallback={null}><Search /></Suspense>}>
+      {/* The `key` on every lazy route's Suspense is LOAD-BEARING. Adjacent
+          lazy routes render the same shape at the same Outlet position, so
+          without keys React reconciles them into ONE reused Suspense instance
+          — and a reused boundary suspending inside a router transition keeps
+          showing its old content (the previous PAGE) instead of the fallback.
+          Keys force a fresh boundary per route; a new boundary shows its
+          skeleton immediately, even mid-transition. */}
+      <Route path="search" element={<Suspense key="search" fallback={<ListPageSkeleton title={_("Search")} />}><Search /></Suspense>}>
         <Route path=":channelID/:messageID" element={<NotificationChatRoute />} />
       </Route>
-      <Route path="saved-messages" element={<Suspense fallback={null}><SavedMessages /></Suspense>}>
+      <Route path="saved-messages" element={<Suspense key="saved-messages" fallback={<ListPageSkeleton title={_("Saved Messages")} />}><SavedMessages /></Suspense>}>
         <Route path=":channelID/:messageID" element={<NotificationChatRoute />} />
       </Route>
-      <Route path="profile" element={<Suspense fallback={null}><MobileProfile /></Suspense>} />
+      {/* Fallback = the page's silhouette WITH the real tab bar: the footer
+          lives inside this lazy chunk, so a null fallback blanked the whole
+          screen (footer included) for the duration of the load. */}
+      <Route path="profile" element={<Suspense key="profile" fallback={<ProfilePageSkeleton />}><MobileProfile /></Suspense>} />
       {/* OS share sheet lands here (manifest share_target) — conversation picker */}
-      <Route path="share-target" element={<Suspense fallback={null}><ShareTarget /></Suspense>} />
+      <Route path="share-target" element={<Suspense key="share-target" fallback={<ShareTargetSkeleton />}><ShareTarget /></Suspense>} />
       {/* Permalink resolver — "Copy message link" always produces this route; it
           redirects to the message's real home (channel, DM, or thread). The
           fallback is the SAME skeleton the page renders while resolving, so
@@ -117,7 +139,7 @@ const router = createBrowserRouter(
       <Route
         path="message/:messageID"
         element={
-          <Suspense fallback={<MessagePermalinkSkeleton />}>
+          <Suspense key="message-permalink" fallback={<MessagePermalinkSkeleton />}>
             <MessagePermalink />
           </Suspense>
         }
@@ -126,17 +148,6 @@ const router = createBrowserRouter(
           blank-while-loading tradeoff doesn't matter for a page nobody lands
           on intentionally, and it keeps the chunk out of the main bundle. */}
       <Route path="*" lazy={() => import("@pages/NotFound")} />
-      {/* TODO: when these settings routes come back, re-add their page imports as
-          lazy() consts in the code-split block above — their old EAGER imports were
-          removed (they sat in the main bundle for routes that didn't exist). */}
-      {/* <Route path="settings" element={<AppSettings />}>
-        <Route index element={<Navigate to="profile" replace />} />
-        <Route path="profile" element={<Profile />} />
-        <Route path="preferences" element={<Preferences />} />
-        <Route path="workspaces" element={<WorkspaceList />} />
-        <Route path="channels" element={<ManageChannels />} />
-        <Route path="emojis" element={<CustomEmojiList />} />
-      </Route> */}
     </Route>,
   ),
   { basename: import.meta.env.VITE_BASE_NAME },
@@ -144,21 +155,25 @@ const router = createBrowserRouter(
 
 function App() {
 
-  useEffect(() => {
-    // Check if user is logged in by checking the Cookie "user_id"
-    // In Frappe, unauthenticated users are "Guest"
-    const userId = document.cookie?.split('; ').find(row => row.startsWith('user_id='))?.split('=')[1]?.trim()
-    const isLoggedIn = userId !== 'Guest'
+  // Login check, SYNCHRONOUS and before the router renders. It used to live in
+  // a post-paint effect, so a logged-out visitor rendered the whole app for a
+  // few frames — ProtectedRoute's "no access" alert flashed — before the
+  // redirect kicked in. Checked during render, we paint nothing instead while
+  // the browser navigates to login. (Frappe marks anonymous visitors with
+  // user_id=Guest; dev builds skip the redirect — there's no local login page.)
+  const userId = Cookies.get('user_id')
+  const isLoggedIn = !!userId && userId !== 'Guest'
+  const shouldRedirectToLogin = !isLoggedIn && !import.meta.env.DEV
 
-    if (!isLoggedIn) {
-      if (import.meta.env.DEV) {
-        return
-      }
-      // Redirect to Frappe login page with the correct redirect to the current route
+  useEffect(() => {
+    if (shouldRedirectToLogin) {
       window.location.href = `/login?redirect-to=${window.location.pathname}`
-      return
     }
-  }, [])
+  }, [shouldRedirectToLogin])
+
+  if (shouldRedirectToLogin) {
+    return null
+  }
 
   return (
     <LucideProvider
@@ -169,7 +184,16 @@ function App() {
           url={import.meta.env.VITE_FRAPPE_PATH ?? ''}
           socketPort={import.meta.env.VITE_SOCKET_PORT ? import.meta.env.VITE_SOCKET_PORT : undefined}
           swrConfig={{
-            errorRetryCount: 2,
+            // NO global errorRetryCount: SWR's default retry is UNLIMITED
+            // exponential backoff, and that's what we want for the fetches
+            // that gate the whole UI (channel list etc.) — a cap here once
+            // stranded cold starts on flaky networks on skeletons forever.
+            // Hooks that shouldn't retry set shouldRetryOnError/errorRetryCount
+            // themselves.
+            // Dead-session recovery: Frappe rewrites the user_id cookie to
+            // "Guest" on the failing response itself, so any fetch error while
+            // the cookie says Guest means the session is gone — go to login.
+            onError: redirectToLoginIfSessionDied,
             // @ts-ignore - SWR config
             provider: localStorageProvider
           }}
@@ -189,6 +213,7 @@ const CACHE_KEYS = [
   "raven.api.login.get_context",
   "workspaces_list",
   "channel_list",
+  "message-actions-list",
 ]
 
 function localStorageProvider() {

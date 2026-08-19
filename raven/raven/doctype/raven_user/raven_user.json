@@ -33,7 +33,10 @@
   "filter_joined_channels",
   "column_break_xlzh",
   "time_format",
-  "sort_channels_by"
+  "sort_channels_by",
+  "link_previews",
+  "hide_read_receipts",
+  "quiet_hours_nudge"
  ],
  "fields": [
   {
@@ -58,6 +61,7 @@
   },
   {
    "fetch_from": "user.first_name",
+   "fetch_if_empty": 1,
    "fieldname": "first_name",
    "fieldtype": "Data",
    "label": "First Name"
@@ -201,12 +205,32 @@
    "fieldtype": "Select",
    "label": "Sort channels by",
    "options": "Alphabetical Order\nRecent Activity\nUnreads First"
+  },
+  {
+   "default": "Preview Card",
+   "fieldname": "link_previews",
+   "fieldtype": "Select",
+   "label": "Link Previews",
+   "options": "Link Hover\nPreview Card"
+  },
+  {
+   "default": "0",
+   "fieldname": "hide_read_receipts",
+   "fieldtype": "Check",
+   "label": "Hide Read Receipts"
+  },
+  {
+   "default": "No Nudge",
+   "fieldname": "quiet_hours_nudge",
+   "fieldtype": "Select",
+   "label": "Quiet Hours Nudge",
+   "options": "No Nudge\nNudge\nAuto Silent"
   }
  ],
  "grid_page_length": 50,
  "image_field": "user_image",
  "links": [],
- "modified": "2026-07-10 12:28:47.461186",
+ "modified": "2026-08-18 12:12:33.464600",
  "modified_by": "Administrator",
  "module": "Raven",
  "name": "Raven User",

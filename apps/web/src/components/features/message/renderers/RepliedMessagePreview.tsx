@@ -4,12 +4,14 @@ import { ChartColumnIcon } from "lucide-react"
 import FileTypeIcon from "@components/common/FileIcons/FileTypeIcon"
 import { getFileExtension, getFileName } from "@raven/lib/utils/operations"
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@components/ui/hover-card"
-import parse from "html-react-parser"
 import _ from "@lib/translate"
 
-/** The snapshot of a replied-to message (matches the backend's replied_message_details JSON). */
+/**
+ * The snapshot of a replied-to message (matches the backend's replied_message_details
+ * JSON). Plain text only — the backend deliberately does NOT store the HTML body here
+ * (see RavenMessage.before_insert); `content` is what every client renders.
+ */
 export interface RepliedMessageDetails {
-    text: string
     content: string
     file: string
     message_type: RavenMessage["message_type"]
@@ -61,8 +63,11 @@ export const RepliedMessagePreview = ({ details }: { details: RepliedMessageDeta
                     </span>
                 )}
 
-                {details.text && (
-                    <span className="md:line-clamp-2 line-clamp-1 md:text-p-base text-p-lg">{parse(details.content)}</span>
+                {/* Text messages only: the other types render their own summary above,
+                    and `content` holds that same teaser (file name / poll question), so
+                    keying this off the type avoids printing it twice. */}
+                {details.message_type === "Text" && details.content && (
+                    <span className="md:line-clamp-2 line-clamp-1 md:text-p-base text-p-lg">{details.content}</span>
                 )}
             </div>
         </div>

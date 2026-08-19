@@ -62,7 +62,7 @@ const buttonVariants = cva(
       {
         variant: "solid",
         theme: "red",
-        className: "text-ink-base bg-surface-red-7 hover:bg-surface-red-8 active:bg-surface-red-9 disabled:bg-surface-red-2 disabled:text-ink-red-5"
+        className: "text-ink-base dark:text-ink-red-10 bg-surface-red-7 hover:bg-surface-red-8 active:bg-surface-red-9 disabled:bg-surface-red-2 disabled:text-ink-red-5"
       },
       // Subtle Buttons
       {
@@ -167,7 +167,12 @@ function Button({
       ) : (
         <>
           {loading && <Spinner />}
-          {loading && loadingText ? loadingText : children}
+          {/* An icon button is a fixed square: rendering the spinner NEXT TO the icon
+              would squeeze both and shift the glyph. There it replaces the icon. A
+              labelled button keeps its label beside the spinner (or swaps in loadingText). */}
+          {loading
+            ? (isIconButton ? null : (loadingText ?? children))
+            : children}
         </>
       )}
     </Comp>

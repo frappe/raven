@@ -7,8 +7,10 @@ from frappe.query_builder import Order
 from raven.utils import track_channel_visit
 
 
-def _message_columns(message):
-	"""The columns every chat stream endpoint returns for a message."""
+def message_columns(message):
+	"""The columns every chat stream endpoint returns for a message.
+	Shared: get_message_batch (raven_message.py) selects the same set, so a
+	batch fetched for the thread header renders exactly like the stream."""
 	return (
 		message.name,
 		message.owner,
@@ -44,6 +46,52 @@ def _message_columns(message):
 	)
 
 
+# Safety cap. A window is ~30 messages, so 100 distinct links is already
+# extreme. Urls past the cap are not lost — the client asks for them later
+# through the normal get_previews call.
+_SIDECAR_MAX_URLS = 100
+
+
+def _link_previews_sidecar(messages) -> dict:
+	"""
+	Collect every link in this window of messages and return their stored
+	previews, keyed by the RAW url. This is the "side-car" from Phase 5 of
+	docs/link-previews-plan.md.
+
+	Why it exists: the client seeds its preview store from this BEFORE it
+	renders the messages. Cards then appear together with their messages,
+	instead of one network round-trip later — that late pop-in is what made
+	the stream jump. The preview status rides along too, so the client can
+	tell "still fetching" apart from "failed or blocked, never coming".
+
+	The list rides on the RESPONSE, next to the messages. It is not part of
+	the message objects, and message caches must never store it (see the
+	plan doc's watch items).
+
+	Read-only. A window with no links returns an empty dict and runs no
+	query.
+	"""
+	from raven.api.preview_links import previews_for_urls
+
+	urls = []
+	seen = set()
+	for message in messages:
+		if not message.links:
+			continue
+		# message.links is a newline-joined string of raw hrefs. The client
+		# extracts the same spellings from the message, so the keys match.
+		for url in message.links.split("\n"):
+			url = url.strip()
+			if url and url not in seen:
+				seen.add(url)
+				urls.append(url)
+
+	if not urls:
+		return {}
+
+	return previews_for_urls(urls[:_SIDECAR_MAX_URLS])
+
+
 def _complete_boundary_batch(channel_id: str, boundary, older: bool):
 	"""
 	Batches (shared message_batch_id) must never be cut at a page edge —
@@ -69,7 +117,7 @@ def _complete_boundary_batch(channel_id: str, boundary, older: bool):
 
 	return (
 		frappe.qb.from_(message)
-		.select(*_message_columns(message))
+		.select(*message_columns(message))
 		.where(message.channel_id == channel_id)
 		.where(message.message_batch_id == boundary.message_batch_id)
 		.where(condition)
@@ -161,7 +209,7 @@ def get_messages(
 
 	messages = (
 		frappe.qb.from_(message)
-		.select(*_message_columns(message))
+		.select(*message_columns(message))
 		.where(message.channel_id == channel_id)
 		.orderby(message.creation, order=Order.desc)
 		.orderby(message.name, order=Order.desc)
@@ -195,6 +243,7 @@ def get_messages(
 		"has_old_messages": has_old_messages,
 		"has_new_messages": False,
 		"last_visit": last_visit,
+		"previews": _link_previews_sidecar(messages),
 	}
 
 
@@ -219,6 +268,7 @@ def get_messages_around_base(channel_id: str, base_message: str, limit: int = 20
 		**older_messages,
 		**newer_messages,
 		"messages": combined_messages,
+		"previews": _link_previews_sidecar(combined_messages),
 		"from_timestamp": from_timestamp,
 		"last_visit": frappe.db.get_value(
 			"Raven Channel Member",
@@ -253,7 +303,7 @@ def fetch_older_messages(
 
 	messages = (
 		frappe.qb.from_(message)
-		.select(*_message_columns(message))
+		.select(*message_columns(message))
 		.where(message.channel_id == channel_id)
 		.where(
 			(message.creation < from_timestamp)
@@ -288,7 +338,11 @@ def fetch_older_messages(
 		if len(older_message) > 0:
 			has_old_messages = True
 
-	return {"messages": messages, "has_old_messages": has_old_messages}
+	return {
+		"messages": messages,
+		"has_old_messages": has_old_messages,
+		"previews": _link_previews_sidecar(messages),
+	}
 
 
 @frappe.whitelist()
@@ -346,7 +400,7 @@ def fetch_newer_messages(
 
 	messages = (
 		frappe.qb.from_(message)
-		.select(*_message_columns(message))
+		.select(*message_columns(message))
 		.where(message.channel_id == channel_id)
 		.where(condition)
 		.orderby(message.creation, order=Order.asc)
@@ -380,4 +434,8 @@ def fetch_newer_messages(
 
 	# The messages are in ascending order, so reverse them
 	messages.reverse()
-	return {"messages": messages, "has_new_messages": has_new_messages}
+	return {
+		"messages": messages,
+		"has_new_messages": has_new_messages,
+		"previews": _link_previews_sidecar(messages),
+	}

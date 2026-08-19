@@ -1,45 +1,45 @@
 import { useContext, useMemo } from "react"
-import { getDefaultStore, useSetAtom } from "jotai"
-import { useNavigate } from "react-router-dom"
+import { getDefaultStore, useAtomValue, useSetAtom } from "jotai"
 import { FrappeConfig, FrappeContext, useFrappeGetCall, type FrappeError } from "frappe-react-sdk"
+import { useNavigateFromDrawer } from "@hooks/useNavigateFromDrawer"
 import { toast } from "sonner"
 import {
     Bookmark,
     BookmarkMinus,
     Copy,
     Link,
-    LucideIcon,
     MessageSquareText,
     Edit3Icon,
+    Eye,
+    Forward,
     Pin,
     PinOff,
     Reply,
     SmilePlus,
     Trash2,
     ListXIcon,
+    ZapIcon,
 } from "lucide-react"
 import { editingMessageAtom, messageDialogAtom, replyToMessageAtom } from "@utils/channelAtoms"
 import { focusComposer } from "@components/features/ChatInput/composerFocus"
 import { resolveEditTarget } from "./editTarget"
+import { buildFileActions, type MessageAction } from "./fileActions"
+import { ReadReceiptsList } from "./ReadReceiptsList"
 import { channelMessagesStore } from "@stores/messages/store"
 import { parsePinnedIds } from "@stores/messages/selectors"
+import { isOptimistic } from "@stores/messages/types"
 import { channelStore } from "@stores/channels/store"
 import { useChannelPinnedString } from "@stores/channels/useChannelList"
 import { seedThreadMeta } from "@stores/threads/useThreadMeta"
 import _ from "@lib/translate"
 import type { Message } from "@raven/types/common/Message"
 import { useUserCookieData } from "@hooks/useUserCookieData"
+import { hideReadReceiptsAtom } from "@utils/preferences"
 import { errorResponseToast } from "@components/ui/error-banner"
 import type { PollData } from "../renderers/PollMessageContent"
+import { useEnabledMessageActions } from "@hooks/useEnabledMessageActions"
 
-export type MessageAction = {
-    id: string
-    label: string
-    icon: LucideIcon
-    onSelect: () => void
-    /** Renders in the destructive style (delete). */
-    danger?: boolean
-}
+export type { MessageAction }
 
 /** Strips rich-text markup so "Copy" puts plain text on the clipboard. */
 const toPlainText = (html: string): string => {
@@ -84,15 +84,14 @@ const selectionWithinMessage = (messageID: string): string => {
 }
 
 /**
- * Builds the action groups for a message — the single source of truth rendered
- * by the desktop context menu, the mobile bottom sheet, and (later) the hover
- * toolbar. Groups map to visual sections separated by dividers.
+ * Builds the action groups for a message — the single source of truth rendered by the
+ * desktop context menu, the mobile bottom sheet, and the hover toolbar's overflow menu.
+ * Groups map to visual sections separated by dividers.
  *
- * Mutating actions (edit/delete/pin/save/reactions) follow the optimistic
- * contract when implemented: (1) apply to the channel message store
- * synchronously via its action methods, (2) fire the API call, (3) on failure,
- * resync the channel window and toast. The store's idempotent, monotonic
- * upserts make resync a safe universal rollback.
+ * Mutating actions (edit/delete/pin/save/reactions) all follow one optimistic contract:
+ * (1) apply to the channel message store synchronously via its action methods, (2) fire
+ * the API call, (3) on failure, put back what was applied and toast. The store's
+ * idempotent, monotonic upserts make a window resync a safe universal rollback.
  */
 export const useMessageActions = (
     message: Message | null,
@@ -102,6 +101,17 @@ export const useMessageActions = (
          *  not-archived — which, unlike the channel store, also knows THREAD
          *  membership. Defaults to true for callers without a gate. */
         canInteract?: boolean
+        /** Whether to build the FILE actions (copy file link / download / download all /
+         *  attach to document). Defaults to true.
+         *
+         *  Set false while they can't be seen. Building them resolves the message's batch
+         *  via `channelMessagesStore.batchMembers`, which scans the channel's whole loaded
+         *  window — cheap once, wasteful on a hover-driven path. The hover toolbar renders
+         *  only reply/create-thread/edit as buttons and shows the rest solely inside its
+         *  ellipsis dropdown, so it passes its open state here and pays the scan when the
+         *  dropdown actually opens. The context menu, which only ever targets a message on
+         *  right-click or long-press, leaves this alone. */
+        includeFileActions?: boolean
     },
 ): {
     /** Action groups (visual sections) — menus/sheets/toolbar all render from these. */
@@ -112,9 +122,10 @@ export const useMessageActions = (
     isOwner: boolean
 } => {
     const canInteract = options?.canInteract ?? true
+    const includeFileActions = options?.includeFileActions ?? true
     const { name: currentUser } = useUserCookieData()
     const setDialog = useSetAtom(messageDialogAtom)
-    const navigate = useNavigate()
+    const navigateFromDrawer = useNavigateFromDrawer()
     const { call } = useContext(FrappeContext) as FrappeConfig
     // Pinned state lives on the channel, and pinning doesn't change the message object —
     // so subscribe to the channel's pinned string here. Without this, reopening the menu
@@ -130,6 +141,12 @@ export const useMessageActions = (
         isPoll && message ? ["poll", message.name] : null,
         { dedupingInterval: 10000 },
     )
+    const enabledActions = useEnabledMessageActions()
+    // Hiding your read receipts is two-way (server-enforced in
+    // get_message_readers): you don't get to see others' either, so the
+    // "Read by" action disappears entirely. Boot-seeded atom, not the
+    // profile SWR cache — this hook is on the hot menu path.
+    const hideReadReceipts = useAtomValue(hideReadReceiptsAtom)
 
     return useMemo(() => {
         if (!message) return { groups: [], isOwner: false }
@@ -181,21 +198,47 @@ export const useMessageActions = (
                     const target = pathname.startsWith(base)
                         ? `${base}/thread/${threadID}`
                         : `${base}/thread/${threadID}?message_id=${encodeURIComponent(threadID)}`
-                    call.post("raven.api.threads.create_thread", { message_id: threadID })
-                        .then(() => {
-                            // Reflect the new thread on the parent (shows the pill) and seed an
-                            // empty reply count, then open it.
-                            channelMessagesStore.messageEdited(message.channel_id, threadID, { is_thread: 1 })
-                            seedThreadMeta(threadID, 0)
-                            navigate(target)
-                        })
-                        .catch((e) => errorResponseToast(_("Could not create thread"), e))
+                    // On mobile this runs from the action SHEET, which starts closing on
+                    // select — navigating under it would bake it into the OS back-swipe
+                    // screenshot. navigateFromDrawer holds navigation until the sheet is
+                    // gone; the create_thread round-trip runs during that wait. No close
+                    // to pass: the sheet dismisses itself after onSelect.
+                    navigateFromDrawer(
+                        call.post("raven.api.threads.create_thread", { message_id: threadID })
+                            .then(() => {
+                                // Reflect the new thread on the parent (shows the pill) and seed an
+                                // empty reply count, then open it.
+                                channelMessagesStore.messageEdited(message.channel_id, threadID, { is_thread: 1 })
+                                seedThreadMeta(threadID, 0)
+                                return target
+                            })
+                            .catch((e) => {
+                                errorResponseToast(_("Could not create thread"), e)
+                                return null
+                            }),
+                    )
                 },
             })
         }
 
-        // Clipboard & files
+        // Clipboard: forward, copy text, copy message link
         const clipboard: MessageAction[] = []
+        // Forward sits with copy/link — all three take this message somewhere else.
+        // NOT gated on canInteract: that flag is membership in the SOURCE channel and
+        // governs writing back into it, while a forward writes into a different channel
+        // whose permission the server checks on insert. So someone reading a message in
+        // the search or notification pane can still forward it.
+        // Polls can't be copied without either sharing or orphaning their poll doc; a
+        // System notice (joins/leaves) means nothing anywhere else; and an optimistic
+        // message has no server copy to forward yet.
+        if (message.message_type !== "Poll" && message.message_type !== "System" && !isOptimistic(message)) {
+            clipboard.push({
+                id: "forward",
+                label: _("Forward"),
+                icon: Forward,
+                onSelect: () => setDialog({ type: "forward", message }),
+            })
+        }
         if (message.text || message.content) {
             clipboard.push({
                 id: "copy",
@@ -217,24 +260,55 @@ export const useMessageActions = (
                 },
             })
         }
-        clipboard.push({
-            id: "copy-link",
-            label: _("Copy message link"),
-            icon: Link,
-            onSelect: () => {
-                // One canonical shape for EVERY message — the /message resolver route
-                // redirects it to the right place (channel, DM, or thread reply).
-                // Pathname-based links broke inside threads (?message_id belongs to
-                // the channel's stream) and in the notification/search panes (no
-                // channel in the URL at all).
-                const base = import.meta.env.VITE_BASE_NAME ? `/${import.meta.env.VITE_BASE_NAME}` : ""
-                const url = `${window.location.origin}${base}/message/${encodeURIComponent(message.name)}`
-                navigator.clipboard.writeText(url)
-                toast.success(_("Link copied"))
-            },
-        })
-        // No per-file Download here: it's ambiguous for a batch (which file?), and the
-        // attachment preview / lightbox already offers an unambiguous per-file download.
+        // No "Copy message link" in DMs. The link only opens for the DM's two
+        // participants, and the other one already has the message — there is no
+        // one to share it with. Thread replies keep the action: their channel_id
+        // is the thread, which the channel store never holds, so we can't tell
+        // if the thread lives in a DM.
+        if (parentChannel?.is_direct_message !== 1) {
+            clipboard.push({
+                id: "copy-link",
+                label: _("Copy message link"),
+                icon: Link,
+                onSelect: () => {
+                    // One canonical shape for EVERY message — the /message resolver route
+                    // redirects it to the right place (channel, DM, or thread reply).
+                    // Pathname-based links broke inside threads (?message_id belongs to
+                    // the channel's stream) and in the notification/search panes (no
+                    // channel in the URL at all).
+                    const base = import.meta.env.VITE_BASE_NAME ? `/${import.meta.env.VITE_BASE_NAME}` : ""
+                    const url = `${window.location.origin}${base}/message/${encodeURIComponent(message.name)}`
+                    navigator.clipboard
+                        .writeText(url)
+                        .then(() => toast.success(_("Link copied")))
+                        .catch(() => toast.error(_("Could not copy link")))
+                },
+            })
+        }
+
+        // File actions (copy file link, download, download all, attach to document)
+        // render as their own group — a divider above them on every surface — so
+        // they're built separately and kept out of the clipboard group above.
+        const fileActions = includeFileActions ? buildFileActions(message, { setDialog }) : []
+
+        // Custom actions (admin-defined "Raven Message Action" docs): one parent
+        // entry whose children render as a submenu / drawer sub-view. Absent
+        // entirely on sites with none — the common case. Not gated on canInteract:
+        // running an action only needs read access to the message (the server
+        // enforces exactly that).
+        const customActions: MessageAction[] = []
+        if (enabledActions.length > 0) {
+            customActions.push({
+                id: "custom-actions",
+                label: _("Actions"),
+                icon: ZapIcon,
+                children: enabledActions.map((action) => ({
+                    id: `custom-action-${action.name}`,
+                    label: action.action_name,
+                    onSelect: () => setDialog({ type: "custom-action", message, actionID: action.name }),
+                })),
+            })
+        }
 
         // Organize: pin, save, reactions.
         // Pinned state lives on the CHANNEL (pinned_messages_string, newline-separated
@@ -303,6 +377,29 @@ export const useMessageActions = (
                 onSelect: () => setDialog({ type: "reactions", message }),
             })
         }
+        // Who has read it — sits with the other "view what happened to this message"
+        // actions, right under View reactions. Open to everyone in the channel, and
+        // NOT gated on canInteract — it reads state, it doesn't mutate the channel,
+        // so it stays available in archived channels. Desktop menus fly the list out
+        // as a nested submenu (a glance, no dialog needed); the mobile action sheet
+        // runs onSelect instead, opening it as its own bottom sheet — the same flow
+        // as View reactions. Hidden when the user hides their OWN read receipts
+        // (two-way: see hideReadReceipts above) — and on anonymous polls, whose
+        // reader list would narrow down who voted (server-enforced too). Until
+        // the poll data resolves we treat a poll as anonymous: a briefly
+        // missing action beats a briefly exposed one.
+        const pollForbidsReceipts = isPoll && (!pollData || Boolean(pollData.message.poll.is_anonymous))
+        // Also hidden in your self-DM: the only possible reader is you.
+        const isSelfDM = parentChannel?.is_self_message === 1
+        if (!hideReadReceipts && !pollForbidsReceipts && !isSelfDM) {
+            organize.push({
+                id: "read-receipts",
+                label: _("Read by"),
+                icon: Eye,
+                onSelect: () => setDialog({ type: "read-receipts", message }),
+                submenu: () => <ReadReceiptsList message={message} />,
+            })
+        }
 
         // Owner-only, destructive last
         const owner: MessageAction[] = []
@@ -350,6 +447,6 @@ export const useMessageActions = (
             })
         }
 
-        return { groups: [respond, pollActions, clipboard, organize, owner].filter((group) => group.length > 0), isOwner }
-    }, [message, currentUser, setDialog, navigate, call, pinnedString, canInteract, isPoll, pollData, mutatePoll])
+        return { groups: [respond, pollActions, clipboard, fileActions, customActions, organize, owner].filter((group) => group.length > 0), isOwner }
+    }, [message, currentUser, setDialog, navigateFromDrawer, call, pinnedString, canInteract, isPoll, pollData, mutatePoll, includeFileActions, enabledActions, hideReadReceipts])
 }

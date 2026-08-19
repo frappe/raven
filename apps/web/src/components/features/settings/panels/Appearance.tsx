@@ -2,13 +2,13 @@ import { Separator } from "@components/ui/separator"
 import { SettingsPanelDescription, SettingsPanelHeader, SettingsPanelTitle, SettingsPanelContent, SettingsFormLabel, SettingsFormDescription, SettingsFormRow } from "@components/ui/settings-dialog"
 import { useTheme } from "@components/theme-provider"
 import { useAtom, useSetAtom } from "jotai"
-import { chatStyleAtom, imageGroupingLayoutAtom, type ChatStyle } from "@utils/preferences"
+import { chatStyleAtom, imageGroupingLayoutAtom, timeFormatAtom, type ChatStyle, type TimeFormat } from "@utils/preferences"
 import _ from "@lib/translate"
 import { useFrappePostCall } from "frappe-react-sdk"
 import { toast } from "sonner"
 import useCurrentRavenUser from "@raven/lib/hooks/useCurrentRavenUser"
 import { Select, SelectItem, SelectValue, SelectTrigger, SelectContent } from "@components/ui/select"
-import { ImagesIcon, LayoutPanelLeftIcon } from "lucide-react"
+import { ImagesIcon, LayoutPanelLeftIcon, MousePointerClickIcon, PanelBottomIcon } from "lucide-react"
 import { errorResponseToast } from "@components/ui/error-banner"
 
 const Appearance = () => {
@@ -31,10 +31,18 @@ const Appearance = () => {
 
                         <LeftRightLayoutSwitcher />
 
-                        <Separator />
+                        <div className="flex flex-col gap-2">
+                            <Separator />
+                            <ImageGroupingBehaviour />
 
-                        <ImageGroupingBehaviour />
+                            <Separator />
 
+                            <TimeFormatSetting />
+
+                            <Separator />
+
+                            <LinkPreviewBehaviour />
+                        </div>
                     </div>
                 </div>
             </SettingsPanelContent>
@@ -316,6 +324,108 @@ const LeftRightLayoutSwitcher = () => {
         </div>
     </div>
 
+}
+
+type LinkPreviewMode = "Link Hover" | "Preview Card"
+
+/**
+ * How previews for message links appear: a card under the message, or a
+ * floating preview on hover (keeps the stream compact). Desktop-only in
+ * effect — mobile has no hover, a tap always opens the LINK (hijacking
+ * taps to show a preview would make links feel broken), so on mobile
+ * "Preview Card" shows the card and "Link Hover" just keeps the stream
+ * clean. iOS long-press already gives a native link peek for free.
+ */
+const LinkPreviewBehaviour = () => {
+
+    const { myProfile, mutate } = useCurrentRavenUser()
+
+    const { call } = useFrappePostCall('frappe.client.set_value')
+
+    const setLinkPreviewMode = (mode: LinkPreviewMode) => {
+        if (!myProfile?.name) return
+        call({
+            doctype: 'Raven User',
+            name: myProfile.name,
+            fieldname: 'link_previews',
+            value: mode
+        }).then(() => {
+            mutate()
+            toast.success(_("Link preview style updated"))
+        }).catch((e) => {
+            errorResponseToast(_("Could not update link preview style"), e)
+        })
+    }
+
+    // Users from before the field existed have no value — the card is the default.
+    const currentMode: LinkPreviewMode = myProfile?.link_previews || "Preview Card"
+
+    return <SettingsFormRow>
+        <div className="flex flex-col">
+            <SettingsFormLabel htmlFor="link_previews">{_("Link previews")}</SettingsFormLabel>
+            <SettingsFormDescription>
+                {_("Show a preview card under messages with links, or keep the stream compact and preview links on hover. On mobile, previews only appear as cards.")}
+            </SettingsFormDescription>
+        </div>
+        <div className="min-w-40 flex justify-end">
+            <Select onValueChange={(value) => setLinkPreviewMode(value as LinkPreviewMode)} value={currentMode}>
+                <SelectTrigger id="link_previews" className="min-w-32">
+                    <SelectValue placeholder={_("Select link preview style")} />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="Preview Card"><PanelBottomIcon /> {_("Preview card")}</SelectItem>
+                    <SelectItem value="Link Hover"><MousePointerClickIcon /> {_("On hover")}</SelectItem>
+                </SelectContent>
+            </Select>
+        </div>
+    </SettingsFormRow>
+}
+
+/** Moved from Preferences — how times render is an appearance concern. Writes
+ *  the Raven User field and mirrors into the boot-seeded atom so timestamps
+ *  across the app reformat live, no reload. */
+const TimeFormatSetting = () => {
+
+    const { myProfile, mutate } = useCurrentRavenUser()
+    const setTimeFormatAtomValue = useSetAtom(timeFormatAtom)
+
+    const { call } = useFrappePostCall('frappe.client.set_value')
+
+    const setTimeFormat = (format: TimeFormat) => {
+        if (!myProfile?.name) return
+        call({
+            doctype: 'Raven User',
+            name: myProfile.name,
+            fieldname: 'time_format',
+            value: format
+        }).then(() => {
+            setTimeFormatAtomValue(format)
+            mutate()
+            toast.success(_("Time format updated"))
+        }).catch((e) => {
+            errorResponseToast(_("Could not update time format"), e)
+        })
+    }
+
+    return <SettingsFormRow>
+        <div className="flex flex-col">
+            <SettingsFormLabel htmlFor="time_format">{_("Time format")}</SettingsFormLabel>
+            <SettingsFormDescription>
+                {_("Choose whether to display times in 12-hour or 24-hour format.")}
+            </SettingsFormDescription>
+        </div>
+        <div className="min-w-40 flex justify-end">
+            <Select onValueChange={(value) => setTimeFormat(value as TimeFormat)} value={myProfile?.time_format ? myProfile.time_format : "12-hour"}>
+                <SelectTrigger id="time_format" className="min-w-32">
+                    <SelectValue placeholder={_("Select time format")} />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="12-hour">{_("12 Hour (e.g. 2:00 PM)")}</SelectItem>
+                    <SelectItem value="24-hour">{_("24 Hour (e.g. 14:00)")}</SelectItem>
+                </SelectContent>
+            </Select>
+        </div>
+    </SettingsFormRow>
 }
 
 const ImageGroupingBehaviour = () => {

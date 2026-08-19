@@ -50,6 +50,22 @@ def react(message_id: str, reaction: str, is_custom: bool = False, emoji_name: s
 			filters={"message": message_id, "owner": user, "reaction_escaped": reaction_escaped},
 		)
 
+		# frappe.db.delete is a raw SQL delete — it runs NO document hooks, so
+		# RavenMessageReaction.after_delete never fires on this path and the
+		# message owner's client was never told to update its notification
+		# badge (the count stuck until the next focus/reconnect reconcile).
+		# Publish the same event here. `removed`: the client can't know locally
+		# whether the message still has OTHER unread reactions, so it refetches
+		# its unread set instead of blindly deleting the id.
+		message_owner = frappe.get_cached_value("Raven Message", message_id, "owner")
+		if message_owner and message_owner != user:
+			frappe.publish_realtime(
+				"raven_reaction_notification",
+				{"message_id": message_id, "removed": True},
+				user=message_owner,
+				after_commit=True,
+			)
+
 		# Hook to trigger when delete reaction
 		for fn in frappe.get_hooks("raven_message_reaction_after_delete"):
 			frappe.get_attr(fn)(message_id)

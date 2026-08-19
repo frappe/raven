@@ -1,12 +1,11 @@
 import { useEffect, useSyncExternalStore } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { useFrappeGetDoc } from "frappe-react-sdk"
 import { LinkIcon } from "lucide-react"
 import { Button } from "@components/ui/button"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@components/ui/empty"
 import { MessagePermalinkSkeleton } from "./MessagePermalinkSkeleton"
 import { channelStore } from "@stores/channels/store"
-import type { Message } from "@raven/types/common/Message"
+import { useMessageBatch } from "@hooks/useMessageBatch"
 import _ from "@lib/translate"
 
 /**
@@ -33,22 +32,16 @@ export default function MessagePermalink() {
     // The store decides channel-vs-thread, so wait for it (also re-renders us when it loads).
     const channelsLoaded = useSyncExternalStore(channelStore.subscribe, channelStore.isLoaded)
 
-    const { data: message, error } = useFrappeGetDoc<Message>(
-        "Raven Message",
-        messageID,
-        messageID ? `raven_message:${messageID}` : null,
-    )
+    const { anchor: message, error } = useMessageBatch(messageID)
 
     const channelID = message?.channel_id
     const directChannel = channelsLoaded && channelID ? channelStore.getChannel(channelID) : undefined
 
     // Thread reply: resolve the parent via the root message (root id = channel_id).
+    // Same key the thread route + header use after the redirect, so this fetch
+    // doubles as their prefetch — the thread page opens on a warm cache.
     const needsRoot = Boolean(channelsLoaded && message && channelID && !directChannel)
-    const { data: rootMessage, error: rootError } = useFrappeGetDoc<Message>(
-        "Raven Message",
-        needsRoot ? channelID : "",
-        needsRoot ? `raven_message:${channelID}` : null,
-    )
+    const { anchor: rootMessage, error: rootError } = useMessageBatch(needsRoot ? channelID : null)
     const parentChannel = rootMessage ? channelStore.getChannel(rootMessage.channel_id) : undefined
 
     useEffect(() => {

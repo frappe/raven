@@ -1,4 +1,5 @@
 import { RavenHRCompanyWorkspace } from '../RavenIntegrations/RavenHRCompanyWorkspace'
+import { RavenBlockedLinks } from './RavenBlockedLinks'
 
 export interface RavenSettings{
 	creation: string
@@ -73,4 +74,14 @@ export interface RavenSettings{
 	livekit_api_key?: string
 	/**	LiveKit API Secret : Password	*/
 	livekit_api_secret?: string
+	/**	Frappe Meet Hosted URLs : Small Text	*/
+	frappe_meet_hosted_urls?: string
+	/**	Blocked Links : Table - Raven Blocked Links	*/
+	blocked_links?: RavenBlockedLinks[]
+	/**	Enable Quiet Hours : Check	*/
+	enable_quiet_hours?: 0 | 1
+	/**	Working Hours Start : Time	*/
+	working_hours_start?: string
+	/**	Working Hours End : Time	*/
+	working_hours_end?: string
 }

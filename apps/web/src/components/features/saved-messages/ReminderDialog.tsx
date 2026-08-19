@@ -121,10 +121,10 @@ export function ReminderDialog({
                 </div>
 
                 <DialogFooter>
-                    <Button variant="outline" onClick={() => onOpenChange(false)}>
+                    <Button size="md" variant="outline" onClick={() => onOpenChange(false)}>
                         Cancel
                     </Button>
-                    <Button onClick={handleSave} disabled={!date}>
+                    <Button size="md" onClick={handleSave} disabled={!date}>
                         Save
                     </Button>
                 </DialogFooter>

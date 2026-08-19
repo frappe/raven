@@ -295,6 +295,16 @@ def delete_channel_members_cache(channel_id: str):
 	cache_key = f"raven:channel_members:{channel_id}"
 	frappe.cache().delete_value(cache_key)
 
+	# Delete the cache again after the transaction commits.
+	#
+	# Why: this function runs inside document hooks, before COMMIT. If another
+	# request fetches members in that gap, it rebuilds the cache from the old
+	# rows — without the change we are committing. Nothing would clear that
+	# stale copy later, so it gets served until the next member change. The
+	# visible bug: a user joins a thread, the join saves, but the member list
+	# never shows them. Deleting again after commit wipes any stale rebuild.
+	frappe.db.after_commit.add(lambda: frappe.cache().delete_value(cache_key))
+
 	frappe.publish_realtime(
 		"channel_members_updated",
 		{"channel_id": channel_id},

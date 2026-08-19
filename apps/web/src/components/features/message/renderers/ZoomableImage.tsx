@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { Minus, Plus } from "lucide-react"
 import { Button } from "@components/ui/button"
 import { cn } from "@lib/utils"
+import { hapticTick } from "@utils/haptics"
 import _ from "@lib/translate"
 // Same numbers as the non-image media's wrapper — one uniform dismiss feel.
 import { DISMISS_DISTANCE, DISMISS_PROGRESS_RANGE, DISMISS_SLOP, DISMISS_VELOCITY } from "./SwipeDownToClose"
@@ -20,6 +21,10 @@ const MAX_SCALE = 6
 const TOGGLE_SCALE = 2.5
 /** Zoom buttons step by this factor. */
 const BUTTON_STEP = 1.5
+
+/** How long a single tap waits before firing onTap — long enough for a second
+ *  tap to arrive and turn the pair into a double-tap zoom instead. */
+const TAP_GRACE_MS = 250
 
 type Transform = { scale: number; x: number; y: number }
 
@@ -52,12 +57,21 @@ export const ZoomableImage = ({
     alt,
     onDismiss,
     onDismissProgress,
+    onTap,
+    onZoomedChange,
 }: {
     src: string
     alt: string
     onDismiss?: () => void
     /** 0..1 while the dismiss drag is held — the modal fades its backdrop with it (direct style write, no state). */
     onDismissProgress?: (progress: number) => void
+    /** A plain tap on the image (mobile chrome toggle). Fired after a short
+     *  delay so a double-tap zoom is never also read as a tap. */
+    onTap?: () => void
+    /** Fires when the image crosses between fit (1x) and zoomed — once per
+     *  crossing, not on every scale change. The modal hides its chrome while
+     *  zoomed (iOS style) without fighting a manual tap-to-show. */
+    onZoomedChange?: (zoomed: boolean) => void
 }) => {
     const containerRef = useRef<HTMLDivElement>(null)
     const [t, setT] = useState<Transform>(IDENTITY)
@@ -87,6 +101,35 @@ export const ZoomableImage = ({
     const suppressClickRef = useRef(false)
     /** Cumulative downward pull past the pan boundary while zoomed (dismiss handoff). */
     const overpanRef = useRef(0)
+
+    // Tap + double-tap detection, done by hand from click timing/position.
+    // We can NOT rely on the dblclick event: touch double-taps don't fire it
+    // everywhere (Chrome's touch emulation never does, each tap arrives as a
+    // click with detail 1) — relying on it broke double-tap zoom there.
+    // tapStartRef: where the pointer went down (a click that travelled is a
+    // pan, not a tap). lastTapRef: the previous tap, to pair a double-tap.
+    // tapTimerRef: the delay before a single tap fires onTap, so a second tap
+    // can turn the pair into a zoom instead.
+    const tapStartRef = useRef<{ x: number; y: number } | null>(null)
+    const lastTapRef = useRef<{ time: number; x: number; y: number } | null>(null)
+    const tapTimerRef = useRef<number | undefined>(undefined)
+    useEffect(() => () => window.clearTimeout(tapTimerRef.current), [])
+
+    // Tell the modal when we cross between fit and zoomed (not on every scale
+    // change — a pinch fires dozens of scale updates, but only the crossing
+    // matters). Effect on a boolean, so it runs exactly at the crossings.
+    // Settling back to fit gets a haptic tick — the same commit-point language
+    // as our other gestures. The prevZoomedRef guard keeps the mount run
+    // (zoomed=false) from buzzing when the image merely opens.
+    const zoomed = t.scale > 1
+    const onZoomedChangeRef = useRef(onZoomedChange)
+    onZoomedChangeRef.current = onZoomedChange
+    const prevZoomedRef = useRef(false)
+    useEffect(() => {
+        if (prevZoomedRef.current && !zoomed) hapticTick()
+        prevZoomedRef.current = zoomed
+        onZoomedChangeRef.current?.(zoomed)
+    }, [zoomed])
 
     /** Velocity + offset bookkeeping for an ACTIVE dismiss drag (1x and zoomed paths). */
     const trackDismissMove = (event: React.PointerEvent, drag: NonNullable<typeof dismissRef.current>) => {
@@ -156,6 +199,7 @@ export const ZoomableImage = ({
         // click to this container, where it read as a backdrop click — that's what
         // made the zoom buttons close the modal.
         if ((event.target as HTMLElement).closest("[data-zoom-controls]")) return
+        tapStartRef.current = { x: event.clientX, y: event.clientY }
         pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
         if (pointers.current.size === 2) {
             const [a, b] = [...pointers.current.values()]
@@ -317,7 +361,7 @@ export const ZoomableImage = ({
     return (
         <div
             ref={containerRef}
-            className="relative flex h-full w-full min-h-0 items-center justify-center overflow-hidden [touch-action:none]"
+            className="group/zoomimg relative flex h-full w-full min-h-0 items-center justify-center overflow-hidden [touch-action:none]"
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerEnd}
@@ -326,21 +370,60 @@ export const ZoomableImage = ({
             onTouchMove={blockTouchWhenZoomed}
             onTouchEnd={blockTouchWhenZoomed}
             onDoubleClick={(event) => {
+                // Zoom now lives in the manual double-tap detection inside
+                // onClick (dblclick is unreliable for touch). This handler only
+                // stops the browser's own double-click behavior from kicking in.
                 event.preventDefault()
-                if (tRef.current.scale > 1) setT(IDENTITY)
-                else zoomAt(event.clientX, event.clientY, TOGGLE_SCALE)
+                window.clearTimeout(tapTimerRef.current)
             }}
             onClick={(event) => {
                 // A click synthesized from a dismiss drag (spring-back case) must
                 // not read as a backdrop-close tap.
                 if (suppressClickRef.current) {
                     suppressClickRef.current = false
+                    lastTapRef.current = null
                     event.stopPropagation()
                     return
                 }
                 // Empty-frame clicks at 1x bubble to the backdrop (close); clicks
                 // on the image — or anywhere while zoomed — never close.
-                if (event.target !== event.currentTarget || tRef.current.scale > 1) event.stopPropagation()
+                if (event.target !== event.currentTarget || tRef.current.scale > 1) {
+                    event.stopPropagation()
+
+                    // Only a real tap counts here: if the pointer travelled, this
+                    // click is the tail of a pan.
+                    const start = tapStartRef.current
+                    const moved = start
+                        ? Math.abs(event.clientX - start.x) > 10 || Math.abs(event.clientY - start.y) > 10
+                        : false
+                    window.clearTimeout(tapTimerRef.current)
+                    if (moved) {
+                        lastTapRef.current = null
+                        return
+                    }
+
+                    // Second tap close (in time and place) to the first = double
+                    // tap → toggle zoom at that spot.
+                    const last = lastTapRef.current
+                    if (
+                        last &&
+                        event.timeStamp - last.time < TAP_GRACE_MS &&
+                        Math.abs(event.clientX - last.x) < 30 &&
+                        Math.abs(event.clientY - last.y) < 30
+                    ) {
+                        lastTapRef.current = null
+                        if (tRef.current.scale > 1) setT(IDENTITY)
+                        else zoomAt(event.clientX, event.clientY, TOGGLE_SCALE)
+                        return
+                    }
+
+                    // First tap: remember it, and fire onTap only after the
+                    // grace period passes without a second tap.
+                    lastTapRef.current = { time: event.timeStamp, x: event.clientX, y: event.clientY }
+                    if (onTap) {
+                        tapTimerRef.current = window.setTimeout(onTap, TAP_GRACE_MS)
+                    }
+                }
             }}
         >
             <img
@@ -349,6 +432,12 @@ export const ZoomableImage = ({
                 draggable={false}
                 className={cn(
                     "max-h-full max-w-full select-none object-contain md:max-w-[90%]",
+                    // will-change promotes the image to its own compositor layer.
+                    // Without it, mobile WebKit re-rasterizes the scaled image
+                    // tile by tile on every pan frame, and the tile seams show
+                    // as faint bands — invisible on busy photos, glaring on
+                    // flat white ones.
+                    "will-change-transform",
                     // Smooth wheel/double-click zoom, but 1:1 tracking mid-gesture.
                     // (transition-all so the dismiss spring-back also animates
                     // translate + the slight shrink/fade together.)
@@ -363,10 +452,12 @@ export const ZoomableImage = ({
                 }}
             />
 
-            {/* Zoom controls — centred above the filmstrip; % tap resets */}
+            {/* Zoom controls — desktop only, shown on hover over the viewer or
+                while a control has keyboard focus; % tap resets. Mobile gets no
+                pill: pinch and double-tap cover zoom, like iOS Photos. */}
             <div
                 data-zoom-controls=""
-                className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1"
+                className="absolute bottom-3 left-1/2 z-10 hidden -translate-x-1/2 items-center gap-1 transition-opacity duration-150 md:flex md:opacity-0 md:group-hover/zoomimg:opacity-100 md:focus-within:opacity-100"
                 onClick={(event) => event.stopPropagation()}
                 onDoubleClick={(event) => event.stopPropagation()}
             >

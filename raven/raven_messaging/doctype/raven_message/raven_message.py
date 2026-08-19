@@ -11,6 +11,7 @@ from frappe.utils import get_datetime, get_system_timezone
 from pytz import timezone, utc
 
 from raven.api.raven_channel import get_peer_user_id_from_dm_users
+from raven.links import detect_provider, normalize_url
 from raven.notification import (
 	send_notification_for_message,
 	send_notification_to_topic,
@@ -81,6 +82,18 @@ class RavenMessage(Document):
 				self.is_edited = True
 
 		self.parse_html_content()
+		self.set_file_content_fallback()
+
+	def set_file_content_fallback(self):
+		"""
+		A file message without a caption has no text, so parse_html_content never
+		sets `content` and it stays None — which every consumer then has to guard
+		(the push notification body once rendered a literal "None"). Default it
+		to the file name here, at the source, so teasers, previews and search
+		all get something meaningful.
+		"""
+		if self.message_type == "File" and not self.content and self.file:
+			self.content = self.file.split("/")[-1]
 
 	def parse_html_content(self):
 		"""
@@ -100,16 +113,28 @@ class RavenMessage(Document):
 		self.extract_mentions(soup)
 
 		self.links = ""
+		# Clear old rows first. On an edit, the doc loads with its existing
+		# rows. Appending without clearing would duplicate them on every
+		# save. extract_mentions clears the same way.
+		self.links_table = []
 
 		for link in soup.find_all("a"):
 			href = link.get("href")
 			if href:
-				if not frappe.db.exists("Raven Link Preview", {"url": href}):
-					preview = frappe.new_doc("Raven Link Preview")
-					preview.url = href
-					preview.deferred_insert()
-
-				self.append("links_table", {"url": href})
+				# Store the normalized URL and provider on each row now, at
+				# save time. If the normalizer changes later, old rows keep
+				# the spelling their preview was stored under. Preview docs
+				# are created by a background job (see on_update). Nothing
+				# is fetched during a message save.
+				normalized = normalize_url(href)
+				self.append(
+					"links_table",
+					{
+						"url": href,
+						"normalized_url": normalized,
+						"provider": detect_provider(normalized),
+					},
+				)
 				self.links += f"{href}\n"
 
 		# Spoilers (||text||) must not leak in the derived preview (DM list, push
@@ -137,6 +162,26 @@ class RavenMessage(Document):
 
 		if not self.content and self.link_doctype and self.link_document:
 			self.content = f"{self.link_doctype} - {self.link_document}"
+
+	def queue_link_preview_processing(self):
+		"""
+		Make sure every link in this message gets a Raven Link Preview doc.
+		Runs as a background job so a message save never waits on it.
+		Skip when the links did not change. Reaction saves, metadata edits
+		and AI token streaming also pass through on_update.
+		"""
+		if frappe.flags.in_patch or frappe.flags.in_migrate or frappe.flags.in_install:
+			return
+		if not self.links_table:
+			return
+		old_doc = self.get_doc_before_save()
+		if old_doc and old_doc.links == self.links:
+			return
+		frappe.enqueue(
+			"raven.links.process_message_links",
+			message_id=self.name,
+			enqueue_after_commit=True,
+		)
 
 	def extract_mentions(self, soup):
 		"""
@@ -224,17 +269,32 @@ class RavenMessage(Document):
 
 	def before_insert(self):
 		"""
-		If the message is a reply, update the replied_message_details field
+		If the message is a reply, snapshot the replied-to message so the reply keeps
+		its quote even after the original is edited or deleted.
+
+		The snapshot holds NO HTML (`text`) — only the plain-text `content`:
+
+		1. Nothing renders it. Every client draws the reply preview from `content`.
+		2. HTML in here breaks the INSERT. This is a JSON column, so MariaDB enforces
+		   CHECK (json_valid(...)) — and Frappe sanitizes JSON fields as if they were
+		   HTML (it used to skip values that parse as JSON; frappe@9bdfcfe599 removed
+		   that guard). The sanitizer re-serializes any embedded tags, re-quoting their
+		   attributes with bare double quotes, which destroys the JSON string escaping
+		   and the row is rejected. Replying to any message containing a mention or a
+		   link failed outright.
+		3. It's a lot of duplication — every reply copied the whole parent body.
+
+		Forwarding a reply still gets a rich quote: it reads the quoted body LIVE from
+		the linked message instead (see build_reply_blockquote in api/raven_message.py).
 		"""
 		if self.is_reply and self.linked_message:
 			details = frappe.db.get_value(
 				"Raven Message",
 				self.linked_message,
-				["text", "content", "file", "message_type", "owner", "creation"],
+				["content", "file", "message_type", "owner", "creation"],
 				as_dict=True,
 			)
 			self.replied_message_details = {
-				"text": details.text,
 				"content": details.content,
 				"file": details.file,
 				"message_type": details.message_type,
@@ -362,9 +422,91 @@ class RavenMessage(Document):
 		# lock waits into transaction-fatal 1020 errors). Frappe's denormalized
 		# write patterns (this, track_channel_visit, reply counts) all assume
 		# classic REPEATABLE READ semantics.
+		# Row locks (for_update=True) do NOT avoid this: 1020 is about snapshot
+		# AGE, not lock acquisition — a SELECT ... FOR UPDATE on a row that
+		# changed after this transaction's first read raises the same error.
+		# Frappe core's only handling is classifying 1020 as a deadlock
+		# (is_deadlocked in database/mariadb) → HTTP 508, no retry.
 		query.run()
 
 		return message_details
+
+	def update_channel_last_message_on_edit(self):
+		"""
+		If this message is still the channel's LAST message, rewrite the stored
+		teaser (last_message_details) with the edited content — otherwise the DM
+		sidebar keeps showing the old text. The timestamp is deliberately left
+		untouched: an edit must not move the conversation up the list.
+
+		NOT publish_unread_count_event: its thread branch refreshes reply counts
+		and pings every participant's thread badge — side effects a plain edit
+		must not trigger. Only DMs get a live event here, because the DM list is
+		the only surface that renders the teaser TEXT; regular-channel events
+		deliberately never carry message content (they broadcast to everyone).
+		"""
+		# This read looks redundant with the UPDATE's where clause below, but it
+		# is what gates the PUBLISH: without it, editing an older message would
+		# still broadcast its details and clients would overwrite the teaser.
+		# (The update's affected-row count can't be used instead — MySQL counts
+		# CHANGED rows, not matched ones, so an identical rewrite reports 0.)
+		if frappe.db.get_value("Raven Channel", self.channel_id, "last_message_id") != self.name:
+			return
+
+		message_details = json.dumps(
+			{
+				"message_id": self.name,
+				"content": self.content,
+				"message_type": self.message_type,
+				"owner": self.owner,
+				"is_bot_message": self.is_bot_message,
+				"bot": self.bot,
+			}
+		)
+
+		# Same direct update as set_last_message_timestamp (no document-cache
+		# invalidation). The where clause re-checks last_message_id, so if a
+		# newer message lands between our read above and this write, we no-op.
+		raven_channel = frappe.qb.DocType("Raven Channel")
+		(
+			frappe.qb.update(raven_channel)
+			.where((raven_channel.name == self.channel_id) & (raven_channel.last_message_id == self.name))
+			.set(raven_channel.last_message_details, message_details)
+		).run()
+
+		channel_doc = frappe.get_cached_doc("Raven Channel", self.channel_id)
+		if not channel_doc.is_direct_message:
+			return
+
+		# The event carries NO last_message_timestamp on purpose: the client
+		# patches the teaser text only and leaves the DM's sort position alone.
+		payload = {
+			"channel_id": self.channel_id,
+			"play_sound": False,
+			"sent_by": self.owner,
+			"is_dm_channel": True,
+			"last_message_details": message_details,
+			"event_type": "message_edited",
+		}
+
+		if not channel_doc.is_self_message:
+			peer_user_id = get_peer_user_id_from_dm_users(channel_doc, relative_to=self.owner)
+			peer_type = (
+				frappe.get_cached_value("Raven User", peer_user_id, "type") if peer_user_id else None
+			)
+			if peer_type == "User":
+				frappe.publish_realtime(
+					"raven:unread_channel_count_updated",
+					payload,
+					user=peer_user_id,
+					after_commit=True,
+				)
+
+		frappe.publish_realtime(
+			"raven:unread_channel_count_updated",
+			payload,
+			user=self.owner,
+			after_commit=True,
+		)
 
 	def publish_unread_count_event(
 		self,
@@ -429,18 +571,25 @@ class RavenMessage(Document):
 			# Get the number of replies in the thread
 			reply_count = refresh_thread_reply_count(self.channel_id)
 
-			self.add_mentioned_users_to_thread()
+			is_delete = event_type == "message_deleted"
+
+			if not is_delete:
+				self.add_mentioned_users_to_thread()
 
 			# Broadcast to everyone: the "N replies" pill on the parent message is shown to
-			# all channel members, so the reply count must reach all of them.
+			# all channel members, so the reply count must reach all of them. On a DELETE
+			# the timestamp is omitted — it's the deleted message's, and the client uses
+			# its presence as the signal to bump list ordering (a delete must not).
+			payload = {
+				"channel_id": self.channel_id,
+				"sent_by": self.owner,
+				"number_of_replies": reply_count,
+			}
+			if not is_delete:
+				payload["last_message_timestamp"] = self.creation
 			frappe.publish_realtime(
 				"thread_reply",
-				{
-					"channel_id": self.channel_id,
-					"sent_by": self.owner,
-					"last_message_timestamp": self.creation,
-					"number_of_replies": reply_count,
-				},
+				payload,
 				after_commit=True,
 				room=get_raven_room(),
 			)
@@ -448,7 +597,10 @@ class RavenMessage(Document):
 			# Notify ONLY the thread's participants so each can update their unread-threads
 			# badge locally — a thread is unread only for its members, so this is scoped per
 			# user (no org-wide broadcast, no leaking the participant list). get_channel_members
-			# reads from the (permission-check-warmed) cache, keyed by user_id.
+			# reads from the (permission-check-warmed) cache, keyed by user_id. `event_type`
+			# mirrors the channel unread event: new reply → add to the badge; delete →
+			# reconcile it (a delete can't be decremented locally — the deleted reply's
+			# read-state per user is unknowable client-side).
 			for member in get_channel_members(self.channel_id):
 				frappe.publish_realtime(
 					"raven:unread_thread_count_updated",
@@ -456,6 +608,7 @@ class RavenMessage(Document):
 						"channel_id": self.channel_id,
 						"sent_by": self.owner,
 						"last_message_timestamp": self.creation,
+						"event_type": event_type,
 					},
 					user=member,
 					after_commit=True,
@@ -524,7 +677,10 @@ class RavenMessage(Document):
 		Gets the content of the message for the push notification
 		"""
 		if self.message_type == "File":
-			return f"📄 Sent a file - {self.content}"
+			# content is the caption, or the file name via set_file_content_fallback.
+			# The truthiness guard stays for old rows saved before that fallback
+			# existed (an f-string renders None as the literal "None").
+			return f"📄 Sent a file - {self.content}" if self.content else "📄 Sent a file"
 		elif self.message_type == "Image":
 			return "📷 Sent a photo"
 		elif self.message_type == "Poll":
@@ -697,8 +853,20 @@ class RavenMessage(Document):
 
 	def on_update(self):
 
+		self.queue_link_preview_processing()
+
 		# TEMP: this is a temp fix for the Desk interface
 		self.publish_deprecated_event_for_desk()
+
+		# An edit can change the text shown in the channel's sidebar teaser.
+		# Create and delete already keep the teaser fresh — this covers edits.
+		# Gated on an actual content change (not the sticky is_edited flag), so
+		# reaction updates and metadata saves don't rewrite the teaser. AI
+		# streaming saves the doc on every token — skip those too.
+		if self.message_type != "System" and not self.flags.is_ai_streaming:
+			old_doc = self.get_doc_before_save()
+			if old_doc and old_doc.content != self.content:
+				self.update_channel_last_message_on_edit()
 
 		if self.is_edited or self.is_thread or self.flags.editing_metadata:
 			frappe.publish_realtime(
@@ -713,6 +881,10 @@ class RavenMessage(Document):
 						"channel_id": self.channel_id,
 						"file": self.file,
 						"file_size": self.file_size,
+						# Without this, an edit that changes a link keeps
+						# rendering the OLD link's preview — the client keeps
+						# whatever links string it already had.
+						"links": self.links,
 						"poll_id": self.poll_id,
 						"message_type": self.message_type,
 						"is_edited": 1 if self.is_edited else 0,
@@ -760,6 +932,10 @@ class RavenMessage(Document):
 						"content": self.content,
 						"file": self.file,
 						"file_size": self.file_size,
+						# Receivers append live messages from THIS payload —
+						# without links, their preview cards never render
+						# until the window refetches.
+						"links": self.links,
 						"message_type": self.message_type,
 						"is_edited": 1 if self.is_edited else 0,
 						"is_thread": self.is_thread,
@@ -804,6 +980,30 @@ class RavenMessage(Document):
 	def on_trash(self):
 		# delete all the reactions for the message
 		frappe.db.delete("Raven Message Reaction", {"message": self.name})
+
+		# The deleted message may be sitting in clients' unread-notification badges:
+		# a mention of someone, or reactions on the owner's message. Those id sets
+		# are kept live by events — the rows vanishing from the DB doesn't reach the
+		# clients until the next focus reconcile — so tell the affected users to
+		# refetch. `removed` routes the client to a reconcile, not a local delete.
+		for mention in self.mentions or []:
+			# The owner's own mentions never notify (the queries exclude them).
+			if mention.user and mention.user != self.owner:
+				frappe.publish_realtime(
+					"raven_mention",
+					{"message_id": self.name, "removed": True},
+					user=mention.user,
+					after_commit=True,
+				)
+		# Reactions notify the message OWNER — including when the owner deletes
+		# their own message, whose badge may hold this id.
+		if self.message_reactions and not self.is_bot_message:
+			frappe.publish_realtime(
+				"raven_reaction_notification",
+				{"message_id": self.name, "removed": True},
+				user=self.owner,
+				after_commit=True,
+			)
 
 		# If this was the channel's latest message, recompute the channel summary to the
 		# PREVIOUS message instead of just nulling it — otherwise the sidebar teaser keeps

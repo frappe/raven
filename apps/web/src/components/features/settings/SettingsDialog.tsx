@@ -1,4 +1,5 @@
 import { lazy, Suspense } from 'react';
+import { settingsDialogOpenTab } from "./settingsDialogAtom"
 import { Hash } from '@components/common/ChannelIcon/ChannelIcon';
 import { Dialog } from '@components/ui/dialog';
 import { SettingsDialog, SettingsPanel, SettingsPanelContent, SettingsPanelDescription, SettingsPanelHeader, SettingsPanels, SettingsPanelTitle, SettingsTabGroup, SettingsTabItem, SettingsTabs } from '@components/ui/settings-dialog';
@@ -28,10 +29,10 @@ const FrappeHRPanel = lazy(() => import('./panels/FrappeHR').then((m) => ({ defa
 const NotificationsPanel = lazy(() => import('./panels/PushNotifications').then((m) => ({ default: m.PushNotifications })));
 // Not-yet-built panels — each has its own file (renders a PlaceholderPanel for
 // now) so building out the real UI later is just filling in that file.
-const UsersPanel = lazy(() => import('./panels/Users').then((m) => ({ default: m.Users })));
-const WorkspacesPanel = lazy(() => import('./panels/Workspaces').then((m) => ({ default: m.Workspaces })));
-const ChannelsPanel = lazy(() => import('./panels/Channels').then((m) => ({ default: m.Channels })));
-const EmojisPanel = lazy(() => import('./panels/Emojis').then((m) => ({ default: m.Emojis })));
+const UsersPanel = lazy(() => import('./panels/Users/Users').then((m) => ({ default: m.Users })));
+const WorkspacesPanel = lazy(() => import('./panels/Workspaces/Workspaces').then((m) => ({ default: m.Workspaces })));
+const ChannelsPanel = lazy(() => import('./panels/Channels/Channels').then((m) => ({ default: m.Channels })));
+const EmojisPanel = lazy(() => import('./panels/Emojis/Emojis').then((m) => ({ default: m.Emojis })));
 const DocumentNotificationsPanel = lazy(() => import('./panels/DocumentNotifications/DocumentNotifications').then((m) => ({ default: m.DocumentNotifications })));
 const DocumentPreviewsPanel = lazy(() => import('./panels/DocumentPreviews').then((m) => ({ default: m.DocumentPreviews })));
 const MessageActionsPanel = lazy(() => import('./panels/MessageActions/MessageActions').then((m) => ({ default: m.MessageActions })));
@@ -275,7 +276,7 @@ const SETTINGS_TABS: {
     }
 ]
 
-export const settingsDialogOpenTab = atom<"" | (typeof SETTINGS_TABS)[number]["id"]>("")
+export type SettingsTabId = (typeof SETTINGS_TABS)[number]["id"]
 
 const RavenSettingsDialog = () => {
 

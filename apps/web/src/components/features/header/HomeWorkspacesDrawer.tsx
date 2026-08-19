@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useReducer } from "react"
+import { useContext, useEffect, useMemo, useReducer } from "react"
 import { useNavigate } from "react-router-dom"
+import { FrappeContext, type FrappeConfig } from "frappe-react-sdk"
+import { prefetchChannel, type FrappeCallClient } from "@stores/messages/loaders"
 import { atom, useAtomValue, useSetAtom } from "jotai"
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@components/ui/drawer"
 import { Badge } from "@components/ui/badge"
@@ -10,6 +12,9 @@ import { channelUnreadStore } from "@stores/unread/store"
 import { useWorkspaces, type WorkspaceFields } from "@hooks/useWorkspaces"
 import useCurrentRavenUser from "@raven/lib/hooks/useCurrentRavenUser"
 import { lastChannelAtom, lastWorkspaceAtom } from "@utils/lastVisitedAtoms"
+import { useNavigateFromDrawer } from "@hooks/useNavigateFromDrawer"
+import { useHistoryBackClose } from "@hooks/useHistoryBackClose"
+import { useNoDragWhileScrolled } from "@hooks/useNoDragWhileScrolled"
 import type { ChannelListItem } from "@raven/types/common/ChannelListItem"
 import { cn } from "@lib/utils"
 import _ from "@lib/translate"
@@ -46,6 +51,23 @@ export const HomeWorkspacesDrawer = ({
     open: boolean
     onOpenChange: (open: boolean) => void
 }) => {
+
+    // The open drawer owns the system back gesture (atom-driven overlay hosted
+    // above the routes — back would otherwise navigate the page underneath it).
+    // The hook's history.state guard keeps this safe with the delayed
+    // channel-open navigation below.
+    useHistoryBackClose(open, () => onOpenChange(false))
+
+    // CHANNEL opens pay the drawer-exit wait: navigation waits for the drawer
+    // to FINISH closing, or the drawer gets baked into the OS back-swipe
+    // screenshot and haunts the next back gesture (see useNavigateFromDrawer).
+    //
+    // A WORKSPACE switch does NOT use that hook (see openWorkspace) — it lands
+    // on the same list page under the closing drawer, and routing through the
+    // close-then-navigate hook lost a race with useHistoryBackClose's back()
+    // (workspace switching broke). It navigates directly, then closes.
+    const handleNavigate = useNavigateFromDrawer(() => onOpenChange(false))
+
     return (
         <Drawer open={open} onOpenChange={onOpenChange}>
             <DrawerContent>
@@ -57,7 +79,7 @@ export const HomeWorkspacesDrawer = ({
                 </DrawerHeader>
                 {/* Content only mounts while open (vaul unmounts closed drawers),
                     so the store subscription below never runs in the background. */}
-                <DrawerBody onNavigate={() => onOpenChange(false)} />
+                <DrawerBody onNavigate={handleNavigate} onClose={() => onOpenChange(false)} />
             </DrawerContent>
         </Drawer>
     )
@@ -65,7 +87,12 @@ export const HomeWorkspacesDrawer = ({
 
 type UnreadRow = { channel: ChannelListItem; workspace: WorkspaceFields; count: number }
 
-const DrawerBody = ({ onNavigate }: { onNavigate: () => void }) => {
+const DrawerBody = ({ onNavigate, onClose }: {
+    onNavigate: (to: string) => void
+    onClose: () => void
+}) => {
+    const navigate = useNavigate()
+    const noDragProps = useNoDragWhileScrolled()
     const { workspaces } = useWorkspaces()
     const { channels } = useChannels()
     const { myProfile } = useCurrentRavenUser()
@@ -103,23 +130,36 @@ const DrawerBody = ({ onNavigate }: { onNavigate: () => void }) => {
         [unreadRows],
     )
 
-    const navigate = useNavigate()
     const setLastWorkspace = useSetAtom(lastWorkspaceAtom)
     const setLastChannel = useSetAtom(lastChannelAtom)
+    const { call } = useContext(FrappeContext) as FrappeConfig
+
+    // Both handlers hand the destination to the parent (onNavigate) instead of
+    // navigating here — the parent dismisses the drawer first, then navigates.
 
     const openWorkspace = (workspace: WorkspaceFields) => {
         // Persist immediately — on mobile no channel opens after a switch (the
         // list IS the page), so the Channel page's pair-write never fires.
         setLastWorkspace(workspace.name)
         setLastChannel("")
+        // Navigate FIRST, then close — order matters. navigate() pushes the
+        // workspace entry synchronously, so useHistoryBackClose's cleanup sees
+        // its overlay entry is no longer on top and skips its back(). Closing
+        // first (as useNavigateFromDrawer does) let that async back() fire
+        // AFTER the instant navigate and pop the workspace right back off —
+        // that was the broken switch. The switch just swaps the list under the
+        // closing drawer, so no exit-wait is needed here.
         navigate(`/${encodeURIComponent(workspace.name)}`)
-        onNavigate()
+        onClose()
     }
 
     const openChannel = (row: UnreadRow) => {
+        // Start fetching the channel's messages NOW — navigation waits out the
+        // drawer's 500ms close (see the parent), and this fetch runs during it,
+        // so the channel usually opens already loaded. No-op if already warm.
+        prefetchChannel(call as FrappeCallClient, row.channel.name)
         // The Channel page records last-visited itself; just go.
-        navigate(`/${encodeURIComponent(row.workspace.name)}/${encodeURIComponent(row.channel.name)}`)
-        onNavigate()
+        onNavigate(`/${encodeURIComponent(row.workspace.name)}/${encodeURIComponent(row.channel.name)}`)
     }
 
     // Rows are already in workspace order — fold them into per-workspace
@@ -176,11 +216,18 @@ const DrawerBody = ({ onNavigate }: { onNavigate: () => void }) => {
             {/* Zone 2 — unread channels, or the caught-up state. */}
             {unreadRows.length > 0 && (
                 <div className="border-t border-outline-gray-2 pt-4">
-                    <div className="max-h-[50vh] min-h-0 overflow-y-auto px-2 pb-2" data-vaul-no-drag>
+                    {/* Capped so the whole sheet stays near half the screen even
+                        with many unread channels — the workspace grid on top
+                        should stay within thumb reach, not ride up the screen.
+                        dvh, not vh: in a browser tab vh ignores the collapsing
+                        URL bar and would overshoot. */}
+                    {/* Positional no-drag (see useNoDragWhileScrolled): the channel list
+                        scrolls while scrolled; a pull from its top dismisses the sheet. */}
+                    <div {...noDragProps} className="max-h-[35dvh] min-h-0 overflow-y-auto px-2 pb-2">
                         {sections.map(({ workspace, rows }) => (
                             <section key={workspace.name} className="mb-2">
                                 {showSectionHeaders && (
-                                    <p className="px-2 text-xs-medium text-ink-gray-4">
+                                    <p className="px-2 text-xs-medium pb-px text-ink-gray-4">
                                         {workspace.workspace_name}
                                     </p>
                                 )}

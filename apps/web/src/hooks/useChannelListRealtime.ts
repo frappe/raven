@@ -1,6 +1,7 @@
 import { useContext } from "react"
 import { FrappeConfig, FrappeContext, useFrappeEventListener, useSWRConfig } from "frappe-react-sdk"
 import { refetchChannelMembersIfLoaded } from "@hooks/useChannelMembers"
+import { broadcastChannelListUpdated } from "@stores/channels/channelEvents"
 
 type ChannelEvent = { channel_id: string }
 
@@ -24,8 +25,12 @@ export const useChannelListRealtime = () => {
 
     // TODO: Add debouncing
 
-    useFrappeEventListener("channel_list_updated", () => {
+    useFrappeEventListener("channel_list_updated", (event: ChannelEvent) => {
         mutate("channel_list")
+        // Rebroadcast (after-commit) for in-app subscribers — e.g. the Pins tab
+        // refetches this channel's pins. See channelEvents for the one-socket-
+        // subscriber-per-event rule.
+        if (event?.channel_id) broadcastChannelListUpdated(event.channel_id)
     })
 
     useFrappeEventListener("channel_members_updated", (event: ChannelEvent) => {

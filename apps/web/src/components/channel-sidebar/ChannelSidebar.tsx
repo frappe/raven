@@ -286,7 +286,7 @@ const WorkspaceSwitcherItem = ({
     return (
         <DropdownMenuItem onClick={onSelect} className="py-2">
             <WorkspaceLogo workspace={workspace} />
-            <span className="truncate text-lg md:text-sm">{workspace.workspace_name}</span>
+            <span className="truncate text-lg md:text-sm leading-snug">{workspace.workspace_name}</span>
             {/* The current workspace shows the check; the others surface their unread */}
             {isCurrent ? (
                 <Check className="ml-auto h-4 w-4 text-ink-gray-8" />

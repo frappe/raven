@@ -1,7 +1,6 @@
-import { useDebounce } from "@raven/lib/hooks/useDebounce"
 import { useFrappeGetCall } from "frappe-react-sdk"
 import { useMemo } from "react"
-import { expandFileTypeGroups } from "@components/features/search/FileTypeFilter"
+import { expandFileTypeGroups } from "@components/common/filters/FileTypeFilter"
 import { SearchFilters } from "@components/features/search/types";
 
 export type SearchResult = {
@@ -26,6 +25,10 @@ export type SearchResult = {
     file_type?: string;
     file_size?: number;
     internal_link?: string;
+    /** Small stored preview of an image file — render THIS in tiles/rows, not the original. */
+    file_thumbnail?: string;
+    thumbnail_width?: number;
+    thumbnail_height?: number;
     preview_data?: string;
 };
 
@@ -52,27 +55,21 @@ const normalizeFilters = (filters: SearchFilters): ApiFilters => {
 /**
  * Hook to search messages, files, links, polls and threads via the sqlite FTS index.
  *
- * Sqlite FTS only does prefix match for tokens >= 4 chars, so short queries return only
- * exact-token matches and feel broken (e.g. "he" misses "hello"). To smooth this over,
- * when the query is shorter than 4 chars we send an empty query to the server and
- * substring-filter the unfiltered result set client-side using `getSearchTextField`.
+ * The index is the single source of results: every query goes to the server as typed.
+ * Short queries therefore behave as sqlite FTS defines them — tokens under 4 chars match
+ * exactly rather than by prefix.
  *
- * @param query - User search input. Debounced 200ms before hitting the server.
+ * @param query - User search input. `query` is used AS GIVEN — no debounce here;
+ *                callers own debouncing (see useLinkSearch for the reasoning).
  * @param filters - Server-side filters (channel, author, message_type, etc.).
- * @param limit - Max rows fetched. Default 20. Use 100+ when client-side filtering is enabled
- *                so the short-query fallback has enough rows to filter against.
- * @param getSearchTextField - callback to select the text to substring-match for short queries.
- *                             Omit to disable the short-query fallback. 
+ * @param limit - Max rows fetched. Default 20.
  */
 export const useSqliteSearch = (
     query?: string,
     filters?: SearchFilters,
     limit: number = 20,
-    getSearchTextField?: (r: SearchResult) => string | undefined,
 ) => {
-    const trimmed = (query ?? '').trim()
-    const longEnoughSearchQuery = trimmed.length >= 4 ? query : ''
-    const debouncedQuery = useDebounce(longEnoughSearchQuery, 200)
+    const searchText = query ?? ''
 
     const apiFilters = useMemo(() => {
         if (filters) {
@@ -81,8 +78,8 @@ export const useSqliteSearch = (
     }, [JSON.stringify(filters)])
 
     const swrKey = useMemo(() =>
-        `raven.api.search.sqlite_search?query=${debouncedQuery}&filters=${JSON.stringify(apiFilters)}&limit=${limit}`,
-        [debouncedQuery, apiFilters, limit]
+        `raven.api.search.sqlite_search?query=${searchText}&filters=${JSON.stringify(apiFilters)}&limit=${limit}`,
+        [searchText, apiFilters, limit]
     )
 
     const { data, error, isLoading, mutate } = useFrappeGetCall<{
@@ -90,7 +87,7 @@ export const useSqliteSearch = (
     }>(
         'raven.api.search.sqlite_search',
         {
-            query: debouncedQuery,
+            query: searchText,
             filters: apiFilters,
             limit
         },
@@ -102,13 +99,7 @@ export const useSqliteSearch = (
         }
     )
 
-    const rawResults = data?.message || []
-
-    const results = useMemo(() => {
-        if (longEnoughSearchQuery || !trimmed || !getSearchTextField) return rawResults
-        const q = trimmed.toLowerCase()
-        return rawResults.filter(r => getSearchTextField(r)?.toLowerCase().includes(q))
-    }, [rawResults, trimmed, longEnoughSearchQuery, getSearchTextField])
+    const results = data?.message || []
 
     return {
         results,

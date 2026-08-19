@@ -8,7 +8,6 @@ import { useIsMobile } from "@hooks/use-mobile"
 
 /** Map the live target Message to the snapshot shape the shared preview expects. */
 const toDetails = (message: Message): RepliedMessageDetails => ({
-    text: message.text ?? "",
     content: message.content ?? "",
     file: (message as Message & { file?: string }).file ?? "",
     message_type: message.message_type,

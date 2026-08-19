@@ -12,6 +12,7 @@ import { db, type UserData } from "@db"
 import { cn } from "@lib/utils"
 import { formatRelativeDate } from "@lib/date"
 import { getMessageTeaser } from "@utils/messageUtils"
+import { getUserDisplayName, isCurrentUser } from "@utils/userDisplay"
 import { useChannelDraft } from "@components/features/ChatInput/draft"
 import _ from "@lib/translate"
 import type { DMChannelListItem } from "@raven/types/common/ChannelListItem"
@@ -218,9 +219,7 @@ const DMRow = memo(function DMRow({ dmChannel, peerUser }: DMRowProps) {
     const { count: unread } = useChannelUnread(dmChannel.name)
     const prefetchHandlers = usePrefetchChannel(dmChannel.name, unread > 0)
 
-    const isSelf = peerUser.name === currentUser
-    const baseName = peerUser.full_name || peerUser.name
-    const displayName = isSelf ? _("{0} (You)", [baseName]) : baseName
+    const displayName = getUserDisplayName(peerUser.full_name || peerUser.name, isCurrentUser(peerUser.name))
     const date = formatRelativeDate(dmChannel.last_message_timestamp)
     const lastMessage = getMessageTeaser(dmChannel.last_message_details, currentUser)
     // An unsent draft beats the last message as the preview (WhatsApp-style):
@@ -353,9 +352,14 @@ function DMRowShell({
                 {(lastMessage || unread > 0) && <div className="flex items-center gap-2">
                     {lastMessage && <div
                         className={cn(
-                            // leading-snug: see note on the name above — line-clamp also clips
-                            // descenders at the tight 1.15 line-height on Safari.
-                            "line-clamp-1 text-base md:text-xs leading-snug flex-1 min-w-0",
+                            // truncate, NOT line-clamp-1: line-clamp truncates per WORD —
+                            // a teaser that starts with a long URL is one unbreakable token
+                            // wider than the row, so the clamp dropped the entire word and
+                            // rendered a bare "…". text-overflow truncates per CHARACTER,
+                            // which is what a one-line preview wants.
+                            // leading-snug: the tight 1.15 line-height clips descenders
+                            // (g/y/p) once overflow is hidden — Safari cuts them.
+                            "truncate text-base md:text-xs leading-snug flex-1 min-w-0",
                             unread > 0
                                 ? "font-medium text-ink-gray-8"
                                 : "text-ink-gray-4"

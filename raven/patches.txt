@@ -20,3 +20,5 @@ raven.patches.v2_7.clean_duplicate_poll_votes
 raven.patches.v2_7.migrate_poll_votes_to_poll_vote_selection
 raven.patches.v2_7.add_unique_constraint_on_poll_votes
 # raven.patches.v3_0.migrate_links_to_table_in_messages
+raven.patches.v3_0.backfill_link_normalization #3
+raven.patches.v3_0.set_link_preview_status

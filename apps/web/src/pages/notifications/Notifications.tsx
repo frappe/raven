@@ -16,10 +16,13 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@components/ui/empty"
 import { Skeleton } from "@components/ui/skeleton"
 import { useIsMobile } from "@hooks/use-mobile"
+import { useLayerInAnimation } from "@hooks/useLayerInAnimation"
 import { PageHeader } from "@components/layout/PageHeader"
 import AppMobileFooter from "@components/features/header/AppMobileFooter"
 import { NotificationsEmptyState, type SelectedNotification } from "./NotificationChat"
 import { MentionItem, ReactionItem } from "./NotificationItem"
+import { PullToRefresh } from "@components/ui/pull-to-refresh"
+import ErrorBanner from "@components/ui/error-banner"
 import { cn } from "@lib/utils"
 
 type NotificationTab = "all" | "mentions" | "reactions"
@@ -48,22 +51,32 @@ export default function Notifications() {
     const navigate = useNavigate()
     const selectedMessageID = useMatch("/notifications/:channelID/:messageID")?.params.messageID
     const hasSelection = !!selectedMessageID
+    // No slide when the chat layer is already open on a BACK arrival — see the hook.
+    const layerAnimation = useLayerInAnimation(hasSelection)
 
     const tab: "all" | "mention" | "reaction" =
         activeTab === "mentions" ? "mention" : activeTab === "reactions" ? "reaction" : "all"
 
     const {
         rows: currentData,
+        leavingIds,
         isLoading,
+        error,
         hasMore,
         loadMore: loadMoreRows,
+        refresh,
         markMessageRead,
         markAllRead,
-    } = useNotificationList(tab, { unreadOnly: showUnread })
+        // activeMessageID exempts the OPEN notification from the unread view's
+        // leave pipeline — a read row only slides out once the user moves on.
+    } = useNotificationList(tab, { unreadOnly: showUnread, activeMessageID: selectedMessageID })
 
     const unreadCount = useUnreadNotificationsCount()
 
     const usersById = useUsersById()
+
+    // Pull-to-refresh needs the real scrolling element (Virtuoso's scroller).
+    const [listScroller, setListScroller] = useState<HTMLElement | null>(null)
 
     const loadMore = useCallback(() => {
         if (hasMore) loadMoreRows()
@@ -86,6 +99,12 @@ export default function Notifications() {
             },
         )
     }, [markMessageRead, navigate, hasSelection])
+
+    // Swipe-to-read expedites the leave: the gesture already carried the row
+    // off-screen, so the pipeline skips its linger and closes the gap now.
+    const onSwipeRead = useCallback((messageID: string) => {
+        markMessageRead(messageID, { expedite: true })
+    }, [markMessageRead])
 
     const onShowUnreadChange = useCallback((checked: boolean) => {
         setShowUnread(checked)
@@ -155,13 +174,32 @@ export default function Notifications() {
 
                         {/* Empty state centers over the whole nav (absolute) so it lands at the
                                 same height as the right pane's empty state, not offset below the
-                                header + tabs. pointer-events-none keeps those clickable. */}
+                                header + tabs. pointer-events-none keeps those clickable. Error
+                                state takes precedence over "caught up" — a failed load must not
+                                masquerade as an empty inbox (the badge may still show unreads). */}
+                        {/* z-10: the PullToRefresh list wrapper below is position:relative
+                                (for its floating spinner) and later in source order, so it
+                                paints ABOVE this overlay and would swallow the error card's
+                                clicks — transparent elements still hit-test. */}
                         {currentData.length === 0 && !isLoading && (
-                            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                                <EmptyState showUnread={showUnread} />
+                            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+                                {error ? (
+                                    <ErrorBanner
+                                        error={error}
+                                        layout="centered"
+                                        overrideHeading={_("Couldn't load notifications")}
+                                        className="pointer-events-auto"
+                                    >
+                                        <Button variant="outline" size="sm" onClick={() => refresh()}>
+                                            {_("Retry")}
+                                        </Button>
+                                    </ErrorBanner>
+                                ) : (
+                                    <EmptyState showUnread={showUnread} />
+                                )}
                             </div>
                         )}
-                        <div className="flex min-h-0 flex-1">
+                        <PullToRefresh scroller={listScroller} onRefresh={refresh}>
                             {currentData.length === 0 && isLoading && <NotificationListSkeleton />}
                             {currentData.length > 0 && (
                                 <Virtuoso
@@ -173,26 +211,33 @@ export default function Notifications() {
                                     components={notificationsListComponents}
                                     defaultItemHeight={80}
                                     computeItemKey={(_index, item) => item.name}
+                                    scrollerRef={(el) => setListScroller(el instanceof HTMLElement ? el : null)}
                                     itemContent={(_index, item) =>
                                         item.notification_type === "mention" ? (
                                             <MentionItem
                                                 notification={item}
                                                 sender={usersById.get(item.owner)}
                                                 isActive={selectedMessageID === item.message_id}
+                                                leaving={leavingIds.has(item.name)}
+                                                swipeDismisses={showUnread}
                                                 onSelect={onSelect}
+                                                onMarkRead={onSwipeRead}
                                             />
                                         ) : (
                                             <ReactionItem
                                                 notification={item}
                                                 usersById={usersById}
                                                 isActive={selectedMessageID === item.message_id}
+                                                leaving={leavingIds.has(item.name)}
+                                                swipeDismisses={showUnread}
                                                 onSelect={onSelect}
+                                                onMarkRead={onSwipeRead}
                                             />
                                         )
                                     }
                                 />
                             )}
-                        </div>
+                        </PullToRefresh>
                         <UnreadFilterPill active={showUnread} onToggle={onShowUnreadChange} />
                     </nav>
                 </div>
@@ -201,7 +246,8 @@ export default function Notifications() {
                     outer column). Desktop: a normal column beside the list. */}
                 <div className={cn(
                     "flex min-w-0 min-h-0 flex-col bg-surface-gray-1",
-                    "max-md:absolute max-md:inset-0 max-md:z-20 animate-layer-in",
+                    "max-md:absolute max-md:inset-0 max-md:z-20",
+                    layerAnimation,
                     !hasSelection && "max-md:hidden",
                     "md:flex-1",
                 )}>

@@ -1,5 +1,5 @@
 import { useForm } from "react-hook-form"
-import { FrappeError, useFrappePostCall } from "frappe-react-sdk"
+import { FrappeError, useFrappeUpdateDoc } from "frappe-react-sdk"
 import { toast } from "sonner"
 import useCurrentRavenUser from "@raven/lib/hooks/useCurrentRavenUser"
 import type { RavenUser } from "@raven/types/Raven/RavenUser"
@@ -54,7 +54,7 @@ const Profile = () => {
 
 const ProfileForm = ({ myProfile }: { myProfile: RavenUser }) => {
     const { mutate } = useCurrentRavenUser()
-    const { call } = useFrappePostCall("frappe.client.set_value")
+    const { updateDoc } = useFrappeUpdateDoc()
 
     const form = useForm<ProfileFormValues>({
         defaultValues: {
@@ -66,15 +66,26 @@ const ProfileForm = ({ myProfile }: { myProfile: RavenUser }) => {
     })
 
     const onSubmit = async (values: ProfileFormValues) => {
-        try {
-            await call({ doctype: "Raven User", name: myProfile.name, fieldname: values })
-            await mutate()
-            toast.success(_("Profile updated"))
-            // The saved values are the new pristine state — Save disables again
-            form.reset(values)
-        } catch (e) {
-            errorResponseToast(_("Could not update profile"), e as FrappeError)
-        }
+        updateDoc("Raven User", myProfile.name, {
+            full_name: values.full_name,
+            availability_status: values.availability_status,
+            custom_status: values.custom_status,
+            contact_number: values.contact_number,
+        })
+            .then(() => {
+                toast.success(_("Profile updated"))
+                mutate()
+                // The saved values become the new PRISTINE state (Save disables
+                // again) — via keepValues, which only swaps the defaults under
+                // the untouched inputs. A full reset(values) rewires the mounted
+                // controlled fields, and typing after it stopped registering:
+                // keystrokes fired input events but the controllers snapped the
+                // value back every time. keepValues never touches the fields, so
+                // there is nothing to rewire.
+                form.reset(values, { keepValues: true })
+            }).catch((e) => {
+                errorResponseToast(_("Could not update profile"), e as FrappeError)
+            })
     }
 
     return (

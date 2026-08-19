@@ -1,10 +1,12 @@
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@components/ui/hover-card";
+import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import { ScrollArea } from "@components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip";
 import { UserAvatar } from "@components/features/message/UserAvatar";
 import { getDateObject } from "@lib/date";
 import { timeFormatAtom } from "@utils/preferences";
 import { useUsersById } from "@hooks/useMessageRowLookups";
+import { useIsMobile } from "@hooks/use-mobile";
 import _ from "@lib/translate";
 import { useAtomValue } from "jotai";
 import React, { useMemo } from "react";
@@ -50,9 +52,35 @@ const parseData = (data: SystemMessageProps["data"]): SystemMessageData | null =
  * live user names resolved from the users store. Messages without a payload
  * (older messages, unknown events) render the server's plain text as-is.
  */
+/** The collapsed members behind "N others" — avatar + name rows, scrollable. */
+const OthersRoster = ({ ids }: { ids: string[] }) => {
+    const usersById = useUsersById()
+    return (
+        // The card pads only the top and left (see the content classNames
+        // below): rows scroll to the card's bottom edge (scroll-fade dims the
+        // cut) and the scrollbar sits flush against its right edge — Radix
+        // pins the bar to this ScrollArea's edge, so any card padding around
+        // it reads as a gap. The row padding lives INSIDE the scroll instead.
+        <ScrollArea viewportClassName="max-h-64 scroll-fade">
+            <div className="flex flex-col gap-2.5 pt-2 pl-2 pb-2 pr-2.5">
+                {ids.map((id) => {
+                    const user = usersById.get(id)
+                    return (
+                        <div key={id} className="flex items-center gap-2">
+                            {user && <UserAvatar user={user} size="xs" className="shrink-0" showStatusIndicator={false} />}
+                            <span className="truncate text-sm text-ink-gray-7">{user?.full_name || id}</span>
+                        </div>
+                    )
+                })}
+            </div>
+        </ScrollArea>
+    )
+}
+
 const SystemMessage: React.FC<SystemMessageProps> = ({ message, time, data }) => {
     const timeFormat = useAtomValue(timeFormatAtom)
     const usersById = useUsersById()
+    const isMobile = useIsMobile()
 
     const text = useMemo((): React.ReactNode => {
         const structured = parseData(data)
@@ -65,40 +93,43 @@ const SystemMessage: React.FC<SystemMessageProps> = ({ message, time, data }) =>
                 const adder = resolveName(structured.added_by)
                 const names = structured.members.map(resolveName)
                 if (names.length === 1) return _("{0} added {1}.", [adder, names[0]])
-                if (names.length <= 3) {
+                // Spell names out up to FOUR — collapsing must always hide at
+                // least two people, so "and 1 others" can never render (with
+                // exactly 4, naming the fourth costs the same space anyway).
+                if (names.length <= 4) {
                     return _("{0} added {1} and {2}.", [adder, names.slice(0, -1).join(", "), names[names.length - 1]])
                 }
-                // Long lists: "…and N others" is a hover card revealing who the others
-                // are (ids from the payload, names resolved live). The sentence is split
-                // around the trigger, so it's composed from two translated fragments.
+                // Long lists: "…and N others" reveals who the others are (ids
+                // from the payload, names resolved live). Desktop opens on
+                // hover; touch has no hover, so mobile uses a tap-open popover
+                // with the same content. The sentence is split around the
+                // trigger, so it's composed from two translated fragments.
                 const restIDs = structured.members.slice(3)
+                const othersLabel = (
+                    <span className="cursor-pointer underline decoration-outline-gray-3 decoration-dotted underline-offset-2">
+                        {_("{0} others", [String(restIDs.length)])}
+                    </span>
+                )
                 return (
                     <>
                         {_("{0} added {1} and", [adder, names.slice(0, 3).join(", ")])}{" "}
-                        <HoverCard openDelay={200}>
-                            <HoverCardTrigger asChild>
-                                <span className="cursor-default underline decoration-outline-gray-3 decoration-dotted underline-offset-2">
-                                    {_("{0} others", [String(restIDs.length)])}
-                                </span>
-                            </HoverCardTrigger>
-                            {/* stopPropagation: wheel inside the card must scroll the card,
-                                not the chat stream underneath. */}
-                            <HoverCardContent align="start" className="w-56 p-2" onWheel={(e) => e.stopPropagation()}>
-                                <ScrollArea viewportClassName="max-h-64">
-                                    <div className="flex flex-col gap-2.5 py-0.5 pr-1">
-                                        {restIDs.map((id) => {
-                                            const user = usersById.get(id)
-                                            return (
-                                                <div key={id} className="flex items-center gap-2">
-                                                    {user && <UserAvatar user={user} size="xs" className="shrink-0" showStatusIndicator={false} />}
-                                                    <span className="truncate text-sm text-ink-gray-7">{user?.full_name || id}</span>
-                                                </div>
-                                            )
-                                        })}
-                                    </div>
-                                </ScrollArea>
-                            </HoverCardContent>
-                        </HoverCard>
+                        {isMobile ? (
+                            <Popover>
+                                <PopoverTrigger asChild>{othersLabel}</PopoverTrigger>
+                                <PopoverContent align="start" className="w-56 p-0">
+                                    <OthersRoster ids={restIDs} />
+                                </PopoverContent>
+                            </Popover>
+                        ) : (
+                            <HoverCard openDelay={200}>
+                                <HoverCardTrigger asChild>{othersLabel}</HoverCardTrigger>
+                                {/* stopPropagation: wheel inside the card must scroll the card,
+                                    not the chat stream underneath. */}
+                                <HoverCardContent align="start" className="w-56 p-0" onWheel={(e) => e.stopPropagation()}>
+                                    <OthersRoster ids={restIDs} />
+                                </HoverCardContent>
+                            </HoverCard>
+                        )}
                         .
                     </>
                 )
@@ -130,7 +161,7 @@ const SystemMessage: React.FC<SystemMessageProps> = ({ message, time, data }) =>
                 // Unknown event (newer server than client?) — the plain text still works.
                 return message
         }
-    }, [data, message, usersById])
+    }, [data, message, usersById, isMobile])
 
     const { shortTime, longTime } = useMemo(() => {
         try {

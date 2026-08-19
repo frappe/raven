@@ -33,6 +33,11 @@ export const useChannelReadTracker = (
 
     /** Newest message creation seen this session (forward-only). */
     const watermarkRef = useRef<string | null>(null)
+    /** Newest message that RENDERED while the tab was hidden — not read yet.
+     *  Adopted into the watermark when the tab becomes visible again (the
+     *  messages are on screen then, and the in-view observers won't refire for
+     *  rows that entered the viewport while hidden). */
+    const hiddenSeenRef = useRef<string | null>(null)
     /** Last watermark handed to sendOrQueueVisit — avoids re-sending an unchanged value.
      *  Safe to advance eagerly: a failed post is queued durably (visit outbox), so
      *  delivery is guaranteed either way. */
@@ -53,6 +58,7 @@ export const useChannelReadTracker = (
         watermarkRef.current = null
         sentRef.current = null
         caughtUpRef.current = false
+        hiddenSeenRef.current = null
     }, [channelID])
 
     const flush = useCallback(() => {
@@ -80,23 +86,60 @@ export const useChannelReadTracker = (
 
     const onMessageInView = useCallback(
         (message: Message) => {
+            // A HIDDEN tab is not being read. Messages can render (and fire the
+            // in-view observers) while the user is on another tab — advancing the
+            // watermark then posted track_visit and cleared counts for messages
+            // nobody saw. Record how far the stream rendered so the visibility
+            // handler below adopts it on return; nothing else runs.
+            if (document.visibilityState !== "visible") {
+                if (!hiddenSeenRef.current || message.creation > hiddenSeenRef.current) {
+                    hiddenSeenRef.current = message.creation
+                }
+                return
+            }
             // Viewing a message with an unread notification (a mention of you / a reaction on
             // your message) marks it read — O(1) no-op for everything else. Deliberately NOT
             // forward-only like the watermark: scrolling UP to an older mention clears it too.
             markNotificationsReadOnView(call, message.name)
             if (!watermarkRef.current || message.creation > watermarkRef.current) {
                 watermarkRef.current = message.creation
+                // Instant LOCAL badge clear for the one unambiguous case: the user is
+                // at the live edge, tab visible, and the channel's newest message just
+                // hit their screen — that channel is read, now, not 1.5s from now
+                // (users read the debounce hold as lag). Local only: the server post
+                // and its sentRef bookkeeping stay behind the flush debounce below.
+                // Partial reads (not caught up) keep hold-then-reconcile semantics.
+                // Drift-safe: markRead is forward-only and a lost post is replayed
+                // by the visit outbox.
+                if (caughtUpRef.current && document.visibilityState === "visible") {
+                    channelUnreadStore.markRead(channelID, message.creation, true)
+                    // Mirror for the unread-threads badge (no-op for channels).
+                    unreadThreadsStore.remove(channelID)
+                }
                 debouncedFlush()
             }
         },
-        [call, debouncedFlush],
+        [call, channelID, debouncedFlush],
     )
 
     // Register the active-read channel and hold its badge at zero while the user
     // is caught up AND looking. Re-evaluated on scroll-edge changes and tab focus.
     useEffect(() => {
         const apply = () => {
-            const caughtUp = isAtBottom && !hasNewerMessages && document.visibilityState === "visible"
+            const visible = document.visibilityState === "visible"
+            // Back on the tab: adopt what rendered while hidden — those messages
+            // are on screen NOW, being looked at, and their observers won't
+            // refire. The markRead below (when caught up) clears the badge, and
+            // the debounced flush posts the visit.
+            if (visible && hiddenSeenRef.current) {
+                const seen = hiddenSeenRef.current
+                hiddenSeenRef.current = null
+                if (!watermarkRef.current || seen > watermarkRef.current) {
+                    watermarkRef.current = seen
+                    debouncedFlush()
+                }
+            }
+            const caughtUp = isAtBottom && !hasNewerMessages && visible
             caughtUpRef.current = isAtBottom && !hasNewerMessages
             channelUnreadStore.setActiveReadChannel(caughtUp ? channelID : null)
             // Mirror for the unread-threads badge (a thread is a channel here; no-op otherwise).
@@ -110,7 +153,7 @@ export const useChannelReadTracker = (
             channelUnreadStore.setActiveReadChannel(null)
             unreadThreadsStore.setActiveThread(null)
         }
-    }, [channelID, isAtBottom, hasNewerMessages])
+    }, [channelID, isAtBottom, hasNewerMessages, debouncedFlush])
 
     // Force-flush the pending watermark when a trailing debounce would be lost:
     // tab hidden (covers tab close / navigation away) and channel switch / unmount.

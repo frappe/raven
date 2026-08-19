@@ -312,6 +312,23 @@ More of the same discipline:
   only what's actually viewed. The break counter also backstops the lists, for
   events lost while the connection was down. Choosing per shape is the whole
   game.
+- **Failed loads must heal on reconnect — staleness alone isn't enough.** When
+  we replaced SWR with our own stores, we quietly lost one of its freebies:
+  `revalidateOnReconnect`. Our connection-break counter is actually a *richer*
+  signal (it fires on browser-online, socket reconnect, phone unfreeze, and
+  back/forward-cache restore) — but our reconnect check only asked "is this
+  loaded view stale?" and skipped views whose load had *failed*. So a page
+  opened offline showed its error card forever, even after the network came
+  back; nothing anywhere would retry it. The rule now baked into both list
+  loaders: on a connection-break signal, a READY view refetches only if stale,
+  but an ERRORED view refetches unconditionally — and a successful page always
+  flips a view to ready, even an *empty* page (the subtle half of the bug: an
+  empty result used to be treated as "nothing changed" and left the error
+  standing). House rule for every future store window: stamp freshness on load,
+  subscribe to the break counter, and treat "failed" as a state to recover
+  from, not just "stale". The lesson: when you replace a library, list the
+  invisible things it did for free — the visible features are never what you
+  forget.
 
 ## Counting things correctly
 
@@ -337,6 +354,70 @@ are obviously caught up); the channel you're actively looking at — at the bott
 tab visible — is held at zero, so live messages you're watching arrive never
 flash a badge; and the reading position only ever moves forward, so scrolling UP
 through history can't mark newer messages as read.
+
+**The badge that could never go back to zero — SWR's deep-compare vs a live
+store.** Our unread badges follow one pattern: a store holds the id set,
+realtime events mutate it live, and an SWR fetch of the server's authoritative
+list reconciles it (`useEffect` on `[data]` → `store.reconcile(data)`). The
+trap: SWR deep-compares responses and keeps the *same `data` reference* when a
+refetch returns the same payload as the previous fetch. Now walk the reaction
+badge through it: initial fetch returns `[]`; someone reacts to your message —
+the id arrives via a *realtime event*, straight into the store, so SWR's cache
+still says `[]`; they un-react, the removal event triggers a refetch, the
+server correctly returns `[]` again — which deep-equals the cached `[]`, so
+`data` never changes, the effect never re-runs, and the stale id sits in the
+badge *forever*. Focus and reconnect revalidations can't heal it either: they
+also return `[]`, also compare equal, also skip the effect. The subtle framing
+error: an effect on `[data]` reconciles the store against the *previous
+fetch* — but the store drifts away from that payload via realtime events
+*between* fetches, so reconciliation must run on every **fetch completion**,
+not every **data change**. SWR's `onSuccess` callback fires per completed
+request regardless of the compare, so the reconcile moved there (the `[data]`
+effect stays only for cache-served mounts inside the deduping window, where no
+request fires at all). Four sync hooks had the identical shape — unread
+notifications, unread threads, per-channel unread counts, the channel list —
+and all four got the fix, because a "self-healing reconcile" that only runs
+when the server's answer *changed* is precisely a reconcile that cannot heal
+drift on the client's side of the ledger.
+
+**Deleting a message must speak a different event than sending one.** Delete a
+message that someone was mentioned in and watch the badges: the channel unread
+count healed itself, the thread unread count didn't. The channel pipeline had
+learned this lesson already — its one event carries an `event_type`, and the
+client treats the two kinds oppositely: a *send* increments locally (a new
+message is always newer than your read watermark, so +1 is provably right); a
+*delete* triggers a debounced refetch of the authoritative counts, because a
+delete can't be decremented locally — the client has no way to know whether
+the deleted message was one the user had already read. The thread pipeline had
+skipped the lesson: its publish path ignored the event type entirely and fired
+the *send* events on deletes too — so a delete broadcast the reply-count with
+the deleted message's timestamp (bumping the thread up the list), and told
+every participant's client to *add* the thread to its unread badge. Deleting a
+message marked it unread. The fix kept both existing events and taught them to
+discriminate, each with the cheapest signal available: the per-participant
+badge event now carries `event_type` (mirroring the channel event — add on
+send, reconcile-if-unread on delete), and the broadcast pill event simply
+*omits its timestamp* on deletes — the timestamp's presence was already the
+only reason to bump ordering, so its absence is the no-bump signal, no new
+field needed. Backward compatibility came free from the same asymmetry: old
+clients ignore the unknown `event_type` and keep behaving exactly as they
+already did. Two rules fall out. Deletes are not negative sends — a send can
+be applied locally, a delete can only be reconciled. And when two pipelines do
+the same job, audit them as a pair: the channel path had the delete story
+right for months while the thread path, one `elif` below it, had it wrong.
+
+**A tab you can't see is a tab that isn't reading.** Read tracking is driven
+by messages entering the viewport — but the viewport still exists in a
+background tab. A message arriving while you're on another tab renders,
+intersects, and fires the same observers as real reading, which quietly
+advanced the read watermark, posted the visit, and cleared unread counts for
+messages nobody saw. Every read signal now checks tab visibility first:
+hidden means "remember how far the stream rendered, change nothing." The
+moment the tab is visible again, those messages genuinely are being looked
+at — so the remembered position is adopted, the badge clears, and the visit
+posts. The position has to be *remembered* rather than re-detected, because
+the observers fire on viewport entry and the rows are already on screen by
+the time you return — they will never fire again.
 
 ## One bug class you only see in production
 

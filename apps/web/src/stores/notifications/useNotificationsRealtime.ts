@@ -42,8 +42,14 @@ export const useNotificationsRealtime = () => {
         if (isMessageOnScreen(messageID)) markNotificationsReadOnView(client, messageID)
     }
 
-    useFrappeEventListener("raven_mention", (event: { message_id?: string }) => {
-        if (event.message_id) addUnlessOnScreen(event.message_id)
+    useFrappeEventListener("raven_mention", (event: { message_id?: string; removed?: boolean }) => {
+        if (event.removed) {
+            // The mentioning message was DELETED (mention rows die with it) —
+            // refetch the authoritative id set, same treatment as an unreact.
+            globalMutate(UNREAD_NOTIFICATION_IDS_KEY)
+        } else if (event.message_id) {
+            addUnlessOnScreen(event.message_id)
+        }
         onNewNotification("mention")
     })
 

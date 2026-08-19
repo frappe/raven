@@ -12,8 +12,12 @@ import { useThreadList } from "@stores/threads/useThreadList"
 import { loadThreadDetails, useThreadReplyCount } from "@stores/threads/useThreadMeta"
 import type { ThreadRowData } from "@stores/threads/listSelectors"
 import { MessageListSkeleton } from "@components/features/dm-channel/DirectMessagePageSkeleton"
+import { LeavingRow } from "@components/common/LeavingRow"
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@components/ui/empty"
-import { Bot, CheckCheck, MessagesSquare, Search, TriangleAlert } from "lucide-react"
+import { Button } from "@components/ui/button"
+import { PullToRefresh } from "@components/ui/pull-to-refresh"
+import ErrorBanner from "@components/ui/error-banner"
+import { Bot, CheckCheck, MessagesSquare, Search } from "lucide-react"
 import type { ChannelListItem, DMChannelListItem } from "@raven/types/common/ChannelListItem"
 import _ from "@lib/translate"
 
@@ -67,6 +71,7 @@ const ThreadRow = memo(function ThreadRow({
     lookups,
     onSelect,
     isActive,
+    leaving,
 }: {
     thread: ThreadRowData
     lookups: RowLookups
@@ -74,6 +79,8 @@ const ThreadRow = memo(function ThreadRow({
      *  onClick identity stays stable and the memo only re-renders on real prop changes. */
     onSelect?: (thread: ThreadRowData) => void
     isActive?: boolean
+    /** Mid-exit from the unread view — renders collapsing (see useStickyThenLeave). */
+    leaving?: boolean
 }) {
     // Unread flag is baked into the row data (see selectThreadRows): the row object's
     // identity changes when it flips, so this memo'd row re-renders exactly then.
@@ -127,17 +134,19 @@ const ThreadRow = memo(function ThreadRow({
     }, [channel, dmChannel, members, thread.is_dm_thread, peer])
 
     return (
-        <div ref={inViewRef}>
-            <ThreadPreviewBox
-                user={user}
-                isUnread={isUnread}
-                thread={thread}
-                replyCount={replyCount}
-                channelDetails={channelDetails}
-                onClick={onClick}
-                isActive={isActive}
-            />
-        </div>
+        <LeavingRow leaving={leaving}>
+            <div ref={inViewRef}>
+                <ThreadPreviewBox
+                    user={user}
+                    isUnread={isUnread}
+                    thread={thread}
+                    replyCount={replyCount}
+                    channelDetails={channelDetails}
+                    onClick={onClick}
+                    isActive={isActive}
+                />
+            </div>
+        </LeavingRow>
     )
 })
 
@@ -149,10 +158,11 @@ export default function ThreadsList({
     onThreadClick,
     activeThreadID,
 }: ThreadsListProps) {
-    const { rows, isLoading, error, hasMore, loadMore } = useThreadList(threadType, {
+    const { rows, leavingIds, isLoading, error, hasMore, loadMore, refresh } = useThreadList(threadType, {
         channel: channelFilter,
         onlyShowUnread,
         search: searchQuery ?? "",
+        activeThreadID,
     })
 
     const [scroller, setScroller] = useState<HTMLElement | null>(null)
@@ -173,36 +183,44 @@ export default function ThreadsList({
         [hasMore, isLoading],
     )
 
+    // EVERY state renders inside PullToRefresh — the wrapper used to exist only
+    // around the ready list, so empty/error/loading states couldn't be pulled
+    // (and an empty tab is exactly when a user reaches for the gesture). With
+    // no Virtuoso mounted the wrapper has no scroller, which PullToRefresh
+    // treats as "at the top".
+    let body: ReactNode
     if (error) {
-        return (
+        body = (
+            <EmptyOverlay>
+                {/* pointer-events-auto: the overlay is pointer-events-none (keeps
+                    the toolbar clickable through it) — re-enable hits for the
+                    error block so Retry works. */}
+                <ErrorBanner
+                    error={error}
+                    layout="centered"
+                    overrideHeading={_("Couldn't load threads")}
+                    className="pointer-events-auto"
+                >
+                    <Button variant="outline" size="sm" onClick={() => refresh()}>
+                        {_("Retry")}
+                    </Button>
+                </ErrorBanner>
+            </EmptyOverlay>
+        )
+    } else if (isLoading && rows.length === 0) {
+        body = <MessageListSkeleton />
+    } else if (rows.length === 0) {
+        body = searchQuery?.trim() ? (
             <EmptyOverlay>
                 <Empty>
-                    <EmptyMedia><TriangleAlert /></EmptyMedia>
+                    <EmptyMedia><Search /></EmptyMedia>
                     <EmptyHeader>
-                        <EmptyTitle>{_("Couldn't load threads")}</EmptyTitle>
-                        <EmptyDescription>{error}</EmptyDescription>
+                        <EmptyTitle>{_("No matching threads")}</EmptyTitle>
+                        <EmptyDescription>{_("Try a different search term.")}</EmptyDescription>
                     </EmptyHeader>
                 </Empty>
             </EmptyOverlay>
-        )
-    }
-    if (isLoading && rows.length === 0) return <MessageListSkeleton />
-
-    if (rows.length === 0) {
-        if (searchQuery?.trim()) {
-            return (
-                <EmptyOverlay>
-                    <Empty>
-                        <EmptyMedia><Search /></EmptyMedia>
-                        <EmptyHeader>
-                            <EmptyTitle>{_("No matching threads")}</EmptyTitle>
-                            <EmptyDescription>{_("Try a different search term.")}</EmptyDescription>
-                        </EmptyHeader>
-                    </Empty>
-                </EmptyOverlay>
-            )
-        }
-        return (
+        ) : (
             <EmptyOverlay>
                 <Empty>
                     <EmptyMedia>
@@ -221,13 +239,8 @@ export default function ThreadsList({
                 </Empty>
             </EmptyOverlay>
         )
-    }
-
-    return (
-        // Root in-view detection at Virtuoso's scroll container so a row fetches its details
-        // only when it's actually near-visible — Virtuoso mounts more rows than are on screen,
-        // so gating on mount would over-fetch (see ThreadRow).
-        <ScrollViewportContext.Provider value={scroller}>
+    } else {
+        body = (
             <Virtuoso
                 data={rows}
                 style={{ height: "100%" }}
@@ -246,9 +259,21 @@ export default function ThreadsList({
                         lookups={lookups}
                         onSelect={onThreadClick}
                         isActive={activeThreadID === thread.name}
+                        leaving={leavingIds.has(thread.name)}
                     />
                 ) : null}
             />
+        )
+    }
+
+    return (
+        // Root in-view detection at Virtuoso's scroll container so a row fetches its details
+        // only when it's actually near-visible — Virtuoso mounts more rows than are on screen,
+        // so gating on mount would over-fetch (see ThreadRow).
+        <ScrollViewportContext.Provider value={scroller}>
+            <PullToRefresh scroller={scroller} onRefresh={refresh} className="h-full">
+                {body}
+            </PullToRefresh>
         </ScrollViewportContext.Provider>
     )
 }

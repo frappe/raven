@@ -1,7 +1,7 @@
 import { useMemo } from "react"
 import { useAtomValue } from "jotai"
 import { selectAtom } from "jotai/utils"
-import { Edit3Icon, ForwardIcon, LucideIcon, PinIcon } from "lucide-react"
+import { ForwardIcon, LucideIcon, PinIcon } from "lucide-react"
 import { Message } from "@raven/types/common/Message"
 import { editingMessageAtom } from "@utils/channelAtoms"
 import ReplyMessage from "./ReplyMessage"
@@ -10,7 +10,7 @@ import { MessageImages } from "./MessageImages"
 import { MessageFiles } from "./MessageFiles"
 import { MessageVideo } from "./MessageVideo"
 import { MessageAudio } from "./MessageAudio"
-import RichTextRenderer from "./RichTextRenderer"
+import RichTextRenderer, { isJumbomojiHtml } from "./RichTextRenderer"
 import { MessageLinkPreview } from "./LinkPreview"
 import { PollMessageContent } from "./PollMessageContent"
 import SearchTextRenderer from "./SearchTextRenderer"
@@ -52,16 +52,50 @@ export const EditableMessageBody = ({ message }: { message: Message }) => {
         ),
     )
     if (isEditing) return <EditMessageComposer message={message} />
+    if (message.is_edited === 1 && message.text?.trim()) return <EditedMessageBody text={message.text} />
     return <MessageBody content={message.text} />
 }
 
-const MessageAttributes = ({ message }: { message: Message }) => {
-    if (!message.is_pinned && !message.is_forwarded && !message.is_edited) return null
+/** Escape the translated label before it goes into the message HTML. */
+const escapeHtml = (value: string) =>
+    value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+
+/**
+ * The body with a small "(edited)" marker, Slack style. A message ending in a
+ * paragraph gets the marker injected INSIDE that paragraph (as a data-edited
+ * span the renderer styles), so it flows on the last line of wrapped text. A
+ * message ending in anything else — a list, code block, table — gets the
+ * marker on its own small line below; injected into those structures it
+ * rendered inside them. A jumbomoji paragraph also takes the separate line:
+ * added text would fail the emoji-only check and shrink the emojis.
+ */
+const EditedMessageBody = ({ text }: { text: string }) => {
+    const label = `(${_("edited")})`
+    const injected = useMemo(() => {
+        const trimmed = text.trim()
+        if (!trimmed.endsWith("</p>") || isJumbomojiHtml(trimmed)) return null
+        return `${trimmed.slice(0, -"</p>".length)}<span data-edited>${escapeHtml(label)}</span></p>`
+    }, [text, label])
+
+    if (injected) return <MessageBody content={injected} />
+    return (
+        <>
+            <MessageBody content={text} />
+            <div className="text-sm text-ink-gray-5">{label}</div>
+        </>
+    )
+}
+
+/** Pinned / Forwarded badges. Takes just the flags so a BATCH can pass an
+ *  aggregate of its members (each badge shown once for the whole block).
+ *  Edited is NOT a badge — it renders as a small inline "(edited)" at the end
+ *  of the text body (see EditedMessageBody). */
+export const MessageAttributes = ({ message }: { message: Pick<Message, "is_pinned" | "is_forwarded"> }) => {
+    if (!message.is_pinned && !message.is_forwarded) return null
     return (
         <div className="flex items-center gap-1.5 py-0.5">
             {message.is_pinned === 1 && <MessageAttributeIndicator attribute={_("Pinned")} Icon={PinIcon} theme="violet" />}
             {message.is_forwarded === 1 && <MessageAttributeIndicator attribute={_("Forwarded")} Icon={ForwardIcon} />}
-            {message.is_edited === 1 && <MessageAttributeIndicator attribute={_("Edited")} Icon={Edit3Icon} />}
         </div>
     )
 }

@@ -23,6 +23,17 @@
   src: url("/assets/frappe/css/fonts/inter/InterVariable-Italic.woff2") format("woff2");
 }
 
+/* Newsreader (variable: weight 200-800 + optical sizing) — the serif from
+   Frappe's own site. Only the Frappe link-preview card uses it, and
+   browsers fetch a font lazily on first use, so nobody else pays for it. */
+@font-face {
+  font-family: Newsreader;
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("/assets/raven/fonts/NewsreaderVariable.woff2") format("woff2");
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @custom-variant standalone (@media (display-mode: standalone));
@@ -121,7 +132,6 @@
    color/radius tokens frappe-ui doesn't define (kept until components migrate
    to the canonical names). */
 @theme inline {
-  /** TODO: Update sidebar and header heights here **/
   --app-header-height: 36px;
   --primary-sidebar-width: 60px;
   --sidebar-width: 256px;
@@ -398,4 +408,94 @@ body {
   &::-webkit-scrollbar {
     display: none;
   }
+}
+
+/* sonner (unstyled) — patches in two families. The first two are ported from
+   frappe-ui's ToastProvider.vue, needed because `unstyled` strips the
+   [data-styled] selectors sonner keys those behaviors on. The rest are ours
+   (upstream candidates), fixing sonner rules that unstyled does NOT strip:
+   the system font stack on the toaster, the dark close-button chip, and the
+   loader's absolute centering. (frappe-ui's bar-loader patches were dropped
+   when loading moved to our own Spinner via the Toaster `icons` prop.) */
+
+/* --initial-height is measured on mount (loading state). After a promise
+   resolves the toast grows (action button), so clamp to auto instead of the
+   stale measured value. Doubled attribute: outranks sonner's own rule with
+   the same selector, which would otherwise win ties when the package
+   stylesheet is injected after this file (dev). */
+[data-sonner-toast][data-mounted="true"][data-mounted="true"][data-expanded="true"] {
+  height: auto;
+}
+
+/* In the collapsed stack sonner clamps every non-front toast to the front
+   toast's height and hides their content — but only on [data-styled='true']
+   toasts, which `unstyled` strips. Without this, a multiline toast behind a
+   single-line one spills its extra lines out the top. */
+[data-sonner-toast][data-expanded="false"][data-front="false"]>* {
+  opacity: 0;
+}
+
+/* Sonner's toaster hardcodes a SYSTEM font stack — ungated, so it survives
+   unstyled mode and beats the InterVariable the portalled toaster would have
+   inherited from body. Toasts rendered in SF / Roboto / OEM fonts while the
+   app renders Inter; which font you got depended on the device. Doubled
+   attribute = the usual tie-break over sonner's own rule. */
+[data-sonner-toaster][data-sonner-toaster] {
+  /* inherit, not a token: the bug is sonner BLOCKING inheritance — restoring
+     it picks up body's InterVariable with no dependency on how the theme
+     emits its font variables. */
+  font-family: inherit;
+}
+
+/* Sonner's .sonner-loader centering is not gated on data-styled either: in
+   unstyled mode there is no positioned toast card to anchor to, so the loader
+   (which also wraps a custom `icons.loading`) rendered absolutely at the
+   toaster's top-left. Let it flow inside the icon slot instead, and hide it
+   fully when inactive — its default opacity-0 state would keep claiming flex
+   space beside the resolved toast's real icon. */
+[data-sonner-toast] .sonner-loader {
+  position: static;
+  transform: none;
+  /* Flex, not the default block: an inline svg child sits on the text
+     baseline and carries descender slack below it, which made the spinner
+     ride a few px high of center. Flex removes baseline participation and
+     centers the svg in the wrapper's box exactly. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+[data-sonner-toast] .sonner-loader[data-visible="false"] {
+  display: none;
+}
+
+/* Sonner's dark-theme close-button rule is NOT gated on data-styled, so it
+   survives unstyled mode and paints a near-black chip (background + border)
+   behind the ×. Neutralize it; the class map owns the button's look. The
+   hover is restated here because this file is unlayered and would otherwise
+   beat the class map's layered hover:bg utility — same token, same look.
+   The doubled [data-close-button] is deliberate: it lifts the specificity
+   above sonner's own equal-specificity rule, which wins ties because Vite
+   injects the package stylesheet AFTER this file in dev. */
+[data-sonner-toaster][data-sonner-theme="dark"] [data-sonner-toast] [data-close-button][data-close-button] {
+  background: transparent;
+  border-color: transparent;
+  /* The class map's text-ink-base, restated: this unlayered rule must set the
+     color itself or it overrides the layered utility with sonner's inherit.
+     ink-base flips to gray-950 in dark mode — dark × on the light card. */
+  color: var(--ink-base);
+}
+
+[data-sonner-toaster][data-sonner-theme="dark"] [data-sonner-toast] [data-close-button][data-close-button]:hover {
+  background: var(--surface-gray-8);
+  border-color: transparent;
+}
+
+/* Sonner's dark-theme description color is not gated on data-styled either:
+   it paints the description near-white, invisible on our INVERTED dark-mode
+   card (surface-gray-9 flips to a light card). Restate the class map's
+   text-ink-base, which flips with it. Doubled attribute = the usual
+   specificity tie-break over sonner's own rule. */
+[data-sonner-toaster][data-sonner-theme="dark"] [data-sonner-toast] [data-description][data-description] {
+  color: var(--ink-base);
 }

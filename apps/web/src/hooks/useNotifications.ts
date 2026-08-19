@@ -18,6 +18,13 @@ export const useUnreadNotificationsCount = (): number => {
     )
 }
 
+// Module-level on purpose: touches only the store singleton, so it has no
+// business inside the render cycle.
+const applyUnreadIds = (message: string[] | undefined) => {
+    if (!message) return
+    unreadNotificationsStore.reconcile(message)
+}
+
 /**
  * Seeds + reconciles the unread-notification id set from the server. Mounted once at the
  * app shell (mirrors useUnreadThreadsSync). The mention/reaction realtime events keep the
@@ -28,11 +35,21 @@ export const useUnreadNotificationsSync = () => {
         "raven.api.notifications.get_unread_notification_message_ids",
         undefined,
         UNREAD_NOTIFICATION_IDS_KEY,
-        { revalidateOnFocus: true, revalidateOnReconnect: true },
+        {
+            revalidateOnFocus: true,
+            revalidateOnReconnect: true,
+            // Reconcile on every FETCH, not just on data change: SWR deep-compares
+            // responses and keeps the same `data` reference when the payload matches
+            // the previous fetch — but the STORE drifts from that payload via
+            // realtime adds in between. Concretely: fetch [], reaction event adds an
+            // id to the store, unreact triggers a refetch that returns [] again —
+            // deep-equal, an effect on [data] never re-runs, and the stale id (and
+            // badge) stuck around forever. onSuccess fires per completed request.
+            onSuccess: (fetched) => applyUnreadIds(fetched?.message),
+        },
     )
 
-    useEffect(() => {
-        if (!data?.message) return
-        unreadNotificationsStore.reconcile(data.message)
-    }, [data])
+    // Still needed for cache-served data (a remount inside the deduping window
+    // gets `data` without a request, so onSuccess doesn't fire).
+    useEffect(() => applyUnreadIds(data?.message), [data])
 }

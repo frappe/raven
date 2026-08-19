@@ -1,18 +1,18 @@
 import { useState } from "react"
 import { Outlet, useMatch, useNavigate } from "react-router-dom"
-import { useHotkeys } from "react-hotkeys-hook"
+import { useEscHotkey } from '@hooks/useEscHotkey'
 import { Search as SearchIcon, X } from "lucide-react"
 
 import AppMobileFooter from "@components/features/header/AppMobileFooter"
-import { ChannelSelect } from "@components/common/ChannelSelect"
+import { ChannelFilter } from "@components/common/filters/ChannelFilter"
 import SavedMessagesList from "@components/features/saved-messages/SavedMessagesList"
 import { PageHeader } from "@components/layout/PageHeader"
 import { NotificationsEmptyState, type SelectedNotification } from "@pages/notifications/NotificationChat"
 import { Input } from "@components/ui/input"
 import { useIsMobile } from "@hooks/use-mobile"
+import { useLayerInAnimation } from "@hooks/useLayerInAnimation"
 import { useChannelList } from "@stores/channels/useChannelList"
-import { useLiveQuery } from "dexie-react-hooks"
-import { db } from "@db"
+import { useUsers } from "@hooks/useUsers"
 import { cn } from "@lib/utils"
 import _ from "@lib/translate"
 
@@ -30,7 +30,7 @@ const SavedMessages = () => {
     const [search, setSearch] = useState('')
     const [channel, setChannel] = useState('*all')
     const { channels, dmChannels } = useChannelList()
-    const users = useLiveQuery(() => db.users.toArray(), [])
+    const users = useUsers()
     const isMobile = useIsMobile()
 
     // The open message is ROUTE-driven (same as notifications): `/saved-messages/:channelID/:messageID`
@@ -39,6 +39,8 @@ const SavedMessages = () => {
     const navigate = useNavigate()
     const selectedMessageID = useMatch("/saved-messages/:channelID/:messageID")?.params.messageID
     const hasSelection = !!selectedMessageID
+    // No slide when the chat layer is already open on a BACK arrival — see the hook.
+    const layerAnimation = useLayerInAnimation(hasSelection)
 
     const onSelect = (selection: SelectedNotification) => {
         navigate(
@@ -58,7 +60,7 @@ const SavedMessages = () => {
     }
 
     // Esc closes the open chat — the static right pane falls back to its empty state.
-    useHotkeys('esc', () => {
+    useEscHotkey(() => {
         if (hasSelection) navigate('/saved-messages')
     }, { enableOnFormTags: true }, [hasSelection])
 
@@ -70,7 +72,7 @@ const SavedMessages = () => {
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={_('Search saved messages')}
                 className="pl-9 pr-9 h-9 md:h-8 text-xl md:text-base"
-                autoFocus
+                autoFocus={!isMobile}
             />
             {search && (
                 <button
@@ -113,21 +115,14 @@ const SavedMessages = () => {
                                     ))}
                                 </TabsList>
                             </Tabs> */}
-                            <ChannelSelect
+                            <ChannelFilter
                                 channels={channels}
                                 dmChannels={dmChannels}
                                 users={users}
                                 value={channel}
                                 onValueChange={setChannel}
-                                placeholder={_('Channel')}
-                                allowAll
-                                allLabel={_('Any Channel')}
-                                searchable
-                                size="sm"
-                                showLabel={false}
-                                dropdownClassName="w-68"
                                 className={isMobile ? "w-full min-w-0" : undefined}
-                                triggerClassName="w-40"
+                                triggerClassName="w-50"
                             />
                             {/* <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setReminderDialogOpen(true)}>
                                 <Plus className="h-3.5 w-3.5 mr-1.5" />
@@ -152,7 +147,8 @@ const SavedMessages = () => {
                     open, so the list underneath keeps its scroll position. */}
                 <div className={cn(
                     "flex flex-col min-w-0 min-h-0 bg-surface-gray-1",
-                    "max-md:absolute max-md:inset-0 max-md:z-20 animate-layer-in",
+                    "max-md:absolute max-md:inset-0 max-md:z-20",
+                    layerAnimation,
                     !hasSelection && "max-md:hidden",
                     "md:flex-1",
                 )}>

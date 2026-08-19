@@ -1,7 +1,7 @@
 import { useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { useFrappePostCall, useFrappeDeleteDoc } from "frappe-react-sdk"
-import { useHotkeys } from "react-hotkeys-hook"
+import { useEscHotkey } from "@hooks/useEscHotkey"
 import { useAtom } from "jotai"
 import { toast } from "sonner"
 import { Button } from "@components/ui/button"
@@ -18,6 +18,7 @@ import ChatInput from "@components/features/ChatInput/ChatInput"
 import { FileDropZone } from "@components/features/ChatInput/FileDropZone"
 import { useComposerGate, ComposerArea } from "@components/features/ChatInput/composerGate"
 import ChatStream from "@components/features/message/ChatStream"
+import { useIsMobile } from "@hooks/use-mobile"
 import { ThreadHeader } from "./ThreadHeader"
 import { ThreadRootMessage } from "./ThreadRootMessage"
 import { PollDrawer } from "./renderers/PollDrawer"
@@ -73,10 +74,23 @@ export default function ThreadDrawer({
                 : `/${encodeURIComponent(parentChannel?.workspace ?? "")}/${encodeURIComponent(parentChannelID)}`
             : undefined
 
-    // "Open channel": go to the parent channel with this thread still open and the
-    // thread's ROOT message selected there (the thread id IS the root message id).
+    // "Open channel": go to the parent channel with the thread's ROOT message
+    // selected there (the thread id IS the root message id). Desktop keeps the
+    // thread open beside the channel (`/thread/…` — the layout shows both).
+    // Mobile drops the thread from the route: there the thread route renders
+    // as a full-screen layer COVERING the channel, so keeping it would make
+    // the button appear to do nothing — landing in the channel itself is the
+    // action a phone user asked for.
+    const isMobile = useIsMobile()
     const onOpenChannel = parentChannelBase
-        ? () => navigate(`${parentChannelBase}/thread/${encodeURIComponent(threadID)}?message_id=${encodeURIComponent(threadID)}`)
+        ? () => {
+            const target = encodeURIComponent(threadID)
+            navigate(
+                isMobile
+                    ? `${parentChannelBase}?message_id=${target}`
+                    : `${parentChannelBase}/thread/${target}?message_id=${target}`,
+            )
+        }
         : undefined
 
     // Gate the actions by your membership in the thread (already in the members store, seeded by
@@ -132,15 +146,15 @@ export default function ThreadDrawer({
     }
 
     // Esc closes the thread's poll drawer first, then the thread. enableOnContentEditable because
-    // the composer (ProseMirror) is a contentEditable, not a form tag. Disabled while the
-    // delete-confirm dialog is open — it owns Esc (Radix), so one press doesn't close both.
-    useHotkeys(
-        "esc",
+    // the composer (ProseMirror) is a contentEditable, not a form tag. useEscHotkey
+    // stands down while any modal (delete confirm, attachment preview, ...) is open,
+    // so one press never closes both the modal and the thread.
+    useEscHotkey(
         () => {
             if (threadPoll) setThreadPoll(null)
             else onClose()
         },
-        { enableOnFormTags: true, enableOnContentEditable: true, enabled: !confirmDelete },
+        { enableOnFormTags: true, enableOnContentEditable: true },
     )
 
     // A poll in this thread takes over the rail (its detail drawer overlays the thread).

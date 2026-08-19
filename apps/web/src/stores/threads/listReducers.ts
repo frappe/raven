@@ -1,3 +1,4 @@
+import type { FrappeError } from "frappe-react-sdk"
 import type { ThreadMessage } from "src/types/ThreadMessage"
 
 export type ThreadTab = "participating" | "other" | "ai"
@@ -5,7 +6,7 @@ export type ThreadTab = "participating" | "other" | "ai"
 /** One tab's (or detached search view's) paginated thread window. */
 export type ThreadListState = {
     status: "idle" | "loading" | "ready" | "error"
-    error: string | null
+    error: FrappeError | null
     /** id → row. References stable unless that row changed. */
     byId: ReadonlyMap<string, ThreadMessage>
     /** Thread ids sorted DESC by last_message_timestamp (index 0 = most recent). */
@@ -39,7 +40,7 @@ const sortedOrder = (byId: ReadonlyMap<string, ThreadMessage>): string[] =>
 export const markLoading = (state: ThreadListState): ThreadListState =>
     state.status === "loading" ? state : { ...state, status: "loading", error: null }
 
-export const markError = (state: ThreadListState, error: string): ThreadListState => ({
+export const markError = (state: ThreadListState, error: FrappeError): ThreadListState => ({
     ...state,
     status: "error",
     error,
@@ -74,10 +75,14 @@ export const mergePage = (
     rows: ThreadMessage[],
     hasMore: boolean,
 ): ThreadListState => {
+    // A successful page ALWAYS heals a non-ready view — even an empty page.
+    // The status check in the identity returns matters: a Retry after a failed
+    // load can legitimately fetch zero rows (empty tab, empty filter), and
+    // without it the view stayed stuck on "error" forever.
     if (rows.length === 0) {
-        return state.hasMore === hasMore && !state.loadingMore
+        return state.status === "ready" && state.hasMore === hasMore && !state.loadingMore
             ? state
-            : { ...state, status: "ready", hasMore, loadingMore: false }
+            : { ...state, status: "ready", error: null, hasMore, loadingMore: false }
     }
     const byId = new Map(state.byId)
     let changed = false
@@ -92,7 +97,7 @@ export const mergePage = (
         }
         byId.set(r.name, r)
     }
-    if (!changed && state.hasMore === hasMore && !state.loadingMore) return state
+    if (!changed && state.status === "ready" && state.hasMore === hasMore && !state.loadingMore) return state
     return {
         status: "ready",
         error: null,

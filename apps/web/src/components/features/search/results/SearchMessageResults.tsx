@@ -25,7 +25,6 @@ const SearchMessageResults = ({ searchValue, filters, onSelect, selectedID }: Se
         searchValue,
         { ...filters, message_type: filters.message_type || 'Text' },
         100,
-        (r) => r.content
     )
 
     const { usersById, channelById, dmById, workspaceById } = useMessageRowLookups()

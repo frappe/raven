@@ -23,6 +23,7 @@ import {
   ChannelListItem,
 } from "@raven/types/common/ChannelListItem";
 import { Checkbox } from "@components/ui/checkbox";
+import { markChannelRemovalExpected } from "@hooks/useRemovedChannelCleanup";
 
 export interface DeleteChannelButtonProps {
   channel: ChannelListItem;
@@ -36,6 +37,12 @@ export function DeleteChannelButton({ channel }: DeleteChannelButtonProps) {
 
   const deleteChannel = async () => {
     return deleteDoc("Raven Channel", channel.name).then(() => {
+      // Tell the removed-channel reconciler this removal is OURS before the
+      // list patch can reach it — its "no longer available" toast is for
+      // bystanders, and the actor gets the "deleted" toast below instead.
+      // Navigating before the patch also leaves the dead route immediately.
+      markChannelRemovalExpected(channel.name);
+      navigate(`/${channel.workspace}`);
       mutate(
         "channel_list",
         (data: { message: ChannelList } | undefined) => {
@@ -53,7 +60,6 @@ export function DeleteChannelButton({ channel }: DeleteChannelButtonProps) {
         { revalidate: false },
       );
       toast(_("Channel {0} deleted", [channel.channel_name]));
-      navigate(`/${channel.workspace}`);
     });
   };
 

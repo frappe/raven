@@ -1,10 +1,11 @@
 import { useRef, useState } from "react"
-import { Plus, Camera, Images, FileBox, type LucideIcon, FilesIcon, ChartBar } from "lucide-react"
+import { Plus, Camera, Images, FileBox, type LucideIcon, FilesIcon, ChartBar, Video } from "lucide-react"
 import { Button } from "@components/ui/button"
-import { Drawer, DrawerContent, DrawerTitle, DrawerTrigger } from "@components/ui/drawer"
+import { Drawer, DrawerContent, DrawerDescription, DrawerTitle, DrawerTrigger } from "@components/ui/drawer"
 import { useAttachFile } from "./useFileInput"
 import { CreatePollDialog } from "./CreatePollDialog"
 import AttachFrappeDocumentDialog from "./AttachFrappeDocumentDialog"
+import { isAndroid } from "@utils/platform"
 import _ from "@lib/translate"
 
 /**
@@ -14,10 +15,15 @@ import _ from "@lib/translate"
  * sheet, so closing it before opening them is safe); every attach path funnels
  * through the shared useAttachFile, so size/type validation still applies.
  *
- * The tiles are three hidden file inputs whose ATTRIBUTES steer the OS picker:
- *   - camera:  accept="image/*,video/*" + capture — straight to the camera,
- *     with the OS camera UI offering both photo and video modes (one capture
- *     per trip; capture inputs don't support multiple)
+ * The tiles are hidden file inputs whose ATTRIBUTES steer the OS picker:
+ *   - camera:  `capture` opens the camera directly — but the two platforms
+ *     disagree on the accept value. iOS: accept="image/*,video/*" + capture
+ *     opens its camera with BOTH photo and video modes — one tile. Android:
+ *     `capture` must resolve to a single camera intent (photo OR video), so a
+ *     mixed accept makes Chrome silently DROP capture and open the photo
+ *     picker instead — hence two tiles there (Camera / Video), each with a
+ *     single-type accept. (One capture per trip; capture inputs don't support
+ *     multiple.)
  *   - photos:  accept="image/*,video/*", no capture — straight to the library
  *   - files:   unrestricted. iOS insists on its camera/library/file chooser
  *     here — WebKit's accept handling is broken (rdar 36726477) and no accept
@@ -34,6 +40,7 @@ export const MobileComposerActions = ({
     const [docOpen, setDocOpen] = useState(false)
     const onAddFile = useAttachFile(channelID)
     const cameraInputRef = useRef<HTMLInputElement>(null)
+    const videoCaptureRef = useRef<HTMLInputElement>(null)
     const galleryInputRef = useRef<HTMLInputElement>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -44,6 +51,9 @@ export const MobileComposerActions = ({
 
     const tiles: { icon: LucideIcon; label: string; onSelect: () => void }[] = [
         { icon: Camera, label: _("Camera"), onSelect: () => cameraInputRef.current?.click() },
+        // Android only: capture resolves to ONE camera intent, so photo and
+        // video capture need separate tiles (see the file inputs below).
+        ...(isAndroid ? [{ icon: Video, label: _("Video"), onSelect: () => videoCaptureRef.current?.click() }] : []),
         { icon: Images, label: _("Photos"), onSelect: () => galleryInputRef.current?.click() },
         { icon: FilesIcon, label: _("Files"), onSelect: () => fileInputRef.current?.click() },
         { icon: ChartBar, label: _("Poll"), onSelect: () => setPollOpen(true) },
@@ -52,7 +62,14 @@ export const MobileComposerActions = ({
 
     return (
         <>
-            <input type="file" accept="image/*,video/*" capture="environment" ref={cameraInputRef} className="hidden" onChange={onPicked} />
+            {isAndroid ? (
+                <>
+                    <input type="file" accept="image/*" capture="environment" ref={cameraInputRef} className="hidden" onChange={onPicked} />
+                    <input type="file" accept="video/*" capture="environment" ref={videoCaptureRef} className="hidden" onChange={onPicked} />
+                </>
+            ) : (
+                <input type="file" accept="image/*,video/*" capture="environment" ref={cameraInputRef} className="hidden" onChange={onPicked} />
+            )}
             <input type="file" accept="image/*,video/*" multiple ref={galleryInputRef} className="hidden" onChange={onPicked} />
             <input type="file" multiple ref={fileInputRef} className="hidden" onChange={onPicked} />
 
@@ -64,6 +81,7 @@ export const MobileComposerActions = ({
                 </DrawerTrigger>
                 <DrawerContent>
                     <DrawerTitle className="sr-only">{_("Composer actions")}</DrawerTitle>
+                    <DrawerDescription className="sr-only">{_("Attach files, polls and more")}</DrawerDescription>
                     {/* Circle icon tiles, WhatsApp-style — every option is an icon */}
                     <div className="grid grid-cols-4 gap-x-2 gap-y-6 px-4 pt-6 pb-10">
                         {tiles.map((tile) => (

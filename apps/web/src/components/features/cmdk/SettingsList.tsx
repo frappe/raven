@@ -1,5 +1,4 @@
 import { CommandGroup, CommandItem } from '@components/ui/command'
-import { useNavigate } from 'react-router-dom'
 import { useSetAtom } from 'jotai'
 import { commandMenuOpenAtom } from './atoms'
 import { useMemo } from 'react'
@@ -12,6 +11,7 @@ import {
     Hash,
     Smile,
 } from 'lucide-react'
+import { settingsDialogOpenTab } from '../settings/settingsDialogAtom'
 
 const ITEMS = [
     { value: 'profile', label: 'Profile', icon: User },
@@ -23,8 +23,8 @@ const ITEMS = [
 ] as const
 
 const SettingsList = ({ text }: { text: string }) => {
-    const navigate = useNavigate()
     const setOpen = useSetAtom(commandMenuOpenAtom)
+    const setSettingsDrawerOpenTab = useSetAtom(settingsDialogOpenTab)
 
     const filteredItems = useMemo(() => {
         if (!text) return ITEMS
@@ -37,28 +37,30 @@ const SettingsList = ({ text }: { text: string }) => {
 
     if (!filteredItems.length) return null
 
-    return (
-        <CommandGroup heading={_("Settings")}>
-            {filteredItems.map(item => {
-                const Icon = item.icon
-                return (
-                    <CommandItem
-                        key={item.value}
-                        value={`settings-${item.value}`}
-                        keywords={[item.label, 'settings']}
-                        onSelect={() => {
-                            navigate(`/settings/${item.value}`)
-                            setOpen(false)
-                        }}
-                        className='cursor-pointer text-base'
-                    >
-                        <Icon className="h-4 w-4" />
-                        {_(item.label)}
-                    </CommandItem>
-                )
-            })}
-        </CommandGroup>
-    )
+    const rows = filteredItems.map(item => {
+        const Icon = item.icon
+        return (
+            <CommandItem
+                key={item.value}
+                value={`settings-${item.value}`}
+                keywords={[item.label, 'settings']}
+                onSelect={() => {
+                    setSettingsDrawerOpenTab(item.value)
+                    setOpen(false)
+                }}
+                className='cursor-pointer'
+            >
+                <Icon className="h-4 w-4" />
+                {_(item.label)}
+            </CommandItem>
+        )
+    })
+
+    // While searching, rows go bare into the palette's single ranking group
+    // (see CommandPalette). Browsing keeps the labeled section.
+    if (text) return <>{rows}</>
+
+    return <CommandGroup heading={_("Settings")}>{rows}</CommandGroup>
 }
 
 export default SettingsList

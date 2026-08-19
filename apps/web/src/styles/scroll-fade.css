@@ -8,7 +8,10 @@
    top/bottom instead of cutting off hard. The scroll-timeline keyframes reveal each edge's
    fade only when there's content to scroll in that direction — no fade on the first row when
    scrolled to the top, none on the last when at the bottom. @property makes the fade animate
-   smoothly; without scroll-timeline support it falls back to a static fade on both edges. */
+   smoothly. Without scroll-timeline support (Firefox) there is NO fade at all: the fade vars
+   stay at their 0px initial and the gradient stops collapse to the edges. A static both-edges
+   fallback was tried and removed — on a container with nothing to scroll it dimmed the edges
+   anyway, promising content that didn't exist (seen on the workspace rail). */
 @property --scroll-fade-t {
   /* length-percentage, NOT length: the fade size is min(12%, …) — a percentage. A <length>
      property rejects that value and reverts to initial-value (0px), zeroing the fade. */
@@ -90,17 +93,12 @@
       calc(100% - var(--scroll-fade-reveal, calc(var(--spacing) * 24))) 100%;
     animation-fill-mode: both;
   }
-
-  @supports not (animation-timeline: scroll()) {
-    --scroll-fade-t: var(--_scroll-fade-size-t);
-    --scroll-fade-b: var(--_scroll-fade-size-b);
-  }
 }
 
 /* scroll-fade-x: the HORIZONTAL twin of scroll-fade, for inline scrollers (the
    lightbox filmstrip). Identical mechanics — smoothstep alpha ramp floored at
-   0.25, scroll-timeline reveal per edge, static-fade fallback — rotated to the
-   x axis (gradient to right, scroll(self x)). */
+   0.25, scroll-timeline reveal per edge, no fade without scroll-timeline —
+   rotated to the x axis (gradient to right, scroll(self x)). */
 @property --scroll-fade-l {
   syntax: "<length-percentage>";
   inherits: false;
@@ -173,10 +171,5 @@
       0 var(--scroll-fade-reveal, calc(var(--spacing) * 24)),
       calc(100% - var(--scroll-fade-reveal, calc(var(--spacing) * 24))) 100%;
     animation-fill-mode: both;
-  }
-
-  @supports not (animation-timeline: scroll()) {
-    --scroll-fade-l: var(--_scroll-fade-size-l);
-    --scroll-fade-r: var(--_scroll-fade-size-r);
   }
 }

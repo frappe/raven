@@ -22,11 +22,9 @@ export function UserProfileDrawer({ user }: UserProfileDrawerProps) {
 
     const isDisabled = user.enabled === 0
 
-    // TODO: Add designation etc
-
     return (
         <div className="">
-            <div className="flex items-center px-5 pt-4 pb-2 gap-4">
+            <div className="flex items-center px-3.5 pt-4 pb-2 gap-4">
                 <div>
                     <UserAvatar
                         user={user}

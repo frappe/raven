@@ -2,15 +2,14 @@ import { ChannelIcon } from "@components/common/ChannelIcon/ChannelIcon"
 import { ListView } from "@components/ui/list-view"
 import type { ListViewColumnMeta } from "@components/ui/list-view"
 import { ColumnDef } from "@tanstack/react-table"
-import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@components/ui/select"
-import { ChannelSidebarData } from "@raven/lib/hooks/useGroupedChannels"
-import { RavenGroupedChannels } from "@raven/types/Raven/RavenGroupedChannels"
-import { RavenPinnedChannels } from "@raven/types/Raven/RavenPinnedChannels"
-import { RavenUser } from "@raven/types/Raven/RavenUser"
+import { ChannelSidebarData, type ChannelHiddenReason } from "@raven/lib/hooks/useGroupedChannels"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip"
+import { cn } from "@lib/utils"
 import { useMemo } from "react"
-import { useFieldArray, useFormContext } from "react-hook-form"
 import _ from "@lib/translate"
-import { Star } from "lucide-react"
+import { EyeOff } from "lucide-react"
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@components/ui/empty"
+import { ChannelGroupSelect } from "./ChannelGroupSelect"
 
 interface ChannelTable {
   name: string,
@@ -18,6 +17,15 @@ interface ChannelTable {
   channel_description: string,
   type: "Private" | "Public" | "Open",
   channel_group: string
+  /** Set when the user's own sidebar preferences hide this channel — the row
+   *  still shows (you can't organize what you can't see) but greyed, with an
+   *  explanation on the eye-off icon. */
+  hiddenReason?: ChannelHiddenReason
+}
+
+const HIDDEN_REASON_TEXT: Record<ChannelHiddenReason, () => string> = {
+  not_joined: () => _("Hidden from your sidebar - your preferences only show channels you have joined."),
+  no_recent_activity: () => _("Hidden from your sidebar - no activity in the last 30 days."),
 }
 
 export const ChannelTable = ({ data }: { data: ChannelSidebarData }) => {
@@ -34,7 +42,8 @@ export const ChannelTable = ({ data }: { data: ChannelSidebarData }) => {
           channel_name: channel.channel_name,
           channel_description: channel.channel_description || '',
           type: channel.type,
-          channel_group: groupName
+          channel_group: groupName,
+          hiddenReason: channel._hiddenReason
         })
       })
     })
@@ -46,11 +55,16 @@ export const ChannelTable = ({ data }: { data: ChannelSidebarData }) => {
         channel_name: channel.channel_name,
         channel_description: channel.channel_description || '',
         type: channel.type,
-        channel_group: ''
+        channel_group: '',
+        hiddenReason: channel._hiddenReason
       })
     })
 
-    return result
+    // Alphabetical, NOT the grouped-then-ungrouped order the rows arrive in:
+    // that order made assigning a group physically move the row (up into its
+    // group's block) under the user's cursor. The table is a worklist you scan
+    // by name — grouping is the PREVIEW's job to visualize.
+    return result.sort((a, b) => a.channel_name.localeCompare(b.channel_name))
   }, [data])
 
   const columns: ColumnDef<ChannelTable>[] = useMemo(() => [
@@ -58,16 +72,29 @@ export const ChannelTable = ({ data }: { data: ChannelSidebarData }) => {
       id: 'channel_name',
       header: _('Name'),
       accessorKey: 'channel_name',
-      size: 240,
+      meta: {
+        gridWidth: 'minmax(160px,1fr)',
+        getTooltipText: (row) => (row as ChannelTable).channel_name,
+      } satisfies ListViewColumnMeta,
       cell: ({ row }) => {
         const r = row.original
         return (
-          <div className='flex items-center gap-2'>
+          <div className='flex items-center gap-2 min-w-0'>
             <ChannelIcon
               type={r.type || "Public"}
-              className="w-4 h-4 shrink-0"
+              className={cn("w-4 h-4 shrink-0", r.hiddenReason && "text-ink-gray-4")}
             />
-            <span className='text-sm font-medium line-clamp-1 text-ellipsis'>{r.channel_name}</span>
+            <span className={cn('font-medium truncate', r.hiddenReason && 'text-ink-gray-4 font-normal')}>{r.channel_name}</span>
+            {r.hiddenReason && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <EyeOff className="size-3.5 shrink-0 text-ink-gray-4" aria-label={_("Hidden from sidebar")} />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-64">
+                  {HIDDEN_REASON_TEXT[r.hiddenReason]()}
+                </TooltipContent>
+              </Tooltip>
+            )}
           </div>
         )
       },
@@ -87,115 +114,38 @@ export const ChannelTable = ({ data }: { data: ChannelSidebarData }) => {
       id: 'channel_group',
       header: _('Group'),
       accessorKey: 'channel_group',
-      size: 210,
       meta: {
+        // Holds the group Select (w-52 ≈ 208px) — keep a fixed track, don't flex.
+        gridWidth: '220px',
         truncate: false,
       } satisfies ListViewColumnMeta,
-      cell: ({ row }) => <ChannelGroupDropdown channel={row.original} />,
+      cell: ({ row }) => (
+        <ChannelGroupSelect channelId={row.original.name} channelGroup={row.original.channel_group} />
+      ),
     },
   ], [])
 
   return (
     <ListView
-      className="flex-1 min-h-0"
+      className="flex-1 min-h-0 pr-2"
       data={tableData}
       columns={columns}
       getRowId={(row) => row.name}
       scrollAreaClassName="flex-1"
-      maxHeight={600}
-      emptyState={<span className="text-ink-gray-4">No channels found.</span>}
+      maxHeight="100%"
+      // Rows carry a group Select — same reason the Channels panel bumps its rows.
+      rowHeight={44}
+      emptyState={
+        <Empty>
+          <EmptyMedia>
+            <ChannelIcon type="Public" />
+          </EmptyMedia>
+          <EmptyHeader>
+            <EmptyTitle>{_("No channels found")}</EmptyTitle>
+            <EmptyDescription>{_("Channels in this workspace will show up here.")}</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      }
     />
   )
-}
-
-const ChannelGroupDropdown = ({ channel }: { channel: ChannelTable }) => {
-
-  const { control, getValues } = useFormContext<RavenUser>()
-
-  const { update: updateGroupedChannels, append: appendGroupedChannels, remove: removeGroupedChannels } = useFieldArray<RavenUser, 'grouped_channels'>({
-    control,
-    name: 'grouped_channels'
-  })
-  const { fields: groups } = useFieldArray<RavenUser, 'channel_groups'>({
-    control,
-    name: 'channel_groups'
-  })
-  const { append: appendPinnedChannels, remove: removePinnedChannels } = useFieldArray<RavenUser, 'pinned_channels'>({
-    control,
-    name: 'pinned_channels'
-  })
-
-  const handleGroupChange = (value: string) => {
-    const currentPinnedChannels = getValues('pinned_channels') || []
-    const currentGroupedChannels = getValues('grouped_channels') || []
-
-    const pinnedIndex = currentPinnedChannels.findIndex(
-      field => field.channel_id === channel.name
-    )
-
-    const groupedIndex = currentGroupedChannels.findIndex(
-      field => field.channel_id === channel.name
-    )
-
-    if (value === "Favorites") {
-      if (pinnedIndex < 0) {
-        appendPinnedChannels({
-          channel_id: channel.name,
-        } as RavenPinnedChannels)
-      }
-      if (groupedIndex >= 0) {
-        removeGroupedChannels(groupedIndex)
-      }
-    } else if (value === "Ungroup Channel") {
-      if (pinnedIndex >= 0) {
-        removePinnedChannels(pinnedIndex)
-      }
-      if (groupedIndex >= 0) {
-        removeGroupedChannels(groupedIndex)
-      }
-    } else {
-      if (pinnedIndex >= 0) {
-        removePinnedChannels(pinnedIndex)
-      }
-
-      if (groupedIndex >= 0) {
-        updateGroupedChannels(groupedIndex, {
-          ...currentGroupedChannels[groupedIndex],
-          channel_group: value
-        })
-      } else {
-        appendGroupedChannels({
-          channel_id: channel.name,
-          channel_group: value,
-        } as RavenGroupedChannels)
-      }
-    }
-  }
-
-  return (<Select
-    value={channel.channel_group}
-    onValueChange={handleGroupChange}
-  >
-    <SelectTrigger inputSize="sm" className="w-52 **:data-[slot=select-value]:truncate **:data-[slot=select-value]:block">
-      <SelectValue placeholder={_('Select a group')} />
-    </SelectTrigger>
-    <SelectContent>
-      <SelectItem value="Favorites">
-        <div className="flex items-center gap-1">
-          <Star className="h-3 w-3 text-ink-gray-8/80 fill-amber-300 stroke-amber-300 mr-1" />
-          {_("Favorites")}
-        </div>
-      </SelectItem>
-      {groups.length > 0 && <SelectSeparator className="mx-1" />}
-      {groups.map((field) => (
-        <SelectItem key={field.name} value={field.group_name} className="overflow-hidden *:last:truncate *:last:block!">
-          {field.group_name}
-        </SelectItem>
-      ))}
-      {channel.channel_group && <div>
-        <SelectSeparator className="mx-1" />
-        <SelectItem value="Ungroup Channel" className="text-ink-red-4">{_("Ungroup Channel")}</SelectItem>
-      </div>}
-    </SelectContent>
-  </Select>)
 }

@@ -1,23 +1,34 @@
 import { useContext } from "react"
-import { FrappeConfig, FrappeContext, useFrappeEventListener } from "frappe-react-sdk"
+import { FrappeConfig, FrappeContext, useFrappeEventListener, useSWRConfig } from "frappe-react-sdk"
+import { useDebounceCallback } from "usehooks-ts"
 import { reconcileUnknownThread, type ThreadCall } from "@stores/threads/listLoaders"
 import { threadMetaStore } from "@stores/threads/store"
 import { threadListStore } from "@stores/threads/listStore"
 import { unreadThreadsStore } from "@stores/threads/unreadStore"
 import { useUserCookieData } from "@hooks/useUserCookieData"
 
+/** Matches useUnreadRealtime's delete-reconcile debounce: batch deletes collapse
+ *  into one refetch of the authoritative unread-thread list. */
+const RECONCILE_DELAY = 1000
+
 type ThreadReplyEvent = {
     /** The thread's channel id (a thread IS a Raven Channel). */
     channel_id: string
     number_of_replies: number
     sent_by: string
-    last_message_timestamp: string
+    /** Absent on DELETES — its presence is the "bump list ordering" signal
+     *  (a delete updates the pill count but must not resurface the thread). */
+    last_message_timestamp?: string
 }
 
 type UnreadThreadEvent = {
     channel_id: string
     sent_by: string
     last_message_timestamp: string
+    /** Mirrors the channel unread event: "new_message" adds to the badge,
+     *  "message_deleted" reconciles it. Absent from older servers → treated
+     *  as a new reply (their delete path never fired this event's delete). */
+    event_type?: "new_message" | "message_deleted"
 }
 
 /**
@@ -43,6 +54,9 @@ export const useThreadsRealtime = () => {
         if (!event?.channel_id) return
         // Count → threadMetaStore (the list + pill read it there); order → list windows.
         threadMetaStore.patch(event.channel_id, event.number_of_replies, event.last_message_timestamp)
+        // DELETES reuse this event for the pill count but omit the timestamp:
+        // no ordering bump, and nothing new to surface in list views.
+        if (!event.last_message_timestamp) return
         threadListStore.bump(event.channel_id, event.last_message_timestamp)
         // bump only reorders rows a view already has. If a loaded view is missing
         // this thread (it's brand new — often the user's OWN new thread, which the
@@ -52,11 +66,26 @@ export const useThreadsRealtime = () => {
         reconcileUnknownThread(client, event.channel_id)
     })
 
-    // Scoped to the thread's participants — marks a thread unread for the sidebar badge.
-    // Skip our own replies; the store skips the thread the user is actively reading, and
-    // reading a thread clears it (useChannelReadTracker).
+    // Scoped to the thread's participants — the unread-threads badge, branching on
+    // event_type exactly like the channel handler (useUnreadRealtime): a new reply
+    // ADDS the thread; a delete RECONCILES against the server — the deleted reply's
+    // read-state is unknowable locally, so no local decrement. The delete path runs
+    // before the own-message skip: sent_by is the deleted message's owner, and
+    // someone else deleting it must still heal our badge.
+    const { mutate } = useSWRConfig()
+    const reconcileUnreadThreads = useDebounceCallback(() => mutate("unread_threads"), RECONCILE_DELAY)
     useFrappeEventListener("raven:unread_thread_count_updated", (event: UnreadThreadEvent) => {
-        if (!event?.channel_id || event.sent_by === currentUser) return
+        if (!event?.channel_id) return
+        if (event.event_type === "message_deleted") {
+            // Only worth a refetch when this thread currently shows unread here.
+            if (unreadThreadsStore.getSnapshot().has(event.channel_id)) {
+                reconcileUnreadThreads()
+            }
+            return
+        }
+        // Skip our own replies; the store skips the thread the user is actively
+        // reading, and reading a thread clears it (useChannelReadTracker).
+        if (event.sent_by === currentUser) return
         unreadThreadsStore.add(event.channel_id)
     })
 }

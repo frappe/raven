@@ -51,7 +51,17 @@ function observeSentinel(el: HTMLElement, onChange: (isAbove: boolean) => void) 
     }
 }
 
-export default function DateSeparator({ name, label }: { name: string; label: string }) {
+export default function DateSeparator({
+    name,
+    label,
+    showLine = true,
+}: {
+    name: string
+    label: string
+    /** ChatStream drops the line on the conversation's very first separator —
+     *  a full-width rule with nothing above it reads as clutter. */
+    showLine?: boolean
+}) {
     // A zero-height marker rendered just above the divider. When it scrolls above the viewport's
     // top, this date becomes the "current" one — reported to the tracker that drives the floating
     // pill. The dividers themselves are plain inline rows (no longer sticky), so nothing piles at
@@ -72,10 +82,12 @@ export default function DateSeparator({ name, label }: { name: string; label: st
                 segments are always identical (no per-side opacity race). The badge's opaque fill
                 breaks the line in the middle. */}
             <div className="relative flex items-center justify-center py-2">
-                <div
-                    aria-hidden
-                    className="pointer-events-none absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-surface-gray-2"
-                />
+                {showLine && (
+                    <div
+                        aria-hidden
+                        className="pointer-events-none absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-surface-gray-2"
+                    />
+                )}
                 <Badge variant="subtle" theme="gray" size='md' className="relative">{label}</Badge>
             </div>
         </>

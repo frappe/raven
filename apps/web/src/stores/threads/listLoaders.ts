@@ -1,4 +1,5 @@
 import type { FrappeConfig } from "frappe-react-sdk"
+import type { FrappeError } from "frappe-react-sdk"
 import type { ThreadMessage } from "src/types/ThreadMessage"
 import { getConnectionEpoch, isWindowStale, markWindowFresh, markWindowSuspect } from "@stores/connectionFreshness"
 import { ThreadTab, threadListStore } from "./listStore"
@@ -91,7 +92,7 @@ export const loadInitialThreads = async (
         threadListStore.setInitialPage(viewKey, rows, rows.length === PAGE_SIZE)
         markWindowFresh(freshnessKey(viewKey), epochAtStart)
     } catch (e) {
-        threadListStore.failLoading(viewKey, e instanceof Error ? e.message : String(e))
+        threadListStore.failLoading(viewKey, e as FrappeError)
     }
 }
 
@@ -107,7 +108,7 @@ export const reloadThreads = async (
         const rows = await fetchPage(call, tab, 0, filters)
         threadListStore.setInitialPage(viewKey, rows, rows.length === PAGE_SIZE)
     } catch (e) {
-        threadListStore.failLoading(viewKey, e instanceof Error ? e.message : String(e))
+        threadListStore.failLoading(viewKey, e as FrappeError)
     }
 }
 
@@ -176,9 +177,19 @@ export const reconcileViewIfStale = (
     viewKey: string,
     filters: ThreadFilters,
 ) => {
-    // Only a loaded view can be quietly out of date. A loading view is being
-    // fetched right now, and an errored view is retried by the initial loader.
-    if (threadListStore.getState(viewKey).status !== "ready") return
+    const status = threadListStore.getState(viewKey).status
+    // A loading view is being fetched right now; an idle one is owned by the
+    // initial loader.
+    if (status === "loading" || status === "idle") return
+    // Reconnect self-heal for a FAILED view: while the page sits mounted on the
+    // error card, nothing else retries — this call runs on every connection
+    // epoch bump (online, socket reconnect, unfreeze), so fetch page 0 now.
+    // A successful page flips the view to ready (mergePage); the staleness
+    // stamp is skipped because a failed load never received one.
+    if (status === "error") {
+        reconcileFirstPage(call, tab, viewKey, filters)
+        return
+    }
     if (!isWindowStale(freshnessKey(viewKey))) return
     reconcileFirstPage(call, tab, viewKey, filters)
 }

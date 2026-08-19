@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useContext } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useForm, useWatch } from 'react-hook-form'
 import { Button } from '@components/ui/button'
@@ -20,10 +20,12 @@ import { ChannelTypeSelector } from './ChannelTypeSelector'
 import { AddMembersStep } from './AddMembersStep'
 import { Stepper } from './Stepper'
 import { ChannelCreationForm, CreateChannelStep } from './types'
-import { useFrappePostCall } from 'frappe-react-sdk'
+import { FrappeContext, useFrappePostCall, type FrappeConfig } from 'frappe-react-sdk'
 import { useNavigate, useParams } from 'react-router'
 import { ChannelListItem } from '@raven/types/common/ChannelListItem'
 import { channelStore } from '@stores/channels/store'
+import { prefetchChannel, type FrappeCallClient } from '@stores/messages/loaders'
+import { useNavigateFromDrawer } from '@hooks/useNavigateFromDrawer'
 import _ from '@lib/translate'
 import { cn } from '@lib/utils'
 import ErrorBanner from '@components/ui/error-banner'
@@ -60,17 +62,34 @@ export const CreateChannelForm = ({ onClose: onCloseCallback, selectedWorkspace 
         resetForm()
     }
 
-    /** Cancel / Esc / Skip / done. The app is ALREADY on the new channel (we
-     *  navigate the instant it's created, behind the dialog) — closing is all
-     *  that's left to do. */
+    const { call } = useContext(FrappeContext) as FrappeConfig
+
+    /** Cancel / Esc / Skip / done. On desktop the app is ALREADY on the new
+     *  channel (we navigate the instant it's created, behind the dialog) —
+     *  closing is all that's left. On mobile the create flow deliberately does
+     *  NOT navigate (see onSubmit), so if a channel was created, go to it here
+     *  — after the drawer has fully closed, or the drawer gets baked into the
+     *  OS back-swipe screenshot (the wait lives in useNavigateFromDrawer). The
+     *  prefetch runs during the wait so the channel usually opens already
+     *  loaded. No close to pass to the hook: onCloseCallback just closed it. */
+    const navigateFromDrawer = useNavigateFromDrawer()
     const onClose = () => {
         onCloseCallback()
+        const created = createdChannelRef.current
+        if (isMobile && created) {
+            prefetchChannel(call as FrappeCallClient, created.name)
+            navigateFromDrawer(`/${encodeURIComponent(created.workspace)}/${encodeURIComponent(created.name)}`)
+        }
+        createdChannelRef.current = null
         reset()
     }
 
     const [currentStep, setCurrentStep] = useState<CreateChannelStep>(1)
     /** Set once the channel exists on the server — step 2 adds members to IT. */
     const [createdChannel, setCreatedChannel] = useState<{ name: string; workspace: string } | null>(null)
+    /** Sync mirror of createdChannel for onClose: the Open-channel path calls
+     *  onClose in the same tick as setCreatedChannel, before state commits. */
+    const createdChannelRef = useRef<{ name: string; workspace: string } | null>(null)
     const stepContentRef = useRef<HTMLDivElement>(null)
     const nameInputRef = useRef<HTMLInputElement>(null)
 
@@ -113,11 +132,15 @@ export const CreateChannelForm = ({ onClose: onCloseCallback, selectedWorkspace 
     useHotkeys('esc', () => onClose(), { enabled: !isCreating && !isAddingMembers, enableOnFormTags: true })
 
     const onSubmit = async (data: ChannelCreationForm) => {
-        // Step 1 (button or Enter in a field): create the channel RIGHT AWAY and
-        // navigate to it behind the still-open dialog — the dialog is mounted from
-        // the sidebar, which survives the route change. Members are then picked
-        // with the channel already visible underneath. Open channels have no
-        // members step, so for them create → navigate → close.
+        // Step 1 (button or Enter in a field): create the channel RIGHT AWAY.
+        // Desktop also navigates to it behind the still-open dialog — the dialog
+        // is mounted from the sidebar, which survives the route change, so
+        // members are picked with the channel already visible underneath.
+        // Mobile does NOT navigate here: the drawer covers the screen (nothing
+        // to see underneath), and navigating under an open drawer bakes it into
+        // the OS back-swipe screenshot — the navigation happens in onClose,
+        // after the drawer has fully closed. Open channels have no members
+        // step, so for them create → (navigate) → close.
         if (!createdChannel) {
             createChannel({
                 type: data.type,
@@ -129,7 +152,8 @@ export const CreateChannelForm = ({ onClose: onCloseCallback, selectedWorkspace 
                 // Optimistically add the new channel to the store (the creator is admin).
                 channelStore.upsertChannel({ ...channel, is_admin: 1, allow_notifications: 1 })
                 toast.success(_('Channel created'))
-                navigate(`/${encodeURIComponent(workspace)}/${encodeURIComponent(channel.name)}`)
+                if (!isMobile) navigate(`/${encodeURIComponent(workspace)}/${encodeURIComponent(channel.name)}`)
+                createdChannelRef.current = { name: channel.name, workspace }
                 setCreatedChannel({ name: channel.name, workspace })
                 if (hasMembersStep) setCurrentStep(2)
                 else onClose()
@@ -138,8 +162,8 @@ export const CreateChannelForm = ({ onClose: onCloseCallback, selectedWorkspace 
             })
             return
         }
-        // Step 2: add the selected members to the channel (we're already on it),
-        // then close.
+        // Step 2: add the selected members to the channel (desktop is already
+        // on it; mobile goes there on close), then close.
         const memberIds = (data.members ?? []).map((member) => member.name)
         addMembers({
             channel_id: createdChannel.name,

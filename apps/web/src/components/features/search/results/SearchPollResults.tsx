@@ -25,7 +25,6 @@ const SearchPollResults = ({ searchValue, filters, onSelect, selectedID }: Searc
         searchValue,
         { ...filters, message_type: 'Poll' },
         100,
-        (r) => r.content
     )
 
     const { usersById, channelById, dmById, workspaceById } = useMessageRowLookups()

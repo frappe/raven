@@ -1,9 +1,10 @@
 import { useCallback, useContext, useEffect, useMemo, useRef, useSyncExternalStore } from "react"
-import { FrappeConfig, FrappeContext } from "frappe-react-sdk"
+import { FrappeConfig, FrappeContext, useSWRConfig } from "frappe-react-sdk"
+import { useStickyThenLeave } from "@hooks/useStickyThenLeave"
 import { subscribeConnectionEpoch } from "@stores/connectionFreshness"
 import { unreadThreadsStore } from "@stores/threads/unreadStore"
 import { ThreadTab, searchViewKey, threadListStore } from "./listStore"
-import { selectThreadRows } from "./listSelectors"
+import { selectThreadRows, type ThreadRowData } from "./listSelectors"
 import {
     loadInitialThreads,
     loadMoreThreads,
@@ -18,9 +19,11 @@ type Options = {
     channel?: string
     onlyShowUnread: boolean
     search: string
+    /** The thread open in the pane — exempt from the unread view's leave pipeline. */
+    activeThreadID?: string
 }
 
-export const useThreadList = (tab: ThreadTab, { channel, onlyShowUnread, search }: Options) => {
+export const useThreadList = (tab: ThreadTab, { channel, onlyShowUnread, search, activeThreadID }: Options) => {
     const { call } = useContext(FrappeContext) as FrappeConfig
     const client = call as ThreadCall
     const query = search.trim()
@@ -109,39 +112,59 @@ export const useThreadList = (tab: ThreadTab, { channel, onlyShowUnread, search 
         loadMoreThreads(client, tab, viewKey, filters)
     }, [client, tab, viewKey, filters])
 
-    // Session-sticky unread view (same pattern as useNotificationList): a thread the user is
-    // LOOKING at must not vanish the moment it's read — clicking it clears its unread
-    // (onThreadClick → unreadThreadsStore.remove), which would otherwise yank the row out of
-    // the filtered list while its pane opens beside it. Every row displayed unread in this
-    // view is remembered and survives the filter (rendered as read). Reset synchronously on
-    // view change (an effect would leave one stale frame), re-applying the filter cleanly.
-    const seenUnreadRef = useRef<Set<string>>(new Set())
-    const seenViewKeyRef = useRef(viewKey)
-    if (seenViewKeyRef.current !== viewKey) {
-        seenViewKeyRef.current = viewKey
-        seenUnreadRef.current = new Set()
-    }
+    // Manual refresh (pull-to-refresh / error-state Retry): refetch the first
+    // page of this view and revalidate the unread-thread set. Search views
+    // re-run their snapshot instead (that's their whole lifecycle).
+    const { mutate: globalMutate } = useSWRConfig()
+    const refresh = useCallback(async () => {
+        if (isSearch) {
+            await reloadThreads(client, tab, viewKey, filters)
+        } else {
+            await reconcileFirstPage(client, tab, viewKey, filters)
+        }
+        await globalMutate("unread_threads")
+    }, [client, tab, viewKey, isSearch, filters, globalMutate])
+
+    // Sticky-then-leave unread view — the shared pipeline (see useStickyThenLeave
+    // for the full contract). Unlike notifications there is no explicit/passive
+    // split: essentially the only way a thread's unread clears from this page is
+    // opening it (here or on another device — either way it's been dealt with).
+    // The predicate flipping back to unread — a new reply landing mid-linger or
+    // mid-exit — cancels the departure, so a thread never slides out at the
+    // moment it becomes relevant again.
+    const leave = useStickyThenLeave<ThreadRowData>({
+        viewKey,
+        enabled: onlyShowUnread,
+        getId: (row) => row.name,
+        shouldLeave: (row) => !row._isUnread,
+        isOpen: (row) => !!activeThreadID && row.name === activeThreadID,
+    })
 
     const rows = useMemo(() => {
         const selected = selectThreadRows(state, {
             channelFilter: channel,
             onlyShowUnread,
             unreadSet,
-            keepIds: seenUnreadRef.current,
+            keepIds: leave.keepIds,
         })
         if (onlyShowUnread) {
             for (const row of selected) {
-                if (row._isUnread) seenUnreadRef.current.add(row.name)
+                if (row._isUnread) leave.keepIds.add(row.name)
             }
         }
         return selected
-    }, [state, channel, onlyShowUnread, unreadSet])
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- leave.version IS the keepIds dependency
+    }, [state, channel, onlyShowUnread, unreadSet, leave.keepIds, leave.version])
+    leave.onRows(rows)
 
     return {
         rows,
+        /** Rows mid-exit — render collapsed (LeavingRow). */
+        leavingIds: leave.leavingIds,
         isLoading: state.status === "idle" || state.status === "loading",
         error: state.status === "error" ? state.error : null,
         hasMore: state.hasMore,
         loadMore,
+        refresh,
     }
 }

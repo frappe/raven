@@ -1,3 +1,4 @@
+import type { FrappeError } from "frappe-react-sdk"
 import type { ThreadMessage } from "src/types/ThreadMessage"
 import {
     ThreadListState,
@@ -89,7 +90,7 @@ class ThreadListStore {
         this.update(viewKey, markLoading(this.getState(viewKey)))
     }
 
-    failLoading(viewKey: string, error: string) {
+    failLoading(viewKey: string, error: FrappeError) {
         this.update(viewKey, markError(this.getState(viewKey), error))
     }
 

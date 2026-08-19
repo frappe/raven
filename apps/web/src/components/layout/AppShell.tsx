@@ -1,4 +1,5 @@
 import { MainPageSkeleton } from "@components/features/main-page/MainPageSkeleton"
+import Cookies from "js-cookie"
 import { Alert, AlertDescription, AlertTitle } from "@components/ui/alert"
 import { useIsMobile } from "@hooks/use-mobile"
 import { useLoadUsers } from "@hooks/useLoadUsers"
@@ -13,6 +14,7 @@ import { useUnreadSync } from "@stores/unread/useUnreadSync"
 import { useUnreadRealtime } from "@stores/unread/useUnreadRealtime"
 import { useMessageRoomSubscriptions } from "@stores/messages/useMessageRoomSubscriptions"
 import { useMessagesRealtime } from "@stores/messages/useMessagesRealtime"
+import { useLinkPreviewsRealtime } from "@stores/linkPreviews/useLinkPreview"
 import { useConnectionFreshness } from "@hooks/useConnectionFreshness"
 import { useActiveSocketConnection } from "@hooks/useActiveSocketConnection"
 import { useOutboxAutoRetry } from "@stores/messages/useOutboxAutoRetry"
@@ -29,8 +31,10 @@ import { useReportActiveState } from "@stores/presence/useReportActiveState"
 import { usePushNotificationNavigation } from "@hooks/usePushNotificationNavigation"
 import { useAppBadge } from "@hooks/useAppBadge"
 import { useClearReadNotifications } from "@hooks/useClearReadNotifications"
+import { useRemovedChannelCleanup } from "@hooks/useRemovedChannelCleanup"
 import DocumentTitle from "./DocumentTitle"
 import { AppUpdateAlert } from "./AppUpdateAlert"
+import { SessionBroadcast } from "./SessionBroadcast"
 import RavenSettingsDialog from "@components/features/settings/SettingsDialog"
 import { MessageActionDialogs } from "@components/features/message/actions/MessageActionDialogs"
 
@@ -73,6 +77,15 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
     const hasRavenUserRole = hasRole('Raven User')
 
+    // A GUEST lacking the role isn't a permissions problem — they're just not
+    // logged in, and App.tsx is redirecting them to login. Render nothing so
+    // the "no access" alert can't flash at them on the way out (it's meant for
+    // LOGGED-IN users who genuinely lack the Raven User role).
+    const userId = Cookies.get('user_id')
+    if (!userId || userId === 'Guest') {
+        return null
+    }
+
     if (!hasRavenUserRole) {
         return <div className="h-screen w-screen flex justify-center items-center">
             <div>
@@ -104,6 +117,8 @@ const AppListeners = ({ children }: { children: React.ReactNode }) => {
     useMessageRoomSubscriptions()
     // Dispatches those live message events into the message store
     useMessagesRealtime()
+    // Patches freshly fetched link previews into the link preview store
+    useLinkPreviewsRealtime()
     // Health-checks the socket on focus and force-reconnects a dead one (e.g. after a
     // backgrounded tab suspended it) — the reconnect then bumps the connection epoch
     useActiveSocketConnection()
@@ -144,8 +159,10 @@ const AppListeners = ({ children }: { children: React.ReactNode }) => {
     useAppBadge()
     // Sweeps tray notifications for channels/threads that are no longer unread
     useClearReadNotifications()
-
-    // TODO: Session broadcast listener
+    // Tears down state for channels that vanish from the channel list (deleted /
+    // access lost): message store + socket room, stale last-visited, and a
+    // redirect off the dead route if it's on screen
+    useRemovedChannelCleanup()
 
     if (!isReady) {
         return <MainPageSkeleton />
@@ -158,6 +175,7 @@ const AppListeners = ({ children }: { children: React.ReactNode }) => {
         <AttachmentPreviewModal />
         {/* "App was updated — refresh" prompt (chunk failures, deploys, SW updates) */}
         <AppUpdateAlert />
+        <SessionBroadcast />
     </>
 }
 

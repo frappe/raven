@@ -12,4 +12,6 @@ export interface RavenChannelGroups{
 	idx?: number
 	/**	Group Name : Data	*/
 	group_name: string
+	/**	Sort By : Select	*/
+	sort_by?: "" | "Alphabetical Order" | "Recent Activity"
 }

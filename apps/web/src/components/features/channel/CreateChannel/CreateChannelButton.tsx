@@ -39,9 +39,16 @@ const fallback = (
 export const CreateChannelDialog = ({
     open,
     onOpenChange,
+    selectedWorkspace,
 }: {
     open: boolean
     onOpenChange: (open: boolean) => void
+    /** Pre-scope the new channel to this workspace. Callers OUTSIDE a
+     *  workspace route (the settings dialog's Channels panel) must pass it —
+     *  the form's fallback is the ROUTE's workspace, which is absent on
+     *  routes like /threads (channel creation would post an empty workspace)
+     *  and wrong when the panel is filtered to a different workspace. */
+    selectedWorkspace?: string
 }) => {
     const isMobile = useIsMobile()
 
@@ -55,7 +62,7 @@ export const CreateChannelDialog = ({
                             {_('Choose a name and type for your channel, then add members.')}
                         </DrawerDescription>
                         <Suspense fallback={fallback}>
-                            <CreateChannelForm onClose={() => onOpenChange(false)} />
+                            <CreateChannelForm onClose={() => onOpenChange(false)} selectedWorkspace={selectedWorkspace} />
                         </Suspense>
                     </div>
                 </DrawerContent>
@@ -73,7 +80,7 @@ export const CreateChannelDialog = ({
                     </DialogDescription>
                 </DialogHeader>
                 <Suspense fallback={fallback}>
-                    <CreateChannelForm onClose={() => onOpenChange(false)} />
+                    <CreateChannelForm onClose={() => onOpenChange(false)} selectedWorkspace={selectedWorkspace} />
                 </Suspense>
             </DialogContent>
         </Dialog>

@@ -1,7 +1,9 @@
-import { Outlet, useMatch } from 'react-router'
+import { Navigate, Outlet, useMatch, useParams } from 'react-router'
 import { ChannelSidebar } from '@components/channel-sidebar/ChannelSidebar'
 import AppMobileFooter from '@components/features/header/AppMobileFooter'
 import { useIsMobile } from '@hooks/use-mobile'
+import { useLayerInAnimation } from '@hooks/useLayerInAnimation'
+import { useWorkspaces } from '@hooks/useWorkspaces'
 import { cn } from '@lib/utils'
 
 /**
@@ -19,11 +21,27 @@ import { cn } from '@lib/utils'
  */
 const WorkspaceLayout = () => {
     const isMobile = useIsMobile()
+    const { workspaceID } = useParams<{ workspaceID: string }>()
+    const { workspaces, isLoading, error } = useWorkspaces()
     // The layout mounts above the `:id` route, so useParams can't see the
     // channel (params only include matches up to this depth) — match the
     // path instead; end: false keeps matching with a thread drawer open
     const channelMatch = useMatch({ path: '/:workspaceID/:id', end: false })
     const hasChannelOpen = Boolean(channelMatch)
+    // No slide when the chat layer is already open on a BACK arrival — see the hook.
+    const layerAnimation = useLayerInAnimation(hasChannelOpen)
+
+    // The workspace no longer exists (deleted here or by another admin, or the
+    // user was removed) — bounce to the index, which lands on a valid workspace.
+    // Wait for the list so we don't redirect during the initial load — and only
+    // trust an ABSENCE the fetch actually proved: a failed fetch also leaves an
+    // empty list, and redirecting on that bounced users to a blank index on a
+    // transient network error. Render the layout instead and let the list heal
+    // (reconnect revalidation).
+    const listTrustworthy = !isLoading && !(error && workspaces.length === 0)
+    if (listTrustworthy && workspaceID && !workspaces.some((w) => w.name === workspaceID)) {
+        return <Navigate to="/" replace />
+    }
 
     return (
         // relative on the OUTER column: the mobile channel layer positions against the
@@ -48,7 +66,8 @@ const WorkspaceLayout = () => {
                 <div
                     className={cn(
                         'flex min-w-0 min-h-0 flex-col bg-surface-sidebar',
-                        'max-md:absolute max-md:inset-0 max-md:z-20 animate-layer-in',
+                        'max-md:absolute max-md:inset-0 max-md:z-20',
+                        layerAnimation,
                         !hasChannelOpen && 'max-md:hidden',
                         'md:flex-1',
                     )}

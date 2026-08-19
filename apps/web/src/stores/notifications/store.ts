@@ -1,3 +1,4 @@
+import type { FrappeError } from "frappe-react-sdk"
 import {
     NotificationListState,
     NotificationObject,
@@ -82,7 +83,7 @@ class NotificationListStore {
         this.update(viewKey, markLoading(this.getState(viewKey)))
     }
 
-    failLoading(viewKey: string, error: string) {
+    failLoading(viewKey: string, error: FrappeError) {
         this.update(viewKey, markError(this.getState(viewKey), error))
     }
 

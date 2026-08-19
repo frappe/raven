@@ -1,6 +1,8 @@
 import { Extension } from "@tiptap/core"
 import { Suggestion } from "@tiptap/suggestion"
 import { Data, SearchIndex } from "emoji-mart"
+import { getDefaultStore } from "jotai"
+import { customEmojiCategoriesAtom } from "@lib/emojiMart"
 import { createSuggestionRender, findSuggestionMatchAfterNonWord } from "./createSuggestion"
 import { emojiPluginKey } from "./suggestion"
 
@@ -59,22 +61,137 @@ const emoticonMatch = (query: string): EmojiResult | null => {
 }
 
 /**
+ * How far a typo may be from a word and still match: how many single-letter
+ * edits (add, drop, change, or swap two neighbours) turn one into the other.
+ * Stops counting past `max` — rows whose best value already exceeds it can
+ * never recover, so most non-matches exit after a couple of rows.
+ */
+const editDistance = (a: string, b: string, max: number): number => {
+    if (a === b) return 0
+    if (Math.abs(a.length - b.length) > max) return max + 1
+    let prevPrev: number[] | null = null
+    let prev = Array.from({ length: b.length + 1 }, (_, i) => i)
+    for (let i = 1; i <= a.length; i++) {
+        const row = [i]
+        let rowMin = i
+        for (let j = 1; j <= b.length; j++) {
+            const cost = a[i - 1] === b[j - 1] ? 0 : 1
+            let d = Math.min(prev[j] + 1, row[j - 1] + 1, prev[j - 1] + cost)
+            // Two neighbouring letters swapped ("haert") count as ONE edit.
+            if (prevPrev && i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+                d = Math.min(d, prevPrev[j - 2] + 1)
+            }
+            row.push(d)
+            if (d < rowMin) rowMin = d
+        }
+        if (rowMin > max) return max + 1
+        prevPrev = prev
+        prev = row
+    }
+    return prev[b.length]
+}
+
+/** Every searchable word (id, name words, keywords) per emoji — built once,
+ *  on the first zero-result search, from the same emoji-mart data. */
+type FuzzyCandidate = { emoji: EmojiResult; words: string[] }
+let fuzzyCandidates: FuzzyCandidate[] | null = null
+const getFuzzyCandidates = (): FuzzyCandidate[] => {
+    if (fuzzyCandidates) return fuzzyCandidates
+    const data = Data as { emojis?: Record<string, EmojiResult & { name?: string; keywords?: string[] }> } | null
+    fuzzyCandidates = Object.values(data?.emojis ?? {}).map((emoji) => ({
+        emoji,
+        words: [
+            emoji.id,
+            ...(emoji.name?.toLowerCase().split(/\s+/) ?? []),
+            ...(emoji.keywords ?? []),
+        ].filter(Boolean),
+    }))
+    return fuzzyCandidates
+}
+
+/** Custom Raven emojis as fuzzy candidates. Built fresh on each call, NOT
+ *  cached like the built-in list: the set is small (dozens at most) and can
+ *  change while the app runs (admins add/delete, realtime refetch). Read from
+ *  the same atom every picker uses, so the two can't disagree. */
+const getCustomCandidates = (): FuzzyCandidate[] => {
+    const categories = getDefaultStore().get(customEmojiCategoriesAtom)
+    return categories.flatMap((category) =>
+        category.emojis.map((emoji) => ({
+            emoji: emoji as EmojiResult,
+            words: [emoji.id, ...(emoji.keywords ?? [])].map((word) => word.toLowerCase()).filter(Boolean),
+        })),
+    )
+}
+
+/**
+ * Typo-tolerant fallback for when the normal search finds NOTHING ("haert",
+ * "celabrate"). The index matches substrings, so one wrong letter kills it.
+ * Here every emoji word is compared by edit distance instead: short queries
+ * may be 1 edit off, longer ones 2. Comparing against the word's PREFIX (cut
+ * to the query's length) also catches typos midway through a longer word
+ * ("celab" → "celebrate"). Only runs on zero-result queries of 3+ letters,
+ * so it can never push noise into a list that already has real matches.
+ * Covers the built-in set AND the workspace's custom emojis.
+ */
+const fuzzySearchEmojis = (q: string): EmojiResult[] => {
+    if (q.length < 3) return []
+    const maxDist = q.length <= 5 ? 1 : 2
+    // Keyed by emoji id: a custom emoji can appear in BOTH candidate lists
+    // (registering customs puts them into emoji-mart's Data too, so the cached
+    // built-in list may already hold them). Without the dedupe, a matching
+    // custom emoji showed up twice. Ties keep the first hit; a better distance
+    // replaces it.
+    const bestById = new Map<string, { emoji: EmojiResult; dist: number }>()
+    for (const candidate of [...getFuzzyCandidates(), ...getCustomCandidates()]) {
+        let best = maxDist + 1
+        for (const word of candidate.words) {
+            const target = word.length > q.length ? word.slice(0, q.length) : word
+            const dist = editDistance(q, target, maxDist)
+            if (dist < best) best = dist
+            if (best === 0) break
+        }
+        if (best <= maxDist) {
+            const existing = bestById.get(candidate.emoji.id)
+            if (!existing || best < existing.dist) {
+                bestById.set(candidate.emoji.id, { emoji: candidate.emoji, dist: best })
+            }
+        }
+    }
+    return [...bestById.values()]
+        .sort((a, b) => a.dist - b.dist || a.emoji.id.localeCompare(b.emoji.id))
+        .map((s) => s.emoji)
+}
+
+interface EmojiSuggestionOptions {
+    /** Letters typed after ":" before the popup shows. Mobile uses 2, so a
+     *  ":)" or ":D" typed as plain text never summons UI. */
+    minQueryLength: number
+    /** Whether text smileys (":)", ":D") suggest their emoji. On mobile these
+     *  are typed as literal text all the time, so the popup stays quiet. */
+    emoticons: boolean
+}
+
+/**
  * Search emojis via emoji-mart's SearchIndex — the SAME source the app uses for
  * reactions (Apple set + Raven custom emojis, registered in useRegisterCustomEmojis).
  * Keeps anything renderable (a unicode char OR a custom image). Empty query → nothing
  * (":" alone shouldn't pop a list). Async; Tiptap's suggestion awaits it.
+ * Misspelled queries that find nothing fall back to fuzzySearchEmojis above.
  */
-const searchEmojis = async (query: string): Promise<EmojiResult[]> => {
+const searchEmojis = async (query: string, options: EmojiSuggestionOptions): Promise<EmojiResult[]> => {
     const q = query.trim()
-    if (!q) return []
-    const exact = emoticonMatch(q)
+    if (!q || q.length < options.minQueryLength) return []
+    const exact = options.emoticons ? emoticonMatch(q) : null
     // Symbol-only queries (")", "(", "-)", …) make fuzzy search pure noise
     // (")" scores "):", i.e. disappointed) — the exact emoticon is the ONLY
     // sensible answer, so show just it.
     if (exact && !/[a-z0-9]/i.test(q)) return [exact]
 
     const results = (await SearchIndex.search(q)) as EmojiResult[] | null
-    const renderable = (results ?? []).filter((emoji) => nativeOf(emoji) || srcOf(emoji))
+    let renderable = (results ?? []).filter((emoji) => nativeOf(emoji) || srcOf(emoji))
+    if (renderable.length === 0) {
+        renderable = fuzzySearchEmojis(q.toLowerCase()).filter((emoji) => nativeOf(emoji) || srcOf(emoji))
+    }
     // A letter-bearing exact emoticon (":D", ":P") still ranks first, but keeps
     // the fuzzy results below — the user may be mid-shortcode (":p" → ":party").
     const ranked = exact ? [exact, ...renderable.filter((e) => e.id !== exact.id)] : renderable
@@ -82,16 +199,23 @@ const searchEmojis = async (query: string): Promise<EmojiResult[]> => {
 }
 
 /**
- * Desktop-only `:shortcode:` emoji autocomplete. Standard emojis insert as the native
+ * `:shortcode:` emoji autocomplete. Standard emojis insert as the native
  * unicode character (plain text → renders natively, no renderer change). Custom emojis
  * have no unicode, so they insert as a CustomEmoji node (a self-contained <img>).
  * Rows preview with <em-emoji> (standard) or the custom image, matching reactions.
  *
- * Added to the editor only on desktop (useRavenEditor): mobile keyboards have their
- * own emoji and a popup on every ":" is noise.
+ * On both platforms, but tuned differently (useRavenEditor): mobile requires
+ * 2 typed letters and skips the emoticon fast-path — phone keyboards have
+ * their own emoji for the common case, and people type ":)" as plain text
+ * there constantly. The `: `popup on mobile is mainly the inline path to
+ * CUSTOM emojis, which no keyboard can type.
  */
-export const EmojiSuggestion = Extension.create({
+export const EmojiSuggestion = Extension.create<EmojiSuggestionOptions>({
     name: "emojiSuggestion",
+
+    addOptions() {
+        return { minQueryLength: 1, emoticons: true }
+    },
 
     addProseMirrorPlugins() {
         return [
@@ -102,7 +226,7 @@ export const EmojiSuggestion = Extension.create({
                 // Fire after brackets/quotes/dashes too (not just space), but never
                 // mid-word — keeps "https://" from opening the emoji popup.
                 findSuggestionMatch: findSuggestionMatchAfterNonWord,
-                items: ({ query }) => searchEmojis(query),
+                items: ({ query }) => searchEmojis(query, this.options),
                 command: ({ editor, range, props }) => {
                     const native = nativeOf(props)
                     const src = srcOf(props)

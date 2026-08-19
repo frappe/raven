@@ -17,6 +17,9 @@ import { errorResponseToast } from "@components/ui/error-banner"
  * `openDM` resolves with the channel id on success, or `undefined` if creation
  * failed (a toast is shown). Callers chain their own follow-up off that — e.g.
  * the command menu closes itself: `openDM(id).then((ok) => ok && close())`.
+ *
+ * Pass `{ navigate: false }` to resolve-or-create WITHOUT routing — the forward dialog
+ * needs the destination id while staying where it is.
  */
 export const useCreateDM = () => {
     const navigate = useNavigate()
@@ -32,11 +35,15 @@ export const useCreateDM = () => {
     )
 
     const openDM = useCallback(
-        (userID: string): Promise<string | undefined> => {
+        (userID: string, options?: { navigate?: boolean }): Promise<string | undefined> => {
+            // Defaults to navigating — every caller but the forward dialog wants that,
+            // and the forward dialog is resolving an id while staying where it is.
+            const shouldNavigate = options?.navigate ?? true
+
             // Fast path: a DM with this peer already exists client-side — just route.
             const existing = dmChannels.find((channel) => channel.peer_user_id === userID)
             if (existing) {
-                goToDM(existing.name)
+                if (shouldNavigate) goToDM(existing.name)
                 return Promise.resolve(existing.name)
             }
 
@@ -46,7 +53,7 @@ export const useCreateDM = () => {
                     const channelID = res?.message
                     if (!channelID) return undefined
                     mutate("channel_list")
-                    goToDM(channelID)
+                    if (shouldNavigate) goToDM(channelID)
                     return channelID
                 })
                 .catch((err) => {

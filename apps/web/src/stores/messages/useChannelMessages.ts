@@ -40,6 +40,12 @@ export const useChannelMessages = (
         const current = channelMessagesStore.getState(channelID)
         if (current.status === "idle") {
             loadInitialMessages(client, channelID, initialBaseMessage ?? undefined)
+        } else if (current.status === "error") {
+            // A FAILED window must retry on re-open — without this branch it
+            // fell into the warm-re-entry path below, whose quiet reconcile
+            // only touches loaded windows, so the error card stuck forever.
+            channelMessagesStore.reset(channelID)
+            loadInitialMessages(client, channelID, initialBaseMessage ?? undefined)
         } else if (current.hasNewerMessages) {
             // A hydrated live-edge window renders instantly from memory, but a
             // DETACHED window (user left while reading history) is stale by

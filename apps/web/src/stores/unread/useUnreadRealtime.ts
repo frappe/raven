@@ -11,7 +11,10 @@ const RECONCILE_DELAY = 1000
 type UnreadChannelEvent = {
     channel_id: string
     sent_by: string
-    event_type: "new_message" | "message_deleted" | "track_visit" | "mark_unread"
+    /** message_edited: the DM's LAST message was edited — carries the new teaser
+     *  details but NO timestamp, so only the preview text updates (no re-sort,
+     *  no count change — both count branches below ignore this type). */
+    event_type: "new_message" | "message_deleted" | "track_visit" | "mark_unread" | "message_edited"
     /** Timestamp of the latest message in the channel - sent when creating or deleting a message */
     last_message_timestamp?: string
     /** JSON string of the new last message — present on DM message events. */

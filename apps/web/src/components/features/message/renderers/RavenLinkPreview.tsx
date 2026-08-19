@@ -1,6 +1,5 @@
 import { useCallback, useSyncExternalStore, type ReactNode } from "react"
 import { Link } from "react-router-dom"
-import { useFrappeGetDoc } from "frappe-react-sdk"
 import { MessageSquareTextIcon } from "lucide-react"
 import { Button } from "@components/ui/button"
 import { ChannelIcon } from "@components/common/ChannelIcon/ChannelIcon"
@@ -9,10 +8,12 @@ import { useHasBeenInView } from "@hooks/useHasBeenInView"
 import { useChannelById } from "@stores/channels/useChannelList"
 import { usersStore } from "@stores/usersStore"
 import { useWorkspaces } from "@hooks/useWorkspaces"
-import { getMessageTeaser } from "@utils/messageUtils"
-import type { Message } from "@raven/types/common/Message"
+import { attachmentCountLabel, getMessageTeaser } from "@utils/messageUtils"
+import { useMessageBatch } from "@hooks/useMessageBatch"
 import type { ChannelListItem, DMChannelListItem } from "@raven/types/common/ChannelListItem"
 import _ from "@lib/translate"
+import { useIsMobile } from "@hooks/use-mobile"
+import { cn } from "@lib/utils"
 
 /**
  * Rich previews for links INTO Raven itself — message permalinks, channels,
@@ -111,13 +112,13 @@ const useUserLite = (userID?: string) =>
  *  Link, never nested inside it (nested interactive elements are invalid);
  *  both navigate to the same place. */
 const CardShell = ({ to, action, children }: { to: string; action?: string; children: ReactNode }) => (
-    <div data-media-root="" className="w-full md:max-w-lg sm:max-w-md max-w-sm my-2">
-        <div className="flex items-center gap-3 rounded-md border border-outline-gray-2 bg-surface-gray-1 p-3 transition-colors hover:border-outline-gray-3 dark:bg-surface-elevation-2">
-            <Link to={to} className="flex min-w-0 flex-1 items-center gap-3 no-underline">
+    <div data-media-root="" className="w-full max-w-lg my-2">
+        <div className="flex sm:items-center sm:flex-row flex-col gap-3 rounded border border-outline-gray-2 bg-surface-base p-3 transition-colors hover:border-outline-gray-3 dark:bg-surface-elevation-1">
+            <Link to={to} className="flex min-w-0 flex-1 items-start gap-3 no-underline">
                 {children}
             </Link>
             {action && (
-                <Button asChild variant="outline" size="sm" className="shrink-0">
+                <Button asChild variant="subtle" size="sm" className="shrink-0">
                     <Link to={to}>{action}</Link>
                 </Button>
             )}
@@ -147,35 +148,51 @@ const MessageLinkCard = ({ messageID, to, label }: { messageID: string; to: stri
     // (viewer can't access the linked channel) — permanent for this session, so
     // re-firing the doomed request on every retry tick or tab focus is waste.
     // The card just stays absent. (Options are per-hook; MessagePermalink's use
-    // of the same key keeps its own defaults.)
-    const { data: message } = useFrappeGetDoc<Message>(
-        "Raven Message",
-        messageID,
-        hasBeenInView ? `raven_message:${messageID}` : null,
-        { shouldRetryOnError: false, revalidateOnFocus: false },
-    )
+    // of the same key keeps its own defaults.) The teaser reads the anchor
+    // message only — batch members would add nothing to a one-line card.
+    const { anchor: message, messages } = useMessageBatch(hasBeenInView ? messageID : null, {
+        shouldRetryOnError: false,
+        revalidateOnFocus: false,
+    })
     const channel = useChannelById(message?.channel_id ?? "")
     const sender = useUserLite(message?.owner)
     const context = useChannelContext(channel)
+    const isMobile = useIsMobile()
 
     if (!message) return <span ref={ref} aria-hidden="true" />
 
     const senderName = sender?.full_name ?? message.owner
-    const teaser = getMessageTeaser(message)
+
+    // For a batched message (files + caption sent together), the linked
+    // member alone under-sells what's there: tease the CAPTION (the batch's
+    // one text) and append the attachment count, so the card reads
+    // "the plan for Q3 · 📎 4 attachments". A batch with no caption becomes
+    // just the count. Unbatched messages keep the plain single teaser.
+    const members = messages ?? []
+    const captionMember = members.find((member) => member.text)
+    const fileCount = members.filter((member) => "file" in member && member.file).length
+    let teaser = getMessageTeaser(captionMember ?? message)
+    if (members.length > 1) {
+        teaser = captionMember
+            ? `${teaser} · 📎 ${attachmentCountLabel(fileCount)}`
+            : `📎 ${attachmentCountLabel(fileCount)}`
+    }
 
     return (
         <CardShell to={to} action={label ? _("View thread") : _("View message")}>
-            {sender ? (
-                <UserAvatar user={sender} size="md" className="shrink-0" />
-            ) : (
-                <MessageSquareTextIcon className="size-8 shrink-0 text-ink-gray-6" aria-hidden="true" />
-            )}
+            <div className="mt-0.5">
+                {sender ? (
+                    <UserAvatar user={sender} size="md" className="shrink-0" />
+                ) : (
+                    <MessageSquareTextIcon className="size-8 shrink-0 text-ink-gray-6" aria-hidden="true" />
+                )}
+            </div>
             <div className="min-w-0 flex-1 space-y-0.5">
-                <div className="truncate text-sm text-ink-gray-5">
+                <div className={cn("truncate text-p-sm text-ink-gray-5", isMobile && "flex flex-col gap-0.5")}>
                     <span className="text-sm-medium leading-snug text-ink-gray-8">{label ?? senderName}</span>
-                    {context && <span> · {context}</span>}
+                    {context && <span>{isMobile ? "" : " · "} {context}</span>}
                 </div>
-                <div className="line-clamp-2 text-sm leading-snug text-ink-gray-7">
+                <div className="line-clamp-2 text-p-sm text-ink-gray-7">
                     {label ? `${senderName}: ${teaser}` : teaser}
                 </div>
             </div>

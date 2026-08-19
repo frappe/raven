@@ -1,4 +1,5 @@
 import * as React from "react"
+import { SettingsDialogContext } from "./settings-dialog-context"
 import { Tabs as TabsPrimitive, Dialog as DialogPrimitive } from "radix-ui"
 import { cn } from "@lib/utils"
 import { DialogContent } from "./dialog"
@@ -34,17 +35,6 @@ import { Label } from "./label"
  * </Dialog>
  */
 
-type SettingsDialogContextValue = {
-    onClose?: VoidFunction
-}
-
-const SettingsDialogContext = React.createContext<SettingsDialogContextValue>({})
-
-/**
- * Exposes `onClose` to descendant panels so they can dismiss the dialog after
- * a successful save without prop-drilling.
- */
-export const useSettingsDialog = () => React.useContext(SettingsDialogContext)
 
 type SettingsDialogProps = Omit<
     React.ComponentProps<typeof TabsPrimitive.Root>,
@@ -152,7 +142,7 @@ function SettingsTabItem({
                     )}
                     <span
                         className={cn(
-                            "flex-1 shrink-0 truncate text-sm duration-300 ease-in-out w-auto opacity-100 text-ink-gray-6",
+                            "flex-1 shrink-0 truncate text-sm leading-snug duration-300 ease-in-out w-auto opacity-100 text-ink-gray-6",
                             icon && "ms-2"
                         )}
                     >
@@ -218,7 +208,7 @@ function SettingsPanelHeader({
             <div className="flex flex-col gap-1 w-full">
                 {children}
             </div>
-            <div className="flex item-center space-x-2 w-fit justify-end">
+            <div className="flex items-center space-x-2 w-fit justify-end">
                 {actions}
             </div>
         </div>
@@ -264,7 +254,7 @@ function SettingsPanelContent({
 
 /** Used to render a row in a form in the settings panel */
 const SettingsFormRow = (props: React.ComponentProps<"div">) => {
-    return <div className="flex justify-between items-center gap-8 py-3" {...props} />
+    return <div className="flex justify-between items-center gap-8 py-2" {...props} />
 }
 
 /** Used to render a label for a form field in the settings panel */
@@ -284,6 +274,14 @@ const SettingsFormDescription = (props: React.ComponentProps<"p">) => {
     )
 }
 
+/** Groups rows under a small heading inside a settings panel. Extra top
+ *  padding separates it from the previous section (none when it's first). */
+const SettingsSectionHeader = ({ className, ...props }: React.ComponentProps<"h3">) => {
+    return (
+        <h3 className={cn("pt-4 text-base text-ink-gray-5 first:pt-0", className)} {...props} />
+    )
+}
+
 export {
     SettingsDialog,
     SettingsTabs,
@@ -297,5 +295,6 @@ export {
     SettingsPanelContent,
     SettingsFormRow,
     SettingsFormLabel,
-    SettingsFormDescription
+    SettingsFormDescription,
+    SettingsSectionHeader
 }

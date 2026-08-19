@@ -22,11 +22,11 @@ const ChannelInfo = ({ channelID }: { channelID: string }) => {
     }
 
     return (
-        <div className="flex flex-col gap-1 px-5 md:pt-3 pb-4">
+        <div className="flex flex-col gap-1 px-3.5 md:pt-3 pb-4">
             <div className="flex items-center gap-1.5 justify-between">
                 <div className="flex items-center gap-1 overflow-hidden">
-                    <ChannelIcon type={channel.type} className="size-4.5 shrink-0 text-ink-gray-7" />
-                    <span className="text-xl-medium text-ink-gray-7 truncate" title={channel.channel_name}>{channel.channel_name}</span>
+                    <ChannelIcon type={channel.type} className="size-4 shrink-0 text-ink-gray-7" />
+                    <span className="text-lg-medium text-ink-gray-7 truncate" title={channel.channel_name}>{channel.channel_name}</span>
                 </div>
                 {canManageChannel(channel) && <EditChannelDescriptionButton channel={channel} />}
             </div>
@@ -40,8 +40,8 @@ const ChannelInfo = ({ channelID }: { channelID: string }) => {
             {user && user.name !== "Administrator" && (
                 <div className="flex items-center gap-1.5 pt-2">
                     <UserAvatar user={user} size="xs" showStatusIndicator={false} showBotIndicator={false} />
-                    <span className="text-sm text-ink-gray-6">
-                        {_(`Created by {0} on {1}`, [user.full_name, formatDate(channel.creation, "Do MMMM YYYY")])}
+                    <span className="text-p-xs text-ink-gray-6">
+                        {_(`Created by {0} on {1}`, [user.full_name, formatDate(channel.creation, "Do MMM YYYY")])}
                     </span>
                 </div>
             )}

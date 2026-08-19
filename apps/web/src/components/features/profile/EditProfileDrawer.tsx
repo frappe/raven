@@ -8,18 +8,12 @@ import { Button } from "@components/ui/button"
 import { Input } from "@components/ui/input"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@components/ui/form"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@components/ui/select"
-import { Drawer, DrawerContent, DrawerTitle } from "@components/ui/drawer"
+import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from "@components/ui/drawer"
 import { FrappeError } from "frappe-react-sdk"
 import { cn } from "@lib/utils"
 import _ from "@lib/translate"
 import { errorResponseToast } from "@components/ui/error-banner"
-
-const STATUS_OPTIONS = [
-    { value: "Available", label: _("Available") },
-    { value: "Away", label: _("Away") },
-    { value: "Do not disturb", label: _("Do not disturb") },
-    { value: "Invisible", label: _("Invisible") },
-] as const
+import { AVAILABILITY_OPTIONS } from "@hooks/useSetAvailability"
 
 type ProfileFormValues = {
     full_name: string
@@ -76,6 +70,7 @@ export function EditProfileDrawer({ open, onOpenChange }: { open: boolean; onOpe
         <Drawer open={open} onOpenChange={onOpenChange}>
             <DrawerContent>
                 <DrawerTitle className="sr-only">{_("Edit profile")}</DrawerTitle>
+                <DrawerDescription className="sr-only">{_("Update your name, photo and profile details")}</DrawerDescription>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4 p-4 pb-2">
                         <h2 className="text-xl font-medium text-ink-gray-8">{_("Edit profile")}</h2>
@@ -109,7 +104,7 @@ export function EditProfileDrawer({ open, onOpenChange }: { open: boolean; onOpe
                                             </SelectTrigger>
                                         </FormControl>
                                         <SelectContent align="start">
-                                            {STATUS_OPTIONS.map((o) => (
+                                            {AVAILABILITY_OPTIONS.map((o) => (
                                                 <SelectItem key={o.value} value={o.value}>
                                                     <span className="flex items-center gap-2">
                                                         <span className={cn("size-2 rounded-full", getStatusIndicatorColor(o.value))} />

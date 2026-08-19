@@ -8,6 +8,9 @@ import {
     DropdownMenuGroup,
     DropdownMenuItem,
     DropdownMenuSeparator,
+    DropdownMenuSub,
+    DropdownMenuSubContent,
+    DropdownMenuSubTrigger,
     DropdownMenuTrigger,
 } from "@components/ui/dropdown-menu"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@components/ui/tooltip"
@@ -45,7 +48,15 @@ export const MessageHoverToolbar = ({
     /** Mobile: the ellipsis opens the action bottom sheet instead of an inline dropdown. */
     onOpenFullMenu?: () => void
 }) => {
-    const { groups: actionGroups, isOwner } = useMessageActions(message, { canInteract })
+    const [menuOpen, setMenuOpen] = useState(false)
+    // File actions are built ONLY while the ellipsis dropdown is open — the three buttons
+    // below need reply/create-thread/edit, none of which touch files, and building the file
+    // actions scans the channel's loaded window to resolve the message's batch. Hover fires
+    // per message the pointer crosses; the dropdown opens deliberately.
+    const { groups: actionGroups, isOwner } = useMessageActions(message, {
+        canInteract,
+        includeFileActions: menuOpen,
+    })
     // Promoted to toolbar icons (v2 parity). Their availability rules live in
     // useMessageActions — reply/create-thread only for channel MEMBERS, edit only
     // for the owner's own non-bot messages — so absence from the groups means
@@ -59,7 +70,6 @@ export const MessageHoverToolbar = ({
     const replyAction = isOwner ? undefined : flatActions.find((action) => action.id === "reply")
     const setActionTarget = useSetAtom(messageActionTargetAtom)
     const toggleReaction = useToggleReaction()
-    const [menuOpen, setMenuOpen] = useState(false)
     const isMobile = useIsMobile()
 
     /** The ellipsis menu marks the message as the action target, like right-click does. */
@@ -125,7 +135,7 @@ export const MessageHoverToolbar = ({
                                 aria-label={replyAction.label}
                                 onClick={replyAction.onSelect}
                             >
-                                <replyAction.icon />
+                                {replyAction.icon && <replyAction.icon />}
                             </Button>
                         </TooltipTrigger>
                         <TooltipContent>{replyAction.label}</TooltipContent>
@@ -142,7 +152,7 @@ export const MessageHoverToolbar = ({
                                 aria-label={createThreadAction.label}
                                 onClick={createThreadAction.onSelect}
                             >
-                                <createThreadAction.icon />
+                                {createThreadAction.icon && <createThreadAction.icon />}
                             </Button>
                         </TooltipTrigger>
                         <TooltipContent>{createThreadAction.label}</TooltipContent>
@@ -159,7 +169,7 @@ export const MessageHoverToolbar = ({
                                 aria-label={editAction.label}
                                 onClick={editAction.onSelect}
                             >
-                                <editAction.icon />
+                                {editAction.icon && <editAction.icon />}
                             </Button>
                         </TooltipTrigger>
                         <TooltipContent>{editAction.label}</TooltipContent>
@@ -198,16 +208,47 @@ export const MessageHoverToolbar = ({
                             <Fragment key={index}>
                                 {index > 0 && <DropdownMenuSeparator />}
                                 <DropdownMenuGroup>
-                                    {group.map((action) => (
-                                        <DropdownMenuItem
-                                            key={action.id}
-                                            variant={action.danger ? "destructive" : "default"}
-                                            onSelect={action.onSelect}
-                                        >
-                                            <action.icon />
-                                            <span>{action.label}</span>
-                                        </DropdownMenuItem>
-                                    ))}
+                                    {group.map((action) =>
+                                        action.children ? (
+                                            // Nested ACTION ROWS (custom actions).
+                                            <DropdownMenuSub key={action.id}>
+                                                <DropdownMenuSubTrigger>
+                                                    {action.icon && <action.icon />}
+                                                    <span>{action.label}</span>
+                                                </DropdownMenuSubTrigger>
+                                                {/* Content-sized between the primitive's min-w-[8rem] floor and a
+                                                    max-w cap: action_name is an unbounded Data field (140 chars),
+                                                    so a long admin label truncates instead of sprawling the panel. */}
+                                                <DropdownMenuSubContent className="max-w-64">
+                                                    {action.children.map((child) => (
+                                                        <DropdownMenuItem key={child.id} onSelect={child.onSelect}>
+                                                            {child.icon && <child.icon />}
+                                                            <span className="truncate">{child.label}</span>
+                                                        </DropdownMenuItem>
+                                                    ))}
+                                                </DropdownMenuSubContent>
+                                            </DropdownMenuSub>
+                                        ) : action.submenu ? (
+                                            // Nested PANEL content (read receipts) — same content the
+                                            // context menu nests, mounted only once the submenu opens.
+                                            <DropdownMenuSub key={action.id}>
+                                                <DropdownMenuSubTrigger>
+                                                    {action.icon && <action.icon />}
+                                                    <span>{action.label}</span>
+                                                </DropdownMenuSubTrigger>
+                                                <DropdownMenuSubContent>{action.submenu()}</DropdownMenuSubContent>
+                                            </DropdownMenuSub>
+                                        ) : (
+                                            <DropdownMenuItem
+                                                key={action.id}
+                                                variant={action.danger ? "destructive" : "default"}
+                                                onSelect={action.onSelect}
+                                            >
+                                                {action.icon && <action.icon />}
+                                                <span>{action.label}</span>
+                                            </DropdownMenuItem>
+                                        ),
+                                    )}
                                 </DropdownMenuGroup>
                             </Fragment>
                         ))}

@@ -22,6 +22,22 @@ export interface ImageFile {
     message_id?: string
 }
 
+/**
+ * Height:width past which an image counts as "taller than a phone screen" —
+ * set just past an iPhone screenshot (19.5:9 ≈ 2.17). Phone screenshots
+ * render as ordinary full-bleed media; only full-PAGE screenshots and the
+ * like get special treatment (letterboxed via object-contain — in the stack
+ * inside a tallness-capped card, in the grid inside the template's tile).
+ * Note: 21:9 Android screenshots (2.33) land past the threshold; bump it if
+ * that ever bites. Shared with ImageStack (which imports from this file
+ * already, so the constant lives here to avoid an import cycle).
+ */
+export const PHONE_SCREENSHOT_TALLNESS = 2.2
+
+/** True for images taller than a phone screenshot (see the constant above). */
+export const isTallerThanPhoneScreen = (image: ImageFile) =>
+    !!image.width && !!image.height && image.height / image.width > PHONE_SCREENSHOT_TALLNESS
+
 export const ImageCarousel = ({ images, onImageClick }: { images: ImageFile[], onImageClick: (image: ImageFile) => void }) => {
 
     const [currentIndex, setCurrentIndex] = useState(0)
@@ -134,7 +150,7 @@ export const ImageCarousel = ({ images, onImageClick }: { images: ImageFile[], o
             {images.length > 1 && (
                 <div className="flex gap-1 mt-2 overflow-x-auto">
                     {images.map((image, index) => (
-                        <Tooltip key={image.name}>
+                        <Tooltip key={`${image.file_url}:${index}`}>
                             <TooltipTrigger asChild>
                                 <div
                                     className={cn(
@@ -167,18 +183,21 @@ export const ImageGrid = ({ images, onImageClick }: { images: ImageFile[], onIma
     const layout = albumLayout(displayImages)
 
     return (
-        // WhatsApp-style: each tile rounds itself (smaller radius than a single
-        // image — signals "part of a set"), gaps show the page background as
-        // clean separation lines. No borders.
-        <div className={cn("grid gap-1", layout.container)}>
+        // Telegram/iMessage-style: the album reads as ONE media object — the
+        // wrapper clips the four outer corners (rounded-lg, matching a single
+        // image) and the tiles themselves are square, so inner seams are
+        // crisp hairlines of page background. The wrapper owning the radius
+        // also spares every template from mapping which tile holds which
+        // outer corner. No borders.
+        <div className={cn("grid gap-1 overflow-hidden rounded-lg", layout.container)}>
             {displayImages.map((image, index) => (
                 <div
-                    key={image.name}
+                    key={`${image.file_url}:${index}`}
                     data-message-id={image.message_id}
                     // bg: mats transparent-edged images (PNG logos/screenshots) —
                     // invisible behind opaque photos
                     className={cn(
-                        "relative cursor-pointer overflow-hidden rounded-md bg-surface-gray-2 group",
+                        "relative cursor-pointer overflow-hidden bg-surface-gray-2 group",
                         layout.tiles[index],
                     )}
                     onClick={() => onImageClick(image)}
@@ -186,6 +205,10 @@ export const ImageGrid = ({ images, onImageClick }: { images: ImageFile[], onIma
                     <ReservedImage
                         src={image.file_thumbnail || image.file_url}
                         alt={image.file_name}
+                        // Taller-than-a-phone-screen images letterbox in their
+                        // tile (gray gutters) instead of cover-cropping to an
+                        // arbitrary mid-page band; same rule as the stack.
+                        className={isTallerThanPhoneScreen(image) ? "object-contain" : undefined}
                     />
                 </div>
             ))}

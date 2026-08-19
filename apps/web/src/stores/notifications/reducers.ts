@@ -1,3 +1,4 @@
+import type { FrappeError } from "frappe-react-sdk"
 import type { RavenChannel } from "@raven/types/RavenChannelManagement/RavenChannel"
 import type { RavenMessage } from "@raven/types/RavenMessaging/RavenMessage"
 
@@ -30,7 +31,7 @@ export interface NotificationObject {
 /** One tab's paginated notification window. */
 export interface NotificationListState {
     status: "idle" | "loading" | "ready" | "error"
-    error: string | null
+    error: FrappeError | null
     /** name → row. References stable unless that row changed. */
     byId: ReadonlyMap<string, NotificationObject>
     /** Row names sorted DESC by creation (index 0 = newest). */
@@ -64,7 +65,7 @@ const sortedOrder = (byId: ReadonlyMap<string, NotificationObject>): string[] =>
 export const markLoading = (state: NotificationListState): NotificationListState =>
     state.status === "loading" ? state : { ...state, status: "loading", error: null }
 
-export const markError = (state: NotificationListState, error: string): NotificationListState => ({
+export const markError = (state: NotificationListState, error: FrappeError): NotificationListState => ({
     ...state,
     status: "error",
     error,
@@ -99,10 +100,14 @@ export const mergePage = (
     rows: NotificationObject[],
     hasMore: boolean,
 ): NotificationListState => {
+    // A successful page ALWAYS heals a non-ready view — even an empty page.
+    // The status check in the identity returns matters: a Retry after a failed
+    // load can legitimately fetch zero rows (empty tab, nothing unread), and
+    // without it the view stayed stuck on "error" forever.
     if (rows.length === 0) {
-        return state.hasMore === hasMore && !state.loadingMore
+        return state.status === "ready" && state.hasMore === hasMore && !state.loadingMore
             ? state
-            : { ...state, status: "ready", hasMore, loadingMore: false }
+            : { ...state, status: "ready", error: null, hasMore, loadingMore: false }
     }
     const byId = new Map(state.byId)
     let changed = false
@@ -113,7 +118,7 @@ export const mergePage = (
         }
         byId.set(r.name, r)
     }
-    if (!changed && state.hasMore === hasMore && !state.loadingMore) return state
+    if (!changed && state.status === "ready" && state.hasMore === hasMore && !state.loadingMore) return state
     return {
         status: "ready",
         error: null,

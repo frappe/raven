@@ -16,6 +16,7 @@ import { ChannelTypeSelect } from './ChannelTypeSelect'
 import { ArchiveChannelButton } from './ArchiveChannelButton'
 import { DeleteChannelButton } from './DeleteChannelButton'
 import { LeaveChannelButton } from './LeaveChannelButton'
+import { TAB_SCROLLER } from './tabPanel'
 
 /**
  * The Settings tab of the channel drawer — the PreferencesDrawer idiom: flat,
@@ -35,7 +36,11 @@ const ChannelSettingsTab = ({ channelID }: { channelID: string }) => {
     const canLeave = channel.type !== 'Open'
 
     return (
-        <div className="flex flex-col gap-6 px-1 py-2">
+        // No filters to pin, so the whole panel is the scroller (fade +
+        // safe-area padding inside the scroll — the drawer wrapper no longer
+        // scrolls). pt-2 replaces the old py-2: the bottom comes from
+        // TAB_SCROLLER's padding.
+        <div className={`flex flex-col gap-6 px-1 pt-2 ${TAB_SCROLLER}`}>
             <PrefSection title={_('Notifications')}>
                 <PushNotificationsRow />
                 <InAppNotificationsRow />

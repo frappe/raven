@@ -36,6 +36,8 @@ export interface OutboxMessage {
     linked_message?: string
     /** Reply: JSON snapshot of the replied message, so the reply preview renders on rehydrate. */
     replied_message_details?: string
+    /** Send without notifying recipients — persisted so a retried send stays silent. */
+    send_silently?: boolean
 }
 
 /**
