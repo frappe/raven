@@ -5,7 +5,7 @@ import { Spinner } from "./spinner"
 import { cn } from "@lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 disabled:cursor-not-allowed whitespace-nowrap transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none aria-invalid:focus-ring-red aria-invalid:border-outline-red-3",
+  "inline-flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed whitespace-nowrap transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none aria-invalid:focus-ring-red aria-invalid:border-outline-red-3",
   {
     variants: {
       variant: {
