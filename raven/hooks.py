@@ -177,9 +177,17 @@ scheduler_events = {
 		"raven.raven_cloud_notifications.sync_users_tokens_to_raven_cloud",
 	],
 	"cron": {
-		# run every 5 minutes
-		"*/5 * * * *": ["raven.scheduler.close_expired_polls.close_expired_polls"]
+		# run every 5 minutes — scheduled_time is aligned to this grid (validate)
+		"*/5 * * * *": [
+			"raven.scheduler.close_expired_polls.close_expired_polls",
+			"raven.scheduler.send_scheduled_messages.send_due_messages",
+		],
 	},
+}
+
+# Auto-registered in Log Settings; RavenScheduledMessage.clear_old_logs does the deletion.
+default_log_clearing_doctypes = {
+	"Raven Scheduled Message": 30,
 }
 
 # Testing
@@ -208,7 +216,7 @@ scheduler_events = {
 # Ignore links to specified DocTypes when deleting documents
 # -----------------------------------------------------------
 
-ignore_links_on_delete = ["Raven Message"]
+ignore_links_on_delete = ["Raven Message", "Raven Scheduled Message"]
 
 
 # User Data Protection
@@ -296,20 +304,3 @@ raven_document_link_override = "raven.api.document_link.get_new_app_document_lin
 ignore_translatable_strings_from = ["frappe"]
 
 sqlite_search = ["raven.api.search.RavenSearch"]
-
-# --- Scheduled messages (registered by appending, away from blocks other
-# --- in-flight branches edit, so the branches merge without conflicts)
-
-# Delivery sweep — scheduled_time is 5-min grid-aligned (validate), so messages go out on time.
-scheduler_events["cron"].setdefault("*/5 * * * *", []).append(
-	"raven.scheduler.send_scheduled_messages.send_due_messages"
-)
-
-# Sent rows keep a `sent_message` link to the message they produced — without
-# this, deleting that message would trip the link check.
-ignore_links_on_delete.append("Raven Scheduled Message")
-
-# Auto-registered in Log Settings; RavenScheduledMessage.clear_old_logs does the deletion.
-if "default_log_clearing_doctypes" not in globals():
-	default_log_clearing_doctypes = {}
-default_log_clearing_doctypes["Raven Scheduled Message"] = 30

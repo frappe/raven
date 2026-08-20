@@ -123,8 +123,16 @@ const Profile = () => {
                         />
                     )}
 
-                    {/* Scheduled messages — the PWA's entry point (no sidebar rail).
-                        Hidden when there's nothing scheduled, like the desktop icon. */}
+                    {/* Composer, sidebar + quick-emoji preferences (desktop keeps these
+                        in the settings dialog's Preferences panel) */}
+                    <ProfileRow icon={SlidersHorizontal} label={_("Preferences")} onClick={() => setPrefsOpen(true)} trailing={<ChevronRight className="size-4" />} />
+
+                    {/* Saved messages */}
+                    <NavLink to="/saved-messages">
+                        <ProfileRow icon={Bookmark} label={_("Saved messages")} chevron />
+                    </NavLink>
+
+                    {/* Scheduled messages — hidden when none, like the desktop icon */}
                     {scheduledCount > 0 && (
                         <NavLink to="/scheduled-messages">
                             <ProfileRow
@@ -141,15 +149,6 @@ const Profile = () => {
                             />
                         </NavLink>
                     )}
-
-                    {/* Composer, sidebar + quick-emoji preferences (desktop keeps these
-                        in the settings dialog's Preferences panel) */}
-                    <ProfileRow icon={SlidersHorizontal} label={_("Preferences")} onClick={() => setPrefsOpen(true)} trailing={<ChevronRight className="size-4" />} />
-
-                    {/* Saved messages */}
-                    <NavLink to="/saved-messages">
-                        <ProfileRow icon={Bookmark} label={_("Saved messages")} chevron />
-                    </NavLink>
 
                     <ProfileRow icon={Edit} label={_("Edit profile")} onClick={() => setEditOpen(true)} className="rounded-b-lg" />
 
