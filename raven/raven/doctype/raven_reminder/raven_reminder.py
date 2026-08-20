@@ -45,9 +45,8 @@ class RavenReminder(Document):
 		if get_datetime(self.remind_at) < now_datetime():
 			frappe.throw(_("Reminder cannot be set in the past."))
 
-		# Sweep runs every 5 minutes; ceiling remind_at onto that grid means
-		# reminders fire exactly on time. UI only offers aligned slots — this
-		# is the safety net for direct API callers.
+		# Ceil onto the sweep's 5-min grid so reminders fire exactly on time —
+		# safety net for direct API callers (the UI only offers aligned slots).
 		remind_at = get_datetime(self.remind_at)
 		floored = remind_at.replace(
 			minute=remind_at.minute - remind_at.minute % 5, second=0, microsecond=0

@@ -19,9 +19,8 @@ export type ReminderRow = {
     message_file?: string | null
 }
 
-/** Explicit SWR key so actions that change unread state (open-completes,
- *  delete, snooze) can revalidate the badge directly via globalMutate —
- *  the realtime ping alone must not be the only refresh path. */
+/** Explicit SWR key so unread-changing actions can revalidate the badge
+ *  directly — the realtime ping must not be the only refresh path. */
 export const UNREAD_REMINDER_COUNT_KEY = "unread_reminder_count"
 
 /** Fired-but-unread count — the Later badge. `raven_reminders_updated` is a

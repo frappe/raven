@@ -104,10 +104,8 @@ const RemindersList = ({ searchQuery, channel, mode, onSelect, selectedID, selec
     const { call } = useContext(FrappeContext) as FrappeConfig
     const { usersById, channelById, dmById, workspaceById } = useMessageRowLookups()
 
-    // Cards completed by opening them THIS visit. They stay in the Delivered
-    // section (restyled as read) instead of jumping to Completed mid-look —
-    // the notifications-page pattern. Cleared on tab switch, so the next visit
-    // shows them where they now belong.
+    // Cards completed this visit stay in Delivered (restyled as read) instead
+    // of jumping to Completed mid-look; cleared on tab switch.
     const [stickyRead, setStickyRead] = useState<Set<string>>(() => new Set())
     useEffect(() => setStickyRead(new Set()), [mode])
 

@@ -156,9 +156,8 @@ export const useMessageActions = (
 
         const isOwner = currentUser === message.owner && !message.is_bot_message
         const hasReactions = Object.keys(JSON.parse(message.message_reactions || "{}")).length > 0
-        // Optimistic sends have no server row yet (name is a client temp id), so every
-        // action that hits the server by message id is gated on this. Client-only
-        // actions (Reply, Copy) stay; failed sends get Retry/Discard inline instead.
+        // Optimistic sends have no server row yet — every action that hits the
+        // server by message id is gated on this (Reply/Copy are client-only).
         const onServer = !isOptimistic(message)
 
         // Respond: reply + thread creation — members only (see canInteract above)

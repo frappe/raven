@@ -237,12 +237,9 @@ def make_post_call_for_notification(messages, raven_settings):
 
 
 def send_reminder_push(reminder, user_id):
-	"""
-	Push for a fired reminder — body is the note, else a message snippet. Same
-	service split + dev guard as message pushes. Click target diverges: Raven Cloud
-	honours click_action (Later tab); the Frappe relay builds a /raven/message/<id>
-	permalink from data.message_id instead.
-	"""
+	"""Push for a fired reminder — body is the note, else a message snippet.
+	Same service split as message pushes; the Frappe relay builds its own
+	permalink from data.message_id instead of honouring click_action."""
 	if push_disabled():
 		return
 
