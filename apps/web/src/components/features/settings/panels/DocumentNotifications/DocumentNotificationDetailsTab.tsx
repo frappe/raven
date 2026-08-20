@@ -66,12 +66,25 @@ export const DocumentNotificationDetailsTab = ({ isEdit }: { isEdit: boolean }) 
 
             <Separator />
 
-            <SmallTextField
-                name="message"
-                label={_("Message Content")}
-                inputProps={{ className: "min-h-[100px]", placeholder: "Hi {{ doc.employee_name }}, your salary slip is ready." }}
-                formDescription={_("The message to send. Use Jinja tags to embed document data, e.g. {{ doc.employee_name }}")}
-            />
+            <div className="flex flex-col gap-1.5">
+                <SmallTextField
+                    name="message"
+                    label={_("Message Content")}
+                    inputProps={{ className: "min-h-[100px]", placeholder: "Hi {{ doc.employee_name }}, your salary slip is ready." }}
+                    formDescription={_("The message to send. Use Jinja tags to embed document data, e.g. {{ doc.employee_name }}")}
+                />
+                <p className="text-p-sm text-ink-gray-5">
+                    {_("You can also use functions like")}{" "}
+                    <code className="text-ink-gray-7">{"{{ frappe.utils.today() }}"}</code>{" — "}
+                    <a
+                        href="https://docs.frappe.io/framework/user/en/api/jinja"
+                        target="_blank" rel="noreferrer"
+                        className="underline underline-offset-2 hover:text-ink-gray-8"
+                    >
+                        {_("see Frappe's Jinja documentation")}
+                    </a>
+                </p>
+            </div>
 
             {documentType && <DoctypeVariables doctype={documentType} />}
         </div>

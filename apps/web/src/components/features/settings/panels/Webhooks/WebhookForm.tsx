@@ -52,7 +52,10 @@ const GeneralWebhookForm = ({ isEdit }: { isEdit: boolean }) => {
                     label={_("Name")}
                     isRequired
                     inputProps={{ autoFocus: true }}
-                    rules={{ required: _("Name is required") }}
+                    rules={{
+                        required: _("Name is required"),
+                        maxLength: { value: 140, message: _("Name should not exceed 140 characters") },
+                    }}
                 />
             )}
 
@@ -60,7 +63,10 @@ const GeneralWebhookForm = ({ isEdit }: { isEdit: boolean }) => {
                 name="request_url"
                 label={_("Request URL")}
                 isRequired
-                rules={{ required: _("Request URL is required") }}
+                rules={{
+                    required: _("Request URL is required"),
+                    maxLength: { value: 140, message: _("Request URL should not exceed 140 characters") },
+                }}
             />
 
             <div className="grid grid-cols-2 gap-4">
@@ -124,7 +130,10 @@ const GeneralWebhookForm = ({ isEdit }: { isEdit: boolean }) => {
                     label={_("Webhook Secret")}
                     isRequired
                     inputProps={{ type: "password" }}
-                    rules={{ required: security ? _("Webhook secret is required") : false }}
+                    rules={{
+                        required: security ? _("Webhook secret is required") : false,
+                        maxLength: { value: 140, message: _("Webhook secret should not exceed 140 characters") },
+                    }}
                 />
             ) : null}
         </div>

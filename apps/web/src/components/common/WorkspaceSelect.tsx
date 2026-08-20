@@ -20,14 +20,16 @@ export const WorkspaceSelect = ({
     onValueChange,
     workspaces,
     className,
+    disabled,
 }: {
     value: string
     onValueChange: (value: string) => void
     workspaces: WorkspaceFields[],
     className?: string
+    disabled?: boolean
 }) => {
     return (
-        <Select value={value} onValueChange={onValueChange}>
+        <Select value={value} onValueChange={onValueChange} disabled={disabled}>
             <SelectTrigger
                 inputSize="sm"
                 // No padding override: this sits in a filter row beside plain selects, and

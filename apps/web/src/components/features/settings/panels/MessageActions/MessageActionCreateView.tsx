@@ -11,6 +11,7 @@ import {
 import _ from "@lib/translate"
 import type { MessageActionFormData } from "./types"
 import { MessageActionForm } from "./MessageActionForm"
+import { useSaveHotkey } from "@hooks/useSaveHotkey"
 import { MESSAGE_ACTIONS_LIST_KEY } from "./MessageActionListView"
 
 type Props = { onBack: () => void; onCreated: (id: string) => void }
@@ -31,6 +32,8 @@ const MessageActionCreateView = ({ onBack, onCreated }: Props) => {
             if (doc) onCreated(doc.name)
         })
     }
+
+    useSaveHotkey(() => methods.handleSubmit(onSubmit)())
 
     return (
         <FormProvider {...methods}>

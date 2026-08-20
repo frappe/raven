@@ -12,6 +12,7 @@ import {
 import type { RavenMessageAction } from "@raven/types/RavenIntegrations/RavenMessageAction"
 import _ from "@lib/translate"
 import type { MessageActionFormData } from "./types"
+import { useSaveHotkey } from "@hooks/useSaveHotkey"
 import { RecordActionsMenu } from "../RecordActionsMenu"
 import { MessageActionForm } from "./MessageActionForm"
 import { MESSAGE_ACTIONS_LIST_KEY } from "./MessageActionListView"
@@ -47,6 +48,8 @@ const MessageActionDetailContent = ({
             if (doc) methods.reset(doc)
         })
     }
+
+    useSaveHotkey(() => methods.handleSubmit(onSubmit)())
 
     return (
         <FormProvider {...methods}>

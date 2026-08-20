@@ -16,6 +16,7 @@ import {
 } from "@components/ui/settings-dialog"
 import type { RavenSettings } from "@raven/types/Raven/RavenSettings"
 import _ from "@lib/translate"
+import { useSaveHotkey } from "@hooks/useSaveHotkey"
 
 /** Only Raven Admins / System Managers may edit Raven Settings. */
 export const isRavenSettingsAdmin = () => hasRole("Raven Admin") || hasRole("System Manager")
@@ -63,6 +64,8 @@ export function AdminSettingsForm({
     useEffect(() => {
         if (ravenSettings) form.reset(ravenSettings)
     }, [ravenSettings]) // eslint-disable-line react-hooks/exhaustive-deps
+
+    useSaveHotkey(() => form.handleSubmit(onSubmit)())
 
     const onSubmit = (data: RavenSettings) => {
         if (!ravenSettings) return

@@ -12,6 +12,7 @@ import {
 } from "@components/ui/settings-dialog"
 import type { RavenWebhook } from "@raven/types/RavenIntegrations/RavenWebhook"
 import _ from "@lib/translate"
+import { useSaveHotkey } from "@hooks/useSaveHotkey"
 import { RecordActionsMenu } from "../RecordActionsMenu"
 import { WEBHOOKS_LIST_KEY } from "./WebhookListView"
 import { WebhookForm } from "./WebhookForm"
@@ -51,6 +52,8 @@ const WebhookDetailContent = ({
             if (doc) methods.reset(doc)
         })
     }
+
+    useSaveHotkey(() => methods.handleSubmit(onSubmit)())
 
     const toggleEnabled = () => {
         updateDoc("Raven Webhook", data.name, { enabled: data.enabled ? 0 : 1 }).then(() => {

@@ -11,7 +11,7 @@ import useDoctypeMeta from "@hooks/useDoctypeMeta"
 import _ from "@lib/translate"
 
 /** DocType fieldtypes that can be referenced as a Jinja variable in a notification. */
-const VARIABLE_FIELD_TYPES = [
+export const VARIABLE_FIELD_TYPES = [
     "Data", "Small Text", "Long Text", "Text", "Select", "Link", "Autocomplete",
     "Int", "Float", "Currency", "Percent", "Check", "Date", "Datetime", "Time",
     "Read Only", "Text Editor", "Code",

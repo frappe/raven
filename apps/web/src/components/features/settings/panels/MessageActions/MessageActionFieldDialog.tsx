@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { FormProvider, useForm, useWatch } from "react-hook-form"
 import { Button } from "@components/ui/button"
 import { Label } from "@components/ui/label"
@@ -62,6 +62,16 @@ const FieldForm = ({
     const fieldname = useWatch({ control, name: "fieldname" })
     const type = useWatch({ control, name: "type" })
     const defaultValueType = useWatch({ control, name: "default_value_type" })
+
+    // Switching to Link repurposes `options` from newline-separated choices to a
+    // DocType name — clear it so stale Select options don't leak into the Link field.
+    const prevType = useRef(type)
+    useEffect(() => {
+        if (prevType.current !== type) {
+            if (type === "Link") setValue("options", "")
+            prevType.current = type
+        }
+    }, [type, setValue])
 
     const onDoctypeFieldSelect = (df: DocField) => {
         setValue("fieldname", df.fieldname ?? "")

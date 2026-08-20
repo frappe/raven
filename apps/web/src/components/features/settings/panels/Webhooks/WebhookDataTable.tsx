@@ -17,10 +17,11 @@ import { Label } from "@components/ui/label"
 import useDoctypeMeta from "@hooks/useDoctypeMeta"
 import type { RavenWebhook } from "@raven/types/RavenIntegrations/RavenWebhook"
 import _ from "@lib/translate"
-import { SampleData, TriggerEvents } from "./utils"
+import { DoctypeFieldList, SampleData, TriggerEvents } from "./utils"
 
-/** A payload-field option, derived live from the target DocType's meta. */
-type PayloadField = { fieldname: string; label: string; fieldtype: string; description?: string }
+/** A payload-field option, derived live from the target DocType's meta,
+ *  enriched with curated description/example where we have one. */
+type PayloadField = { fieldname: string; label: string; fieldtype: string; description?: string; example?: string }
 
 /** Layout-only fieldtypes carry no value, so they're never payload fields. */
 const LAYOUT_FIELDTYPES = new Set(["Section Break", "Column Break", "Tab Break", "HTML", "Button", "Fold", "Heading"])
@@ -39,18 +40,21 @@ export const WebhookData = () => {
         [webhookTrigger],
     )
     const { doc: meta } = useDoctypeMeta(triggerDoctype)
-    const availableFields = useMemo<PayloadField[]>(
-        () =>
-            (meta?.fields ?? [])
-                .filter((f) => f.fieldname && f.fieldtype && !LAYOUT_FIELDTYPES.has(f.fieldtype))
-                .map((f) => ({
+    const availableFields = useMemo<PayloadField[]>(() => {
+        const curated = DoctypeFieldList.find((d) => d.events.includes(webhookTrigger))?.fields ?? []
+        return (meta?.fields ?? [])
+            .filter((f) => f.fieldname && f.fieldtype && !LAYOUT_FIELDTYPES.has(f.fieldtype))
+            .map((f) => {
+                const doc = curated.find((c) => c.fieldname === f.fieldname)
+                return {
                     fieldname: f.fieldname as string,
                     label: f.label ?? (f.fieldname as string),
                     fieldtype: f.fieldtype as string,
-                    description: f.description,
-                })),
-        [meta],
-    )
+                    description: doc?.description ?? f.description,
+                    example: doc?.example,
+                }
+            })
+    }, [meta, webhookTrigger])
 
     return (
         <div className="flex flex-col gap-3">
@@ -186,6 +190,12 @@ const FieldInfoDialog = ({ fieldname, availableFields }: { fieldname?: string; a
                     <Label>{_("Fieldname")}</Label>
                     <pre className="rounded-md bg-surface-gray-2 p-3 text-p-sm text-ink-gray-7"><code>{fieldData?.fieldname}</code></pre>
                 </div>
+                {fieldData?.example && (
+                    <div className="flex flex-col gap-1.5">
+                        <Label>{_("Example")}</Label>
+                        <pre className="rounded-md bg-surface-gray-2 p-3 text-p-sm text-ink-gray-7 overflow-auto max-h-60 whitespace-pre-wrap"><code>{fieldData.example}</code></pre>
+                    </div>
+                )}
             </DialogContent>
         </Dialog>
     )

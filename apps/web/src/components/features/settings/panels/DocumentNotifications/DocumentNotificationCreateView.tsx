@@ -10,6 +10,7 @@ import {
 } from "@components/ui/settings-dialog"
 import type { RavenDocumentNotification } from "@raven/types/RavenIntegrations/RavenDocumentNotification"
 import _ from "@lib/translate"
+import { useSaveHotkey } from "@hooks/useSaveHotkey"
 import { DocumentNotificationForm } from "./DocumentNotificationForm"
 import { DOC_NOTIFICATIONS_LIST_KEY } from "./DocumentNotificationListView"
 
@@ -29,6 +30,8 @@ const DocumentNotificationCreateView = ({ onBack, onCreated }: Props) => {
             if (doc) onCreated(doc.name)
         })
     }
+
+    useSaveHotkey(() => methods.handleSubmit(onSubmit)())
 
     return (
         <FormProvider {...methods}>

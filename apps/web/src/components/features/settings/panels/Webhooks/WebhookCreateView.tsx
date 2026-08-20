@@ -10,6 +10,7 @@ import {
 } from "@components/ui/settings-dialog"
 import type { RavenWebhook } from "@raven/types/RavenIntegrations/RavenWebhook"
 import _ from "@lib/translate"
+import { useSaveHotkey } from "@hooks/useSaveHotkey"
 import { WebhookForm } from "./WebhookForm"
 import { WEBHOOKS_LIST_KEY } from "./WebhookListView"
 
@@ -31,6 +32,8 @@ const WebhookCreateView = ({ onBack, onCreated }: Props) => {
             if (doc) onCreated(doc.name)
         })
     }
+
+    useSaveHotkey(() => methods.handleSubmit(onSubmit)())
 
     return (
         <FormProvider {...methods}>

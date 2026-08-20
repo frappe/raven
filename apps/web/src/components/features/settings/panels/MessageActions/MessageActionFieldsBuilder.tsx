@@ -5,6 +5,7 @@ import { Badge } from "@components/ui/badge"
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@components/ui/table"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip"
 import useDoctypeMeta from "@hooks/useDoctypeMeta"
 import type { MessageActionFormData } from "./types"
 import type { RavenMessageActionFields } from "@raven/types/RavenIntegrations/RavenMessageActionFields"
@@ -40,6 +41,7 @@ export const MessageActionFieldsBuilder = () => {
                             <TableHead>{_("Label")}</TableHead>
                             <TableHead>{_("Fieldname")}</TableHead>
                             <TableHead>{_("Required")}</TableHead>
+                            <TableHead>{_("Options")}</TableHead>
                             <TableHead>{_("Default Value")}</TableHead>
                             <TableHead className="w-20" />
                         </TableRow>
@@ -53,6 +55,22 @@ export const MessageActionFieldsBuilder = () => {
                                 </TableCell>
                                 <TableCell><code className="text-p-sm text-ink-gray-6">{field.fieldname}</code></TableCell>
                                 <TableCell>{field.is_required ? _("Yes") : "—"}</TableCell>
+                                <TableCell>
+                                    {field.options ? (
+                                        field.type === "Select" ? (
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Badge variant="subtle">
+                                                        {_("{0} Options", [String(field.options.split("\n").length)])}
+                                                    </Badge>
+                                                </TooltipTrigger>
+                                                <TooltipContent>{field.options.split("\n").join(", ")}</TooltipContent>
+                                            </Tooltip>
+                                        ) : (
+                                            <Badge variant="outline">{field.options}</Badge>
+                                        )
+                                    ) : "—"}
+                                </TableCell>
                                 <TableCell className="text-ink-gray-6">{field.default_value || "—"}</TableCell>
                                 <TableCell>
                                     <div className="flex items-center gap-1">

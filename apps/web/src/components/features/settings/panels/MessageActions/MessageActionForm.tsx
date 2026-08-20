@@ -1,6 +1,10 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form"
-import { ZapIcon, VariableIcon } from "lucide-react"
+import { ZapIcon, VariableIcon, CodeIcon, ExternalLinkIcon } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs"
+import { Button } from "@components/ui/button"
+import {
+    Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger,
+} from "@components/ui/dialog"
 import { Input } from "@components/ui/input"
 import { Label } from "@components/ui/label"
 import {
@@ -33,6 +37,7 @@ export const MessageActionForm = () => (
 const GeneralTab = () => {
     const { register, control, setValue, formState: { errors } } = useFormContext<MessageActionFormData>()
     const action = useWatch({ control, name: "action" })
+    const serverScript = useWatch({ control, name: "server_script" })
 
     return (
         <div className="flex flex-col gap-5 w-full">
@@ -93,30 +98,44 @@ const GeneralTab = () => {
 
             {action === "Server Script" && (
                 <div className="grid grid-cols-2">
-                    <LinkFormField
-                        name="server_script"
-                        label={_("Server Script")}
-                        isRequired
-                        doctype="Server Script"
-                        filters={[["disabled", "=", 0], ["script_type", "=", "API"]]}
-                        rules={{ required: action === "Server Script" ? _("Server Script is required") : false }}
-                        formDescription={_("The Server Script to run. It must be of type \"API\".")}
-                    />
+                    <div className="flex flex-col gap-1.5">
+                        <LinkFormField
+                            name="server_script"
+                            label={_("Server Script")}
+                            isRequired
+                            doctype="Server Script"
+                            filters={[["disabled", "=", 0], ["script_type", "=", "API"]]}
+                            rules={{ required: action === "Server Script" ? _("Server Script is required") : false }}
+                            formDescription={_("The Server Script to run. It must be of type \"API\".")}
+                        />
+                        <a
+                            href={serverScript ? `/app/server-script/${serverScript}` : "/app/server-script/list"}
+                            target="_blank" rel="noreferrer"
+                            className="inline-flex items-center gap-1 text-p-sm text-ink-gray-6 underline underline-offset-2 hover:text-ink-gray-8 w-fit"
+                        >
+                            {serverScript ? _("Configure {0}", [serverScript]) : _("View Server Scripts")}
+                            <ExternalLinkIcon className="h-3.5 w-3.5" />
+                        </a>
+                        <div><ViewDocsButton /></div>
+                    </div>
                 </div>
             )}
 
             {action === "Custom Function" && (
-                <SmallTextField
-                    name="custom_function_path"
-                    label={_("Custom Function Path")}
-                    isRequired
-                    inputProps={{ placeholder: "myapp.api.my_custom_function" }}
-                    rules={{
-                        required: action === "Custom Function" ? _("Path is required") : false,
-                        validate: (v) => (v?.includes(" ") ? _("Path cannot contain spaces") : true),
-                    }}
-                    formDescription={_("Dotted path to the custom function/API. Cannot contain spaces.")}
-                />
+                <div className="flex flex-col gap-1.5">
+                    <SmallTextField
+                        name="custom_function_path"
+                        label={_("Custom Function Path")}
+                        isRequired
+                        inputProps={{ placeholder: "myapp.api.my_custom_function" }}
+                        rules={{
+                            required: action === "Custom Function" ? _("Path is required") : false,
+                            validate: (v) => (v?.includes(" ") ? _("Path cannot contain spaces") : true),
+                        }}
+                        formDescription={_("Dotted path to the custom function/API. Cannot contain spaces.")}
+                    />
+                    <div><ViewDocsButton /></div>
+                </div>
             )}
 
             <SwitchFormField name="enabled" label={_("Enabled")} />
@@ -144,6 +163,59 @@ const GeneralTab = () => {
                 formDescription={_("Shown in the toast after the action runs.")}
             />
         </div>
+    )
+}
+
+/** How the action's values reach the receiving Server Script / API — shown per action type. */
+const EXAMPLES: Record<string, string> = {
+    "Server Script": `# Server Scripts would get the values in "frappe.form_dict"
+{
+    "message_id": "123",
+    "action_id": "abc",
+    "values": {
+    # Values from the fields in the message action dialog
+        "field1": "value1",
+        "field2": "value2"
+    }
+}
+
+# You can use the values to perform any action like this:
+print(frappe.form_dict.values.field1)`,
+    "Custom Function": `# The API would be called directly with the values from the message action dialog.
+
+# Example:
+@frappe.whitelist()
+def create_ticket(field1, field2):
+    # Do something with the values
+    frappe.get_doc({
+        "doctype": "Ticket",
+        "field1": field1,
+        "field2": field2
+    }).insert()`,
+}
+
+const ViewDocsButton = () => {
+    const { control } = useFormContext<MessageActionFormData>()
+    const action = useWatch({ control, name: "action" })
+    if (!action || !EXAMPLES[action]) return null
+
+    return (
+        <Dialog>
+            <DialogTrigger asChild>
+                <Button type="button" variant="outline" size="sm"><CodeIcon />{_("View Docs")}</Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[560px]">
+                <DialogHeader>
+                    <DialogTitle>{_("Documentation")}</DialogTitle>
+                    <DialogDescription>
+                        {_("The following code sample shows how to use the message action values in a {0}.", [action])}
+                    </DialogDescription>
+                </DialogHeader>
+                <pre className="rounded-md bg-surface-gray-2 p-3 text-p-sm text-ink-gray-7 overflow-auto max-h-96 whitespace-pre-wrap">
+                    <code>{EXAMPLES[action]}</code>
+                </pre>
+            </DialogContent>
+        </Dialog>
     )
 }
 

@@ -15,6 +15,7 @@ import type { RavenDocumentNotification } from "@raven/types/RavenIntegrations/R
 import type { RavenDocumentNotificationRecipients } from "@raven/types/RavenIntegrations/RavenDocumentNotificationRecipients"
 import type { DocField } from "@raven/types/Core/DocField"
 import _ from "@lib/translate"
+import { VARIABLE_FIELD_TYPES } from "./DoctypeVariables"
 
 /** Recipients tab — who receives the notification (channels/users), resolved
  *  statically, from a document field, or via a Jinja expression. */
@@ -182,7 +183,9 @@ const DoctypeFieldSelect = ({
                 : f.options.includes("Raven User") || f.options.includes("User")
         }
         doc?.fields?.forEach((f) => {
-            if (!f.fieldname) return
+            // Same fieldtype filter as the variables table — layout/Table fields can't
+            // resolve to a channel or user, so they're not pickable recipients.
+            if (!f.fieldname || !f.fieldtype || !VARIABLE_FIELD_TYPES.includes(f.fieldtype)) return
             ;(isTarget(f) ? suggested : all).push(f)
         })
         const ownerFields: DocField[] = [
