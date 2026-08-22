@@ -42,8 +42,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
                     // under ~392px (320px-class phones); inert everywhere else.
                     toast:
                         "group py-2.5 flex items-center px-4 bg-surface-gray-9 rounded-md shadow-xl w-[360px] max-w-[calc(100vw-2rem)] after:bg-transparent",
-                    title: "text-p-base font-medium text-ink-base break-words",
-                    description: "text-p-base text-ink-base break-words",
+                    title: "text-p-base font-medium text-ink-base",
+                    description: "text-p-base text-ink-base",
+                    content: "min-w-0 break-words",
                     icon: "mr-2 text-ink-base [&_svg]:size-4",
                     // shrink-0 is ours (frappe-ui lacks it): the button is a flex
                     // child, so a long enough title squished it below size-5.

@@ -38,12 +38,12 @@ const DocumentPreviewsPanel = lazy(() => import('./panels/DocumentPreviews').the
 const MessageActionsPanel = lazy(() => import('./panels/MessageActions').then((m) => ({ default: m.MessageActions })));
 const ScheduledMessagesPanel = lazy(() => import('./panels/ScheduledMessages').then((m) => ({ default: m.ScheduledMessages })));
 const WebhooksPanel = lazy(() => import('./panels/Webhooks').then((m) => ({ default: m.Webhooks })));
-const AgentsPanel = lazy(() => import('./panels/Agents').then((m) => ({ default: m.Agents })));
-const FunctionsPanel = lazy(() => import('./panels/Functions').then((m) => ({ default: m.Functions })));
-const FileSourcesPanel = lazy(() => import('./panels/FileSources').then((m) => ({ default: m.FileSources })));
-const InstructionsPanel = lazy(() => import('./panels/Instructions').then((m) => ({ default: m.Instructions })));
-const DocumentProcessorsPanel = lazy(() => import('./panels/DocumentProcessors').then((m) => ({ default: m.DocumentProcessors })));
-const CommandsPanel = lazy(() => import('./panels/Commands').then((m) => ({ default: m.Commands })));
+const AgentsPanel = lazy(() => import('./panels/Agents/Agents').then((m) => ({ default: m.Agents })));
+const FunctionsPanel = lazy(() => import('./panels/Functions/Functions').then((m) => ({ default: m.Functions })));
+const FileSourcesPanel = lazy(() => import('./panels/FileSources/FileSources').then((m) => ({ default: m.FileSources })));
+const InstructionsPanel = lazy(() => import('./panels/Instructions/Instructions').then((m) => ({ default: m.Instructions })));
+const DocumentProcessorsPanel = lazy(() => import('./panels/DocumentProcessors/DocumentProcessors').then((m) => ({ default: m.DocumentProcessors })));
+const CommandsPanel = lazy(() => import('./panels/Commands/Commands').then((m) => ({ default: m.Commands })));
 const KeyboardShortcutsPanel = lazy(() => import('./panels/KeyboardShortcuts').then((m) => ({ default: m.KeyboardShortcuts })));
 
 const SETTINGS_TAB_GROUPS: { id: string, label: string }[] = [
