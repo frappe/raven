@@ -62,7 +62,7 @@ const AgentFunctionsTab = () => {
                             {_("Add Function")}
                         </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[380px]" align="end" collisionPadding={16}>
+                    <PopoverContent className="w-[300px]" align="end" collisionPadding={16}>
                         <div className="flex flex-col gap-3">
                             <PopoverTitle>{_("Function")}</PopoverTitle>
                             <LinkFieldCombobox
@@ -70,6 +70,7 @@ const AgentFunctionsTab = () => {
                                 value={selectedFunction}
                                 onChange={setSelectedFunction}
                                 filters={[["name", "not in", fields.map((field) => field.function)]]}
+                                dropdownClassName="max-w-[268px]"
                             />
                             <div className="flex justify-end">
                                 <Button type="button" size="sm" onClick={onAdd} disabled={!selectedFunction}>

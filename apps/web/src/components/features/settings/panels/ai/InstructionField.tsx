@@ -217,7 +217,8 @@ const ImportTemplate = () => {
         if (type === "replace") {
             setValue("instruction", selectedTemplate)
         } else {
-            setValue("instruction", getValues("instruction") + selectedTemplate)
+            const current = getValues("instruction")
+            setValue("instruction", current ? `${current}\n${selectedTemplate}` : selectedTemplate)
         }
     }
 
@@ -226,7 +227,7 @@ const ImportTemplate = () => {
             <PopoverTrigger asChild>
                 <Button type="button" variant="ghost" size="sm">{_("Import from Template")}</Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[300px]">
+            <PopoverContent align="end" className="w-[300px]">
                 <div className="flex flex-col gap-6">
                     {error && <ErrorBanner error={error} />}
                     <div className="flex flex-col gap-2">

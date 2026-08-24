@@ -70,7 +70,7 @@ const AgentFileSourcesTab = () => {
                     />
                     <Dialog open={selectOpen} onOpenChange={setSelectOpen}>
                         <DialogTrigger asChild>
-                            <Button size="sm" type="button">
+                            <Button size="sm" type="button" variant="outline">
                                 {_("Select Files")}
                             </Button>
                         </DialogTrigger>
@@ -85,6 +85,11 @@ const AgentFileSourcesTab = () => {
                 </div>
             </div>
 
+            {fields.length === 0 ? (
+                <p className="rounded-md border border-dashed border-outline-gray-2 px-3 py-6 text-center text-p-sm text-ink-gray-5">
+                    {_("No files attached yet. Upload a file or select one from your file sources.")}
+                </p>
+            ) : (
             <Table>
                 <TableHeader>
                     <TableRow>
@@ -99,6 +104,7 @@ const AgentFileSourcesTab = () => {
                     ))}
                 </TableBody>
             </Table>
+            )}
         </div>
     )
 }
@@ -166,6 +172,11 @@ const SelectExistingFiles = ({ existingFiles, onAdd }: { existingFiles: string[]
             {isLoading && <Skeleton className="h-10 w-full" />}
             {error && <ErrorBanner error={error} />}
 
+            {!isLoading && availableFiles.length === 0 ? (
+                <p className="rounded-md border border-dashed border-outline-gray-2 px-3 py-6 text-center text-p-sm text-ink-gray-5">
+                    {_("No more file sources to add.")}
+                </p>
+            ) : (
             <Table>
                 <TableHeader>
                     <TableRow>
@@ -196,14 +207,15 @@ const SelectExistingFiles = ({ existingFiles, onAdd }: { existingFiles: string[]
                     ))}
                 </TableBody>
             </Table>
+            )}
 
             <DialogFooter className="flex-row justify-end gap-2">
                 <DialogClose asChild>
-                    <Button variant="outline" size="sm" type="button">
+                    <Button variant="outline" size="md" type="button">
                         {_("Close")}
                     </Button>
                 </DialogClose>
-                <Button size="sm" type="button" disabled={selectedFiles.length === 0} onClick={() => onAdd(selectedFiles)}>
+                <Button size="md" type="button" disabled={selectedFiles.length === 0} onClick={() => onAdd(selectedFiles)}>
                     {_("Add")}
                 </Button>
             </DialogFooter>

@@ -140,6 +140,8 @@ export interface LinkFieldComboboxProps {
     useInForm?: boolean,
     /** Button Class name */
     buttonClassName?: string
+    /** Extra classes for the dropdown popover (e.g. a max-w cap). */
+    dropdownClassName?: string;
 }
 const LinkFieldCombobox = ({
     doctype,
@@ -157,7 +159,8 @@ const LinkFieldCombobox = ({
     searchAPIPath = "frappe.desk.search.search_link",
     limit,
     useInForm,
-    buttonClassName
+    buttonClassName,
+    dropdownClassName
 }: LinkFieldComboboxProps) => {
 
     const pageLimit = useMemo(() => limit || getSystemDefault('link_field_results_limit') || 20, [limit])
@@ -346,7 +349,7 @@ const LinkFieldCombobox = ({
                     text-base keeps the taller box on mobile for touch. See FilterCombobox. */}
                 <CommandInput
                     variant="plain"
-                    placeholder={placeholder}
+                    placeholder={_("Search")}
                     onValueChange={setSearchInput}
                     className="text-base"
                 />
@@ -448,6 +451,7 @@ const LinkFieldCombobox = ({
                 className={cn(
                     "flex min-w-(--radix-popover-trigger-width) flex-col p-0 shadow-2xl",
                     "max-h-[min(18rem,var(--radix-popover-content-available-height))]",
+                    dropdownClassName,
                 )}
             >
                 {/* max-h-none hands height control to the popover's cap above — cmdk's own

@@ -47,8 +47,8 @@ const DoctypeVariableDialogForm = ({ doctype, onAdd, defaultValues }: {
                         <OptionsField doctype={doctype} />
                     </div>
                     <DialogFooter>
-                        <DialogClose asChild><Button type="button" variant="outline">{_("Close")}</Button></DialogClose>
-                        <Button type="button" onClick={methods.handleSubmit(onSubmit)}>{_("Add")}</Button>
+                        <DialogClose asChild><Button type="button" variant="outline" size="md">{_("Close")}</Button></DialogClose>
+                        <Button type="button" size="md" onClick={methods.handleSubmit(onSubmit)}>{_("Add")}</Button>
                     </DialogFooter>
                 </div>
             </form>

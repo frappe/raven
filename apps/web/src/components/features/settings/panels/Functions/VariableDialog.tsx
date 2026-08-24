@@ -140,9 +140,9 @@ const VariableDialog = ({ defaultValues, onAdd, allowNameChange, name: defaultNa
             </div>
             <div className="flex justify-end gap-2">
                 <DialogClose asChild>
-                    <Button type="button" variant="outline">{_("Close")}</Button>
+                    <Button type="button" variant="outline" size="md">{_("Close")}</Button>
                 </DialogClose>
-                <Button type="button" onClick={onSubmit} disabled={areAllFieldsFilled}>{_("Add")}</Button>
+                <Button type="button" size="md" onClick={onSubmit} disabled={areAllFieldsFilled}>{_("Add")}</Button>
             </div>
         </div>
     )

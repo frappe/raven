@@ -27,14 +27,17 @@ export const AINotEnabledCallout = () => {
     return (
         <Alert theme="blue">
             <AlertDescription>
-                {message}{" "}
-                <button
-                    type="button"
-                    className="underline underline-offset-2 font-medium"
-                    onClick={() => setOpenTab("ai-settings")}
-                >
-                    {_("AI Settings")}
-                </button>
+                {/* Single child: AlertDescription is a grid, separate children stack as rows. */}
+                <span>
+                    {message}{" "}
+                    <button
+                        type="button"
+                        className="underline underline-offset-2 font-medium"
+                        onClick={() => setOpenTab("ai-settings")}
+                    >
+                        {_("AI Settings")}
+                    </button>
+                </span>
             </AlertDescription>
         </Alert>
     )
