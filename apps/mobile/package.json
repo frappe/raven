@@ -60,7 +60,7 @@
     "expo-system-ui": "~4.0.9",
     "expo-video": "~2.0.5",
     "expo-web-browser": "~14.0.2",
-    "frappe-react-sdk": "^1.13.0",
+    "frappe-react-sdk": "^1.16.0",
     "htmlparser2": "^10.0.0",
     "jotai": "^2.12.1",
     "markdown-it": "^14.1.0",

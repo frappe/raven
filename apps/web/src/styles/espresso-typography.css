@@ -1,0 +1,1076 @@
+/* GENERATED from frappe-ui tailwind/generated/typography.json — do not hand-edit.
+   Regenerate with: yarn gen:typography  (see scripts/generate-espresso-typography.mjs)
+
+   frappe-ui's full type scale: font-weight tokens, the regular-weight --text-*
+   scale (reset to replace Tailwind's defaults) + --text-p-* paragraph variants,
+   and the per-weight .text-<size>-<weight> tracking classes. Font families are
+   kept in src/index.css. */
+
+@theme {
+  --font-weight-regular: 420;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-black: 800;
+
+  --text-*: initial;
+  --text-tiny: 11px;
+  --text-tiny--line-height: 1.15;
+  --text-tiny--letter-spacing: 0.09em;
+  --text-tiny--font-weight: 420;
+  --text-2xs: 11px;
+  --text-2xs--line-height: 1.15;
+  --text-2xs--letter-spacing: 0.01em;
+  --text-2xs--font-weight: 420;
+  --text-xs: 12px;
+  --text-xs--line-height: 1.15;
+  --text-xs--letter-spacing: 0.02em;
+  --text-xs--font-weight: 420;
+  --text-sm: 13px;
+  --text-sm--line-height: 1.15;
+  --text-sm--letter-spacing: 0.02em;
+  --text-sm--font-weight: 420;
+  --text-base: 14px;
+  --text-base--line-height: 1.15;
+  --text-base--letter-spacing: 0.02em;
+  --text-base--font-weight: 420;
+  --text-lg: 15px;
+  --text-lg--line-height: 1.15;
+  --text-lg--letter-spacing: 0.02em;
+  --text-lg--font-weight: 420;
+  --text-xl: 16px;
+  --text-xl--line-height: 1.15;
+  --text-xl--letter-spacing: 0.02em;
+  --text-xl--font-weight: 420;
+  --text-2xl: 17px;
+  --text-2xl--line-height: 1.15;
+  --text-2xl--letter-spacing: 0.02em;
+  --text-2xl--font-weight: 420;
+  --text-3xl: 18px;
+  --text-3xl--line-height: 1.15;
+  --text-3xl--letter-spacing: 0.01em;
+  --text-3xl--font-weight: 420;
+  --text-4xl: 20px;
+  --text-4xl--line-height: 1.15;
+  --text-4xl--letter-spacing: 0.005em;
+  --text-4xl--font-weight: 420;
+  --text-5xl: 24px;
+  --text-5xl--line-height: 1.15;
+  --text-5xl--letter-spacing: 0.005em;
+  --text-5xl--font-weight: 420;
+  --text-6xl: 26px;
+  --text-6xl--line-height: 1.6;
+  --text-6xl--letter-spacing: 0.01em;
+  --text-6xl--font-weight: 420;
+  --text-7xl: 28px;
+  --text-7xl--line-height: 1.6;
+  --text-7xl--letter-spacing: 0.01em;
+  --text-7xl--font-weight: 420;
+  --text-8xl: 32px;
+  --text-8xl--line-height: 1.6;
+  --text-8xl--letter-spacing: 0.02em;
+  --text-8xl--font-weight: 420;
+  --text-9xl: 40px;
+  --text-9xl--line-height: 1.4;
+  --text-9xl--letter-spacing: 0em;
+  --text-9xl--font-weight: 420;
+  --text-10xl: 44px;
+  --text-10xl--line-height: 1.4;
+  --text-10xl--letter-spacing: 0em;
+  --text-10xl--font-weight: 420;
+  --text-11xl: 48px;
+  --text-11xl--line-height: 1.4;
+  --text-11xl--letter-spacing: 0em;
+  --text-11xl--font-weight: 420;
+  --text-12xl: 52px;
+  --text-12xl--line-height: 1.4;
+  --text-12xl--letter-spacing: 0em;
+  --text-12xl--font-weight: 420;
+  --text-13xl: 56px;
+  --text-13xl--line-height: 1.4;
+  --text-13xl--letter-spacing: 0.005em;
+  --text-13xl--font-weight: 420;
+  --text-14xl: 64px;
+  --text-14xl--line-height: 1.3;
+  --text-14xl--letter-spacing: 0em;
+  --text-14xl--font-weight: 420;
+  --text-15xl: 72px;
+  --text-15xl--line-height: 1.3;
+  --text-15xl--letter-spacing: 0em;
+  --text-15xl--font-weight: 420;
+  --text-16xl: 80px;
+  --text-16xl--line-height: 1.2;
+  --text-16xl--letter-spacing: 0em;
+  --text-16xl--font-weight: 420;
+  --text-17xl: 88px;
+  --text-17xl--line-height: 1.2;
+  --text-17xl--letter-spacing: 0em;
+  --text-17xl--font-weight: 420;
+  --text-p-2xs: 11px;
+  --text-p-2xs--line-height: 1.6;
+  --text-p-2xs--letter-spacing: 0.01em;
+  --text-p-2xs--font-weight: 420;
+  --text-p-xs: 12px;
+  --text-p-xs--line-height: 1.6;
+  --text-p-xs--letter-spacing: 0.02em;
+  --text-p-xs--font-weight: 420;
+  --text-p-sm: 13px;
+  --text-p-sm--line-height: 1.5;
+  --text-p-sm--letter-spacing: 0.015em;
+  --text-p-sm--font-weight: 420;
+  --text-p-base: 14px;
+  --text-p-base--line-height: 1.5;
+  --text-p-base--letter-spacing: 0.02em;
+  --text-p-base--font-weight: 420;
+  --text-p-lg: 15px;
+  --text-p-lg--line-height: 1.5;
+  --text-p-lg--letter-spacing: 0.02em;
+  --text-p-lg--font-weight: 420;
+  --text-p-xl: 16px;
+  --text-p-xl--line-height: 1.5;
+  --text-p-xl--letter-spacing: 0.02em;
+  --text-p-xl--font-weight: 420;
+  --text-p-2xl: 17px;
+  --text-p-2xl--line-height: 1.5;
+  --text-p-2xl--letter-spacing: 0.02em;
+  --text-p-2xl--font-weight: 420;
+  --text-p-3xl: 18px;
+  --text-p-3xl--line-height: 1.5;
+  --text-p-3xl--letter-spacing: 0.01em;
+  --text-p-3xl--font-weight: 420;
+  --text-p-4xl: 20px;
+  --text-p-4xl--line-height: 1.48;
+  --text-p-4xl--letter-spacing: 0.01em;
+  --text-p-4xl--font-weight: 420;
+  --text-p-5xl: 24px;
+  --text-p-5xl--line-height: 1.4;
+  --text-p-5xl--letter-spacing: 0.005em;
+  --text-p-5xl--font-weight: 420;
+}
+
+@layer components {
+  .text-tiny-medium {
+    font-size: 11px;
+    line-height: 1.15;
+    font-weight: 500;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+
+  .text-tiny-semibold {
+    font-size: 11px;
+    line-height: 1.15;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+
+  .text-tiny-bold {
+    font-size: 11px;
+    line-height: 1.15;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+
+  .text-tiny-black {
+    font-size: 11px;
+    line-height: 1.15;
+    font-weight: 800;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+
+  .text-2xs-medium {
+    font-size: 11px;
+    line-height: 1.15;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+
+  .text-2xs-semibold {
+    font-size: 11px;
+    line-height: 1.15;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  .text-2xs-bold {
+    font-size: 11px;
+    line-height: 1.15;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+
+  .text-2xs-black {
+    font-size: 11px;
+    line-height: 1.15;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+  }
+
+  .text-xs-medium {
+    font-size: 12px;
+    line-height: 1.15;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+
+  .text-xs-semibold {
+    font-size: 12px;
+    line-height: 1.15;
+    font-weight: 600;
+    letter-spacing: 0.015em;
+  }
+
+  .text-xs-bold {
+    font-size: 12px;
+    line-height: 1.15;
+    font-weight: 700;
+    letter-spacing: 0.015em;
+  }
+
+  .text-xs-black {
+    font-size: 12px;
+    line-height: 1.15;
+    font-weight: 800;
+    letter-spacing: 0.015em;
+  }
+
+  .text-sm-medium {
+    font-size: 13px;
+    line-height: 1.15;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+
+  .text-sm-semibold {
+    font-size: 13px;
+    line-height: 1.15;
+    font-weight: 600;
+    letter-spacing: 0.015em;
+  }
+
+  .text-sm-bold {
+    font-size: 13px;
+    line-height: 1.15;
+    font-weight: 700;
+    letter-spacing: 0.015em;
+  }
+
+  .text-sm-black {
+    font-size: 13px;
+    line-height: 1.15;
+    font-weight: 800;
+    letter-spacing: 0.015em;
+  }
+
+  .text-base-medium {
+    font-size: 14px;
+    line-height: 1.15;
+    font-weight: 500;
+    letter-spacing: 0.015em;
+  }
+
+  .text-base-semibold {
+    font-size: 14px;
+    line-height: 1.15;
+    font-weight: 600;
+    letter-spacing: 0.015em;
+  }
+
+  .text-base-bold {
+    font-size: 14px;
+    line-height: 1.15;
+    font-weight: 700;
+    letter-spacing: 0.015em;
+  }
+
+  .text-lg-medium {
+    font-size: 15px;
+    line-height: 1.15;
+    font-weight: 500;
+    letter-spacing: 0.015em;
+  }
+
+  .text-lg-semibold {
+    font-size: 15px;
+    line-height: 1.15;
+    font-weight: 600;
+    letter-spacing: 0.015em;
+  }
+
+  .text-lg-bold {
+    font-size: 15px;
+    line-height: 1.15;
+    font-weight: 700;
+    letter-spacing: 0.015em;
+  }
+
+  .text-lg-black {
+    font-size: 15px;
+    line-height: 1.15;
+    font-weight: 800;
+    letter-spacing: 0.015em;
+  }
+
+  .text-xl-medium {
+    font-size: 16px;
+    line-height: 1.15;
+    font-weight: 500;
+    letter-spacing: 0.015em;
+  }
+
+  .text-xl-semibold {
+    font-size: 16px;
+    line-height: 1.15;
+    font-weight: 600;
+    letter-spacing: 0.015em;
+  }
+
+  .text-xl-bold {
+    font-size: 16px;
+    line-height: 1.15;
+    font-weight: 700;
+    letter-spacing: 0.015em;
+  }
+
+  .text-xl-black {
+    font-size: 16px;
+    line-height: 1.15;
+    font-weight: 800;
+    letter-spacing: 0.015em;
+  }
+
+  .text-2xl-medium {
+    font-size: 17px;
+    line-height: 1.15;
+    font-weight: 500;
+    letter-spacing: 0.015em;
+  }
+
+  .text-2xl-semibold {
+    font-size: 17px;
+    line-height: 1.15;
+    font-weight: 600;
+    letter-spacing: 0.015em;
+  }
+
+  .text-2xl-bold {
+    font-size: 17px;
+    line-height: 1.15;
+    font-weight: 700;
+    letter-spacing: 0.015em;
+  }
+
+  .text-2xl-black {
+    font-size: 17px;
+    line-height: 1.15;
+    font-weight: 800;
+    letter-spacing: 0.015em;
+  }
+
+  .text-3xl-medium {
+    font-size: 18px;
+    line-height: 1.15;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+
+  .text-3xl-semibold {
+    font-size: 18px;
+    line-height: 1.15;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  .text-3xl-bold {
+    font-size: 18px;
+    line-height: 1.15;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+
+  .text-3xl-black {
+    font-size: 18px;
+    line-height: 1.15;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+  }
+
+  .text-4xl-medium {
+    font-size: 20px;
+    line-height: 1.15;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+
+  .text-4xl-semibold {
+    font-size: 20px;
+    line-height: 1.15;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  .text-4xl-bold {
+    font-size: 20px;
+    line-height: 1.15;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+
+  .text-4xl-black {
+    font-size: 20px;
+    line-height: 1.15;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+  }
+
+  .text-5xl-medium {
+    font-size: 24px;
+    line-height: 1.15;
+    font-weight: 500;
+    letter-spacing: 0.005em;
+  }
+
+  .text-5xl-semibold {
+    font-size: 24px;
+    line-height: 1.15;
+    font-weight: 600;
+    letter-spacing: 0.005em;
+  }
+
+  .text-5xl-bold {
+    font-size: 24px;
+    line-height: 1.15;
+    font-weight: 700;
+    letter-spacing: 0.005em;
+  }
+
+  .text-5xl-black {
+    font-size: 24px;
+    line-height: 1.15;
+    font-weight: 800;
+    letter-spacing: 0.005em;
+  }
+
+  .text-6xl-medium {
+    font-size: 26px;
+    line-height: 1.6;
+    font-weight: 500;
+    letter-spacing: 0.005em;
+  }
+
+  .text-6xl-semibold {
+    font-size: 26px;
+    line-height: 1.6;
+    font-weight: 600;
+    letter-spacing: 0.005em;
+  }
+
+  .text-6xl-bold {
+    font-size: 26px;
+    line-height: 1.6;
+    font-weight: 700;
+    letter-spacing: 0.005em;
+  }
+
+  .text-6xl-black {
+    font-size: 26px;
+    line-height: 1.6;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+  }
+
+  .text-7xl-medium {
+    font-size: 28px;
+    line-height: 1.6;
+    font-weight: 500;
+    letter-spacing: 0.005em;
+  }
+
+  .text-7xl-semibold {
+    font-size: 28px;
+    line-height: 1.6;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  .text-7xl-bold {
+    font-size: 28px;
+    line-height: 1.6;
+    font-weight: 700;
+    letter-spacing: 0.015em;
+  }
+
+  .text-7xl-black {
+    font-size: 28px;
+    line-height: 1.6;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+  }
+
+  .text-8xl-medium {
+    font-size: 32px;
+    line-height: 1.6;
+    font-weight: 500;
+    letter-spacing: 0.015em;
+  }
+
+  .text-8xl-semibold {
+    font-size: 32px;
+    line-height: 1.6;
+    font-weight: 600;
+    letter-spacing: 0.015em;
+  }
+
+  .text-8xl-bold {
+    font-size: 32px;
+    line-height: 1.6;
+    font-weight: 700;
+    letter-spacing: 0.015em;
+  }
+
+  .text-8xl-black {
+    font-size: 32px;
+    line-height: 1.6;
+    font-weight: 800;
+    letter-spacing: 0.005em;
+  }
+
+  .text-9xl-medium {
+    font-size: 40px;
+    line-height: 1.4;
+    font-weight: 500;
+    letter-spacing: 0em;
+  }
+
+  .text-9xl-semibold {
+    font-size: 40px;
+    line-height: 1.4;
+    font-weight: 600;
+    letter-spacing: 0em;
+  }
+
+  .text-9xl-bold {
+    font-size: 40px;
+    line-height: 1.4;
+    font-weight: 700;
+    letter-spacing: 0em;
+  }
+
+  .text-9xl-black {
+    font-size: 40px;
+    line-height: 1.4;
+    font-weight: 800;
+    letter-spacing: 0em;
+  }
+
+  .text-10xl-medium {
+    font-size: 44px;
+    line-height: 1.4;
+    font-weight: 500;
+    letter-spacing: 0em;
+  }
+
+  .text-10xl-semibold {
+    font-size: 44px;
+    line-height: 1.4;
+    font-weight: 600;
+    letter-spacing: 0em;
+  }
+
+  .text-10xl-bold {
+    font-size: 44px;
+    line-height: 1.4;
+    font-weight: 700;
+    letter-spacing: 0em;
+  }
+
+  .text-10xl-black {
+    font-size: 44px;
+    line-height: 1.4;
+    font-weight: 800;
+    letter-spacing: 0em;
+  }
+
+  .text-11xl-medium {
+    font-size: 48px;
+    line-height: 1.4;
+    font-weight: 500;
+    letter-spacing: 0em;
+  }
+
+  .text-11xl-semibold {
+    font-size: 48px;
+    line-height: 1.4;
+    font-weight: 600;
+    letter-spacing: 0em;
+  }
+
+  .text-11xl-bold {
+    font-size: 48px;
+    line-height: 1.4;
+    font-weight: 700;
+    letter-spacing: 0.005em;
+  }
+
+  .text-11xl-black {
+    font-size: 48px;
+    line-height: 1.4;
+    font-weight: 800;
+    letter-spacing: 0.005em;
+  }
+
+  .text-12xl-medium {
+    font-size: 52px;
+    line-height: 1.4;
+    font-weight: 500;
+    letter-spacing: 0em;
+  }
+
+  .text-12xl-semibold {
+    font-size: 52px;
+    line-height: 1.4;
+    font-weight: 600;
+    letter-spacing: 0em;
+  }
+
+  .text-12xl-bold {
+    font-size: 52px;
+    line-height: 1.4;
+    font-weight: 700;
+    letter-spacing: 0em;
+  }
+
+  .text-12xl-black {
+    font-size: 52px;
+    line-height: 1.4;
+    font-weight: 800;
+    letter-spacing: 0.005em;
+  }
+
+  .text-13xl-medium {
+    font-size: 56px;
+    line-height: 1.4;
+    font-weight: 500;
+    letter-spacing: 0em;
+  }
+
+  .text-13xl-semibold {
+    font-size: 56px;
+    line-height: 1.4;
+    font-weight: 600;
+    letter-spacing: 0em;
+  }
+
+  .text-13xl-bold {
+    font-size: 56px;
+    line-height: 1.4;
+    font-weight: 700;
+    letter-spacing: 0em;
+  }
+
+  .text-13xl-black {
+    font-size: 56px;
+    line-height: 1.4;
+    font-weight: 800;
+    letter-spacing: 0em;
+  }
+
+  .text-14xl-medium {
+    font-size: 64px;
+    line-height: 1.3;
+    font-weight: 500;
+    letter-spacing: 0em;
+  }
+
+  .text-14xl-semibold {
+    font-size: 64px;
+    line-height: 1.3;
+    font-weight: 600;
+    letter-spacing: 0em;
+  }
+
+  .text-14xl-bold {
+    font-size: 64px;
+    line-height: 1.3;
+    font-weight: 700;
+    letter-spacing: 0em;
+  }
+
+  .text-14xl-black {
+    font-size: 64px;
+    line-height: 1.3;
+    font-weight: 800;
+    letter-spacing: 0em;
+  }
+
+  .text-15xl-medium {
+    font-size: 72px;
+    line-height: 1.3;
+    font-weight: 500;
+    letter-spacing: 0em;
+  }
+
+  .text-15xl-semibold {
+    font-size: 72px;
+    line-height: 1.3;
+    font-weight: 600;
+    letter-spacing: 0em;
+  }
+
+  .text-15xl-bold {
+    font-size: 72px;
+    line-height: 1.3;
+    font-weight: 700;
+    letter-spacing: 0em;
+  }
+
+  .text-15xl-black {
+    font-size: 72px;
+    line-height: 1.3;
+    font-weight: 800;
+    letter-spacing: 0em;
+  }
+
+  .text-16xl-medium {
+    font-size: 80px;
+    line-height: 1.2;
+    font-weight: 500;
+    letter-spacing: 0.005em;
+  }
+
+  .text-16xl-semibold {
+    font-size: 80px;
+    line-height: 1.2;
+    font-weight: 600;
+    letter-spacing: 0em;
+  }
+
+  .text-16xl-bold {
+    font-size: 80px;
+    line-height: 1.2;
+    font-weight: 700;
+    letter-spacing: 0em;
+  }
+
+  .text-16xl-black {
+    font-size: 80px;
+    line-height: 1.2;
+    font-weight: 800;
+    letter-spacing: 0em;
+  }
+
+  .text-17xl-medium {
+    font-size: 88px;
+    line-height: 1.2;
+    font-weight: 500;
+    letter-spacing: 0em;
+  }
+
+  .text-17xl-semibold {
+    font-size: 88px;
+    line-height: 1.2;
+    font-weight: 600;
+    letter-spacing: 0em;
+  }
+
+  .text-17xl-bold {
+    font-size: 88px;
+    line-height: 1.2;
+    font-weight: 700;
+    letter-spacing: 0em;
+  }
+
+  .text-17xl-black {
+    font-size: 88px;
+    line-height: 1.2;
+    font-weight: 800;
+    letter-spacing: 0em;
+  }
+
+  .text-p-2xs-medium {
+    font-size: 11px;
+    line-height: 1.6;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+
+  .text-p-2xs-semibold {
+    font-size: 11px;
+    line-height: 1.6;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  .text-p-2xs-bold {
+    font-size: 11px;
+    line-height: 1.6;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+
+  .text-p-2xs-black {
+    font-size: 11px;
+    line-height: 1.6;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+  }
+
+  .text-p-xs-medium {
+    font-size: 12px;
+    line-height: 1.6;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+
+  .text-p-xs-semibold {
+    font-size: 12px;
+    line-height: 1.6;
+    font-weight: 600;
+    letter-spacing: 0.015em;
+  }
+
+  .text-p-xs-bold {
+    font-size: 12px;
+    line-height: 1.6;
+    font-weight: 700;
+    letter-spacing: 0.015em;
+  }
+
+  .text-p-xs-black {
+    font-size: 12px;
+    line-height: 1.6;
+    font-weight: 800;
+    letter-spacing: 0.015em;
+  }
+
+  .text-p-sm-medium {
+    font-size: 13px;
+    line-height: 1.5;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+
+  .text-p-sm-semibold {
+    font-size: 13px;
+    line-height: 1.5;
+    font-weight: 600;
+    letter-spacing: 0.015em;
+  }
+
+  .text-p-sm-bold {
+    font-size: 13px;
+    line-height: 1.5;
+    font-weight: 700;
+    letter-spacing: 0.015em;
+  }
+
+  .text-p-sm-black {
+    font-size: 13px;
+    line-height: 1.5;
+    font-weight: 800;
+    letter-spacing: 0.015em;
+  }
+
+  .text-p-base-medium {
+    font-size: 14px;
+    line-height: 1.5;
+    font-weight: 500;
+    letter-spacing: 0.015em;
+  }
+
+  .text-p-base-semibold {
+    font-size: 14px;
+    line-height: 1.5;
+    font-weight: 600;
+    letter-spacing: 0.015em;
+  }
+
+  .text-p-base-bold {
+    font-size: 14px;
+    line-height: 1.5;
+    font-weight: 700;
+    letter-spacing: 0.015em;
+  }
+
+  .text-p-base-black {
+    font-size: 14px;
+    line-height: 1.5;
+    font-weight: 800;
+    letter-spacing: 0.015em;
+  }
+
+  .text-p-lg-medium {
+    font-size: 15px;
+    line-height: 1.5;
+    font-weight: 500;
+    letter-spacing: 0.015em;
+  }
+
+  .text-p-lg-semibold {
+    font-size: 15px;
+    line-height: 1.5;
+    font-weight: 600;
+    letter-spacing: 0.015em;
+  }
+
+  .text-p-lg-bold {
+    font-size: 15px;
+    line-height: 1.5;
+    font-weight: 700;
+    letter-spacing: 0.015em;
+  }
+
+  .text-p-lg-black {
+    font-size: 15px;
+    line-height: 1.5;
+    font-weight: 800;
+    letter-spacing: 0.015em;
+  }
+
+  .text-p-xl-medium {
+    font-size: 16px;
+    line-height: 1.5;
+    font-weight: 500;
+    letter-spacing: 0.015em;
+  }
+
+  .text-p-xl-semibold {
+    font-size: 16px;
+    line-height: 1.5;
+    font-weight: 600;
+    letter-spacing: 0.015em;
+  }
+
+  .text-p-xl-bold {
+    font-size: 16px;
+    line-height: 1.5;
+    font-weight: 700;
+    letter-spacing: 0.015em;
+  }
+
+  .text-p-xl-black {
+    font-size: 16px;
+    line-height: 1.5;
+    font-weight: 800;
+    letter-spacing: 0.015em;
+  }
+
+  .text-p-2xl-medium {
+    font-size: 17px;
+    line-height: 1.5;
+    font-weight: 500;
+    letter-spacing: 0.015em;
+  }
+
+  .text-p-2xl-semibold {
+    font-size: 17px;
+    line-height: 1.5;
+    font-weight: 600;
+    letter-spacing: 0.015em;
+  }
+
+  .text-p-2xl-bold {
+    font-size: 17px;
+    line-height: 1.5;
+    font-weight: 700;
+    letter-spacing: 0.015em;
+  }
+
+  .text-p-2xl-black {
+    font-size: 17px;
+    line-height: 1.5;
+    font-weight: 800;
+    letter-spacing: 0.015em;
+  }
+
+  .text-p-3xl-medium {
+    font-size: 18px;
+    line-height: 1.5;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+
+  .text-p-3xl-semibold {
+    font-size: 18px;
+    line-height: 1.5;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  .text-p-3xl-bold {
+    font-size: 18px;
+    line-height: 1.5;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+
+  .text-p-3xl-black {
+    font-size: 18px;
+    line-height: 1.5;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+  }
+
+  .text-p-4xl-medium {
+    font-size: 20px;
+    line-height: 1.48;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+
+  .text-p-4xl-semibold {
+    font-size: 20px;
+    line-height: 1.48;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  .text-p-4xl-bold {
+    font-size: 20px;
+    line-height: 1.48;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+
+  .text-p-4xl-black {
+    font-size: 20px;
+    line-height: 1.48;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+  }
+
+  .text-p-5xl-medium {
+    font-size: 24px;
+    line-height: 1.4;
+    font-weight: 500;
+    letter-spacing: 0.005em;
+  }
+
+  .text-p-5xl-semibold {
+    font-size: 24px;
+    line-height: 1.4;
+    font-weight: 600;
+    letter-spacing: 0.005em;
+  }
+
+  .text-p-5xl-bold {
+    font-size: 24px;
+    line-height: 1.4;
+    font-weight: 700;
+    letter-spacing: 0.005em;
+  }
+
+  .text-p-5xl-black {
+    font-size: 24px;
+    line-height: 1.4;
+    font-weight: 800;
+    letter-spacing: 0.005em;
+  }
+
+  .text-tiny {
+    text-transform: uppercase;
+  }
+}

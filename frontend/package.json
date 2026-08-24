@@ -6,9 +6,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build --base=/assets/raven/raven/ && yarn copy-html-entry",
+    "build": "vite build --base=/assets/raven/raven_v2/ && yarn copy-html-entry",
     "preview": "vite preview",
-    "copy-html-entry": "cp ../raven/public/raven/index.html ../raven/www/raven.html"
+    "copy-html-entry": "cp ../raven/public/raven_v2/index.html ../raven/www/raven_v2.html"
   },
   "dependencies": {
     "@emoji-mart/react": "^1.1.1",
@@ -70,7 +70,7 @@
     "vaul": "^1.1.1",
     "vite": "^6.3.6",
     "vite-plugin-pwa": "^1.0.0",
-    "vite-plugin-svgr": "^4.2.0"
+    "vite-plugin-svgr": "^4.5.0"
   },
   "devDependencies": {
     "@types/js-cookie": "^3.0.6",

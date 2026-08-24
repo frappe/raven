@@ -15,7 +15,7 @@ const registerServiceWorker = () => {
   if ("serviceWorker" in navigator) {
     // @ts-ignore
     window.frappePushNotification
-      .appendConfigToServiceWorkerURL("/assets/raven/raven/sw.js")
+      .appendConfigToServiceWorkerURL("/assets/raven/raven_v2/sw.js")
       .then((url: string) => {
         navigator.serviceWorker
           .register(url, {

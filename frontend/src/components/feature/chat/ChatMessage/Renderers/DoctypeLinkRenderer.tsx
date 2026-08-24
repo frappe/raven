@@ -19,7 +19,7 @@ export const DoctypeLinkRenderer = ({ doctype, docname }: { doctype: string, doc
             return data.raven_document_link
         }
         const lowerCaseDoctype = doctype.toLowerCase().split(' ').join('-')
-        return `${window.location.origin}/app/${lowerCaseDoctype}/${docname}`
+        return `${window.location.origin}/desk/${lowerCaseDoctype}/${docname}`
     }, [data, doctype, docname])
 
     return (

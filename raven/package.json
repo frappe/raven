@@ -9,19 +9,5 @@
   "keywords": [],
   "author": "",
   "license": "AGPL-3.0-only",
-  "dependencies": {
-    "@tiptap/extension-highlight": "2.5.9",
-    "@tiptap/extension-link": "2.5.9",
-    "@tiptap/extension-mention": "2.5.9",
-    "@tiptap/extension-placeholder": "2.5.9",
-    "@tiptap/extension-underline": "2.5.9",
-    "@tiptap/pm": "2.5.9",
-    "@tiptap/react": "2.5.9",
-    "@tiptap/starter-kit": "2.5.9",
-    "@tiptap/suggestion": "2.5.9",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "swr": "^2.2.5",
-    "tippy.js": "^6.3.7"
-  }
+  "dependencies": {}
 }

@@ -26,7 +26,25 @@ class TestRavenUser(IntegrationTestCase):
 	Use this class for testing interactions between multiple components.
 	"""
 
+	def tearDown(self):
+		frappe.db.rollback()
+
 	def test_user_name(self):
 		user = frappe.get_doc("Raven User", "test@example.com")
 		self.assertEqual(user.name, "test@example.com")
 		self.assertEqual(user.full_name, "_Test")
+
+	def test_first_name_follows_full_name_change(self):
+		"""A profile rename writes only full_name; the derived first_name must
+		follow it, or short displays (e.g. the typing indicator) show the old name."""
+		user = frappe.get_doc("Raven User", "test@example.com")
+		user.full_name = "Renamed Person"
+		user.save()
+		self.assertEqual(user.first_name, "Renamed")
+
+	def test_explicit_first_name_edit_wins(self):
+		user = frappe.get_doc("Raven User", "test@example.com")
+		user.full_name = "Renamed Person"
+		user.first_name = "Custom"
+		user.save()
+		self.assertEqual(user.first_name, "Custom")

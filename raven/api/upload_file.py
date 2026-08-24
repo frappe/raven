@@ -173,6 +173,14 @@ def upload_file_with_message():
 		message_doc.thumbnail_width = thumbnail_width
 		message_doc.thumbnail_height = thumbnail_height
 
+	# TODO (video dimensions): for video uploads, probe width/height here
+	# (e.g. ffprobe / moviepy) and store them on image_width/image_height the
+	# same way images do above. The web client (MessageVideo) already reserves
+	# a box from stored dimensions when present — without them it auto-sizes and
+	# reflows once when metadata loads, which can shift scroll position for a
+	# video above the viewport during older-message pagination. Storing dims
+	# makes inline video height deterministic (and correct for portrait clips).
+
 	message_doc.save()
 
 	return message_doc

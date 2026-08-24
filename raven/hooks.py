@@ -7,8 +7,8 @@ app_description = "Messaging Application"
 app_email = "support@thecommit.company"
 app_license = "AGPLv3"
 source_link = "https://github.com/The-Commit-Company/Raven"
-app_logo = "/assets/raven/raven-logo.png"
-app_logo_url = "/assets/raven/raven-logo.png"
+app_logo = "/assets/raven/raven_logo.svg"
+app_logo_url = "/assets/raven/raven_logo.svg"
 
 # Includes in <head>
 # ------------------
@@ -22,7 +22,7 @@ app_include_js = "raven.bundle.js"
 add_to_apps_screen = [
 	{
 		"name": "raven",
-		"logo": "/assets/raven/raven-logo.png",
+		"logo": "/assets/raven/raven_logo.svg",
 		"title": "Raven",
 		"route": "/raven",
 		"has_permission": "raven.permissions.check_app_permission",
@@ -244,10 +244,22 @@ ignore_links_on_delete = ["Raven Message"]
 
 additional_timeline_content = {"*": ["raven.api.raven_message.get_timeline_message_content"]}
 
+# /raven serves the v3 app; the old (v2) app lives on at /raven_v2.
 website_route_rules = [
 	{"from_route": "/raven/<path:app_path>", "to_route": "raven"},
-	{"from_route": "/raven_mobile/<path:app_path>", "to_route": "raven"},
+	{"from_route": "/raven_v2/<path:app_path>", "to_route": "raven_v2"},
 ]
+
+# v3 lived at /raven_v3 during the beta — installed PWAs and shared links from
+# that era land on the real mount. Regex source with a capture so deep links
+# keep their path.
+website_redirects = [
+	{"source": r"/raven_v3(/.*)?", "target": r"/raven\1"},
+]
+
+# Serves the v3 service worker at /raven/sw.js (in-scope for page control —
+# offline app shell + share target). See raven/page_renderers.py for why.
+page_renderer = ["raven.page_renderers.RavenV3ServiceWorker"]
 
 permission_query_conditions = {
 	"Raven Channel": "raven.permissions.raven_channel_query",
@@ -282,3 +294,5 @@ raven_document_link_override = "raven.api.document_link.get_new_app_document_lin
 # ------------
 # List of apps whose translatable strings should be excluded from this app's translations.
 ignore_translatable_strings_from = ["frappe"]
+
+sqlite_search = ["raven.api.search.RavenSearch"]

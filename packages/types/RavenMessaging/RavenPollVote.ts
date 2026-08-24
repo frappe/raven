@@ -1,3 +1,4 @@
+import { RavenPollVoteSelection } from './RavenPollVoteSelection'
 
 export interface RavenPollVote{
 	creation: string
@@ -14,6 +15,6 @@ export interface RavenPollVote{
 	user_id: string
 	/**	Poll : Link - Raven Poll	*/
 	poll_id: string
-	/**	Option : Data	*/
-	option: string
+	/**	Vote Selection : Table - Raven Poll Vote Selection	*/
+	vote_selection?: RavenPollVoteSelection[]
 }

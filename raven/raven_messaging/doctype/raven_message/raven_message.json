@@ -9,6 +9,7 @@
  "engine": "InnoDB",
  "field_order": [
   "channel_id",
+  "message_batch_id",
   "text",
   "json",
   "message_reactions",
@@ -16,11 +17,13 @@
   "linked_message",
   "replied_message_details",
   "links",
+  "links_table",
   "column_break_wvje",
   "is_thread",
   "message_type",
   "content",
   "file",
+  "file_size",
   "image_width",
   "image_height",
   "blurhash",
@@ -208,11 +211,31 @@
    "fieldname": "links",
    "fieldtype": "Small Text",
    "label": "Links"
+  },
+  {
+   "description": "Used to group messages on the frontend together",
+   "fieldname": "message_batch_id",
+   "fieldtype": "Data",
+   "label": "Message Batch ID",
+   "search_index": 1
+  },
+  {
+   "fieldname": "file_size",
+   "fieldtype": "Int",
+   "label": "File Size",
+   "non_negative": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "links_table",
+   "fieldtype": "Table",
+   "label": "Links Table",
+   "options": "Raven Message Links"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-31 13:55:57.988161",
+ "modified": "2026-06-21 02:21:16.323515",
  "modified_by": "Administrator",
  "module": "Raven Messaging",
  "name": "Raven Message",

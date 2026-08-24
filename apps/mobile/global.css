@@ -31,6 +31,8 @@
         --input: 210 210 215;
         --ring: 230 230 235;
         --green: 82, 174, 99;
+        --badge-bg: 140 141 145;
+        --badge-text: 70 70 75;
 
         --android-background: 255 255 255;
         --android-foreground: 0 0 0;
@@ -59,6 +61,8 @@
         --android-input: 210 210 215;
         --android-ring: 230 230 235;
         --android-green: 82, 174, 99;
+        --android-badge-bg: 140 141 145;
+        --android-badge-text: 70 70 75;
     }
 
     @media (prefers-color-scheme: dark) {
@@ -88,10 +92,12 @@
             --grayText: 113, 115, 112;
             --border: 80, 80, 84;
             --input: 55 55 57;
-            --ring: 40 40 42;
-            --green: 82, 174, 99;
+        --ring: 40 40 42;
+        --green: 82, 174, 99;
+        --badge-bg: 55 55 58;
+        --badge-text: 160 160 160;
 
-            --android-background: 18 18 18;
+        --android-background: 18 18 18;
             --android-foreground: 255 255 255;
             --android-card: 29, 29, 32;
             --android-card-background: 37 37 39;
@@ -116,8 +122,10 @@
             --android-grayText: 113, 115, 112;
             --android-border: 80, 80, 84;
             --android-input: 55 55 57;
-            --android-ring: 40 40 42;
-            --android-green: 82, 174, 99;
+        --android-ring: 40 40 42;
+        --android-green: 82, 174, 99;
+        --android-badge-bg: 55 55 58;
+        --android-badge-text: 160 160 160;
         }
     }
 }

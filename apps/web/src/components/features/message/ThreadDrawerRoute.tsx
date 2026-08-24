@@ -1,0 +1,52 @@
+import { useCallback } from "react"
+import { useNavigate, useOutletContext, useParams, useSearchParams } from "react-router-dom"
+import ThreadDrawer from "./ThreadDrawer"
+import { focusComposer } from "@components/features/ChatInput/composerFocus"
+import { useMessageBatch } from "@hooks/useMessageBatch"
+
+/**
+ * Router glue for ThreadDrawer, used as the element for `:id/thread/:threadID` (channel + DM)
+ * and `/threads/:threadID`. It reads the route param + outlet context (the parent channel,
+ * provided by ChatContentView's useOutlet / the Threads page) and builds an `onClose` that
+ * routes back to the parent (`..` → the channel/DM, or /threads) and refocuses the parent
+ * composer. ThreadDrawer itself stays router-agnostic (pure props), so it can also be hosted
+ * directly — e.g. in a notifications panel — without a route.
+ */
+export default function ThreadDrawerRoute() {
+    const { threadID } = useParams<{ threadID: string }>()
+    const { parentChannelID: ctxParent, showOpenChannel } = useOutletContext<{ parentChannelID?: string, showOpenChannel?: boolean }>()
+    const navigate = useNavigate()
+
+    // Permalink to a REPLY inside this thread (set by the /message resolver).
+    // A DISTINCT param from ?message_id, which belongs to the channel's stream —
+    // a channel and thread can be open side by side, each with its own target.
+    const [searchParams] = useSearchParams()
+    const threadMessageID = searchParams.get("thread_message_id")
+
+    // The channel/DM views pass the parent via context; the threads page passes it via nav
+    // state on click. On a COLD threads-page deep-link there's neither — so resolve it from the
+    // thread's root message (Raven Message id = threadID; its channel_id IS the parent channel).
+    // One get_message_batch call serves both this resolution AND the thread header's content
+    // (root + its send batch) — same SWR key as ThreadRootMessage, so SWR dedupes them to ONE
+    // request; skipped entirely (null key) when context already has the parent.
+    const needsResolve = !ctxParent && !!threadID
+    const { anchor: rootMessage } = useMessageBatch(needsResolve ? threadID : null)
+    const parentChannelID = ctxParent ?? rootMessage?.channel_id
+
+    const onClose = useCallback(() => {
+        navigate("..", { replace: true })
+        // Refocus the parent channel's composer (no-op when there's none, e.g. the threads page).
+        if (parentChannelID) focusComposer(parentChannelID)
+    }, [navigate, parentChannelID])
+
+    if (!threadID) return null
+    return (
+        <ThreadDrawer
+            threadID={threadID}
+            parentChannelID={parentChannelID}
+            onClose={onClose}
+            showOpenChannel={showOpenChannel}
+            initialMessageID={threadMessageID}
+        />
+    )
+}

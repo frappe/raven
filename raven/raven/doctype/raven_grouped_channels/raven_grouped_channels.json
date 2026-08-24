@@ -1,0 +1,45 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:channel_id",
+ "creation": "2026-01-27 14:51:11.426463",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "channel_id",
+  "channel_group"
+ ],
+ "fields": [
+  {
+   "fieldname": "channel_id",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Channel ID",
+   "options": "Raven Channel",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "channel_group",
+   "fieldtype": "Data",
+   "label": "Channel Group",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-01-27 14:53:46.853522",
+ "modified_by": "Administrator",
+ "module": "Raven",
+ "name": "Raven Grouped Channels",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -31,9 +31,9 @@ def get(doctype: str, docname: str | int, with_site_url: bool = True):
 				return link
 
 	if with_site_url:
-		return frappe.utils.get_url() + f"/app/{slug(doctype)}/{docname}"
+		return frappe.utils.get_url() + f"/desk/{slug(doctype)}/{docname}"
 
-	return f"/app/{slug(doctype)}/{docname}"
+	return f"/desk/{slug(doctype)}/{docname}"
 
 
 @frappe.whitelist(methods=["GET"])

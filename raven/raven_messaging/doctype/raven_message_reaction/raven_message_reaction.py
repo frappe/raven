@@ -29,10 +29,31 @@ class RavenMessageReaction(Document):
 	def after_insert(self):
 		# Update the count for the current reaction
 		calculate_message_reaction(self.message, self.channel_id)
+		message_owner = frappe.get_cached_value("Raven Message", self.message, "owner")
+		if message_owner and message_owner != frappe.session.user:
+			# A NEW unread reaction — the owner's client adds message_id to its
+			# unread-notification set (badge + mark-read-on-view).
+			frappe.publish_realtime(
+				"raven_reaction_notification",
+				{"message_id": self.message},
+				user=message_owner,
+				after_commit=True,
+			)
 
 	def after_delete(self):
 		# Update the count for the current reaction
 		calculate_message_reaction(self.message, self.channel_id)
+		message_owner = frappe.get_cached_value("Raven Message", self.message, "owner")
+		if message_owner and message_owner != frappe.session.user:
+			# `removed`: the client can't know locally whether the message still has
+			# OTHER unread reactions, so it reconciles its unread set instead of
+			# blindly deleting the id.
+			frappe.publish_realtime(
+				"raven_reaction_notification",
+				{"message_id": self.message, "removed": True},
+				user=message_owner,
+				after_commit=True,
+			)
 
 
 def on_doctype_update():

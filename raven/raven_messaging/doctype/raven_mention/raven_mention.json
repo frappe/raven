@@ -6,7 +6,8 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "user"
+  "user",
+  "is_read"
  ],
  "fields": [
   {
@@ -15,6 +16,12 @@
    "in_list_view": 1,
    "label": "User",
    "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_read",
+   "fieldtype": "Check",
+   "label": "Read"
   }
  ],
  "index_web_pages_for_search": 1,

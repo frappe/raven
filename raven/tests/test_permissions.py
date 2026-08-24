@@ -8,6 +8,10 @@ EXTRA_TEST_RECORD_DEPENDENCIES = ["User", "Raven User"]
 
 
 class TestPermissions(IntegrationTestCase):
+	@classmethod
+	def setUpClass(cls):
+		super().setUpClass()
+
 	def setUp(self):
 
 		# test is a Raven Admin, test1 and test 3 are Raven Users, test2 is neither

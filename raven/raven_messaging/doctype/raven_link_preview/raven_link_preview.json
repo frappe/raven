@@ -1,0 +1,154 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "hash",
+ "creation": "2026-04-10 15:05:48.216945",
+ "default_view": "List",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "description",
+  "image",
+  "image_preview",
+  "image_width",
+  "image_height",
+  "site_name",
+  "metadata",
+  "url",
+  "provider",
+  "status",
+  "fetch_attempts",
+  "fetch_error",
+  "fetched_on",
+  "stale_after"
+ ],
+ "fields": [
+  {
+   "fieldname": "title",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "Title",
+   "length": 400
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  },
+  {
+   "fieldname": "image",
+   "fieldtype": "Small Text",
+   "label": "Image",
+   "length": 500
+  },
+  {
+   "fieldname": "site_name",
+   "fieldtype": "Data",
+   "label": "Site Name",
+   "length": 400
+  },
+  {
+   "fieldname": "url",
+   "fieldtype": "Data",
+   "label": "URL",
+   "length": 500,
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "fetched_on",
+   "fieldtype": "Datetime",
+   "label": "Fetched On"
+  },
+  {
+   "fieldname": "provider",
+   "fieldtype": "Select",
+   "label": "Provider",
+   "options": "Other\nWikipedia\nFrappe\nSite Document Link\nRaven Link\nFrappe Meet\nGoogle Meet\nZoom\nYouTube\nYouTube Music\nSpotify\nApple Music\nApple Podcasts\nSoundCloud\nLoom\nVimeo\nReddit\nFigma\nX\nGitHub\nHacker News"
+  },
+  {
+   "default": "Pending",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Pending\nFetched\nFailed\nBlocked"
+  },
+  {
+   "fieldname": "fetch_attempts",
+   "fieldtype": "Int",
+   "label": "Fetch Attempts"
+  },
+  {
+   "fieldname": "fetch_error",
+   "fieldtype": "Small Text",
+   "label": "Fetch Error"
+  },
+  {
+   "fieldname": "stale_after",
+   "fieldtype": "Datetime",
+   "label": "Stale After"
+  },
+  {
+   "fieldname": "image_width",
+   "fieldtype": "Int",
+   "label": "Image Width"
+  },
+  {
+   "fieldname": "image_height",
+   "fieldtype": "Int",
+   "label": "Image Height"
+  },
+  {
+   "fieldname": "image_preview",
+   "fieldtype": "Image",
+   "label": "image_preview",
+   "options": "image"
+  },
+  {
+   "fieldname": "metadata",
+   "fieldtype": "JSON",
+   "label": "Metadata"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-08-09 16:28:54.232620",
+ "modified_by": "Administrator",
+ "module": "Raven Messaging",
+ "name": "Raven Link Preview",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Raven User",
+   "share": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "title"
+}

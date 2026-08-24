@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_bulk_edit": 1,
  "allow_rename": 1,
  "creation": "2023-02-12 17:30:30.847618",
  "default_view": "List",
@@ -24,10 +25,11 @@
   "column_break_ubts",
   "is_archived",
   "section_break_wlnt",
-  "last_message_timestamp",
   "dm_user_1",
   "dm_user_2",
   "column_break_eckt",
+  "last_message_timestamp",
+  "last_message_id",
   "last_message_details",
   "section_break_acpc",
   "pinned_messages",
@@ -223,6 +225,12 @@
    "label": "DM User 2",
    "options": "Raven User",
    "read_only": 1
+  },
+  {
+   "description": "Stores the ID of the last message sent",
+   "fieldname": "last_message_id",
+   "fieldtype": "Data",
+   "label": "Last Message ID"
   }
  ],
  "index_web_pages_for_search": 1,
@@ -236,7 +244,7 @@
    "link_fieldname": "channel_id"
   }
  ],
- "modified": "2026-01-08 12:58:41.748067",
+ "modified": "2026-06-14 10:36:48.289234",
  "modified_by": "Administrator",
  "module": "Raven Channel Management",
  "name": "Raven Channel",
@@ -268,6 +276,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "search_fields": "type",
  "show_title_field_in_link": 1,
  "sort_field": "modified",

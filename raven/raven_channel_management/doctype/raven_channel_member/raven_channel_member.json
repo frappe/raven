@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_bulk_edit": 1,
  "allow_rename": 1,
  "autoname": "hash",
  "creation": "2023-02-12 17:31:23.807704",
@@ -17,7 +18,8 @@
   "linked_doctype",
   "linked_document",
   "notification_settings_section",
-  "allow_notifications"
+  "allow_notifications",
+  "muted"
  ],
  "fields": [
   {
@@ -88,11 +90,18 @@
    "fieldtype": "Check",
    "label": "Is Synced",
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "description": "If checked, new messages will not show up in unread count",
+   "fieldname": "muted",
+   "fieldtype": "Check",
+   "label": "Muted"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-02-01 14:46:49.892355",
+ "modified": "2026-06-24 13:59:03.355595",
  "modified_by": "Administrator",
  "module": "Raven Channel Management",
  "name": "Raven Channel Member",

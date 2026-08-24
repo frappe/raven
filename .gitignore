@@ -9,9 +9,10 @@ dist/
 mobile/dev-dist
 raven/public/raven
 raven/public/raven_v3
+raven/public/raven_v2
 raven/public/node_modules
 raven/www/raven.html
-raven/www/raven_v3.html
+raven/www/raven_v2.html
 *.env
 
 apps/mobile/ios

@@ -1,0 +1,28 @@
+/* GENERATED from frappe-ui tailwind/generated/radius.json — do not hand-edit.
+   Regenerate with: yarn gen:radius  (see scripts/generate-espresso-radius.mjs)
+
+   frappe-ui's full radius scale (numeric 0-9 + named aliases). The namespace is
+   reset so this replaces Tailwind's defaults entirely. App-specific radii
+   frappe-ui does NOT define (e.g. xs) are kept in src/index.css. */
+
+@theme {
+  --radius-*: initial;
+  --radius-0: 0px;
+  --radius-1: 4px;
+  --radius-2: 5px;
+  --radius-3: 6px;
+  --radius-4: 8px;
+  --radius-5: 10px;
+  --radius-6: 12px;
+  --radius-7: 16px;
+  --radius-8: 20px;
+  --radius-9: 999px;
+  --radius-full: 9999px;
+  --radius-none: 0px;
+  --radius-sm: 4px;
+  --radius: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+}

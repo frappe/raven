@@ -11,7 +11,8 @@
   "reaction_escaped",
   "message",
   "channel_id",
-  "is_custom"
+  "is_custom",
+  "is_read"
  ],
  "fields": [
   {
@@ -49,6 +50,12 @@
    "fieldname": "is_custom",
    "fieldtype": "Check",
    "label": "Is Custom"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_read",
+   "fieldtype": "Check",
+   "label": "Read"
   }
  ],
  "index_web_pages_for_search": 1,

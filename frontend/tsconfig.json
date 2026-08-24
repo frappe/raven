@@ -31,7 +31,8 @@
   },
   "include": [
     "src",
-    "../types"
+    "../types",
+    "../apps/web/src/hooks/useStickyState.ts"
   ],
   "references": [
     {

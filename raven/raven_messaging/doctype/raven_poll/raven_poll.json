@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_bulk_edit": 1,
  "allow_rename": 1,
  "creation": "2024-03-22 15:55:33.483101",
  "doctype": "DocType",
@@ -12,6 +13,7 @@
   "section_break_poll_settings",
   "is_anonymous",
   "is_multi_choice",
+  "max_choices",
   "is_disabled",
   "column_break_bbyo",
   "end_date",
@@ -86,11 +88,18 @@
    "fieldname": "end_date",
    "fieldtype": "Datetime",
    "label": "End Date"
+  },
+  {
+   "depends_on": "eval: doc.is_multi_choice;",
+   "description": "Maximum options that a user can select in a multi-select poll",
+   "fieldname": "max_choices",
+   "fieldtype": "Int",
+   "label": "Max Choices"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-07-29 15:25:13.661806",
+ "modified": "2026-06-14 10:53:58.701293",
  "modified_by": "Administrator",
  "module": "Raven Messaging",
  "name": "Raven Poll",
@@ -121,6 +130,7 @@
    "role": "Raven User"
   }
  ],
+ "row_format": "Dynamic",
  "show_title_field_in_link": 1,
  "sort_field": "modified",
  "sort_order": "DESC",

@@ -25,14 +25,22 @@ class RavenPollVote(Document):
 		vote_selection: DF.Table[RavenPollVoteSelection]
 	# end: auto-generated types
 
-	def before_insert(self):
+	def validate(self):
+		# Check if the user_id is the same as the logged in user
+		if self.user_id != frappe.session.user:
+			frappe.throw(_("You can only vote for yourself."))
+
+		if not self.vote_selection:
+			frappe.throw(_("Please select at least one option."))
+
+		# Check user hasn't already voted (matches UNIQUE(poll_id, user_id))
+		if frappe.db.exists("Raven Poll Vote", {"poll_id": self.poll_id, "user_id": self.user_id}):
+			frappe.throw(_("You have already voted in this poll."))
+
 		# check if the poll is still open
 		poll = frappe.get_cached_doc("Raven Poll", self.poll_id)
 		if poll.is_disabled:
 			frappe.throw(_("This poll is closed."))
-
-		if not self.vote_selection:
-			frappe.throw(_("Please select at least one option."))
 
 		# Single-select: only one option allowed
 		if not poll.is_multi_choice and len(self.vote_selection) > 1:
@@ -43,14 +51,9 @@ class RavenPollVote(Document):
 		if len(selected_options) != len(set(selected_options)):
 			frappe.throw(_("Cannot select the same option multiple times."))
 
-		# Check user hasn't already voted (matches UNIQUE(poll_id, user_id))
-		if frappe.db.exists("Raven Poll Vote", {"poll_id": self.poll_id, "user_id": self.user_id}):
-			frappe.throw(_("You have already voted in this poll."))
-
-	def validate(self):
-		# Check if the user_id is the same as the logged in user
-		if self.user_id != frappe.session.user:
-			frappe.throw(_("You can only vote for yourself."))
+		# Check if the poll is multi-select and the number of options selected is greater than the max choices
+		if poll.is_multi_choice and poll.max_choices and len(selected_options) > poll.max_choices:
+			frappe.throw(_(f"You cannot select more than {poll.max_choices} options for this poll."))
 
 	def after_insert(self):
 		update_poll_votes(self.poll_id)

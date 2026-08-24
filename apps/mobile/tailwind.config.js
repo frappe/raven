@@ -37,6 +37,10 @@ module.exports = {
           DEFAULT: withOpacity('muted'),
           foreground: withOpacity('muted-foreground'),
         },
+        badge: {
+          bg: withOpacity('badge-bg'),
+          text: withOpacity('badge-text'),
+        },
         accent: {
           DEFAULT: withOpacity('accent'),
           foreground: withOpacity('accent-foreground'),

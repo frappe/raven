@@ -2,6 +2,31 @@ import frappe
 from frappe import _
 
 
+def publish_poll_update(poll_id: str):
+	"""
+	Notify the poll's CHANNEL that the poll changed (a vote, a retraction, a close), so
+	clients revalidate it.
+
+	Published to the channel's document room — which v3 clients are ALREADY subscribed to
+	for messages — instead of the poll's own document room. This avoids a per-poll document
+	subscription (v2 subscribed to every visible Raven Poll, which didn't scale); the event
+	rides the existing channel subscription. Payload carries the message id so the client can
+	mutate exactly that poll's get_poll cache.
+	"""
+	msg = frappe.db.get_value(
+		"Raven Message", {"poll_id": poll_id}, ["name", "channel_id"], as_dict=True
+	)
+	if not msg:
+		return
+	frappe.publish_realtime(
+		"poll_update",
+		{"poll_id": poll_id, "message_id": msg.name, "channel_id": msg.channel_id},
+		doctype="Raven Channel",
+		docname=msg.channel_id,
+		after_commit=True,
+	)
+
+
 @frappe.whitelist(methods=["POST"])
 def create_poll(
 	channel_id: str,
@@ -10,6 +35,7 @@ def create_poll(
 	is_multi_choice: bool = None,
 	is_anonymous: bool = None,
 	end_date: str = None,
+	max_choices: int = None,
 ) -> str:
 	"""
 	Create a new poll in the Raven Poll doctype.
@@ -26,6 +52,7 @@ def create_poll(
 			"is_anonymous": is_anonymous,
 			"end_date": end_date,
 			"channel_id": channel_id,
+			"max_choices": max_choices,
 		}
 	)
 
@@ -87,7 +114,23 @@ def get_poll(message_id: str):
 		.where(raven_poll_vote.user_id == frappe.session.user)
 	).run(as_dict=True)
 
-	return {"poll": poll, "current_user_votes": current_user_votes}
+	# For a non-anonymous poll, include who voted for each option so the UI can show voter
+	# avatars beside the options — folding in what v2's separate get_all_votes did. Only the
+	# user ids; the client resolves them to names/avatars from its user store. Never for
+	# anonymous polls — their voters must not be revealed.
+	votes_by_option = {}
+	if not poll.is_anonymous:
+		all_votes = (
+			frappe.qb.from_(raven_poll_vote_selection)
+			.join(raven_poll_vote)
+			.on(raven_poll_vote_selection.parent == raven_poll_vote.name)
+			.select(raven_poll_vote_selection.option, raven_poll_vote.user_id)
+			.where(raven_poll_vote.poll_id == poll_id)
+		).run(as_dict=True)
+		for vote in all_votes:
+			votes_by_option.setdefault(vote.option, []).append(vote.user_id)
+
+	return {"poll": poll, "current_user_votes": current_user_votes, "votes": votes_by_option}
 
 
 @frappe.whitelist(methods=["POST"])
@@ -123,6 +166,8 @@ def add_vote(message_id: str, option_id: str | list):
 	)
 	vote.insert()
 
+	publish_poll_update(poll_id)
+
 	return "Vote added successfully."
 
 
@@ -145,7 +190,9 @@ def retract_vote(poll_id: str):
 		frappe.throw(_("You have not voted for any option in this poll."))
 	else:
 		for vote in votes:
-			frappe.delete_doc("Raven Poll Vote", vote.name)
+			frappe.delete_doc("Raven Poll Vote", vote.name, delete_permanently=True)
+
+		publish_poll_update(poll_id)
 
 
 @frappe.whitelist()
@@ -219,13 +266,7 @@ def close_poll(poll_id: str):
 	# Close the poll
 	frappe.db.set_value("Raven Poll", poll_id, "is_disabled", 1)
 
-	# Event to update the poll
-	frappe.publish_realtime(
-		"doc_update",
-		{"doctype": "Raven Poll", "name": poll_id},
-		doctype="Raven Poll",
-		docname=poll_id,
-		after_commit=True,
-	)
+	# Notify the channel (not the poll doc) so clients revalidate — see publish_poll_update.
+	publish_poll_update(poll_id)
 
 	return "Poll closed successfully."

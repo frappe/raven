@@ -25,4 +25,6 @@ export interface RavenPoll {
     end_date?: string
     /**	Total Votes : Int	*/
     total_votes: number
+    /**	Max Choices : Int - Maximum options that a user can select in a multi-select poll	*/
+    max_choices?: number
 }

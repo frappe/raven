@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_bulk_edit": 1,
  "allow_rename": 1,
  "creation": "2023-09-06 14:36:48.631681",
  "default_view": "List",
@@ -17,14 +18,25 @@
   "first_name",
   "user_image",
   "html_xuuw",
-  "pinned_channels_section",
+  "contact_number",
+  "channels_section",
   "pinned_channels",
+  "pinned_workspaces",
+  "channel_groups",
+  "grouped_channels",
   "user_status_section",
   "availability_status",
   "custom_status",
   "chat_style_section",
   "chat_style",
-  "column_break_xlzh"
+  "filter_recent_activity",
+  "filter_joined_channels",
+  "column_break_xlzh",
+  "time_format",
+  "sort_channels_by",
+  "link_previews",
+  "hide_read_receipts",
+  "quiet_hours_nudge"
  ],
  "fields": [
   {
@@ -49,6 +61,7 @@
   },
   {
    "fetch_from": "user.first_name",
+   "fetch_if_empty": 1,
    "fieldname": "first_name",
    "fieldtype": "Data",
    "label": "First Name"
@@ -97,14 +110,16 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "pinned_channels_section",
-   "fieldtype": "Section Break",
-   "label": "Pinned Channels"
-  },
-  {
    "fieldname": "pinned_channels",
    "fieldtype": "Table",
+   "label": "Pinned Channels",
    "options": "Raven Pinned Channels"
+  },
+  {
+   "fieldname": "pinned_workspaces",
+   "fieldtype": "Table",
+   "label": "Pinned Workspaces",
+   "options": "Raven User Pinned Workspaces"
   },
   {
    "fieldname": "availability_status",
@@ -125,7 +140,7 @@
   {
    "fieldname": "chat_style_section",
    "fieldtype": "Section Break",
-   "label": "Chat Layout"
+   "label": "Preferences"
   },
   {
    "fieldname": "chat_style",
@@ -141,12 +156,81 @@
    "fieldname": "last_mention_viewed_on",
    "fieldtype": "Datetime",
    "label": "Last Mention Viewed On"
+  },
+  {
+   "fieldname": "channels_section",
+   "fieldtype": "Section Break",
+   "label": "Channels"
+  },
+  {
+   "fieldname": "channel_groups",
+   "fieldtype": "Table",
+   "label": "Channel Groups",
+   "options": "Raven Channel Groups"
+  },
+  {
+   "fieldname": "grouped_channels",
+   "fieldtype": "Table",
+   "label": "Grouped Channels",
+   "options": "Raven Grouped Channels"
+  },
+  {
+   "fieldname": "contact_number",
+   "fieldtype": "Data",
+   "label": "Contact Number"
+  },
+  {
+   "default": "1",
+   "description": "Checking this will remove channels without any activity in the last 30 days from the sidebar. ",
+   "fieldname": "filter_recent_activity",
+   "fieldtype": "Check",
+   "label": "Only show channels with recent activity"
+  },
+  {
+   "default": "0",
+   "description": "Turning this on will remove any public channels where you have not joined from the sidebar.",
+   "fieldname": "filter_joined_channels",
+   "fieldtype": "Check",
+   "label": "Only show channels I have joined"
+  },
+  {
+   "default": "12-hour",
+   "fieldname": "time_format",
+   "fieldtype": "Select",
+   "label": "Time Format",
+   "options": "12-hour\n24-hour"
+  },
+  {
+   "fieldname": "sort_channels_by",
+   "fieldtype": "Select",
+   "label": "Sort channels by",
+   "options": "Alphabetical Order\nRecent Activity\nUnreads First"
+  },
+  {
+   "default": "Preview Card",
+   "fieldname": "link_previews",
+   "fieldtype": "Select",
+   "label": "Link Previews",
+   "options": "Link Hover\nPreview Card"
+  },
+  {
+   "default": "0",
+   "fieldname": "hide_read_receipts",
+   "fieldtype": "Check",
+   "label": "Hide Read Receipts"
+  },
+  {
+   "default": "No Nudge",
+   "fieldname": "quiet_hours_nudge",
+   "fieldtype": "Select",
+   "label": "Quiet Hours Nudge",
+   "options": "No Nudge\nNudge\nAuto Silent"
   }
  ],
  "grid_page_length": 50,
  "image_field": "user_image",
  "links": [],
- "modified": "2026-02-01 14:43:05.717293",
+ "modified": "2026-08-18 12:12:33.464600",
  "modified_by": "Administrator",
  "module": "Raven",
  "name": "Raven User",

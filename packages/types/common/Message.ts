@@ -10,6 +10,10 @@ export interface BaseMessage {
     message_type: 'Text' | 'File' | 'Image' | 'Poll' | 'System',
     message_reactions?: string | null,
     is_continuation: 1 | 0
+    /** Stable React key for the stream row (stream selector decoration). A
+     *  v3 send keeps ONE key across the optimistic→ack swap (batch-id based),
+     *  so the row — and its media DOM — survives instead of remounting. */
+    render_key?: string
     is_reply: 1 | 0
     linked_message?: string | null
     link_doctype?: string
@@ -28,19 +32,29 @@ export interface BaseMessage {
     is_pinned: 1 | 0,
     might_contain_link_preview?: boolean,
     content?: string,
-    isOpenInThread?: boolean
+    isOpenInThread?: boolean,
+    /** Optional JSON payload (e.g. converted_to_channel_*, forwarded_thread). Backend shape TBD. */
+    json?: string | Record<string, unknown>,
+    /** Shared id stamped on messages sent together as one batch (e.g. multiple files). Consecutive messages with the same id render as one block. */
+    message_batch_id?: string | null,
+    /** Newline separated list of links in the message */
+    links?: string
 }
 
 export interface FileMessage extends BaseMessage {
     text: string,
     file: string,
     message_type: 'File'
+    /** Size of the attached file in bytes (denormalized onto the message at send). */
+    file_size?: number,
 }
 
 export interface ImageMessage extends BaseMessage {
     text: string,
     file: string,
     message_type: 'Image'
+    /** Size of the attached image in bytes (denormalized onto the message at send). */
+    file_size?: number,
     thumbnail_width?: number,
     thumbnail_height?: number,
     image_thumbnail?: string,

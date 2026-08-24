@@ -1,0 +1,497 @@
+/**
+ * Shared rich-text (Tiptap) content styles.
+ *
+ * Scoped to `.tiptap` so BOTH surfaces render through the same rules:
+ *   1. the read-only message renderer (RichTextRenderer wraps output in `.tiptap`)
+ *   2. the editable composer — Tiptap puts the `tiptap` class on its ProseMirror
+ *      root automatically.
+ *
+ * That's the WYSIWYG guarantee: a message reads exactly as it was typed because
+ * there is one stylesheet, not two (v2 had `.tiptap-renderer` and `.tiptap-editor`
+ * drift apart). Editor-only chrome (placeholder, selection outlines, caret, the
+ * tag-suggestion popup) is NOT here — it belongs with the composer.
+ *
+ * Conventions follow frappe-ui's prose-v3 for the inline LOOK (links, code,
+ * blockquote) and the paragraph MODEL (see below), but block margins are
+ * deliberately tighter than frappe-ui's doc-tuned values — chat is short-form.
+ */
+
+.tiptap {
+  /* Reading tier: larger on mobile (16px) than desktop (14px) using the existing
+     paragraph tokens — no --text-* overrides. Covers BOTH surfaces this class styles:
+     the message body and the composer (16px input also dodges iOS focus-zoom). */
+  @apply text-p-lg md:text-p-base text-ink-gray-8 break-words;
+}
+
+/* Spacing model mirrors the editor (frappe-ui v3 / ProseMirror): paragraphs
+   carry NO margin, so Enter-separated lines stack tight and the user opens up
+   space by typing blank lines — exactly what they see while editing. Other
+   blocks get their own modest margins below. */
+.tiptap p {
+  @apply m-0 leading-normal;
+}
+
+/* A blank line serializes as an empty <p>, which would otherwise collapse to
+   zero height; give it one line so the gap the user typed is preserved. */
+.tiptap p:empty {
+  min-height: 1lh;
+}
+
+/* No leading/trailing whitespace inside the message row, regardless of which
+   block happens to be first/last. */
+.tiptap> :first-child {
+  @apply mt-0;
+}
+
+.tiptap> :last-child {
+  @apply mb-0;
+}
+
+/* Headings — uncommon in chat; chat-tightened section break (frappe-ui uses
+   32px/8px, too airy for a message list). */
+.tiptap :is(h1, h2, h3) {
+  @apply mt-3 mb-1 font-semibold;
+}
+
+.tiptap h1 {
+  @apply text-2xl;
+}
+
+.tiptap h2 {
+  @apply text-xl;
+}
+
+.tiptap h3 {
+  @apply text-lg;
+}
+
+.tiptap strong,
+.tiptap b {
+  @apply font-semibold;
+}
+
+.tiptap em,
+.tiptap i {
+  @apply italic;
+}
+
+.tiptap s,
+.tiptap del {
+  @apply line-through;
+}
+
+/* Links: near-black text with a light bottom border that darkens on hover —
+   matching frappe-ui's v3 prose (text-decoration: none; border-bottom on
+   --ink-gray-3 → --ink-gray-6). pb-0.5 adds the gap frappe-ui gets for free
+   from its looser line-height; our chat lines are denser. */
+.tiptap a {
+  @apply border-b border-ink-gray-3 text-ink-gray-8 no-underline transition-colors hover:border-ink-gray-6;
+}
+
+/* Inline code (not inside a <pre>): calm gray pill, matching frappe-ui v3 —
+   no border, no red. */
+.tiptap :not(pre)>code {
+  @apply rounded-sm bg-surface-gray-2 px-1 py-px font-mono text-sm text-ink-gray-6;
+}
+
+/* Code block — bordered container with a header (language + copy) over the
+   scrollable code area (MessageCodeBlock). The background and default text use
+   Espresso surface/ink tokens (neutral grays, and they flip in dark for free);
+   only the SYNTAX token colors below are their own theme — raw hex on purpose,
+   since a highlight.js theme is its own palette outside Espresso.
+
+   The syntax theme is the Espresso code-editor palette (a base46 theme built
+   on Espresso: every neutral in it is an exact Espresso gray). That palette is
+   dark-only, so the dark values are used as given and each light value is the
+   same hue darkened until it reads on a light background (contrast >= 4.5 on
+   #f8f8f8, checked). Role map, from the palette itself: orange keywords, teal
+   functions, blue identifiers/members, purple numbers/constants, sun strings,
+   green types/tags, red special/regex, grey punctuation.
+
+   `--code-bg` is shared by the <pre> and the collapse fade so they always
+   agree. The well is one surface step off the page in both modes: below it
+   in light (gray-50 on white), above it in dark (surface-gray-2 on the
+   #171717 pane) — the palette's own editor background is #171717, which
+   would blend into the chat pane. */
+.tiptap .code-block {
+  --code-bg: var(--surface-gray-1);
+  @apply relative my-2 overflow-hidden rounded border border-outline-gray-2;
+}
+
+.dark .tiptap .code-block {
+  --code-bg: var(--surface-gray-2);
+}
+
+/* Flex row: line-number gutter + code. Horizontal scroll is on <code> below so
+   the gutter stays fixed while long lines scroll. */
+.tiptap .code-block pre {
+  @apply m-0 flex items-start gap-3 p-3 font-mono text-xs leading-relaxed text-ink-gray-8;
+  background: var(--code-bg);
+}
+
+.tiptap .code-block pre code {
+  @apply min-w-0 flex-1 overflow-x-auto border-0 bg-transparent p-0 text-inherit;
+}
+
+/* Code block INSIDE an editor (StarterKit's bare <pre>, no .code-block wrapper).
+   Scoped to [data-raven-editor] so it styles the composer only, never the rendered
+   message (which uses .code-block above). Gives the block a surface so it reads as
+   code while typing instead of plain text. */
+[data-raven-editor] .tiptap pre {
+  background: var(--surface-gray-1);
+  @apply my-2 overflow-x-auto rounded-md border border-outline-gray-2 p-3 font-mono text-xs leading-relaxed text-ink-gray-8;
+}
+
+.dark [data-raven-editor] .tiptap pre {
+  background: var(--surface-gray-2);
+}
+
+[data-raven-editor] .tiptap pre code {
+  @apply border-0 bg-transparent p-0 text-inherit;
+}
+
+/* Empty-state placeholder. The Placeholder extension adds .is-editor-empty + a
+   data-placeholder attr to the first empty paragraph; we render it via ::before.
+   Editor-only via [data-raven-editor] so rendered messages are never affected. */
+[data-raven-editor] .tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  @apply text-ink-gray-4;
+}
+
+/* Spoiler — in the COMPOSER it's a subtle pill so the writer sees what they've
+   marked (it's their own text). */
+[data-raven-editor] .tiptap .spoiler {
+  @apply rounded-sm bg-surface-gray-3 px-0.5 text-ink-gray-7;
+}
+
+/* Spoiler — in a RENDERED message the text hides behind a solid block until the
+   reader clicks/reveals it. Hide descendants too (a link/mention inside a spoiler
+   would otherwise show its own colour); :where() keeps that override at low
+   specificity so the revealed state still wins. */
+.tiptap .message-spoiler {
+  @apply cursor-pointer select-none rounded-sm bg-surface-gray-4 px-0.5 text-transparent transition-colors;
+}
+
+.tiptap .message-spoiler:not(.message-spoiler--revealed) :where(a, code, strong, em, s, span, img) {
+  color: transparent;
+}
+
+.tiptap .message-spoiler:hover {
+  @apply bg-surface-gray-5;
+}
+
+.tiptap .message-spoiler--revealed:hover {
+  @apply bg-surface-gray-3;
+}
+
+.tiptap .message-spoiler--revealed {
+  @apply cursor-auto select-auto bg-surface-gray-2 text-ink-gray-7;
+}
+
+/* highlight.js syntax tokens — Espresso code palette, light derivations.
+   Punctuation and operators are left at the default ink on purpose: the
+   palette de-emphasizes them, and unstyled text already reads as calm gray. */
+
+/* Keywords — orange. */
+.tiptap .hljs-doctag,
+.tiptap .hljs-keyword,
+.tiptap .hljs-meta .hljs-keyword,
+.tiptap .hljs-template-tag {
+  color: #c04c00;
+}
+
+/* Types, tags and class names — green. */
+.tiptap .hljs-type,
+.tiptap .hljs-name,
+.tiptap .hljs-selector-tag,
+.tiptap .hljs-selector-pseudo,
+.tiptap .hljs-title.class_,
+.tiptap .hljs-title.class_.inherited__ {
+  color: #317d58;
+}
+
+/* Functions — teal. */
+.tiptap .hljs-title,
+.tiptap .hljs-title.function_,
+.tiptap .hljs-built_in {
+  color: #0f7d71;
+}
+
+/* Identifiers, members and params — blue. */
+.tiptap .hljs-attr,
+.tiptap .hljs-attribute,
+.tiptap .hljs-property,
+.tiptap .hljs-params,
+.tiptap .hljs-variable,
+.tiptap .hljs-template-variable,
+.tiptap .hljs-selector-attr,
+.tiptap .hljs-selector-class,
+.tiptap .hljs-selector-id {
+  color: #0073d1;
+}
+
+/* Numbers, constants and booleans — purple. */
+.tiptap .hljs-number,
+.tiptap .hljs-literal,
+.tiptap .hljs-symbol,
+.tiptap .hljs-meta,
+.tiptap .hljs-bullet {
+  color: #9a47d5;
+}
+
+/* Strings — sun, darkened to amber so it reads on a light well. */
+.tiptap .hljs-string,
+.tiptap .hljs-meta .hljs-string {
+  color: #9b6700;
+}
+
+/* Special: regex, language variables (this/self), section headings — red. */
+.tiptap .hljs-regexp,
+.tiptap .hljs-variable.language_ {
+  color: #cc3333;
+}
+
+.tiptap .hljs-section {
+  color: #cc3333;
+  font-weight: bold;
+}
+
+/* Comments — grey. */
+.tiptap .hljs-comment,
+.tiptap .hljs-code,
+.tiptap .hljs-formula,
+.tiptap .hljs-quote {
+  color: #575757;
+}
+
+.tiptap .hljs-emphasis {
+  font-style: italic;
+}
+
+.tiptap .hljs-strong {
+  font-weight: 700;
+}
+
+.tiptap .hljs-addition {
+  color: #317d58;
+  background-color: #e4f2ea;
+}
+
+.tiptap .hljs-deletion {
+  color: #cc3333;
+  background-color: #fbe9e9;
+}
+
+/* highlight.js — Espresso code palette, dark values as given. One liberty:
+   comments use #7a7a7a (the palette's base04) instead of its #575757 comment
+   grey, which only reaches 2.7:1 on this background — too dim for the one
+   token people actually read. */
+.dark .tiptap .hljs-doctag,
+.dark .tiptap .hljs-keyword,
+.dark .tiptap .hljs-meta .hljs-keyword,
+.dark .tiptap .hljs-template-tag {
+  color: #fa8a40;
+}
+
+.dark .tiptap .hljs-type,
+.dark .tiptap .hljs-name,
+.dark .tiptap .hljs-selector-tag,
+.dark .tiptap .hljs-selector-pseudo,
+.dark .tiptap .hljs-title.class_,
+.dark .tiptap .hljs-title.class_.inherited__ {
+  color: #7dc5a2;
+}
+
+.dark .tiptap .hljs-title,
+.dark .tiptap .hljs-title.function_,
+.dark .tiptap .hljs-built_in {
+  color: #51decf;
+}
+
+.dark .tiptap .hljs-attr,
+.dark .tiptap .hljs-attribute,
+.dark .tiptap .hljs-property,
+.dark .tiptap .hljs-params,
+.dark .tiptap .hljs-variable,
+.dark .tiptap .hljs-template-variable,
+.dark .tiptap .hljs-selector-attr,
+.dark .tiptap .hljs-selector-class,
+.dark .tiptap .hljs-selector-id {
+  color: #76bef9;
+}
+
+.dark .tiptap .hljs-number,
+.dark .tiptap .hljs-literal,
+.dark .tiptap .hljs-symbol,
+.dark .tiptap .hljs-meta,
+.dark .tiptap .hljs-bullet {
+  color: #c993ef;
+}
+
+.dark .tiptap .hljs-string,
+.dark .tiptap .hljs-meta .hljs-string {
+  color: #f4c25f;
+}
+
+.dark .tiptap .hljs-regexp,
+.dark .tiptap .hljs-variable.language_ {
+  color: #ff7575;
+}
+
+.dark .tiptap .hljs-section {
+  color: #ff7575;
+  font-weight: bold;
+}
+
+.dark .tiptap .hljs-comment,
+.dark .tiptap .hljs-code,
+.dark .tiptap .hljs-formula,
+.dark .tiptap .hljs-quote {
+  color: #7a7a7a;
+}
+
+.dark .tiptap .hljs-addition {
+  color: #7dc5a2;
+  background-color: #14231b;
+}
+
+.dark .tiptap .hljs-deletion {
+  color: #ff7575;
+  background-color: #2a1515;
+}
+
+/* Lists — frappe-ui's tight 4px outer margin works fine for chat. */
+.tiptap ul {
+  @apply my-1 list-disc pl-6;
+}
+
+.tiptap ol {
+  @apply my-1 list-decimal pl-6;
+}
+
+.tiptap li {
+  @apply leading-normal;
+}
+
+/* A list item's paragraph and nested blocks shouldn't inherit block spacing. */
+.tiptap li>p {
+  @apply my-0;
+}
+
+.tiptap li>*+* {
+  @apply mt-0;
+}
+
+.tiptap blockquote {
+  @apply my-2 border-l-2 border-ink-gray-3 pl-3 text-ink-gray-6;
+}
+
+.tiptap hr {
+  @apply my-3 border-t border-outline-gray-2;
+}
+
+/* Highlight mark. */
+.tiptap mark {
+  @apply rounded-sm bg-surface-amber-2 px-0.5 text-ink-gray-8;
+}
+
+/* Mentions: bold (frappe-ui restraint) + chat color-coding. RichTextRenderer
+   emits `.mention` with data-type and (for the viewer's own) data-self; the
+   stylesheet owns all the color. box-decoration-clone keeps the rounded
+   background intact when a mention wraps across lines. */
+.tiptap .mention {
+  @apply box-decoration-clone rounded px-0.5 font-medium no-underline;
+}
+
+/* Channel mentions render as <a> (NavLink) — neutralize the .tiptap a border
+   (a.mention is 0,2,1, beating `.tiptap a` at 0,1,1). */
+.tiptap a.mention {
+  @apply border-0;
+}
+
+/* Others + channels: blue text, subtle gray bg on hover only. */
+.tiptap .mention:not([data-self="true"]) {
+  @apply text-ink-gray-8 hover:bg-surface-gray-1;
+}
+
+/* You: persistent amber highlight — the one mention that lights up. */
+.tiptap .mention[data-self="true"] {
+  @apply text-ink-amber-6 hover:bg-surface-amber-2 bg-surface-amber-1;
+}
+
+.tiptap .mention[data-type="channelMention"] {
+  @apply bg-surface-gray-1 rounded-sm px-0.5;
+}
+
+/* Images & emoji. */
+.tiptap img {
+  @apply my-1 h-auto max-w-96 rounded-md;
+}
+
+.tiptap img[data-type="emoji"],
+.tiptap .emoji {
+  /* w-auto + object-contain: keep the emoji's aspect ratio (don't squish non-square
+     custom emojis). rounded-none: override `.tiptap img`'s rounded-md, which clips an
+     <img> into a circle at this size. */
+  @apply my-0 inline-block h-[1.4em] w-auto rounded-none object-contain align-text-bottom;
+}
+
+/* Jumbomoji — a message that is ONLY emojis (≤4; RichTextRenderer decides)
+   renders them big, Slack/iMessage-style. One rule covers both kinds: native
+   emojis scale with font-size, and custom emojis (.emoji) are em-sized (1.4em)
+   so they follow along. The class is computed synchronously from the stored
+   HTML, so row height stays deterministic for the scroll engine. */
+.tiptap--jumbomoji p {
+  font-size: 2rem;
+  line-height: 1.25;
+}
+
+/* Tables — framed and horizontally scrollable, matching the ui/ Table look
+   (rounded outline frame, gray header, row dividers; see ui/table.tsx). The frame
+   lives on a wrapper, not the table, so it can scroll wide tables instead of
+   stretching the message row. getHTML() emits a BARE <table>, so RichTextRenderer
+   wraps it in the same `.tableWrapper` div the editor's TableKit adds — one rule
+   then styles both reading and editing. */
+.tiptap .tableWrapper {
+  @apply my-2 w-fit max-w-full overflow-x-auto rounded border border-outline-gray-1;
+}
+
+.tiptap table {
+  @apply m-0 border-collapse;
+}
+
+.tiptap th {
+  @apply border-b border-outline-gray-1 bg-surface-gray-2 px-2 py-1.5 text-start font-medium text-ink-gray-5;
+}
+
+.tiptap td {
+  @apply border-b border-outline-gray-1 px-2 py-1.5 align-top;
+}
+
+/* The wrapper supplies the bottom frame — drop the last row's divider so the two
+   don't double up into a thick edge. */
+.tiptap tr:last-child>td {
+  @apply border-b-0;
+}
+
+/* Table editing chrome (composer only). Tables arrive via paste, but you can still
+   click in to edit: anchor the cell so the resize handle / selection overlay
+   position against it, show a column-resize bar, and tint selected cells. */
+[data-raven-editor] .tiptap :is(th, td) {
+  @apply relative;
+}
+
+[data-raven-editor] .tiptap .selectedCell {
+  @apply bg-surface-blue-1;
+}
+
+[data-raven-editor] .tiptap .column-resize-handle {
+  @apply absolute -right-px top-0 bottom-0 z-10 w-0.5 bg-surface-blue-5;
+}
+
+[data-raven-editor] .tiptap.resize-cursor {
+  cursor: col-resize;
+}

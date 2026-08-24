@@ -59,5 +59,6 @@ def get_context():
 	context["login_with_email_link"] = frappe.get_system_settings("login_with_email_link")
 	context["two_factor_is_enabled"] = two_factor_is_enabled()
 	context["disable_signup"] = frappe.get_website_settings("disable_signup")
+	context["disable_user_pass_login"] = frappe.get_system_settings("disable_user_pass_login")
 
 	return context

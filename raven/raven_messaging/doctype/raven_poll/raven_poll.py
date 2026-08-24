@@ -2,6 +2,7 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
 from frappe.utils import get_datetime, now_datetime
 
@@ -21,6 +22,7 @@ class RavenPoll(Document):
 		is_anonymous: DF.Check
 		is_disabled: DF.Check
 		is_multi_choice: DF.Check
+		max_choices: DF.Int
 		options: DF.Table[RavenPollOption]
 		question: DF.SmallText
 		total_votes: DF.Int
@@ -40,6 +42,19 @@ class RavenPoll(Document):
 			end_datetime = get_datetime(self.end_date)
 			if now_datetime() >= end_datetime:
 				self.is_disabled = 1
+
+	def validate(self):
+		# Check if the max choices is greater than the number of options
+		if self.is_multi_choice:
+			if self.max_choices:
+				if self.max_choices == 1:
+					frappe.throw(
+						"Set a limit of more than 1 for multi-select polls. If you want users to select just one option, use a single-select poll."
+					)
+				if self.max_choices >= len(self.options):
+					frappe.throw(
+						"You cannot set a limit greater than or equal to the number of options in the poll."
+					)
 
 	def on_trash(self):
 		# Delete all poll votes

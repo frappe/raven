@@ -1,0 +1,501 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "./styles/espresso-colors.css";
+@import "./styles/espresso-radius.css";
+@import "./styles/espresso-typography.css";
+@import "./styles/espresso-effects.css";
+@import "./styles/rich-text.css";
+@import "./styles/scroll-fade.css";
+
+@font-face {
+  font-family: InterVariable;
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/assets/frappe/css/fonts/inter/InterVariable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: InterVariable;
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/assets/frappe/css/fonts/inter/InterVariable-Italic.woff2") format("woff2");
+}
+
+/* Newsreader (variable: weight 200-800 + optical sizing) — the serif from
+   Frappe's own site. Only the Frappe link-preview card uses it, and
+   browsers fetch a font lazily on first use, so nobody else pays for it. */
+@font-face {
+  font-family: Newsreader;
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("/assets/raven/fonts/NewsreaderVariable.woff2") format("woff2");
+}
+
+@custom-variant dark (&:is(.dark *));
+
+@custom-variant standalone (@media (display-mode: standalone));
+
+/* Reading/content tier for names + list-row labels: larger on mobile (15px) than
+   desktop (13px), built ONLY from existing Espresso tokens (no --text-* overrides).
+   Single source of truth — apply to sender names, thread row labels, CommandMenu
+   items, search result rows. Message body + composer scale a step above via .tiptap.
+
+   NOTE: the breakpoint is an explicit nested @media, NOT `@apply text-lg md:text-sm`.
+   A responsive `md:` variant inside @apply-in-@utility gets flattened to an
+   unconditional rule (always desktop size) — so we set font-size directly. */
+@utility text-content {
+  font-size: var(--text-base);
+  /* mobile 14px */
+  @media (width >=48rem) {
+    font-size: var(--text-sm);
+    /* desktop 13px */
+  }
+}
+
+/* Mobile page-stack transition: a stacked layer (an open chat/thread over its list)
+   slides in from the right like a native push. The layers stay mounted and toggle
+   `hidden` — browsers restart CSS animations when display flips from none, so the
+   slide re-plays on every open with no JS. Desktop (md+) never animates these, and
+   going BACK is deliberately instant: the iOS back-swipe is already animated by the
+   OS, and our first live frame must simply match its snapshot. */
+@utility animate-layer-in {
+  @media (width < 48rem) and (prefers-reduced-motion: no-preference) {
+    animation: layer-slide-in 220ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+}
+
+@keyframes layer-slide-in {
+  from {
+    transform: translateX(100%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* Typing-indicator dots: a gentle lift + fade wave, staggered per dot via
+   [animation-delay:…]. Tailwind's animate-bounce throws the dot half its own
+   height — far too loud next to 12px text. */
+@keyframes typing-dot {
+
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.35;
+  }
+
+  30% {
+    transform: translateY(-2px);
+    opacity: 1;
+  }
+}
+
+@utility animate-typing-dot {
+  animation: typing-dot 1.2s ease-in-out infinite;
+}
+
+/* AI-event text shimmer (shadcn-style): a highlight sweeping across muted text
+   via background-clip. Built from ink tokens so it works in both themes. */
+@keyframes text-shimmer {
+  from {
+    background-position: 150% center;
+  }
+
+  to {
+    background-position: -50% center;
+  }
+}
+
+@utility text-shimmer {
+  background: linear-gradient(90deg,
+      var(--color-ink-gray-5) 0%,
+      var(--color-ink-gray-5) 40%,
+      var(--color-ink-gray-9) 50%,
+      var(--color-ink-gray-5) 60%,
+      var(--color-ink-gray-5) 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: text-shimmer 1.8s linear infinite;
+}
+
+/* Tokens synced from frappe-ui are generated into styles/espresso-*.css:
+   colors (palette + semantic layer), radius (--radius-*), and typography
+   (--text-* / --text-p-* + font weights). This block holds the rest: layout
+   dimensions, font families, shadows, spacing, plus the handful of app-specific
+   color/radius tokens frappe-ui doesn't define (kept until components migrate
+   to the canonical names). */
+@theme inline {
+  --app-header-height: 36px;
+  --primary-sidebar-width: 60px;
+  --sidebar-width: 256px;
+  --app-mobile-footer-height: 60px;
+  --dm-sidebar-width: 360px;
+  --notifications-sidebar-width: 540px;
+
+  /** ----- Espresso Design System ----- **/
+  --font-sans: "InterVariable",
+    ui-sans-serif,
+    system-ui,
+    sans-serif,
+    "Apple Color Emoji",
+    "Segoe UI Emoji",
+    "Segoe UI Symbol",
+    "Noto Color Emoji";
+  --font-sans--font-optical-sizing: auto;
+  --font-sans--font-variation-settings: "opsz" 24;
+  --font-numeric: "InterVariable",
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    "Liberation Mono",
+    "Courier New",
+    monospace;
+  --font-numeric--font-feature-settings: "calt",
+    "cv01",
+    "cv03",
+    "cv04",
+    "cv09",
+    "cv11",
+    "zero";
+  --font-numeric--font-optical-sizing: auto;
+  --font-numeric--font-variation-settings: "opsz" 24;
+
+  --font-mono: ui-monospace,
+    Menlo,
+    Monaco,
+    'Cascadia Mono',
+    'Segoe UI Mono',
+    'Roboto Mono',
+    'Oxygen Mono',
+    'Ubuntu Mono',
+    'Source Code Pro',
+    'Fira Mono',
+    'Droid Sans Mono',
+    'Consolas',
+    'Courier New',
+    monospace;
+
+
+  /** Type scale (--text-* / --text-p-* + font weights) is generated into
+      styles/espresso-typography.css. Border radii (--radius-*) into
+      styles/espresso-radius.css. Both synced from frappe-ui. **/
+
+  /** App-specific radius NOT in frappe-ui's scale (raven uses rounded-xs).
+      Kept here so it survives the --radius-* reset in espresso-radius.css. **/
+  --radius-xs: 0.125rem;
+
+  /** Shadow — canonical elevation-backed shadows (shadow-sm…2xl, shadow-status)
+      are generated into styles/espresso-effects.css. These are app-specific. **/
+  --shadow-switch: 0px 3px 3px 0px rgba(0, 0, 0, 0.05);
+  --shadow-checkbox-hover: 0px 1px 2px 0px rgba(0, 0, 0, 0.06),
+    0px 1px 3px 0px rgba(0, 0, 0, 0.1);
+
+  --shadow-textarea-active: 0px 1px 4px 0px rgba(0, 0, 0, 0.1);
+  --shadow-chat-area: 0px 0px 4px 0px rgba(0, 0, 0, 0.08),
+    0px 0.25px 1px 0px rgba(0, 0, 0, 0.25);
+
+  /** Spacing **/
+  --spacing-4.5: 1.125rem;
+  --spacing-5.5: 1.375rem;
+  --spacing-6.5: 1.625rem;
+  --spacing-7.5: 1.875rem;
+  --spacing-8.5: 2.125rem;
+  --spacing-9.5: 2.375rem;
+  --spacing-10.5: 2.625rem;
+  --spacing-11.5: 2.875rem;
+  --spacing-12.5: 3.125rem;
+  --spacing-13: 3.25rem;
+  --spacing-13.5: 3.375rem;
+  --spacing-14.5: 3.625rem;
+  --spacing-15: 3.75rem;
+  --spacing-15.5: 3.875rem;
+}
+
+@layer base {
+  * {
+    @apply border-outline-gray-2 outline-outline-gray-2/50;
+  }
+
+  body {
+    @apply bg-surface-base text-ink-gray-8;
+  }
+
+  /* The app is a fixed viewport with INNER scrollers (message stream, lists) —
+     the document itself must never scroll. Without this, anything that nudges
+     the document (iOS scrolling the page to reveal a focused input, a stray
+     overflowing element, rubber-band drag) shifts the whole app — seen as "the
+     footer rides up and the body pans". html AND body both need the clamp: on
+     iOS, overflow on body alone doesn't stop document touch-scrolling.
+     overscroll-behavior kills the rubber-band at the document level (inner
+     scrollers keep their own bounce). */
+  html,
+  body,
+  #root {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    overscroll-behavior: none;
+  }
+
+  /* Native scrollbars, app-wide — everything that isn't the <ScrollArea>
+     component (which draws its own overlay bar in the same colors). Thin bar,
+     rounded thumb on a transparent track; the thumb matches frappe-ui's
+     ScrollArea: gray-400 in light mode, gray-700 in dark (surface-gray-5 /
+     surface-gray-2 in Espresso terms — no single semantic token flips to both,
+     hence the dedicated variable below).
+
+     Deliberately ONLY the standard properties (Chrome/Edge 121+, Firefox), NOT
+     ::-webkit-scrollbar: the webkit pseudos force always-visible chunky bars on
+     macOS, where the native overlay bars already look right. These two
+     properties fix exactly the ugly case — Windows — and leave macOS alone.
+
+     In @layer base so the `no-scrollbar` utility still wins. `scrollbar-color`
+     would inherit from :root, but `scrollbar-width` doesn't — hence `*`. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
+}
+
+:root {
+  --scrollbar-thumb: var(--surface-gray-5);
+}
+
+.dark {
+  --scrollbar-thumb: var(--surface-gray-2);
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Touch devices: nothing is finger-selectable except text-entry surfaces — the
+   app behaves like a native one (long-press = message actions; copy lives in
+   the action sheet). This must be GLOBAL, not per-region: when only a subtree
+   is select-none, iOS long-press starts a selection just OUTSIDE it (WebKit
+   walks to the nearest selectable ancestor) — observed as "the whole screen
+   gets selected", or the open drawer's contents on a longer hold. */
+@media (pointer: coarse) {
+  body {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  input,
+  textarea,
+  [contenteditable="true"],
+  [contenteditable=""] {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+}
+
+.lucide {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/** @shadcn/tailwind.css **/
+
+@theme inline {
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+
+    to {
+      height: var(--radix-accordion-content-height,
+          var(--accordion-panel-height, auto));
+    }
+  }
+
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height,
+          var(--accordion-panel-height, auto));
+    }
+
+    to {
+      height: 0;
+    }
+  }
+}
+
+/* Custom variants */
+@custom-variant data-open {
+
+  &:where([data-state="open"]),
+  &:where([data-open]:not([data-open="false"])) {
+    @slot;
+  }
+}
+
+@custom-variant data-closed {
+
+  &:where([data-state="closed"]),
+  &:where([data-closed]:not([data-closed="false"])) {
+    @slot;
+  }
+}
+
+@custom-variant data-checked {
+
+  &:where([data-state="checked"]),
+  &:where([data-checked]:not([data-checked="false"])) {
+    @slot;
+  }
+}
+
+@custom-variant data-unchecked {
+
+  &:where([data-state="unchecked"]),
+  &:where([data-unchecked]:not([data-unchecked="false"])) {
+    @slot;
+  }
+}
+
+@custom-variant data-selected {
+  &:where([data-selected="true"]) {
+    @slot;
+  }
+}
+
+@custom-variant data-disabled {
+
+  &:where([data-disabled="true"]),
+  &:where([data-disabled]:not([data-disabled="false"])) {
+    @slot;
+  }
+}
+
+@custom-variant data-active {
+
+  &:where([data-state="active"]),
+  &:where([data-active]:not([data-active="false"])) {
+    @slot;
+  }
+}
+
+@custom-variant data-horizontal {
+  &:where([data-orientation="horizontal"]) {
+    @slot;
+  }
+}
+
+@custom-variant data-vertical {
+  &:where([data-orientation="vertical"]) {
+    @slot;
+  }
+}
+
+@utility no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* sonner (unstyled) — patches in two families. The first two are ported from
+   frappe-ui's ToastProvider.vue, needed because `unstyled` strips the
+   [data-styled] selectors sonner keys those behaviors on. The rest are ours
+   (upstream candidates), fixing sonner rules that unstyled does NOT strip:
+   the system font stack on the toaster, the dark close-button chip, and the
+   loader's absolute centering. (frappe-ui's bar-loader patches were dropped
+   when loading moved to our own Spinner via the Toaster `icons` prop.) */
+
+/* --initial-height is measured on mount (loading state). After a promise
+   resolves the toast grows (action button), so clamp to auto instead of the
+   stale measured value. Doubled attribute: outranks sonner's own rule with
+   the same selector, which would otherwise win ties when the package
+   stylesheet is injected after this file (dev). */
+[data-sonner-toast][data-mounted="true"][data-mounted="true"][data-expanded="true"] {
+  height: auto;
+}
+
+/* In the collapsed stack sonner clamps every non-front toast to the front
+   toast's height and hides their content — but only on [data-styled='true']
+   toasts, which `unstyled` strips. Without this, a multiline toast behind a
+   single-line one spills its extra lines out the top. */
+[data-sonner-toast][data-expanded="false"][data-front="false"]>* {
+  opacity: 0;
+}
+
+/* Sonner's toaster hardcodes a SYSTEM font stack — ungated, so it survives
+   unstyled mode and beats the InterVariable the portalled toaster would have
+   inherited from body. Toasts rendered in SF / Roboto / OEM fonts while the
+   app renders Inter; which font you got depended on the device. Doubled
+   attribute = the usual tie-break over sonner's own rule. */
+[data-sonner-toaster][data-sonner-toaster] {
+  /* inherit, not a token: the bug is sonner BLOCKING inheritance — restoring
+     it picks up body's InterVariable with no dependency on how the theme
+     emits its font variables. */
+  font-family: inherit;
+}
+
+/* Sonner's .sonner-loader centering is not gated on data-styled either: in
+   unstyled mode there is no positioned toast card to anchor to, so the loader
+   (which also wraps a custom `icons.loading`) rendered absolutely at the
+   toaster's top-left. Let it flow inside the icon slot instead, and hide it
+   fully when inactive — its default opacity-0 state would keep claiming flex
+   space beside the resolved toast's real icon. */
+[data-sonner-toast] .sonner-loader {
+  position: static;
+  transform: none;
+  /* Flex, not the default block: an inline svg child sits on the text
+     baseline and carries descender slack below it, which made the spinner
+     ride a few px high of center. Flex removes baseline participation and
+     centers the svg in the wrapper's box exactly. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+[data-sonner-toast] .sonner-loader[data-visible="false"] {
+  display: none;
+}
+
+/* Sonner's dark-theme close-button rule is NOT gated on data-styled, so it
+   survives unstyled mode and paints a near-black chip (background + border)
+   behind the ×. Neutralize it; the class map owns the button's look. The
+   hover is restated here because this file is unlayered and would otherwise
+   beat the class map's layered hover:bg utility — same token, same look.
+   The doubled [data-close-button] is deliberate: it lifts the specificity
+   above sonner's own equal-specificity rule, which wins ties because Vite
+   injects the package stylesheet AFTER this file in dev. */
+[data-sonner-toaster][data-sonner-theme="dark"] [data-sonner-toast] [data-close-button][data-close-button] {
+  background: transparent;
+  border-color: transparent;
+  /* The class map's text-ink-base, restated: this unlayered rule must set the
+     color itself or it overrides the layered utility with sonner's inherit.
+     ink-base flips to gray-950 in dark mode — dark × on the light card. */
+  color: var(--ink-base);
+}
+
+[data-sonner-toaster][data-sonner-theme="dark"] [data-sonner-toast] [data-close-button][data-close-button]:hover {
+  background: var(--surface-gray-8);
+  border-color: transparent;
+}
+
+/* Sonner's dark-theme description color is not gated on data-styled either:
+   it paints the description near-white, invisible on our INVERTED dark-mode
+   card (surface-gray-9 flips to a light card). Restate the class map's
+   text-ink-base, which flips with it. Doubled attribute = the usual
+   specificity tie-break over sonner's own rule. */
+[data-sonner-toaster][data-sonner-theme="dark"] [data-sonner-toast] [data-description][data-description] {
+  color: var(--ink-base);
+}
