@@ -5,7 +5,6 @@ import { cn } from "@lib/utils"
 import _ from "@lib/translate"
 import { Badge } from "@components/ui/badge"
 import { Button } from "@components/ui/button"
-import { Card } from "@components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@components/ui/dialog"
 import { Separator } from "@components/ui/separator"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip"
@@ -94,7 +93,7 @@ const FieldRow = ({ field, index, remove, doctype, update }: {
     const n = field.options ? field.options.split("\n").length : 0
 
     return (
-        <Card className={cn("p-3 md:p-2", field.do_not_ask_ai && "bg-surface-gray-3")}>
+        <div className={cn("rounded-md border border-outline-gray-2 p-3 md:p-2", field.do_not_ask_ai && "bg-surface-gray-3")}>
             <div className="flex items-start justify-between gap-4">
                 <div className="flex min-w-0 flex-col gap-1.5">
                     <div className="flex flex-wrap items-center gap-2">
@@ -135,7 +134,7 @@ const FieldRow = ({ field, index, remove, doctype, update }: {
                     </Button>
                 </div>
             </div>
-        </Card>
+        </div>
     )
 }
 
@@ -150,9 +149,9 @@ const AddDoctypeVariableDialog = ({ onAdd, doctype }: { onAdd: (data: VariableDa
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button type="button">{_("Add")}</Button>
+                <Button type="button" variant="subtle">{_("Add")}</Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-xl">
                 <DialogTitle>{_("Add Variable")}</DialogTitle>
                 <DialogDescription className="sr-only">{_("Add a new variable in the function.")}</DialogDescription>
                 <DoctypeVariableDialogForm doctype={doctype} onAdd={onAddField} />
@@ -180,7 +179,7 @@ const EditDoctypeVariableDialog = ({ onEdit, field, doctype }: {
                     <PencilIcon />
                 </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-xl">
                 <DialogTitle>{_("Edit Variable")}</DialogTitle>
                 <DialogDescription className="sr-only">{_("Edit variable - {0} in the function.", [field.fieldname])}</DialogDescription>
                 <DoctypeVariableDialogForm doctype={doctype} onAdd={onEditField} defaultValues={field} />

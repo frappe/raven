@@ -28,7 +28,9 @@ const AgentForm = ({ isEdit }: { isEdit?: boolean }) => {
 
     return (
         <Tabs value={tab} onValueChange={setTab}>
-            <TabsList>
+            {/* Scroll on a wrapper — the underline indicator hangs 1px below the list and a scroll container would clip it. */}
+            <div className="max-w-full overflow-x-auto">
+                <TabsList className="w-max min-w-full">
                 <TabsTrigger value="general">
                     <BotIcon /> {_("General")}
                 </TabsTrigger>
@@ -56,7 +58,8 @@ const AgentForm = ({ isEdit }: { isEdit?: boolean }) => {
                         <CodeIcon /> {_("API Docs")}
                     </TabsTrigger>
                 )}
-            </TabsList>
+                </TabsList>
+            </div>
             <TabsContent value="general" className="pt-4">
                 <AgentGeneralTab />
             </TabsContent>

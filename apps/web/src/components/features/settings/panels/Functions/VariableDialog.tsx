@@ -43,7 +43,7 @@ const VariableDialog = ({ defaultValues, onAdd, allowNameChange, name: defaultNa
 
     return (
         <div className="flex flex-col gap-4 pt-2">
-            <div className="flex max-h-[75vh] flex-col gap-4 overflow-y-auto">
+            <div className="flex flex-col gap-4">
                 <div className="grid grid-cols-2 gap-4">
                     <div className="flex flex-col gap-4">
                         <div className="flex flex-col gap-1.5">
@@ -119,6 +119,7 @@ const VariableDialog = ({ defaultValues, onAdd, allowNameChange, name: defaultNa
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
                         placeholder={_("Enter a description for this variable")}
+                        className="field-sizing-fixed h-16 min-h-16"
                     />
                 </div>
 
@@ -128,8 +129,8 @@ const VariableDialog = ({ defaultValues, onAdd, allowNameChange, name: defaultNa
                         <Textarea
                             id="enumValues"
                             name="enumValues"
-                            rows={7}
-                            className="resize-y"
+                            placeholder={_("Add options separated by a new line.")}
+                            className="field-sizing-fixed h-20 min-h-20"
                             value={enumValues.join("\n")}
                             onChange={(e) => setEnumValues(e.target.value.split("\n"))}
                         />

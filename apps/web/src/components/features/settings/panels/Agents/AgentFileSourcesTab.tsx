@@ -63,14 +63,14 @@ const AgentFileSourcesTab = () => {
                         //@ts-expect-error - append accepts a partial row; the rest are server-set defaults
                         onUpload={(id) => append({ file: id })}
                         trigger={
-                            <Button variant="outline" size="sm" type="button">
+                            <Button variant="subtle" size="sm" type="button">
                                 {_("Upload")}
                             </Button>
                         }
                     />
                     <Dialog open={selectOpen} onOpenChange={setSelectOpen}>
                         <DialogTrigger asChild>
-                            <Button size="sm" type="button" variant="outline">
+                            <Button size="sm" type="button" variant="subtle">
                                 {_("Select Files")}
                             </Button>
                         </DialogTrigger>

@@ -73,20 +73,22 @@ const REF_DOCTYPE_TEMPLATES: Record<string, { description: (dt: string) => strin
 /** Details form fields for a Raven AI Function — rendered inside the editor's FormProvider. */
 const FunctionDetailsTab = ({ isEdit }: { isEdit?: boolean }) => (
     <div className="flex flex-col gap-4">
-        <FunctionTypeField />
-        <ReferenceDoctypeField />
-        <DataField
-            name="function_name"
-            label={_("Name")}
-            isRequired
-            readOnly={isEdit}
-            rules={{
-                required: _("Name is required"),
-                validate: (value: string) => (!value.includes(" ") ? true : _("Name cannot contain spaces")),
-            }}
-            inputProps={{ placeholder: "get_purchase_invoice" }}
-            formDescription={_("This needs to be unique and cannot contain spaces.")}
-        />
+        <div className="grid items-start gap-4 md:grid-cols-2">
+            <FunctionTypeField />
+            <ReferenceDoctypeField />
+            <DataField
+                name="function_name"
+                label={_("Name")}
+                isRequired
+                readOnly={isEdit}
+                rules={{
+                    required: _("Name is required"),
+                    validate: (value: string) => (!value.includes(" ") ? true : _("Name cannot contain spaces")),
+                }}
+                inputProps={{ placeholder: "get_purchase_invoice" }}
+                formDescription={_("This needs to be unique and cannot contain spaces.")}
+            />
+        </div>
         <SmallTextField
             name="description"
             label={_("Description")}
@@ -125,34 +127,34 @@ const FunctionTypeField = () => {
     }
 
     return (
-        <>
-            <SelectFormField
-                name="type"
-                label={_("Type")}
-                isRequired
-                rules={{ required: _("Type is required"), onChange: onFunctionChange }}
-            >
-                <SelectGroup>
-                    <SelectLabel>{_("Standard")}</SelectLabel>
-                    {FUNCTION_TYPES.filter((f) => f.type === "Standard").map((f) => (
-                        <SelectItem value={f.value} key={f.value}>{f.value}</SelectItem>
-                    ))}
-                </SelectGroup>
-                <SelectGroup>
-                    <SelectLabel>{_("Miscellaneous")}</SelectLabel>
-                    {FUNCTION_TYPES.filter((f) => f.type === "Other").map((f) => (
-                        <SelectItem value={f.value} key={f.value}>{f.value}</SelectItem>
-                    ))}
-                </SelectGroup>
-                <SelectGroup>
-                    <SelectLabel>{_("Bulk Operations")}</SelectLabel>
-                    {FUNCTION_TYPES.filter((f) => f.type === "Bulk Operations").map((f) => (
-                        <SelectItem value={f.value} key={f.value}>{f.value}</SelectItem>
-                    ))}
-                </SelectGroup>
-            </SelectFormField>
-            <FunctionHelperText />
-        </>
+        <SelectFormField
+            name="type"
+            label={_("Type")}
+            isRequired
+            clearable
+            placeholder={_("Pick a function type")}
+            formDescription={<FunctionHelperText />}
+            rules={{ required: _("Type is required"), onChange: onFunctionChange }}
+        >
+            <SelectGroup>
+                <SelectLabel>{_("Standard")}</SelectLabel>
+                {FUNCTION_TYPES.filter((f) => f.type === "Standard").map((f) => (
+                    <SelectItem value={f.value} key={f.value}>{f.value}</SelectItem>
+                ))}
+            </SelectGroup>
+            <SelectGroup>
+                <SelectLabel>{_("Miscellaneous")}</SelectLabel>
+                {FUNCTION_TYPES.filter((f) => f.type === "Other").map((f) => (
+                    <SelectItem value={f.value} key={f.value}>{f.value}</SelectItem>
+                ))}
+            </SelectGroup>
+            <SelectGroup>
+                <SelectLabel>{_("Bulk Operations")}</SelectLabel>
+                {FUNCTION_TYPES.filter((f) => f.type === "Bulk Operations").map((f) => (
+                    <SelectItem value={f.value} key={f.value}>{f.value}</SelectItem>
+                ))}
+            </SelectGroup>
+        </SelectFormField>
     )
 }
 
@@ -161,11 +163,7 @@ const FunctionHelperText = () => {
     const type = useWatch<RavenAIFunction>({ name: "type" })
     const functionDef = FUNCTION_TYPES.find((f) => f.value === type)
 
-    return (
-        <p className="text-ink-gray-6 text-p-sm">
-            {functionDef ? functionDef.description : _("Select a function type from the dropdown above.")}
-        </p>
-    )
+    return functionDef ? functionDef.description : _("Select a function type from the dropdown above.")
 }
 
 /** Reference DocType link field, only for types that operate on a document. */
@@ -191,15 +189,16 @@ const ReferenceDoctypeField = () => {
         }
     }
 
-    if (!DOCUMENT_REF_FUNCTIONS.includes(type)) {
-        return null
-    }
+    // Disabled (not hidden) for types that don't operate on a document — keeps the grid stable.
+    const isDocRef = DOCUMENT_REF_FUNCTIONS.includes(type)
 
     return (
         <LinkFormField
             name="reference_doctype"
             label={_("Reference Doctype")}
+            clearable
             isRequired
+            disabled={!isDocRef}
             doctype="DocType"
             filters={[["istable", "=", 0], ["issingle", "=", 0]]}
             rules={{ required: _("Reference Doctype is required"), onChange: onReferenceDoctypeChange }}

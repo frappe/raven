@@ -37,7 +37,7 @@ const DoctypeVariableDialogForm = ({ doctype, onAdd, defaultValues }: {
     return (
         <Form {...methods}>
             <form onSubmit={methods.handleSubmit(onSubmit)}>
-                <div className="flex max-h-[75vh] flex-col gap-4 overflow-y-auto px-0.5">
+                <div className="flex flex-col gap-4">
                     <div className="flex flex-col gap-4">
                         <div className="grid grid-cols-2 gap-4">
                             <TableSelectionField doctype={doctype} />
@@ -113,6 +113,9 @@ const FieldSelectionField = ({ doctype }: { doctype: string }) => {
             name="fieldname"
             label={_("Field")}
             isRequired
+            placeholder={_("Select Field")}
+            dropdownClassName="max-w-[360px]"
+            dropdownAlign="end"
             rules={{
                 required: _("Field is required"),
                 onChange: (event) => onFieldSelect(event.target.value),
@@ -120,8 +123,8 @@ const FieldSelectionField = ({ doctype }: { doctype: string }) => {
         >
             {fields?.map((field) => (
                 <SelectItem key={field.fieldname} value={field.fieldname ?? ""}>
-                    <span>{field.label} ({field.fieldname})</span>
-                    <Badge variant="subtle" theme="gray">{field.fieldtype}</Badge>
+                    <span className="min-w-0 truncate">{field.label} ({field.fieldname})</span>
+                    <Badge variant="subtle" theme="gray" className="shrink-0">{field.fieldtype}</Badge>
                 </SelectItem>
             ))}
         </SelectFormField>
@@ -141,6 +144,7 @@ const OtherFormFields = () => {
                         name="type"
                         label={_("Variable Type")}
                         isRequired
+                        placeholder={_("Select a variable type")}
                         rules={{ required: _("Type is required") }}
                     >
                         <SelectItem value="string">{_("String")}</SelectItem>
@@ -166,7 +170,7 @@ const OtherFormFields = () => {
                 label={_("Description")}
                 isRequired
                 rules={{ required: true }}
-                inputProps={{ placeholder: _("Enter a description for this variable") }}
+                inputProps={{ placeholder: _("Enter a description for this variable"), className: "field-sizing-fixed h-16 min-h-16" }}
                 formDescription={_("This is used to describe what this variable is used for. A better description will help the AI Bot perform better.")}
             />
         </div>
@@ -186,16 +190,14 @@ const OptionsField = ({ doctype }: { doctype: string }) => {
             <SmallTextField
                 name="options"
                 label={_("Options")}
-                inputProps={{ rows: 5, placeholder: _("Add options separated by a new line.") }}
+                inputProps={{ placeholder: _("Add options separated by a new line."), className: "field-sizing-fixed h-20 min-h-20" }}
             />
             <p className="text-p-sm text-ink-gray-6">
                 {_("You can limit the values that the bot can fill in this field by adding options.")}
                 <br />
                 {_("This helps the bot to make less mistakes.")}
             </p>
-            <div className="pt-2">
-                {fieldname ? <OptionsAutoFill doctype={doctypeName} fieldname={fieldname} /> : null}
-            </div>
+            {fieldname ? <OptionsAutoFill doctype={doctypeName} fieldname={fieldname} /> : null}
         </div>
     )
 }

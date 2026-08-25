@@ -44,7 +44,7 @@ const AgentAITab = () => {
                     </AlertDescription>
                 </Alert>
             ) : (
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid items-start gap-4 md:grid-cols-2">
                     <ModelProviderSelector />
                     <ModelSelector />
                 </div>
@@ -64,7 +64,7 @@ const AgentAITab = () => {
 
             {isOpenAI && (
                 <>
-                    <div className="grid gap-4 md:grid-cols-2">
+                    <div className="grid items-start gap-4 md:grid-cols-2">
                         <DocLinkedSwitchFormField
                             name="enable_file_search"
                             label={_("Enable File Search")}
@@ -106,7 +106,7 @@ const AgentAITab = () => {
                 )}
             />
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid items-start gap-4 md:grid-cols-2">
                 <NumberSliderField
                     name="temperature"
                     label={_("Temperature")}
@@ -147,7 +147,7 @@ const DocLinkedSwitchFormField = ({ name, label, formDescription, docUrl, docTit
             control={control}
             name={name}
             render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between gap-4">
+                <FormItem className="flex flex-row items-start justify-between gap-4">
                     <div className="space-y-0.5">
                         <FormLabel className="flex items-center gap-1">
                             {label}
@@ -199,7 +199,8 @@ const NumberSliderField = ({ name, label, min, max, formDescription }: NumberSli
             control={control}
             name={name}
             render={({ field }) => (
-                <div className="flex flex-col gap-2">
+                // overflow-x-clip: the thumb ring overhangs the track at the extremes.
+                <div className="flex flex-col gap-2 overflow-x-clip">
                     <div className="flex items-center justify-between">
                         <span className="text-p-sm-medium text-ink-gray-7">
                             {label}{" "}

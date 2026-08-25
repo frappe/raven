@@ -56,7 +56,7 @@ const VariableBuilder = () => {
                         <span className="text-sm font-medium">{_("JSON")}</span>
                     </div>
                     {viewMode === "json" && (
-                        <Button type="button" variant="outline" onClick={formatJSON}>{_("Format JSON")}</Button>
+                        <Button type="button" variant="subtle" onClick={formatJSON}>{_("Format JSON")}</Button>
                     )}
                 </div>
                 {error && <p className="text-sm text-ink-red-9">{error}</p>}
@@ -211,9 +211,9 @@ const AddVariableDialog = ({ onAdd }: { onAdd: (name: string, property: Partial<
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
-                <Button type="button" variant="outline">{_("Add Variable")}</Button>
+                <Button type="button" variant="subtle">{_("Add Variable")}</Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-xl">
                 <DialogTitle>{_("Add Variable")}</DialogTitle>
                 <DialogDescription>{_("Add a new variable to your function schema.")}</DialogDescription>
                 <VariableDialog onAdd={onSubmit} allowNameChange={true} />
@@ -235,7 +235,7 @@ const EditVariableDialog = ({ variable, onSubmit, isOpen, onOpenChange }: {
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent>
+            <DialogContent className="sm:max-w-xl">
                 <DialogTitle>{_("Edit Variable")}</DialogTitle>
                 <DialogDescription className="sr-only">{_("Edit the variable in your function schema.")}</DialogDescription>
                 <VariableDialog
