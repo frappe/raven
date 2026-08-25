@@ -128,7 +128,7 @@ export const VariableTooltip = ({ text, withoutJinja = false }: { text: string, 
             }
         }}>
             <TooltipTrigger asChild>
-                <code role="button" onClick={copyText} aria-label={_("Copy to clipboard")} className="cursor-pointer rounded bg-surface-gray-2 px-1.5 py-0.5 text-base md:text-sm">
+                <code role="button" tabIndex={0} onClick={copyText} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); copyText() } }} aria-label={_("Copy to clipboard")} className="cursor-pointer rounded bg-surface-gray-2 px-1.5 py-0.5 text-base md:text-sm">
                     {text}
                 </code>
             </TooltipTrigger>
@@ -214,11 +214,12 @@ const ImportTemplate = () => {
     const [selectedTemplate, setSelectedTemplate] = useState("")
 
     const onSelectTemplate = (type: "replace" | "append") => {
+        const opts = { shouldDirty: true, shouldValidate: true }
         if (type === "replace") {
-            setValue("instruction", selectedTemplate)
+            setValue("instruction", selectedTemplate, opts)
         } else {
             const current = getValues("instruction")
-            setValue("instruction", current ? `${current}\n${selectedTemplate}` : selectedTemplate)
+            setValue("instruction", current ? `${current}\n${selectedTemplate}` : selectedTemplate, opts)
         }
     }
 

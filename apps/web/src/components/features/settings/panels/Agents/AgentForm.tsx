@@ -60,7 +60,7 @@ const AgentForm = ({ isEdit }: { isEdit?: boolean }) => {
                 )}
                 </TabsList>
             </div>
-            <TabsContent value="general" className="pt-4">
+            <TabsContent value="general" forceMount className="pt-4 data-[state=inactive]:hidden">
                 <AgentGeneralTab />
             </TabsContent>
             <TabsContent value="ai" forceMount className="pt-4 data-[state=inactive]:hidden">

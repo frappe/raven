@@ -14,6 +14,7 @@ import { useRavenSettings } from "@hooks/fetchers/useRavenSettings"
 import type { RavenBot } from "@raven/types/RavenBot/RavenBot"
 import type { ExistingProcessor } from "../DocumentProcessors/DocumentProcessors"
 import _ from "@lib/translate"
+import { isProcessorActive } from "../ai/processorState"
 
 interface ExistingProcessorsResponse {
     message: ExistingProcessor[]
@@ -157,8 +158,8 @@ const AgentDocumentProcessorsTab = () => {
                                                             <span className="text-base font-medium text-ink-gray-8 md:text-sm">
                                                                 {processor.display_name}
                                                             </span>
-                                                            <Badge variant="subtle" theme={processor.state ? "green" : "red"}>
-                                                                {processor.state ? _("Active") : _("Inactive")}
+                                                            <Badge variant="subtle" theme={isProcessorActive(processor.state) ? "green" : "red"}>
+                                                                {isProcessorActive(processor.state) ? _("Active") : _("Inactive")}
                                                             </Badge>
                                                         </div>
                                                         <span className="text-base text-ink-gray-6 md:text-sm">{processor.type}</span>

@@ -10,6 +10,7 @@ import LinkFieldCombobox from "@components/common/LinkFieldComboBox/LinkFieldCom
 import { settingsDialogOpenTab } from "@components/features/settings/settingsDialogAtom"
 import type { RavenBot } from "@raven/types/RavenBot/RavenBot"
 import _ from "@lib/translate"
+import { errorResponseToast } from "@components/ui/error-banner"
 
 interface FunctionFields {
     message: { type?: string; description?: string }
@@ -37,7 +38,7 @@ const AgentFunctionsTab = () => {
             append({ function: selectedFunction, type: message?.type, description: message?.description })
             setSelectedFunction("")
             setPopoverOpen(false)
-        })
+        }).catch((error) => errorResponseToast(_("Could not add function"), error))
     }
 
     return (

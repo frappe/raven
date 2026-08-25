@@ -101,13 +101,14 @@ const VariableBuilderField = ({ json, onChange, isNested }: { json: ObjectVariab
     const properties: Record<string, VariableType> = json.properties ?? {}
 
     const addVariable = (name: string, newProperty: Partial<VariableType>, required?: boolean) => {
-        let newRequired = json.required ?? []
+        // undefined = leave membership as-is (nested-object edits pass no `required`).
+        let newRequired = [...(json.required ?? [])]
 
-        if (required && !inList(json.required ?? [], name)) {
+        if (required === true && !inList(newRequired, name)) {
             newRequired.push(name)
         }
 
-        if (!required && inList(json.required ?? [], name)) {
+        if (required === false && inList(newRequired, name)) {
             newRequired = newRequired.filter((n) => n !== name)
         }
 

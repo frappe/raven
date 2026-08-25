@@ -58,7 +58,8 @@ const Create = <T extends FieldValues>({
         onSaved?.(doc.name)
     }
 
-    useSaveHotkey(() => handleSubmit(onSubmit)())
+    // Guard: ⌘S auto-repeat would fire handleSubmit again mid-create and duplicate the record.
+    useSaveHotkey(() => { if (!loading) handleSubmit(onSubmit)() })
 
     return (
         <Form {...methods}>
@@ -122,7 +123,7 @@ const DetailContent = <T extends FieldValues>({
         await globalMutate(listKey)
     }
 
-    useSaveHotkey(() => handleSubmit(onSubmit)())
+    useSaveHotkey(() => { if (!loading) handleSubmit(onSubmit)() })
 
     return (
         <Form {...methods}>

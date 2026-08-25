@@ -41,7 +41,7 @@ export const RecordActionsMenu = ({
             toast.success(deleteSuccessMessage ?? _("Deleted"))
             setDeleteOpen(false)
             onDeleted()
-        })
+        }).catch(() => { /* surfaced by the error banner */ })
     }
 
     return (
@@ -73,7 +73,7 @@ export const RecordActionsMenu = ({
                         <AlertDialogCancel disabled={loading}>{_("Cancel")}</AlertDialogCancel>
                         <Button variant="solid" theme="red" disabled={loading} onClick={onDelete}>
                             {loading && <Spinner />}
-                            {loading ? _("Deleting...") : _("Delete")}
+                            {loading ? _("Deleting") : _("Delete")}
                         </Button>
                     </AlertDialogFooter>
                 </AlertDialogContent>

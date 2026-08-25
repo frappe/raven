@@ -156,6 +156,7 @@ const SelectExistingFiles = ({ existingFiles, onAdd }: { existingFiles: string[]
         "Raven AI File Source",
         {
             fields: ["name", "file_name", "file_type", "file"],
+            limit: 0, // frappe-react-sdk drops a falsy limit → no cap
         },
         "agent-select-file-sources",
         { revalidateOnFocus: false },

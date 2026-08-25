@@ -17,6 +17,7 @@ import { Spinner } from "@components/ui/spinner"
 import { isRavenSettingsAdmin } from "../AdminSettingsForm"
 import { useRavenSettings } from "@hooks/fetchers/useRavenSettings"
 import AINotEnabledCallout from "../ai/AINotEnabledCallout"
+import { isProcessorActive } from "../ai/processorState"
 import GoogleAPINotEnabledCallout from "../ai/GoogleAPINotEnabledCallout"
 import ProcessorTypeSelector from "./ProcessorTypeSelector"
 import _ from "@lib/translate"
@@ -56,7 +57,7 @@ const DocumentProcessors = () => {
     } = useFrappeGetCall<{ message: ExistingProcessor[] }>(
         "raven.ai.google_ai.get_list_of_processors",
         undefined,
-        undefined,
+        isAdmin && ravenSettings?.enable_google_apis === 1 ? undefined : null,
         { revalidateOnFocus: false },
     )
     const { call: createProcessor, loading: creating } = useFrappePostCall(
@@ -222,10 +223,10 @@ const ExistingProcessorsList = ({
                                 <span className="truncate text-p-sm text-ink-gray-6">{processor.type}</span>
                                 <Badge
                                     variant="subtle"
-                                    theme={processor.state ? "green" : "red"}
+                                    theme={isProcessorActive(processor.state) ? "green" : "red"}
                                     className="self-start"
                                 >
-                                    {processor.state ? _("Active") : _("Inactive")}
+                                    {isProcessorActive(processor.state) ? _("Active") : _("Inactive")}
                                 </Badge>
                             </div>
                         ))}
@@ -239,7 +240,7 @@ const ExistingProcessorsList = ({
                             <AlertDialogHeader>
                                 <AlertDialogTitle>{_("Delete Processor")}</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                    {_("Are you sure you want to delete")} <strong>{processorToDelete?.display_name}</strong>?
+                                    {_("Are you sure you want to delete {0}?", [processorToDelete?.display_name ?? ""])}
                                     <br />
                                     <span className="text-p-sm text-ink-gray-6">
                                         {_("This will permanently remove the processor from your Google Cloud project. Any agents currently using this document processor will no longer be able to use it.")}

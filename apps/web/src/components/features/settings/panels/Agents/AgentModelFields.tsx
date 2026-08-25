@@ -69,7 +69,7 @@ const ModelSelector = () => {
     const { data: openaiModels } = useFrappeGetCall<{ message: string[] }>(
         "raven.api.ai_features.get_openai_available_models",
         undefined,
-        modelProvider === "OpenAI" || !modelProvider ? undefined : null,
+        isAiBot && (modelProvider === "OpenAI" || !modelProvider) ? undefined : null,
         { revalidateOnFocus: false, revalidateIfStale: false }
     )
 
@@ -85,7 +85,7 @@ const ModelSelector = () => {
     if (!isAiBot) return null
 
     const models: string[] = modelProvider === "Local LLM" ? localModels : openaiModels?.message || []
-    const defaultModel = modelProvider === "Local LLM" ? localModels[0] || "default-model" : "gpt-4o"
+    const defaultModel = modelProvider === "Local LLM" ? localModels[0] || "" : "gpt-4o"
     const validModels = models.filter((model) => model && model.trim() !== "")
 
     return (
