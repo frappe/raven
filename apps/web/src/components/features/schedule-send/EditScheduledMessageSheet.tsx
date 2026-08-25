@@ -29,7 +29,7 @@ type EditScheduledMessageSheetProps = {
  * editor. Dismissing the sheet cancels the edit.
  */
 export const EditScheduledMessageSheet = ({ row, open, onOpenChange, onDone }: EditScheduledMessageSheetProps) => {
-    const { editor, date, setDate, time, setTime, allTimeOptions, picked, canSave, loading, onSave, linkSignal, onLinkConsumed } =
+    const { editor, date, setDate, time, setTime, allTimeOptions, picked, pastPick, canSave, loading, onSave, linkSignal, onLinkConsumed } =
         useScheduledMessageEdit(row, { onDone, onCancel: () => onOpenChange(false) })
 
     // repositionInputs={false}: vaul's keyboard handling would shrink the sheet
@@ -98,7 +98,11 @@ export const EditScheduledMessageSheet = ({ row, open, onOpenChange, onDone }: E
                                 </SelectContent>
                             </Select>
                         </div>
-                        <p className="text-p-sm text-ink-gray-5">{formatDateTimeLabel(picked)}</p>
+                        {/* Clock race: the picked time can pass while the editor sits
+                            open — say why Save is off instead of silently disabling it. */}
+                        <p className={pastPick ? "text-p-sm text-ink-red-5" : "text-p-sm text-ink-gray-5"}>
+                            {pastPick ? _("Delivery time is in the past") : formatDateTimeLabel(picked)}
+                        </p>
                     </div>
                 </div>
                 <DrawerFooter className="flex-row gap-2 [&>*]:flex-1">

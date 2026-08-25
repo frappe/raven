@@ -140,7 +140,7 @@ const Profile = () => {
                                 label={_("Scheduled messages")}
                                 trailing={
                                     <span className="flex items-center gap-2">
-                                        <span className="h-4 min-w-4 px-1 flex items-center justify-center rounded-full bg-surface-red-6 text-ink-base dark:text-ink-red-1 text-[10px] leading-none">
+                                        <span className="h-4 min-w-4 px-1 flex items-center justify-center rounded-full bg-surface-gray-6 text-ink-base text-[10px] leading-none">
                                             {scheduledCount > 9 ? "9+" : scheduledCount}
                                         </span>
                                         <ChevronRight className="size-4" />

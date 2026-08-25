@@ -1,4 +1,5 @@
 import { useState } from "react"
+import dayjs from "dayjs"
 import { CalendarIcon } from "lucide-react"
 import { Button } from "@components/ui/button"
 import { Calendar } from "@components/ui/calendar"
@@ -28,7 +29,8 @@ export const DatePickerPopover = ({ value, onChange, size = "sm", className }: D
     const commitTyped = (raw: string) => {
         setText(raw)
         const parsed = parseTypedDate(raw)
-        if (parsed) onChange(parsed)
+        // Same floor as the calendar's disabled days — typed past dates don't commit.
+        if (parsed && !dayjs(parsed).isBefore(dayjs(), "day")) onChange(parsed)
     }
 
     return (

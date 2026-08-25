@@ -1,6 +1,6 @@
 import { forwardRef, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
 import { EditorContent, useEditorState } from "@tiptap/react"
-import { FrappeConfig, FrappeContext } from "frappe-react-sdk"
+import { FrappeConfig, FrappeContext, useSWRConfig } from "frappe-react-sdk"
 import { useAtom, useAtomValue, useSetAtom } from "jotai"
 import { selectAtom } from "jotai/utils"
 import { useDebounceCallback } from "usehooks-ts"
@@ -18,6 +18,7 @@ import { useQuietSendMode } from "@hooks/useQuietHours"
 import { linkifyBeforeSend } from "@components/features/editor/linkifyOnSend"
 import { EditorFormattingToolbar } from "@components/features/editor/EditorFormattingToolbar"
 import { ScheduleSendDialog } from "@components/features/schedule-send/ScheduleSendDialog"
+import { SCHEDULED_MESSAGES_KEY } from "@components/features/schedule-send/ScheduledMessagesList"
 import type { SchedulePick } from "@lib/timeUtils"
 import { ReplyPreviewBanner } from "./ReplyPreviewBanner"
 import { MentionWarningBanner } from "./MentionWarningBanner"
@@ -255,6 +256,7 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
 
     const [scheduleOpen, setScheduleOpen] = useState(false)
     const [scheduleBusy, setScheduleBusy] = useState(false)
+    const { mutate: mutateSWR } = useSWRConfig()
 
     /** Schedule the composed text for later. Plain POST — no optimistic bubble, no
      *  outbox: nothing should appear in the stream until the server delivers it. */
@@ -273,13 +275,15 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
             persistDraft.cancel()
             saveDraft(channelID, "")
             stopTyping()
+            // Badge + list revalidate NOW — the realtime nudge can lag behind our own action.
+            mutateSWR((key) => typeof key === "string" && key.startsWith(SCHEDULED_MESSAGES_KEY))
             toast.success(_("Scheduled for {0}", [pick.label]))
             if (!isMobile) editor.commands.focus()
         }).catch((error) => {
             // Composer content is untouched — the user can retry or send normally.
             errorResponseToast(_("Could not schedule your message"), error)
         }).finally(() => setScheduleBusy(false))
-    }, [editor, call, channelID, persistDraft, stopTyping, isMobile])
+    }, [editor, call, channelID, persistDraft, stopTyping, isMobile, mutateSWR])
 
     // Quiet hours: in "auto" mode every send defaults to silent (the send
     // button advertises it and offers the loud override) — resolved HERE, the

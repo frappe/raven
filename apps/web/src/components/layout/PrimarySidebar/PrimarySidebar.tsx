@@ -121,7 +121,8 @@ const ScheduledMessagesButton = () => {
             <button type="button" aria-label={_("Scheduled Messages")} onClick={() => setOpen(true)}>
                 <IconBox title={_("Scheduled Messages")}>
                     <CalendarClockIcon />
-                    <UnreadBadge count={count} />
+                    {/* Gray, not red — a scheduled count is informational, not attention-seeking. */}
+                    <UnreadBadge count={count} theme="gray" />
                 </IconBox>
             </button>
             <ScheduledMessagesDialog open={open} onOpenChange={setOpen} />
@@ -156,14 +157,19 @@ const ActivePill = ({ isActive }: { isActive?: boolean }) => {
     )} />
 }
 
-const UnreadBadge = ({ count }: { count?: number }) => {
+const UnreadBadge = ({ count, theme = "red" }: { count?: number, theme?: "red" | "gray" }) => {
 
     if (!count || count === 0) return null
 
     // Pill, not a fixed circle: a single digit stays circular (min-w == height),
     // but "9+" / two digits grow horizontally with px-1 so the glyphs aren't
     // crushed against the boundary. h-4 keeps the cap height stable either way.
-    return <span className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 flex items-center justify-center rounded-full bg-surface-red-6 dark:bg-surface-red-6 text-ink-base dark:text-ink-red-1 text-[10px] leading-none">
+    return <span className={cn(
+        "absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 flex items-center justify-center rounded-full text-[10px] leading-none",
+        theme === "red"
+            ? "bg-surface-red-6 dark:bg-surface-red-6 text-ink-base dark:text-ink-red-1"
+            : "bg-surface-gray-6 text-ink-base",
+    )}>
         {count > 9 ? "9+" : count}
     </span>
 

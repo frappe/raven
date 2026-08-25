@@ -4,9 +4,6 @@ import { XIcon } from "lucide-react"
 
 import { Dialog, DialogContent, DialogTitle } from "@components/ui/dialog"
 import { Button } from "@components/ui/button"
-import { ChannelFilter } from "@components/common/filters/ChannelFilter"
-import { useChannelList } from "@stores/channels/useChannelList"
-import { useUsers } from "@hooks/useUsers"
 import ScheduledMessagesList, { SCHEDULED_MESSAGES_KEY } from "./ScheduledMessagesList"
 import _ from "@lib/translate"
 
@@ -21,17 +18,9 @@ type ScheduledMessagesDialogProps = {
  */
 const ScheduledMessagesDialog = ({ open, onOpenChange }: ScheduledMessagesDialogProps) => {
     const [editingRowId, setEditingRowId] = useState<string | null>(null)
-    const [channel, setChannel] = useState("*all")
 
-    const { channels, dmChannels } = useChannelList()
-    const users = useUsers()
-
-    // A mutation can land in ANY of the list's per-channel SWR keys
-    // (`scheduled-messages-${channel}`), and the current one depends on the filter
-    // above — so revalidate every key under the prefix (SWR ≥ 2 supports a matcher).
-    // The realtime event also refreshes the list, but this covers the user's own action.
-    // The sidebar badge's count key (`scheduled-messages-count`) shares the prefix,
-    // so the matcher revalidates it too.
+    // Prefix matcher: revalidates the list key AND the sidebar badge's count key
+    // (`scheduled-messages-count`) in one go after the user's own mutations.
     const { mutate } = useSWRConfig()
     const refreshList = () => {
         mutate((key) => typeof key === "string" && key.startsWith(SCHEDULED_MESSAGES_KEY))
@@ -84,28 +73,10 @@ const ScheduledMessagesDialog = ({ open, onOpenChange }: ScheduledMessagesDialog
                     >
                         <XIcon />
                     </Button>
-                    <div className="px-8 pb-4 shrink-0">
-                        <ChannelFilter
-                            channels={channels}
-                            dmChannels={dmChannels}
-                            users={users}
-                            value={channel}
-                            onValueChange={setChannel}
-                            allLabel={_('Any Channel')}
-                            // w-fit: same as the mobile page — a block container would
-                            // stretch the flex wrapper full-row and strand the inline
-                            // clear button at the panel's right edge.
-                            className="w-fit shrink-0"
-                            triggerClassName="w-50"
-                            modal
-                        />
-                    </div>
-                    {/* px-4: card rows carry px-2 outer + px-2 inner, so their text
-                        lands at 32px — flush with the px-8 header band — while the
-                        hover pill stays visually inset. */}
+                    {/* px-6 + the cards' own px-2 wrapper puts the hover pill at 32px,
+                        flush with the px-8 header band. */}
                     <div className="flex-1 min-h-0 px-6 pb-6">
                         <ScheduledMessagesList
-                            channel={channel}
                             editingRowId={editingRowId}
                             onEditingChange={setEditingRowId}
                             onRowSaved={() => { refreshList(); setEditingRowId(null) }}

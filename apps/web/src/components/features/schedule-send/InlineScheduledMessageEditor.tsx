@@ -28,7 +28,7 @@ type InlineScheduledMessageEditorProps = {
  */
 export const InlineScheduledMessageEditor = ({ row, onDone, onCancel }: InlineScheduledMessageEditorProps) => {
     const isMobile = useIsMobile()
-    const { editor, date, setDate, time, setTime, allTimeOptions, picked, canSave, loading, onSave, linkSignal, onLinkConsumed } =
+    const { editor, date, setDate, time, setTime, allTimeOptions, picked, pastPick, canSave, loading, onSave, linkSignal, onLinkConsumed } =
         useScheduledMessageEdit(row, { onDone, onCancel })
 
     return (
@@ -69,7 +69,11 @@ export const InlineScheduledMessageEditor = ({ row, onDone, onCancel }: InlineSc
                                     ))}
                                 </SelectContent>
                             </Select>
-                            <span className="text-p-sm text-ink-gray-5">{formatDateTimeLabel(picked)}</span>
+                            {/* Clock race: the picked time can pass while the editor sits
+                                open — say why Save is off instead of silently disabling it. */}
+                            <span className={pastPick ? "text-p-sm text-ink-red-5" : "text-p-sm text-ink-gray-5"}>
+                                {pastPick ? _("Delivery time is in the past") : formatDateTimeLabel(picked)}
+                            </span>
                         </div>
                         <div className="flex items-center md:justify-start justify-end gap-2">
                             <span className="mr-auto px-1 text-xs text-ink-gray-4 hidden md:block">{_("Esc to cancel")}</span>

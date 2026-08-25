@@ -1,16 +1,17 @@
-import { useContext, useEffect, useRef } from "react"
+import { useContext, useEffect, useMemo, useRef } from "react"
 import { Virtuoso } from "react-virtuoso"
 import {
     FrappeConfig, FrappeContext, useFrappeGetCall, useFrappeEventListener,
     useFrappeDeleteDoc,
 } from "frappe-react-sdk"
+import dayjs, { Dayjs } from "dayjs"
 import { CalendarClockIcon } from "lucide-react"
 import ErrorBanner, { errorResponseToast } from "@components/ui/error-banner"
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@components/ui/empty"
 import { MessageListSkeleton } from "@components/features/dm-channel/DirectMessagePageSkeleton"
 import { useMessageRowLookups } from "@hooks/useMessageRowLookups"
-import { useUserCookieData } from "@hooks/useUserCookieData"
 import { useIsMobile } from "@hooks/use-mobile"
+import { fromServerDatetime } from "@lib/timeUtils"
 import { toast } from "sonner"
 import _ from "@lib/translate"
 import { EditScheduledMessageSheet } from "./EditScheduledMessageSheet"
@@ -26,12 +27,21 @@ export type ScheduledMessageRow = {
     error?: string
 }
 
-/** SWR key prefix for the scheduled-messages list (keyed per channel filter). */
+/** SWR key prefix shared by the list and the count badge. */
 export const SCHEDULED_MESSAGES_KEY = "scheduled-messages"
 
+/** Day-group header for a delivery time; the card itself shows only the time. */
+const groupLabel = (time: Dayjs, now: Dayjs) => {
+    if (time.isSame(now, "day")) return _("Today")
+    if (time.isSame(now.add(1, "day"), "day")) return _("Tomorrow")
+    return time.format(time.year() === now.year() ? "ddd, MMM D" : "ddd, MMM D, YYYY")
+}
+
+type ListItem =
+    | { type: "header", label: string }
+    | { type: "row", row: ScheduledMessageRow }
+
 type ScheduledMessagesListProps = {
-    /** Channel filter value; "*all" means no filter. */
-    channel: string
     /** Name of the row currently being edited inline (null = none) — lives in the
      *  parent so it survives Virtuoso unmounting rows. */
     editingRowId: string | null
@@ -44,15 +54,16 @@ type ScheduledMessagesListProps = {
 }
 
 /**
- * Virtualized list of the user's pending + failed scheduled messages.
- * Desktop edits inline in the card; mobile edits in a sheet hosted here,
- * outside the virtualizer, so row recycling can't unmount a mid-edit editor.
+ * Virtualized list of the user's pending + failed scheduled messages, grouped
+ * by delivery day (Today / Tomorrow / date). Desktop edits inline in the card;
+ * mobile edits in a sheet hosted here, outside the virtualizer, so row
+ * recycling can't unmount a mid-edit editor.
  */
-const ScheduledMessagesList = ({ channel, editingRowId, onEditingChange, onRowSaved, refresh }: ScheduledMessagesListProps) => {
+const ScheduledMessagesList = ({ editingRowId, onEditingChange, onRowSaved, refresh }: ScheduledMessagesListProps) => {
     const { data, error, isLoading } = useFrappeGetCall<{ message: ScheduledMessageRow[] }>(
         "raven.api.scheduled_message.get_scheduled_messages",
-        channel === "*all" ? undefined : { channel_id: channel },
-        `${SCHEDULED_MESSAGES_KEY}-${channel}`,
+        undefined,
+        `${SCHEDULED_MESSAGES_KEY}-list`,
     )
     // A refetch-driven reflow would unmount a mid-edit row (its unsaved state
     // lives there) — defer realtime refetches until editing ends.
@@ -77,13 +88,25 @@ const ScheduledMessagesList = ({ channel, editingRowId, onEditingChange, onRowSa
     const { deleteDoc } = useFrappeDeleteDoc()
 
     const isMobile = useIsMobile()
-    // A scheduled message is always the current user's own.
-    const { name: currentUser } = useUserCookieData()
-    const { usersById, channelById, dmById } = useMessageRowLookups()
-    const currentUserData = usersById.get(currentUser)
+    const { usersById, channelById, dmById, workspaceById } = useMessageRowLookups()
 
-    // API returns Scheduled + Failed only.
+    // API returns Scheduled + Failed only, ordered by scheduled_time — so a
+    // single pass emits a header wherever the day changes.
     const rows = data?.message ?? []
+    const items = useMemo(() => {
+        const now = dayjs()
+        const out: ListItem[] = []
+        let lastLabel: string | null = null
+        for (const row of rows) {
+            const label = groupLabel(fromServerDatetime(row.scheduled_time), now)
+            if (label !== lastLabel) {
+                out.push({ type: "header", label })
+                lastLabel = label
+            }
+            out.push({ type: "row", row })
+        }
+        return out
+    }, [data])
 
     // Can vanish via realtime while the sheet is open — the sheet then unmounts.
     const editingRow = rows.find((row) => row.name === editingRowId)
@@ -126,21 +149,31 @@ const ScheduledMessagesList = ({ channel, editingRowId, onEditingChange, onRowSa
     return (
         <>
         <Virtuoso
-            data={rows}
+            data={items}
             style={{ height: '100%' }}
-            initialItemCount={Math.min(rows.length, 10)}
+            initialItemCount={Math.min(items.length, 10)}
             increaseViewportBy={{ top: 600, bottom: 600 }}
-            computeItemKey={(_idx, row) => row?.name ?? _idx}
-            itemContent={(_idx, row) => {
-                if (!row) return null
+            computeItemKey={(_idx, item) =>
+                item ? (item.type === "header" ? `header-${item.label}` : item.row.name) : _idx}
+            itemContent={(_idx, item) => {
+                if (!item) return null
+                if (item.type === "header") {
+                    // px-5 lines the label up with card content (px-2 wrapper + border + px-3).
+                    return (
+                        <div className="px-5 pt-3 pb-1 text-sm font-medium text-ink-gray-5">
+                            {item.label}
+                        </div>
+                    )
+                }
+                const { row } = item
                 const channelData = channelById.get(row.channel_id)
                 const dmChannel = dmById.get(row.channel_id)
                 const peer = dmChannel ? usersById.get(dmChannel.peer_user_id) : undefined
                 return (
                     <ScheduledMessageCard
                         row={row}
-                        user={currentUserData}
                         channel={channelData}
+                        workspace={channelData?.workspace ? workspaceById.get(channelData.workspace) : undefined}
                         dmChannel={dmChannel}
                         peer={peer}
                         onSendNow={sendNow}

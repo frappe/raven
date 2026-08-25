@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from "react"
 import {
-    CalendarClockIcon, Edit3Icon, EllipsisVerticalIcon, MessageSquareMore, SendHorizontalIcon, Trash2Icon,
+    Edit3Icon, EllipsisIcon, MessageSquareMore, MoonIcon, SendHorizontalIcon, SunIcon, Trash2Icon,
 } from "lucide-react"
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@components/ui/dropdown-menu"
+import {
+    ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger,
+} from "@components/ui/context-menu"
 import {
     AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -13,24 +16,25 @@ import { Drawer, DrawerContent, DrawerTitle } from "@components/ui/drawer"
 import { Badge } from "@components/ui/badge"
 import { Button } from "@components/ui/button"
 import { MessageBody } from "@components/features/message/renderers/MessageContent"
-import { UserAvatar } from "@components/features/message/UserAvatar"
+import { useMessageTimes } from "@components/features/message/renderers/MessageRow"
 import { ChannelIcon } from "@components/common/ChannelIcon/ChannelIcon"
 import { useIsMobile } from "@hooks/use-mobile"
 import { cn } from "@lib/utils"
 import _ from "@lib/translate"
 import { DRAWER_EXIT_MS } from "@utils/drawer"
-import { fromServerDatetime, formatDateTimeLabel } from "@lib/timeUtils"
+import { fromServerDatetime } from "@lib/timeUtils"
 import { InlineScheduledMessageEditor } from "./InlineScheduledMessageEditor"
 import type { ScheduledMessageRow } from "./ScheduledMessagesList"
 import type { ChannelListItem, DMChannelListItem } from "@raven/types/common/ChannelListItem"
+import type { WorkspaceFields } from "@hooks/useWorkspaces"
 import type { UserData } from "@db"
 
 type ScheduledMessageCardProps = {
     row: ScheduledMessageRow
-    /** Author — always the current user, resolved by the list. */
-    user?: UserData
     /** Channel context — non-null for channel messages. */
     channel?: ChannelListItem
+    /** The channel's workspace, for the context band. */
+    workspace?: WorkspaceFields
     /** DM channel context — non-null for DM messages. */
     dmChannel?: DMChannelListItem
     /** Peer user when the message lives in a DM. */
@@ -46,18 +50,23 @@ type ScheduledMessageCardProps = {
 }
 
 /**
- * One scheduled message as a message card (MessageResultBlock's markup — its
- * props can't express a scheduled row). Desktop: dropdown menu, Edit swaps the
+ * One scheduled message: bordered box with a grey context band (time ·
+ * destination · kebab) over the body — ChatInput's reply-banner anatomy. The
+ * list's day headers carry the date. Desktop: dropdown menu, Edit swaps the
  * body for the inline editor. Mobile: tapping the row opens an action sheet,
  * Edit opens a sheet hosted by the list. Send now / Delete confirm first.
  */
 
 export const ScheduledMessageCard = ({
-    row, user, channel, dmChannel, peer, onSendNow, editingRowId, onEditingChange, onRowSaved, onDelete,
+    row, channel, workspace, dmChannel, peer, onSendNow, editingRowId, onEditingChange, onRowSaved, onDelete,
 }: ScheduledMessageCardProps) => {
     const isMobile = useIsMobile()
     const isFailed = row.status === "Failed"
     const isEditing = row.name === editingRowId
+    // Delivery time in the user's 12/24h preference; sun/moon marks day (06–18) vs night.
+    const { shortTime } = useMessageTimes(row.scheduled_time)
+    const deliveryHour = fromServerDatetime(row.scheduled_time).hour()
+    const DayNightIcon = deliveryHour >= 6 && deliveryHour < 18 ? SunIcon : MoonIcon
     const peerName = peer?.full_name ?? dmChannel?.peer_user_id ?? ""
     // Resolved destination label for the send-now confirmation (channel / DM peer).
     const channelLabel = channel ? channel.channel_name : peerName
@@ -85,43 +94,79 @@ export const ScheduledMessageCard = ({
         onContextMenu: (event: React.MouseEvent<HTMLDivElement>) => event.preventDefault(),
     } : {}
 
+    // One source for the kebab dropdown AND the right-click menu.
+    const actions = [
+        { icon: SendHorizontalIcon, label: _("Send now"), onClick: () => setSendNowOpen(true) },
+        { icon: Edit3Icon, label: _("Edit"), onClick: () => onEditingChange(row.name) },
+        { icon: Trash2Icon, label: _("Delete"), onClick: () => setDeleteOpen(true), destructive: true },
+    ]
+
     return (
-        <div className="px-2 py-0.5">
+        <div className="px-2 py-1">
+        <ContextMenu>
+            {/* Right-click opens the same actions at the cursor (chat-stream parity).
+                Mobile keeps its tap sheet; disabled also while editing. */}
+            <ContextMenuTrigger asChild disabled={isMobile || isEditing}>
+            {/* ChatInput's reply-banner anatomy: bordered box, grey context band
+                on top (time · destination · kebab), message body below. */}
             <div
                 className={cn(
-                    "group flex gap-3 px-2 py-3 md:py-2 rounded transition-colors text-left select-none hover:bg-surface-gray-3",
+                    "overflow-hidden rounded-lg border border-outline-gray-2 bg-surface-base text-left select-none",
                     // CSS :active, not state — a Virtuoso-recycled instance can't
                     // highlight the wrong row.
-                    "active:bg-surface-gray-3",
-                    actionsOpen && "bg-surface-gray-3",
+                    "active:border-outline-gray-3",
+                    actionsOpen && "border-outline-gray-3",
                 )}
                 {...rowTapHandlers}
             >
-                {user && <UserAvatar user={user} size="md" showStatusIndicator={false} />}
-                <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline gap-1.5 flex-wrap text-content">
-                        {user && (
-                            <span className="font-medium text-ink-gray-8 truncate">{user.full_name}</span>
-                        )}
-                        <span className="shrink-0 text-xs text-ink-gray-4 flex items-baseline gap-1">
-                            <CalendarClockIcon className="h-3 w-3 self-center shrink-0 text-ink-gray-4" />
-                            {_("Scheduled for {0}", [formatDateTimeLabel(fromServerDatetime(row.scheduled_time))])}
-                        </span>
-                        {channel && (
-                            <>
-                                <span className="text-ink-gray-4 shrink-0">·</span>
-                                <ChannelIcon type={channel.type} className="h-3 w-3 shrink-0 self-center text-ink-gray-4" />
-                                <span className="text-ink-gray-4 truncate min-w-0 -ml-0.5">{channel.channel_name}</span>
-                            </>
-                        )}
-                        {dmChannel && (
-                            <>
-                                <span className="text-ink-gray-4 shrink-0">·</span>
-                                <MessageSquareMore className="h-3 w-3 shrink-0 self-center text-ink-gray-4" />
-                                <span className="text-ink-gray-4 truncate min-w-0 -ml-0.5">{peerName}</span>
-                            </>
-                        )}
-                    </div>
+                <div className="flex items-center gap-1.5 bg-surface-gray-1 px-3 py-1.5 text-sm text-ink-gray-6">
+                    <DayNightIcon className="size-3.5 shrink-0 text-ink-gray-5" />
+                    <span className="shrink-0 tabular-nums">{shortTime}</span>
+                    {channel && (
+                        <>
+                            <span className="shrink-0 text-ink-gray-4">·</span>
+                            {workspace && <span className="truncate">{workspace.workspace_name}</span>}
+                            <ChannelIcon type={channel.type} className="size-3.5 shrink-0 text-ink-gray-5" />
+                            <span className="truncate min-w-0 -ml-0.5">{channel.channel_name}</span>
+                        </>
+                    )}
+                    {dmChannel && (
+                        <>
+                            <span className="shrink-0 text-ink-gray-4">·</span>
+                            <MessageSquareMore className="size-3.5 shrink-0 text-ink-gray-5" />
+                            <span className="truncate min-w-0 -ml-0.5">{peerName}</span>
+                        </>
+                    )}
+                    {!isEditing && !isMobile && (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    isIconButton
+                                    aria-label={_("Scheduled message actions")}
+                                    className="ms-auto shrink-0 -me-1.5"
+                                >
+                                    <EllipsisIcon className="size-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                {actions.map(({ icon: Icon, label, onClick, destructive }) => (
+                                    <DropdownMenuItem
+                                        key={label}
+                                        variant={destructive ? "destructive" : undefined}
+                                        className="text-base md:text-sm py-2.5 md:py-1.5"
+                                        onClick={onClick}
+                                    >
+                                        <Icon />
+                                        {label}
+                                    </DropdownMenuItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    )}
+                </div>
+                <div className="px-3 py-2">
                     {isEditing && !isMobile ? (
                         <InlineScheduledMessageEditor
                             row={row}
@@ -131,12 +176,12 @@ export const ScheduledMessageCard = ({
                     ) : (
                         <>
                             {isFailed && (
-                                <div className="mt-1 flex flex-col gap-0.5">
+                                <div className="mb-1 flex flex-col gap-0.5">
                                     <Badge variant="subtle" theme="red" className="self-start">{_("Failed")}</Badge>
                                     {row.error && <p className="whitespace-pre-line text-sm text-ink-red-6">{row.error}</p>}
                                 </div>
                             )}
-                            <div className="mt-1 [&_p]:my-0">
+                            <div className="[&_p]:my-0">
                                 <MessageBody content={row.text} />
                             </div>
                         </>
@@ -144,50 +189,9 @@ export const ScheduledMessageCard = ({
                 </div>
                 {!isEditing && (
                     <>
-                        {!isMobile && (
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    isIconButton
-                                    aria-label={_("Scheduled message actions")}
-                                    className="shrink-0 self-start"
-                                >
-                                    <EllipsisVerticalIcon className="size-5 md:size-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                    className="text-base md:text-sm py-2.5 md:py-1.5"
-                                    onClick={() => setSendNowOpen(true)}
-                                >
-                                    <SendHorizontalIcon />
-                                    {_("Send now")}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    className="text-base md:text-sm py-2.5 md:py-1.5"
-                                    onClick={() => onEditingChange(row.name)}
-                                >
-                                    <Edit3Icon />
-                                    {_("Edit")}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    variant="destructive"
-                                    className="text-base md:text-sm py-2.5 md:py-1.5"
-                                    onClick={() => setDeleteOpen(true)}
-                                >
-                                    <Trash2Icon />
-                                    {_("Delete")}
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                        )}
-                        {/* Mobile action sheet — the same three actions as the
-                            dropdown, presented as a bottom sheet (a tap anywhere
-                            on the row opens it). Rows close the sheet first,
-                            then fire the existing behavior (AlertDialog over a
-                            just-closed sheet is the house confirm pattern). */}
+                        {/* Mobile action sheet (row tap). Rows close the sheet first, then
+                            open their confirm — AlertDialog over a just-closed sheet is the
+                            house pattern. */}
                         <Drawer open={actionsOpen} onOpenChange={setActionsOpen}>
                             <DrawerContent
                                 // No focus restore — it would yank focus off the
@@ -286,6 +290,20 @@ export const ScheduledMessageCard = ({
                     </>
                 )}
             </div>
+            </ContextMenuTrigger>
+            <ContextMenuContent>
+                {actions.map(({ icon: Icon, label, onClick, destructive }) => (
+                    <ContextMenuItem
+                        key={label}
+                        variant={destructive ? "destructive" : undefined}
+                        onClick={onClick}
+                    >
+                        <Icon />
+                        {label}
+                    </ContextMenuItem>
+                ))}
+            </ContextMenuContent>
+        </ContextMenu>
         </div>
     )
 }

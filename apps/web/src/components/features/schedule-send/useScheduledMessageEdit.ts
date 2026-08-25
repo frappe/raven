@@ -25,13 +25,32 @@ export const useScheduledMessageEdit = (row: ScheduledMessageRow, { onDone, onCa
     const isMobile = useIsMobile()
     const { updateDoc, loading } = useFrappeUpdateDoc()
 
-    // Seed date + time from the row's scheduled time (local tz). The date is
-    // normalized to midnight so the Calendar's midnight Dates compare cleanly.
-    const [date, setDate] = useState<Date>(() => fromServerDatetime(row.scheduled_time).startOf("day").toDate())
-    const [time, setTime] = useState(() => fromServerDatetime(row.scheduled_time).format("HH:mm"))
+    // Seed from the row's scheduled time (local tz), date normalized to midnight
+    // for the Calendar. A past stored time (overdue / Failed row) seeds today's
+    // next slot instead — keeping it would open the editor with Save already dead.
+    const [date, setDate] = useState<Date>(() => {
+        const stored = fromServerDatetime(row.scheduled_time)
+        return (stored.isAfter(dayjs()) ? stored : dayjs()).startOf("day").toDate()
+    })
+    const [time, setTime] = useState(() => {
+        const stored = fromServerDatetime(row.scheduled_time)
+        if (stored.isAfter(dayjs())) return stored.format("HH:mm")
+        return getAvailableTimeOptions(new Date())[0]?.value ?? "09:00"
+    })
+
+    // A date change back to today can strand the selected time in the past —
+    // snap to the next open slot.
+    const pickDate = (next: Date) => {
+        setDate(next)
+        const [hours, minutes] = time.split(":").map(Number)
+        if (!dayjs(next).hour(hours).minute(minutes).isAfter(dayjs())) {
+            const first = getAvailableTimeOptions(next)[0]
+            if (first) setTime(first.value)
+        }
+    }
 
     // Today hides already-passed slots; other days offer the full list. The row's
-    // time may also not sit on a half-hour boundary — prepend its exact HH:mm so the
+    // time may also sit off the 15-min grid — prepend its exact HH:mm so the
     // Select still displays it as the seeded value (even a past one: it's the row's
     // CURRENT stored time, and saving still requires a future pick).
     const availableOptions = getAvailableTimeOptions(date)
@@ -75,7 +94,8 @@ export const useScheduledMessageEdit = (row: ScheduledMessageRow, { onDone, onCa
     // Save gated on real text content (whitespace slips past editor.isEmpty) AND a
     // future delivery time — both re-checked in onSave too (the editor's Enter path
     // bypasses the Save button's disabled state).
-    const canSave = !!editor && !editor.isEmpty && editor.getText().trim().length > 0 && picked.isAfter(dayjs())
+    const pastPick = !picked.isAfter(dayjs())
+    const canSave = !!editor && !editor.isEmpty && editor.getText().trim().length > 0 && !pastPick
 
     const onSave = () => {
         // In-flight guard: Enter calls this directly, bypassing the Save button.
@@ -99,12 +119,13 @@ export const useScheduledMessageEdit = (row: ScheduledMessageRow, { onDone, onCa
     return {
         editor,
         date,
-        setDate,
+        setDate: pickDate,
         time,
         setTime,
         availableOptions,
         allTimeOptions,
         picked,
+        pastPick,
         canSave,
         loading,
         onSave,
