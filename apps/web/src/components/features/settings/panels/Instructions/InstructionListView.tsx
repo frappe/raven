@@ -117,10 +117,10 @@ function TemplateNameCell({ template, onOpen }: { template: RavenBotInstructionT
         <button
             type="button"
             onClick={() => onOpen(template.name)}
-            className="hover:underline underline-offset-4 text-left min-w-0 cursor-pointer"
+            className="group text-left min-w-0 cursor-pointer"
         >
             <div className="flex items-center gap-2 min-w-0">
-                <span className="font-medium truncate">{template.template_name}</span>
+                <span className="font-medium truncate group-hover:underline underline-offset-4">{template.template_name}</span>
                 {template.dynamic_instructions ? (
                     <Badge variant="subtle" theme="violet">
                         <SparklesIcon /> {_("Dynamic")}

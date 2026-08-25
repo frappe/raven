@@ -117,7 +117,7 @@ function AgentNameCell({ bot, onOpen }: { bot: RavenBot; onOpen: (id: string) =>
             <button
                 type="button"
                 onClick={() => onOpen(bot.name)}
-                className="hover:underline underline-offset-4 text-left min-w-0 cursor-pointer"
+                className="group text-left min-w-0 cursor-pointer"
             >
                 <div className="flex items-center gap-2 min-w-0">
                     <Avatar className="h-8 w-8 rounded-md">
@@ -126,7 +126,7 @@ function AgentNameCell({ bot, onOpen }: { bot: RavenBot; onOpen: (id: string) =>
                             {bot.bot_name.charAt(0)?.toUpperCase()}
                         </AvatarFallback>
                     </Avatar>
-                    <span className="font-medium truncate">{bot.bot_name}</span>
+                    <span className="font-medium truncate group-hover:underline underline-offset-4">{bot.bot_name}</span>
                 </div>
             </button>
             {bot.is_ai_bot ? <AIFeaturesBadge bot={bot} /> : null}
