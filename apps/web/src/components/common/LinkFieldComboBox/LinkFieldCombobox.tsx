@@ -8,6 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover"
 import { DrawerClose, DrawerContent, DrawerDescription, DrawerNested, DrawerTitle, DrawerTrigger } from "@components/ui/drawer";
 import { FormControl } from "@components/ui/form"
 import { ChevronDownIcon, ExternalLink } from "lucide-react";
+import ClearFieldButton from "@components/common/ClearFieldButton";
 import { Button } from "@components/ui/button";
 import { cn } from "@lib/utils";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@components/ui/command";
@@ -142,6 +143,8 @@ export interface LinkFieldComboboxProps {
     buttonClassName?: string
     /** Extra classes for the dropdown popover (e.g. a max-w cap). */
     dropdownClassName?: string;
+    /** Show a clear (×) button in place of the chevron while a value is picked. */
+    clearable?: boolean;
 }
 const LinkFieldCombobox = ({
     doctype,
@@ -153,14 +156,15 @@ const LinkFieldCombobox = ({
     disabled,
     filterFn,
     suggestedItems,
-    placeholder = `Select ${doctype}`,
+    placeholder = _("Select {0}", [doctype]),
     customQuery,
     searchfield,
     searchAPIPath = "frappe.desk.search.search_link",
     limit,
     useInForm,
     buttonClassName,
-    dropdownClassName
+    dropdownClassName,
+    clearable
 }: LinkFieldComboboxProps) => {
 
     const pageLimit = useMemo(() => limit || getSystemDefault('link_field_results_limit') || 20, [limit])
@@ -285,6 +289,9 @@ const LinkFieldCombobox = ({
         </FilterComboboxItem>
     )
 
+    const showClear = Boolean(clearable && value && !disabled && !readOnly)
+    const clearButton = showClear ? <ClearFieldButton onClick={() => onChange("")} /> : null
+
     // The trigger is identical for both shells (popover on desktop, drawer on
     // mobile), so it's built once and handed to whichever *Trigger wraps it.
     const trigger = useInForm ? (
@@ -296,13 +303,10 @@ const LinkFieldCombobox = ({
                 tabIndex={0}
                 disabled={disabled}
                 aria-expanded={open}
-                // FILTER_TRIGGER_STYLES sizes the trigger to fit its row (w-fit) — this
-                // one is a form field instead, so w-full overrides just the width half
-                // of that pairing. `group` scopes the hover-revealed external link
-                // below. subtle's own bg is already gray-2, so read-only dims the label
-                // rather than swapping in a background that would look identical to the
-                // normal state.
-                className={cn(FILTER_TRIGGER_STYLES, "group w-full", readOnly && "text-ink-gray-5", buttonClassName)}>
+                // w-full overrides FILTER_TRIGGER_STYLES' w-fit — this one is a form field.
+                // read-only dims the label; subtle's bg is already gray-2.
+                // disabled keeps pointer-events so cursor-not-allowed shows; pr-7 = room for the clear ×.
+                className={cn(FILTER_TRIGGER_STYLES, "group w-full disabled:pointer-events-auto", showClear && "pr-7", readOnly && "text-ink-gray-5", buttonClassName)}>
                 <span className={cn("min-w-0 flex-1 truncate text-left", !linkTitle && "text-ink-gray-4")}>
                     {linkTitle || placeholder}
                 </span>
@@ -316,7 +320,7 @@ const LinkFieldCombobox = ({
                             <ExternalLink className="size-4 shrink-0 text-ink-gray-5" />
                         </a>
                     )}
-                    <ChevronDownIcon className="size-4 shrink-0 text-ink-gray-4" />
+                    {!showClear && <ChevronDownIcon className="size-4 shrink-0 text-ink-gray-4" />}
                 </div>
             </Button>
         </FormControl>
@@ -327,12 +331,12 @@ const LinkFieldCombobox = ({
             role="combobox"
             disabled={disabled}
             aria-expanded={open}
-            className={cn(FILTER_TRIGGER_STYLES, "w-full", readOnly && "text-ink-gray-5", buttonClassName)}>
+            className={cn(FILTER_TRIGGER_STYLES, "w-full disabled:pointer-events-auto", showClear && "pr-7", readOnly && "text-ink-gray-5", buttonClassName)}>
             <span className={cn("min-w-0 flex-1 truncate text-left", !value && "text-ink-gray-4")}>
                 {value || placeholder}
             </span>
 
-            <ChevronDownIcon className="size-4 shrink-0 text-ink-gray-4" />
+            {!showClear && <ChevronDownIcon className="size-4 shrink-0 text-ink-gray-4" />}
         </Button>
     )
 
@@ -403,7 +407,10 @@ const LinkFieldCombobox = ({
                 {/* No disabled/readOnly handling here — the trigger button carries
                     `disabled` itself, and readOnly is enforced in onOpenChange (same
                     as the popover), keeping the read-only look distinct from disabled. */}
-                <DrawerTrigger asChild>{trigger}</DrawerTrigger>
+                <div className="relative w-full">
+                    <DrawerTrigger asChild>{trigger}</DrawerTrigger>
+                    {clearButton}
+                </div>
                 <DrawerContent
                     className="h-[85dvh]"
                     // Radix focuses the search field on open — the keyboard would cover
@@ -427,9 +434,12 @@ const LinkFieldCombobox = ({
 
     return (
         <Popover open={open} onOpenChange={onOpenChange} modal={true}>
-            <PopoverTrigger asChild>
-                {trigger}
-            </PopoverTrigger>
+            <div className="relative w-full">
+                <PopoverTrigger asChild>
+                    {trigger}
+                </PopoverTrigger>
+                {clearButton}
+            </div>
             <PopoverContent
                 side="bottom"
                 align="start"

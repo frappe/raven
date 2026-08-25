@@ -22,6 +22,7 @@ type UploadDocDialogProps<T extends FieldValues> = {
     doctype: string
     /** Upload fieldname; the created doc gets the file URL under this key. */
     fileField: string
+    /** Defaults to private — an upload with no stated intent should not be world-readable. */
     isPrivate?: boolean
     accept?: Record<string, string[]>
     /** Oversized picks are rejected with a toast. */
@@ -53,7 +54,7 @@ type UploadDocDialogProps<T extends FieldValues> = {
 
 /** Dialog that uploads one file and creates a doc pointing at it: dropzone + caller fields + Cancel/submit. */
 const UploadDocDialog = <T extends FieldValues>({
-    doctype, fileField, isPrivate, accept, maxBytes, title, description,
+    doctype, fileField, isPrivate = true, accept, maxBytes, title, description,
     submitLabel, submitBusyLabel, defaults, mode, children, hint,
     onFilePicked, beforeUpload, docname, onCreated, trigger, open, onOpenChange,
 }: UploadDocDialogProps<T>) => {
@@ -121,7 +122,7 @@ const UploadDocDialog = <T extends FieldValues>({
                     {trigger ?? <Button type="button" size="sm">{title}</Button>}
                 </DialogTrigger>
             )}
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-xl">
                 <DialogHeader>
                     <DialogTitle>{title}</DialogTitle>
                     <DialogDescription>{description}</DialogDescription>
@@ -133,11 +134,7 @@ const UploadDocDialog = <T extends FieldValues>({
                         <FileDropzone files={files} setFiles={handleSetFiles} multiple={false} accept={accept} />
                         {(hint || accept || maxBytes) ? <div className="-mt-2 flex flex-col gap-0.5 text-p-sm text-ink-gray-5">
                             {hint && <p>{hint}</p>}
-                            <p>
-                                {accept
-                                    ? _("Supported formats: {0}", [Object.values(accept).flat().join(", ")])
-                                    : _("Supported formats: {0}, {1}, {2}", [".jpeg", ".jpg", ".png"])}
-                            </p>
+                            {accept && <p>{_("Supported formats: {0}", [Object.values(accept).flat().join(", ")])}</p>}
                             {maxBytes && <p>{_("Maximum file size: {0}MB", [String(Math.round(maxBytes / (1024 * 1024)))])}</p>}
                         </div> : null}
                         {children}

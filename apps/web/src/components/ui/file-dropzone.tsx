@@ -186,90 +186,90 @@ export const FileTypeIcon = ({
     const getBackgroundColor = () => {
         switch (fileType.toLowerCase()) {
             case 'pdf':
-                return 'bg-red-700'
+                return 'bg-surface-red-7'
             case 'doc':
             case 'docx':
-                return 'bg-[#1A5CBD]'
+                return 'bg-surface-blue-7'
             case 'xls':
             case 'xlsx':
             case 'csv':
-                return 'bg-green-700'
+                return 'bg-surface-green-7'
             case 'ppt':
             case 'pptx':
-                return 'bg-[#ED6C47]'
+                return 'bg-surface-amber-7'
             case 'video':
             case 'mp4':
             case 'mov':
             case 'mkv':
             case 'avi':
             case 'webm':
-                return 'bg-purple-600'
+                return 'bg-surface-violet-6'
             case 'audio':
             case 'mp3':
             case 'wav':
             case 'ogg':
             case 'flac':
-                return 'bg-purple-600'
+                return 'bg-surface-violet-6'
             case 'image':
             case 'jpg':
             case 'jpeg':
             case 'png':
             case 'gif':
             case 'webp':
-                return 'bg-blue-600'
+                return 'bg-surface-blue-6'
             case 'zip':
             case 'rar':
             case '7z':
             case 'tar':
             case 'gz':
-                return 'bg-yellow-600'
+                return 'bg-surface-amber-6'
             default:
-                return 'bg-gray-500'
+                return 'bg-surface-gray-6'
         }
     }
 
     const getTextColor = () => {
         switch (fileType.toLowerCase()) {
             case 'pdf':
-                return 'text-red-700'
+                return 'text-ink-red-7'
             case 'doc':
             case 'docx':
-                return 'text-[#1A5CBD]'
+                return 'text-ink-blue-7'
             case 'xls':
             case 'xlsx':
             case 'csv':
-                return 'text-green-700 dark:text-green-500'
+                return 'text-ink-green-7'
             case 'ppt':
             case 'pptx':
-                return 'text-[#ED6C47]'
+                return 'text-ink-amber-7'
             case 'video':
             case 'mp4':
             case 'mov':
             case 'mkv':
             case 'avi':
             case 'webm':
-                return 'text-purple-600'
+                return 'text-ink-violet-6'
             case 'audio':
             case 'mp3':
             case 'wav':
             case 'ogg':
             case 'flac':
-                return 'text-purple-600'
+                return 'text-ink-violet-6'
             case 'image':
             case 'jpg':
             case 'jpeg':
             case 'png':
             case 'gif':
             case 'webp':
-                return 'text-blue-600'
+                return 'text-ink-blue-6'
             case 'zip':
             case 'rar':
             case '7z':
             case 'tar':
             case 'gz':
-                return 'text-yellow-600'
+                return 'text-ink-amber-6'
             default:
-                return 'text-gray-50'
+                return 'text-ink-gray-4'
         }
     }
 

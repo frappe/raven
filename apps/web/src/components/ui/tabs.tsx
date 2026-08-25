@@ -135,7 +135,7 @@ function TabsList({
             // transition `translate`, not `transform`: Tailwind v4's translate-x
             // utilities set the separate `translate` property, so a `transform`
             // transition would leave the bar snapping while only width animates.
-            "pointer-events-none absolute bg-ink-gray-9 transition-[width,height,translate] duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none",
+            "pointer-events-none absolute bg-outline-gray-8 transition-[width,height,translate] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none",
             "group-data-[orientation=horizontal]/tabs:bottom-0 group-data-[orientation=horizontal]/tabs:left-0 group-data-[orientation=horizontal]/tabs:h-px group-data-[orientation=horizontal]/tabs:w-(--tabs-indicator-w) group-data-[orientation=horizontal]/tabs:translate-x-(--tabs-indicator-x) group-data-[orientation=horizontal]/tabs:translate-y-px",
             "group-data-[orientation=vertical]/tabs:top-0 group-data-[orientation=vertical]/tabs:end-0 group-data-[orientation=vertical]/tabs:w-px group-data-[orientation=vertical]/tabs:h-(--tabs-indicator-w) group-data-[orientation=vertical]/tabs:translate-y-(--tabs-indicator-x) group-data-[orientation=vertical]/tabs:translate-x-px",
           )}
@@ -183,7 +183,7 @@ function TabsTrigger({
         // Variant: underline, size: sm
         "group-data-[orientation=horizontal]/tabs:group-data-[variant=underline]/tabs-list:group-data-[size=sm]/tabs-list:py-1.5 group-data-[orientation=vertical]/tabs:group-data-[variant=underline]/tabs-list:group-data-[size=sm]/tabs-list:px-1.5",
         // Variant: underline, size: md (py-2.5 = frappe-ui Tabs trigger; was py-[7px])
-        "group-data-[orientation=horizontal]/tabs:group-data-[variant=underline]/tabs-list:group-data-[size=md]/tabs-list:py-2.5 group-data-[variant=underline]/tabs-list:group-data-[size=md]/tabs-list:font-medium",
+        "group-data-[orientation=horizontal]/tabs:group-data-[variant=underline]/tabs-list:group-data-[size=md]/tabs-list:py-2.5",
         // Variant: underline - the active bar is the sliding indicator in
         // TabsList, not a per-trigger border.
 

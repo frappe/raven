@@ -62,7 +62,7 @@ const buttonVariants = cva(
       {
         variant: "solid",
         theme: "red",
-        className: "text-ink-base dark:text-ink-red-10 bg-surface-red-7 hover:bg-surface-red-8 active:bg-surface-red-9 disabled:bg-surface-red-2 disabled:text-ink-red-5"
+        className: "text-ink-base dark:text-ink-red-9 bg-surface-red-7 hover:bg-surface-red-8 active:bg-surface-red-9 disabled:bg-surface-red-2 disabled:text-ink-red-4"
       },
       // Subtle Buttons
       {
@@ -73,7 +73,7 @@ const buttonVariants = cva(
       {
         variant: "subtle",
         theme: "red",
-        className: "text-ink-red-8 bg-surface-red-2 hover:bg-surface-red-3 active:bg-surface-red-4 disabled:bg-surface-red-2 disabled:text-ink-red-5"
+        className: "text-ink-red-7 bg-surface-red-2 hover:bg-surface-red-3 active:bg-surface-red-4 disabled:bg-surface-red-2 disabled:text-ink-red-4"
       },
       // Outline buttons
       {
@@ -86,7 +86,7 @@ const buttonVariants = cva(
         variant: "outline",
         theme: "red",
         className:
-          "text-ink-red-8 border-outline-red-1 hover:border-outline-red-3 active:border-outline-red-3 active:bg-surface-red-3 disabled:bg-surface-red-2 disabled:text-ink-red-5 disabled:border-outline-red-1"
+          "text-ink-red-7 border-outline-red-1 hover:border-outline-red-3 active:border-outline-red-3 active:bg-surface-red-3 disabled:bg-surface-red-2 disabled:text-ink-red-4 disabled:border-outline-red-1"
       },
       // Ghost buttons
       {
@@ -99,7 +99,7 @@ const buttonVariants = cva(
         variant: "ghost",
         theme: "red",
         className:
-          "text-ink-red-8 hover:bg-surface-red-3 active:bg-surface-red-4 disabled:text-ink-red-5"
+          "text-ink-red-7 hover:bg-surface-red-3 active:bg-surface-red-4 disabled:text-ink-red-4"
       },
       //Link buttons
       {
@@ -110,7 +110,7 @@ const buttonVariants = cva(
       {
         variant: "link",
         theme: "red",
-        className: "text-ink-red-8 hover:text-ink-red-8 active:text-ink-red-8 disabled:text-ink-red-5"
+        className: "text-ink-red-7 hover:text-ink-red-7 active:text-ink-red-7 disabled:text-ink-red-4"
       },
     ],
     defaultVariants: {

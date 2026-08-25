@@ -58,10 +58,10 @@ const tabsButtonItemVariants = cva(
       variant: {
         // Raised active pill
         subtle:
-          "data-[state=unchecked]:hover:bg-surface-gray-3/80 data-[state=unchecked]:hover:text-ink-gray-7 data-[state=checked]:bg-surface-elevation-3 data-[state=checked]:shadow-sm",
+          "data-[state=unchecked]:hover:text-ink-gray-8 data-[state=checked]:bg-surface-elevation-3 data-[state=checked]:shadow-sm",
         // Flat active pill (for use on plain backgrounds)
         ghost:
-          "data-[state=unchecked]:hover:bg-surface-gray-3/80 data-[state=unchecked]:hover:text-ink-gray-7 data-[state=checked]:bg-surface-gray-2",
+          "data-[state=unchecked]:hover:text-ink-gray-8 data-[state=checked]:bg-surface-gray-2",
         // Indicator overlays the root's rail so it reads as a thicker, darker
         // section of the same line — not a bar floating beside the label
         underline:

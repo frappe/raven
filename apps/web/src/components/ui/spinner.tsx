@@ -41,7 +41,7 @@ function Spinner({
       } as React.CSSProperties)
     : undefined
 
-  const colorClass = theme ? { gray: "text-ink-gray-8", red: "text-ink-red-8" }[theme] : undefined
+  const colorClass = theme ? { gray: "text-ink-gray-8", red: "text-ink-red-7" }[theme] : undefined
 
   return (
     <svg
