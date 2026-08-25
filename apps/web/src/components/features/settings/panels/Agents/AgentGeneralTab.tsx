@@ -16,13 +16,15 @@ const AgentGeneralTab = () => {
 
     return (
         <div className="flex flex-col gap-4">
-            <DataField
-                name="bot_name"
-                label={_("Name")}
-                isRequired
-                rules={{ required: _("Name is required") }}
-                inputProps={{ placeholder: "accounts-bot", autoFocus: !isMobile }}
-            />
+            <div className="md:w-1/2">
+                <DataField
+                    name="bot_name"
+                    label={_("Name")}
+                    isRequired
+                    rules={{ required: _("Name is required") }}
+                    inputProps={{ placeholder: "accounts-bot", autoFocus: !isMobile }}
+                />
+            </div>
             <div className="flex flex-col gap-1.5">
                 <Label htmlFor="description">{_("Description")}</Label>
                 <Textarea

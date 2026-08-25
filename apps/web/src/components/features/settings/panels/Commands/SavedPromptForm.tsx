@@ -36,13 +36,15 @@ const SavedPromptForm = ({ isEdit }: { isEdit?: boolean }) => {
                 label={_("Is Global")}
                 formDescription={_("If checked, this prompt will be available to all users on Raven")}
             />
-            <LinkFormField
-                name="raven_bot"
-                label={_("Agent")}
-                doctype="Raven Bot"
-                filters={[["is_ai_bot", "=", 1]]}
-                formDescription={_("If added, this prompt will only be shown when interacting with the agent")}
-            />
+            <div className="md:w-1/2">
+                <LinkFormField
+                    name="raven_bot"
+                    label={_("Agent")}
+                    doctype="Raven Bot"
+                    filters={[["is_ai_bot", "=", 1]]}
+                    formDescription={_("If added, this prompt will only be shown when interacting with the agent")}
+                />
+            </div>
         </div>
     )
 }

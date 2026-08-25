@@ -7,15 +7,17 @@ import _ from "@lib/translate"
 const InstructionTemplateForm = ({ isEdit }: { isEdit?: boolean }) => (
     <>
         <AINotEnabledCallout />
-        <DataField
-            name="template_name"
-            label={_("Template Name")}
-            isRequired
-            rules={{ required: _("Name is required") }}
-            inputProps={{ placeholder: _("Create Document Template") }}
-            readOnly={isEdit}
-        />
-        <InstructionField autoFocus={isEdit} />
+        <div className="md:w-1/2">
+            <DataField
+                name="template_name"
+                label={_("Template Name")}
+                isRequired
+                rules={{ required: _("Name is required") }}
+                inputProps={{ placeholder: _("Create Document Template") }}
+                readOnly={isEdit}
+            />
+        </div>
+        <InstructionField instructionRequired autoFocus={!isEdit} />
     </>
 )
 
