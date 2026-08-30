@@ -2,9 +2,8 @@ import dayjs, { Dayjs } from "dayjs"
 import { SYSTEM_TIMEZONE, FRAPPE_DATETIME_FORMAT } from "@lib/date"
 import _ from "@lib/translate"
 
-// Future-time picking, shared by reminders and schedule-send. One file, kept
-// byte-identical on both feature branches so they merge cleanly and each
-// works standalone — every helper here is pure dayjs + i18n.
+// Future-time picking, shared by reminders and schedule-send — every helper
+// here is pure dayjs + i18n.
 
 /** Dropdown label for an arbitrary HH:mm — 24-hour clock (frappe-ui convention),
  *  so the label IS the value, e.g. "22:15". Kept as a function so off-grid times
@@ -88,23 +87,21 @@ const SLOT_TIMES = [
     { label: () => _("Evening"), hour: 18 },
 ]
 
-/** Today / Tomorrow preset sections for the schedule submenu. Past Today slots are dropped;
- *  an empty Today section is omitted entirely. On Friday/Saturday a Monday-Morning section is
- *  appended after Tomorrow (always future, so it survives the empty-section filter); Sunday
- *  needs no such section — Tomorrow IS Monday. */
-export const getScheduleMenuSections = (now: Dayjs = dayjs()): ScheduleMenuSection[] => {
+/** Today / Tomorrow / next-working-day preset sections for the schedule submenu.
+ *  Past Today slots are dropped (an empty Today is omitted). The next working day
+ *  comes from the server (Holiday List aware) and is skipped when it IS tomorrow. */
+export const getScheduleMenuSections = (now: Dayjs = dayjs(), nextWorkingDay?: Dayjs | null): ScheduleMenuSection[] => {
     const dayFor = (base: Dayjs) =>
         SLOT_TIMES.map(({ label, hour }) => ({ label: label(), time: base.hour(hour).minute(0).second(0).millisecond(0) }))
+    const tomorrow = now.add(1, "day")
     const sections = [
         { label: _("Today"), slots: dayFor(now).filter((s) => s.time.isAfter(now)) },
-        { label: _("Tomorrow"), slots: dayFor(now.add(1, "day")) },
+        { label: _("Tomorrow"), slots: dayFor(tomorrow) },
     ]
-    // Weekend: the next useful delivery day is Monday morning — add it after Tomorrow.
-    if (now.day() === 5 || now.day() === 6) {
-        sections.push({
-            label: _("Monday"),
-            slots: [dayFor(now.add(now.day() === 5 ? 3 : 2, "day"))[0]],
-        })
+    if (nextWorkingDay && !nextWorkingDay.isSame(tomorrow, "day")) {
+        // Weekday name reads naturally within a week; a long break needs the date.
+        const label = nextWorkingDay.diff(now.startOf("day"), "day") < 7 ? nextWorkingDay.format("dddd") : nextWorkingDay.format("ddd, MMM D")
+        sections.push({ label, slots: dayFor(nextWorkingDay) })
     }
     return sections.filter((s) => s.slots.length > 0)
 }

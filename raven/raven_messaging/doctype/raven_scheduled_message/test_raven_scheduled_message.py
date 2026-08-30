@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import date, timedelta
 
 import frappe
 from frappe.tests import IntegrationTestCase
@@ -227,3 +227,32 @@ class TestRavenScheduledMessage(IntegrationTestCase):
 
 		frappe.set_user("test1@example.com")
 		self.assertEqual(len(get_scheduled_messages()), 0)
+
+	def test_next_working_day_weekend_fallback(self):
+		from raven.api.scheduled_message import next_working_day
+
+		# 2026-08-28 is a Friday: no holiday list -> Monday.
+		self.assertEqual(next_working_day(date(2026, 8, 28)), date(2026, 8, 31))
+		# Midweek -> the very next day.
+		self.assertEqual(next_working_day(date(2026, 8, 26)), date(2026, 8, 27))
+
+	def test_next_working_day_holiday_set_is_authoritative(self):
+		from raven.api.scheduled_message import next_working_day
+
+		# Thu + Fri off, and the weekend listed too -> Monday.
+		off = {date(2026, 8, 27), date(2026, 8, 28), date(2026, 8, 29), date(2026, 8, 30)}
+		self.assertEqual(next_working_day(date(2026, 8, 26), off), date(2026, 8, 31))
+		# A list WITHOUT weekends means the org works Saturdays.
+		self.assertEqual(next_working_day(date(2026, 8, 28), {date(2026, 8, 30)}), date(2026, 8, 29))
+
+	def test_get_next_working_day_is_after_today(self):
+		from raven.api.scheduled_message import get_next_working_day
+
+		self.assertGreater(get_datetime(get_next_working_day()).date(), now_datetime().date())
+
+	def test_get_holidays_is_none_without_hr_apps(self):
+		from raven.api.scheduled_message import get_holidays
+
+		if {"erpnext", "hrms"} & set(frappe.get_installed_apps()):
+			self.skipTest("Holiday List source installed")
+		self.assertIsNone(get_holidays())

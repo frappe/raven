@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING
 
 import frappe
 from frappe import _
+from frappe.utils import add_days, getdate
 
 if TYPE_CHECKING:
 	from raven.raven_messaging.doctype.raven_scheduled_message.raven_scheduled_message import (
@@ -116,3 +117,45 @@ def _dispatch(doc: "RavenScheduledMessage", raise_on_failure: bool = False):
 		notify_owner_updated(doc)
 	finally:
 		frappe.set_user(original_user)  # nosemgrep: frappe-semgrep-rules.rules.security.frappe-setuser
+
+
+@frappe.whitelist()
+def get_next_working_day():
+	"""ISO date of the first working day after today — the schedule menu's
+	next-working-day preset (shown only when that day isn't tomorrow)."""
+	return str(next_working_day(getdate(), get_holidays()))
+
+
+def get_holiday_list() -> str | None:
+	"""The session user's Holiday List, resolved the way HRMS/ERPNext do: their
+	Employee's list, else the default company's. None when neither app is installed."""
+	apps = frappe.get_installed_apps()
+	if "hrms" in apps:
+		from hrms.hr.utils import get_holiday_list_for_employee
+
+		employee = frappe.db.get_value("Employee", {"user_id": frappe.session.user, "status": "Active"})
+		return get_holiday_list_for_employee(employee, raise_exception=False)
+	if "erpnext" in apps:
+		company = frappe.db.get_single_value("Global Defaults", "default_company")
+		return frappe.get_cached_value("Company", company, "default_holiday_list") if company else None
+	return None
+
+
+def get_holidays() -> set | None:
+	"""Off-days from the resolved Holiday List; None (weekend fallback) without one."""
+	holiday_list = get_holiday_list()
+	if not holiday_list:
+		return None
+	return set(frappe.get_all("Holiday", filters={"parent": holiday_list}, pluck="holiday_date"))
+
+
+def next_working_day(after, holidays: set | None = None):
+	"""First working day strictly after `after`. A holiday set is authoritative
+	(weekly offs live in it too); without one, Saturday/Sunday are off."""
+	day = getdate(after)
+	for _i in range(366):
+		day = add_days(day, 1)
+		off = day in holidays if holidays is not None else day.weekday() >= 5
+		if not off:
+			return day
+	return day

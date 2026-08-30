@@ -1,7 +1,8 @@
-import { Fragment, useRef, useState } from "react"
+import { useRef, useState } from "react"
 import dayjs from "dayjs"
+import { useFrappeGetCall } from "frappe-react-sdk"
 import {
-    DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
+    DropdownMenuItem, DropdownMenuSeparator,
     DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger,
 } from "@components/ui/dropdown-menu"
 import { CalendarClockIcon } from "lucide-react"
@@ -19,8 +20,8 @@ type ScheduleSendMenuProps = {
 }
 
 /**
- * "Schedule message" submenu in the send-options menu: Today / Tomorrow preset
- * slots plus a custom date & time entry.
+ * "Schedule message" submenu in the send-options menu: Today / Tomorrow /
+ * next-working-day submenus of preset slots, plus a custom date & time entry.
  */
 export const ScheduleSendMenu = ({ onSchedulePick, onScheduleSend, scheduleDisabled }: ScheduleSendMenuProps) => {
     // Bottom-align the schedule submenu to its trigger row: Radix hardcodes
@@ -43,9 +44,9 @@ export const ScheduleSendMenu = ({ onSchedulePick, onScheduleSend, scheduleDisab
                 ref={(node) => {
                     if (!node || !subTriggerRef.current) return
                     // Bottom-align to the trigger row: shift up by the height difference
-                    // (content height varies — Today hides in the evening, Monday appears
-                    // on weekends). The same-value guard stops the re-render loop: the
-                    // callback re-runs after the offset-driven render and measures again.
+                    // (content height varies — Today hides in the evening, the next working
+                    // day appears when it isn't tomorrow). The same-value guard stops the
+                    // re-render loop: the callback re-runs after the offset-driven render.
                     const offset = -(node.offsetHeight - subTriggerRef.current.offsetHeight)
                     setSubAlignOffset((prev) => (prev === offset ? prev : offset))
                 }}
@@ -61,33 +62,42 @@ export const ScheduleSendMenu = ({ onSchedulePick, onScheduleSend, scheduleDisab
 }
 
 /**
- * Preset sections, computed inside DropdownMenuSubContent so slot times are
+ * Preset day submenus, computed inside DropdownMenuSubContent so slot times are
  * fresh on open without per-keystroke cost.
  */
 const ScheduleMenuSections = ({ onSchedulePick }: { onSchedulePick: (pick: SchedulePick) => void }) => {
-    const sections = getScheduleMenuSections()
+    // Server-computed (Holiday List aware); until it lands only Today / Tomorrow show.
+    const { data } = useFrappeGetCall<{ message: string }>(
+        "raven.api.scheduled_message.get_next_working_day",
+        undefined,
+        "next-working-day",
+    )
+    const sections = getScheduleMenuSections(dayjs(), data?.message ? dayjs(data.message) : null)
     return (
         <>
-            {sections.map((section, i) => (
-                <Fragment key={section.label}>
-                    {i > 0 && <DropdownMenuSeparator />}
-                    <DropdownMenuLabel className="text-ink-gray-5 text-base md:text-sm">{section.label}</DropdownMenuLabel>
-                    {section.slots.map((slot) => (
-                        <DropdownMenuItem
-                            key={`${section.label}-${slot.label}`}
-                            className="text-base md:text-sm py-2.5 md:py-1.5 justify-between gap-4"
-                            onSelect={() => {
-                                // The menu may have sat open across the slot's boundary — re-check at click
-                                // time so we don't POST a time the server will reject as past.
-                                if (!slot.time.isAfter(dayjs())) return
-                                onSchedulePick({ serverTime: toServerDatetime(slot.time), label: formatDateTimeLabel(slot.time) })
-                            }}
-                        >
-                            <span>{slot.label}</span>
-                            <span className="text-ink-gray-5">{slot.time.format("h:mm A")}</span>
-                        </DropdownMenuItem>
-                    ))}
-                </Fragment>
+            {sections.map((section) => (
+                <DropdownMenuSub key={section.label}>
+                    <DropdownMenuSubTrigger className="text-base md:text-sm py-2.5 md:py-1.5">
+                        {section.label}
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                        {section.slots.map((slot) => (
+                            <DropdownMenuItem
+                                key={slot.label}
+                                className="text-base md:text-sm py-2.5 md:py-1.5 justify-between gap-4"
+                                onSelect={() => {
+                                    // The menu may have sat open across the slot's boundary — re-check at click
+                                    // time so we don't POST a time the server will reject as past.
+                                    if (!slot.time.isAfter(dayjs())) return
+                                    onSchedulePick({ serverTime: toServerDatetime(slot.time), label: formatDateTimeLabel(slot.time) })
+                                }}
+                            >
+                                <span>{slot.label}</span>
+                                <span className="text-ink-gray-5">{slot.time.format("h:mm A")}</span>
+                            </DropdownMenuItem>
+                        ))}
+                    </DropdownMenuSubContent>
+                </DropdownMenuSub>
             ))}
         </>
     )
