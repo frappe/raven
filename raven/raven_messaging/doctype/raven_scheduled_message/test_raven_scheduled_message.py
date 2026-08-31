@@ -256,3 +256,23 @@ class TestRavenScheduledMessage(IntegrationTestCase):
 		if {"erpnext", "hrms"} & set(frappe.get_installed_apps()):
 			self.skipTest("Holiday List source installed")
 		self.assertIsNone(get_holidays())
+
+	def test_whitelisted_args_are_type_validated(self):
+		# frappe.whitelist wraps endpoints with validate_argument_types (active in
+		# requests and tests) — annotations ARE the trust-boundary validation.
+		from frappe.exceptions import FrappeTypeError
+
+		from raven.api.scheduled_message import (
+			create_scheduled_message,
+			get_scheduled_messages,
+			send_now,
+		)
+
+		with self.assertRaises(FrappeTypeError):
+			create_scheduled_message(
+				channel_id={"evil": 1}, text="<p>x</p>", scheduled_time="2027-01-01 09:00:00"
+			)
+		with self.assertRaises(FrappeTypeError):
+			get_scheduled_messages(channel_id=["a"])
+		with self.assertRaises(FrappeTypeError):
+			send_now(name=42)
