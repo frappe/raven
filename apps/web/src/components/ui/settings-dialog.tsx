@@ -54,13 +54,13 @@ function SettingsDialog({
     const contextValue = React.useMemo(() => ({ onClose }), [onClose])
 
     return (
-        <DialogContent className={cn("min-w-5xl max-lg:min-w-[98vw] p-0 overflow-y-hidden", contentClassName)} showCloseButton={false}>
+        <DialogContent className={cn("min-w-[min(64rem,calc(100vw-2rem))] p-0 overflow-y-hidden", contentClassName)} showCloseButton={false}>
             <SettingsDialogContext.Provider value={contextValue}>
                 <TabsPrimitive.Root
                     data-slot="settings-dialog"
                     orientation="vertical"
                     className={cn(
-                        "flex h-[calc(100vh-8rem)] bg-surface-sidebar",
+                        "flex h-[calc(100vh-8rem)] w-full min-w-0 bg-surface-sidebar",
                         className
                     )}
                     {...props}
@@ -162,7 +162,7 @@ function SettingsPanels({
         <div
             data-slot="settings-panels"
             className={cn(
-                "flex flex-col flex-1 overflow-y-auto bg-surface-base",
+                "flex flex-col flex-1 min-w-0 overflow-y-auto overflow-x-hidden bg-surface-base",
                 className
             )}
             {...props}
@@ -177,7 +177,7 @@ function SettingsPanel({
     return (
         <TabsPrimitive.Content
             data-slot="settings-panel"
-            className={cn("flex flex-col h-full w-full text-ink-gray-8 py-8 px-6 gap-6", className)}
+            className={cn("flex flex-col h-full w-full min-w-0 text-ink-gray-8 py-8 px-6 gap-6", className)}
             {...props}
         />
     )
@@ -246,7 +246,7 @@ function SettingsPanelContent({
     ...props
 }: React.ComponentProps<"div">) {
     return (
-        <div className={cn("flex-1 flex flex-col overflow-y-auto px-2", className)} {...props} />
+        <div className={cn("flex-1 flex flex-col overflow-y-auto overflow-x-hidden px-2", className)} {...props} />
     )
 }
 
@@ -261,7 +261,6 @@ const SettingsFormRow = (props: React.ComponentProps<"div">) => {
 const SettingsFormLabel = (props: React.ComponentProps<typeof Label>) => {
     return (
         <Label
-            htmlFor="filter_recent_activity"
             className="text-p-base text-ink-gray-8"
             {...props} />
     )
