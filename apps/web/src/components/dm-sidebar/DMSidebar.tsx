@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef } from "react"
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { NavLink, useMatch, useNavigate } from "react-router-dom"
 import { useHotkeys } from "react-hotkeys-hook"
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso"
@@ -22,7 +22,11 @@ import { usePrefetchChannel, setChannelListScrolling } from "@stores/messages/us
 import { useUserCookieData } from "@hooks/useUserCookieData"
 import { MobileSearchButton } from "@components/features/header/QuickSearch/SearchButton"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@components/ui/empty"
-import { UsersRoundIcon } from "lucide-react"
+import { BellOff, UsersRoundIcon } from "lucide-react"
+import { ChannelRowActions } from "@components/common/ChannelRowActions"
+import { useIsMobile } from "@hooks/use-mobile"
+import { useLongPress } from "@hooks/useLongPress"
+import { hapticTick } from "@utils/haptics"
 
 /** A DM channel joined to its resolved peer — what a sidebar row renders. */
 type DMRowData = { dm: DMChannelListItem; peer: UserData }
@@ -226,7 +230,15 @@ const DMRow = memo(function DMRow({ dmChannel, peerUser }: DMRowProps) {
     // it's the thing you'd want to be reminded of when scanning the list.
     const draft = useChannelDraft(dmChannel.name)
 
-    return <NavLink {...prefetchHandlers} to={`/dm-channel/${encodeURIComponent(dmChannel.name)}`} className="block px-2 py-0.5">
+    const isMobile = useIsMobile()
+    const [sheetOpen, setSheetOpen] = useState(false)
+    const [menuOpen, setMenuOpen] = useState(false)
+    const longPress = useLongPress(() => {
+        hapticTick()
+        setSheetOpen(true)
+    }, isMobile)
+
+    return <NavLink {...prefetchHandlers} {...longPress} to={`/dm-channel/${encodeURIComponent(dmChannel.name)}`} className="group/row block px-2 py-0.5">
         {({ isActive }) => (
             <DMRowShell
                 user={peerUser}
@@ -236,6 +248,22 @@ const DMRow = memo(function DMRow({ dmChannel, peerUser }: DMRowProps) {
                 isDraft={Boolean(draft)}
                 unread={unread}
                 isActive={isActive}
+                // Menu/sheet open pins the hover look — the pointer may leave the row
+                // while its menu is up, and the highlight should hold until it closes.
+                forceHover={menuOpen || sheetOpen}
+                menuOpen={menuOpen}
+                muted={dmChannel.muted === 1}
+                notificationsOff={dmChannel.allow_notifications === 0}
+                actions={
+                    <ChannelRowActions
+                        channelID={dmChannel.name}
+                        channelName={displayName}
+                        isDM
+                        sheetOpen={sheetOpen}
+                        onSheetOpenChange={setSheetOpen}
+                        onMenuOpenChange={setMenuOpen}
+                    />
+                }
             />
         )}
     </NavLink>
@@ -300,6 +328,19 @@ interface DMRowShellProps {
     isDraft?: boolean
     unread?: number
     isActive: boolean
+    /** The row's ChannelRowActions (kebab + sheet), rendered in-flow in the badge slot. */
+    actions?: ReactNode
+    /** The kebab's dropdown is open — hide the muted marker so they don't stack. */
+    menuOpen?: boolean
+    /** Pin the hover look while the row's menu/sheet is open (pointer may have left). */
+    forceHover?: boolean
+    /** `muted` member flag: badge and unread-bold suppressed. Currently has no
+     *  writer (see TODO(unify-mute) in ChannelRowActions) — kept for parity with
+     *  channel rows, which carry the same dormant suppression. */
+    muted?: boolean
+    /** `allow_notifications` off — the flag the kebab's Mute flips — shows the
+     *  bell-off marker in the badge slot. */
+    notificationsOff?: boolean
 }
 
 function DMRowShell({
@@ -310,6 +351,11 @@ function DMRowShell({
     isDraft = false,
     unread = 0,
     isActive,
+    actions,
+    menuOpen = false,
+    forceHover = false,
+    muted = false,
+    notificationsOff = false,
 }: DMRowShellProps) {
 
 
@@ -319,6 +365,7 @@ function DMRowShell({
                 "flex w-full items-center gap-3 px-2 py-2 md:py-2 text-sm rounded transition-colors relative text-left",
                 "select-none",
                 "hover:bg-surface-gray-3 active:bg-surface-gray-3",
+                forceHover && "bg-surface-gray-3",
                 isActive && "bg-surface-elevation-3 hover:bg-surface-elevation-3 active:bg-surface-elevation-3 shadow-sm"
             )}
         >
@@ -338,7 +385,7 @@ function DMRowShell({
                             // contain descenders (g/y/p) once `truncate` clips overflow — Safari
                             // cuts them on some DPIs. A looser single-line height fixes it.
                             "truncate text-lg md:text-sm leading-snug text-ink-gray-8",
-                            unread > 0 ? "font-semibold" : "font-normal"
+                            unread > 0 && !muted ? "font-semibold" : "font-normal"
                         )}
                     >
                         {name}
@@ -349,7 +396,10 @@ function DMRowShell({
                         </span>
                     )}
                 </div>
-                {(lastMessage || unread > 0) && <div className="flex items-center gap-2">
+                {/* The bottom line also hosts the in-flow marker + kebab (the badge's
+                    slot) — rendered even with no preview/unread so the kebab stays
+                    reachable on empty conversations. */}
+                {(lastMessage || unread > 0 || notificationsOff || actions) && <div className="flex items-center gap-2">
                     {lastMessage && <div
                         className={cn(
                             // truncate, NOT line-clamp-1: line-clamp truncates per WORD —
@@ -360,7 +410,7 @@ function DMRowShell({
                             // leading-snug: the tight 1.15 line-height clips descenders
                             // (g/y/p) once overflow is hidden — Safari cuts them.
                             "truncate text-base md:text-xs leading-snug flex-1 min-w-0",
-                            unread > 0
+                            unread > 0 && !muted
                                 ? "font-medium text-ink-gray-8"
                                 : "text-ink-gray-4"
                         )}
@@ -368,11 +418,20 @@ function DMRowShell({
                         {isDraft && <span className="font-medium text-ink-gray-6">{_("Draft")}: </span>}
                         {lastMessage}
                     </div>}
-                    {unread > 0 && (
-                        <Badge size="sm" variant="subtle" theme="gray">
+                    {/* Badge yields its slot to the kebab on hover/menu-open (display
+                        swap, like the muted marker below). */}
+                    {unread > 0 && !muted && (
+                        <Badge size="sm" variant="subtle" theme="gray" className={cn("md:group-hover/row:hidden", menuOpen && "hidden")}>
                             {unread > 9 ? "9+" : unread}
                         </Badge>
                     )}
+                    {/* Notifications-muted marker (allow_notifications — the flag the
+                        kebab's Mute flips): in-flow in the badge slot, swapping display
+                        with the kebab (hover/menu-open). Mirrors ChannelRow's marker. */}
+                    {notificationsOff && (
+                        <BellOff className={cn("size-6 shrink-0 p-1 text-ink-gray-5 -my-1 -mr-[5px]", "md:group-hover/row:hidden", menuOpen && "hidden")} />
+                    )}
+                    {actions}
                 </div>}
             </div>
         </div>
