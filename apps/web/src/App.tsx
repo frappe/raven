@@ -42,6 +42,7 @@ const ShareTarget = lazy(() => import("@pages/share/ShareTarget"))
 const SavedMessages = lazy(() => import("@pages/saved-messages/SavedMessages"))
 const MobileProfile = lazy(() => import("@pages/profile/Profile"))
 const Search = lazy(() => import("@pages/search/Search"))
+const ScheduledMessages = lazy(() => import("@pages/scheduled-messages/ScheduledMessages"))
 
 /**
  * Home ("/") redirect, evaluated at RENDER time — module-scope reads froze
@@ -126,6 +127,7 @@ const router = createBrowserRouter(
       <Route path="saved-messages" element={<Suspense key="saved-messages" fallback={<ListPageSkeleton title={_("Saved Messages")} />}><SavedMessages /></Suspense>}>
         <Route path=":channelID/:messageID" element={<NotificationChatRoute />} />
       </Route>
+      <Route path="scheduled-messages" element={<Suspense key="scheduled-messages" fallback={<ListPageSkeleton title={_("Scheduled Messages")} />}><ScheduledMessages /></Suspense>} />
       {/* Fallback = the page's silhouette WITH the real tab bar: the footer
           lives inside this lazy chunk, so a null fallback blanked the whole
           screen (footer included) for the duration of the load. */}

@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { NavLink, Navigate } from "react-router"
 import { toast } from "sonner"
-import { Bookmark, Bell, LogOut, Sun, Moon, SunMoon, ChevronDown, Edit, SlidersHorizontal, ChevronRight } from "lucide-react"
+import { Bookmark, Bell, CalendarClock, LogOut, Sun, Moon, SunMoon, ChevronDown, Edit, SlidersHorizontal, ChevronRight } from "lucide-react"
 import useCurrentRavenUser from "@raven/lib/hooks/useCurrentRavenUser"
 import { useTheme } from "@components/theme-provider"
 import { useLogout } from "@hooks/useLogout"
@@ -10,6 +10,7 @@ import { useIsPushNotificationEnabled } from "@hooks/fetchers/useIsPushNotificat
 import { ProfileRow } from "@components/features/profile/ProfileRow"
 import { EditProfileDrawer } from "@components/features/profile/EditProfileDrawer"
 import { PreferencesDrawer } from "@components/features/profile/PreferencesDrawer"
+import { useScheduledMessagesCount } from "@components/features/schedule-send/useScheduledMessages"
 import { ProfileImageMenu } from "@components/features/profile/ProfileImageMenu"
 import { PageHeader } from "@components/layout/PageHeader"
 import AppMobileFooter from "@components/features/header/AppMobileFooter"
@@ -33,6 +34,7 @@ const Profile = () => {
     const isPushAvailable = useIsPushNotificationEnabled()
     const [editOpen, setEditOpen] = useState(false)
     const [prefsOpen, setPrefsOpen] = useState(false)
+    const scheduledCount = useScheduledMessagesCount()
     const [confirmLogoutOpen, setConfirmLogoutOpen] = useState(false)
 
     // Source of truth for "enabled on this device" is the stored FCM token (lib/push).
@@ -129,6 +131,24 @@ const Profile = () => {
                     <NavLink to="/saved-messages">
                         <ProfileRow icon={Bookmark} label={_("Saved messages")} chevron />
                     </NavLink>
+
+                    {/* Scheduled messages — hidden when none, like the desktop icon */}
+                    {scheduledCount > 0 && (
+                        <NavLink to="/scheduled-messages">
+                            <ProfileRow
+                                icon={CalendarClock}
+                                label={_("Scheduled messages")}
+                                trailing={
+                                    <span className="flex items-center gap-2">
+                                        <span className="h-4 min-w-4 px-1 flex items-center justify-center rounded-full bg-surface-gray-6 text-ink-base text-[10px] leading-none">
+                                            {scheduledCount > 9 ? "9+" : scheduledCount}
+                                        </span>
+                                        <ChevronRight className="size-4" />
+                                    </span>
+                                }
+                            />
+                        </NavLink>
+                    )}
 
                     <ProfileRow icon={Edit} label={_("Edit profile")} onClick={() => setEditOpen(true)} className="rounded-b-lg" />
 

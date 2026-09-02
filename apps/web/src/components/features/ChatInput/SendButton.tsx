@@ -13,6 +13,8 @@ import { useLongPress } from "@hooks/useLongPress"
 import type { QuietSendMode } from "@hooks/useQuietHours"
 import { KeyboardMetaKeyIcon } from "@components/ui/keyboard-keys"
 import _ from "@lib/translate"
+import { ScheduleSendMenu } from "@components/features/schedule-send/ScheduleSendMenu"
+import type { SchedulePick } from "@lib/timeUtils"
 
 type SendButtonProps = {
     onSend: () => void
@@ -25,17 +27,34 @@ type SendButtonProps = {
      *  becomes the bell-off and the menu offers the loud override. "nudge"
      *  changes nothing here (the composer banner carries the hint). */
     quietMode?: QuietSendMode
+    /** A preset slot was picked from the schedule submenu — schedule immediately. */
+    onSchedulePick: (pick: SchedulePick) => void
+    /** Open the custom date & time dialog. */
+    onScheduleSend: () => void
+    /** Scheduling needs text and no attachments (v1) — disable the submenu otherwise. */
+    scheduleDisabled?: boolean
     disabled?: boolean
     /** Send is held while attachments finish uploading — show a spinner. */
     loading?: boolean
 }
 
 /**
- * Desktop: a split button — "Send" plus a chevron opening send options (currently just
- * "Send without notification"). Mobile: an icon-only round button; a long-press opens
- * the same options menu, a plain tap sends.
+ * Desktop: a split button — "Send" plus a chevron opening send options (silent
+ * send and a schedule submenu with Today/Tomorrow preset slots plus a custom
+ * date & time entry). Mobile: an icon-only round button; a long-press opens the
+ * same options menu, a plain tap sends.
  */
-const SendButton = ({ onSend, onSendSilently, onSendLoud, quietMode, disabled, loading }: SendButtonProps) => {
+const SendButton = ({
+    onSend,
+    onSendSilently,
+    onSendLoud,
+    quietMode,
+    onSchedulePick,
+    onScheduleSend,
+    scheduleDisabled,
+    disabled,
+    loading,
+}: SendButtonProps) => {
     const isMobile = useIsMobile()
     const [menuOpen, setMenuOpen] = useState(false)
 
@@ -55,7 +74,7 @@ const SendButton = ({ onSend, onSendSilently, onSendLoud, quietMode, disabled, l
     // sends are loud and the menu offers silent; in quiet-hours "auto" mode
     // silent IS the default, so the menu offers the loud override — the urgent
     // late-night message stays one deliberate gesture away.
-    const menuItem = quietMode === "auto" ? (
+    const notifyItem = quietMode === "auto" ? (
         <DropdownMenuItem onSelect={onSendLoud}>
             <BellRingIcon />
             {_("Send with notification")}
@@ -74,6 +93,14 @@ const SendButton = ({ onSend, onSendSilently, onSendLoud, quietMode, disabled, l
                 </DropdownMenuShortcut>
             )}
         </DropdownMenuItem>
+    )
+
+    // Silent send + the schedule submenu, shared by the mobile and desktop menus.
+    const menuItems = (
+        <>
+            {notifyItem}
+            <ScheduleSendMenu onSchedulePick={onSchedulePick} onScheduleSend={onScheduleSend} scheduleDisabled={scheduleDisabled} />
+        </>
     )
 
     // Quiet-hours "auto": a plain send WILL be silent, and that must be
@@ -138,7 +165,7 @@ const SendButton = ({ onSend, onSendSilently, onSendLoud, quietMode, disabled, l
                     onCloseAutoFocus={(e) => e.preventDefault()}
                     {...({ onOpenAutoFocus: (e: Event) => e.preventDefault() } as object)}
                 >
-                    {menuItem}
+                    {menuItems}
                 </DropdownMenuContent>
             </DropdownMenu>
         )
@@ -187,7 +214,7 @@ const SendButton = ({ onSend, onSendSilently, onSendLoud, quietMode, disabled, l
                     align="end"
                     onCloseAutoFocus={(e) => e.preventDefault()}
                 >
-                    {menuItem}
+                    {menuItems}
                 </DropdownMenuContent>
             </DropdownMenu>
         </div>
