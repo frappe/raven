@@ -15,13 +15,13 @@ function Checkbox({
       className={cn(
         "peer border data-[state=checked]:text-ink-base shrink-0 transition outline-none align-middle",
         "rounded-sm",
-        "border-outline-gray-4 data-[state=checked]:bg-surface-gray-10 data-[state=checked]:border-surface-gray-10",
+        "border-outline-gray-4 data-[state=checked]:bg-ink-gray-8 data-[state=checked]:border-ink-gray-8",
         // Hover state
-        "hover:border-outline-gray-7 hover:shadow-checkbox-hover hover:data-[state=checked]:bg-surface-gray-9 hover:data-[state=checked]:border-surface-gray-9",
+        "hover:border-outline-gray-7 hover:shadow-checkbox-hover hover:data-[state=checked]:bg-ink-gray-7 hover:data-[state=checked]:border-ink-gray-7",
         // Active state
-        "active:border-outline-gray-6 active:data-[state=checked]:bg-surface-gray-8 active:data-[state=checked]:border-surface-gray-8",
+        "active:border-outline-gray-6 active:data-[state=checked]:bg-ink-gray-6 active:data-[state=checked]:border-ink-gray-6",
         // Focus state
-        "focus-visible:border-outline-gray-8 focus-visible:focus-ring focus-visible:data-[state=checked]:bg-surface-gray-10 focus-visible:data-[state=checked]:border-surface-gray-10",
+        "focus-visible:border-outline-gray-8 focus-visible:focus-ring focus-visible:data-[state=checked]:bg-ink-gray-8 focus-visible:data-[state=checked]:border-ink-gray-8",
         // Disabled state
         "disabled:border-outline-gray-2 disabled:bg-surface-gray-1 disabled:cursor-not-allowed disabled:data-[state=checked]:bg-surface-gray-3 disabled:data-[state=checked]:border-surface-gray-3 disabled:text-ink-gray-4",
         // Invalid state
