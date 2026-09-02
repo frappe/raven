@@ -1,3 +1,4 @@
+import { INSTRUCTIONS_LIST_KEY } from "./InstructionListView"
 import type { RavenBotInstructionTemplate } from "@raven/types/RavenAI/RavenBotInstructionTemplate"
 import SettingsRecordEditor from "../SettingsRecordEditor"
 import InstructionTemplateForm from "./InstructionTemplateForm"
@@ -10,7 +11,7 @@ const InstructionEditorView = (props: Props) => (
     <SettingsRecordEditor<RavenBotInstructionTemplate>
         {...props}
         doctype="Raven Bot Instruction Template"
-        listKey="raven-instruction-templates"
+        listKey={INSTRUCTIONS_LIST_KEY}
         createDefaults={{ template_name: "", instruction: "", dynamic_instructions: 0 }}
         createTitle={_("Create an Instruction Template")}
         backLabel={_("Back to instruction templates")}

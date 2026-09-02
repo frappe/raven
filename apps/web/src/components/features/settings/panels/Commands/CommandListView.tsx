@@ -13,6 +13,8 @@ import {
     SettingsPanelTitle,
 } from "@components/ui/settings-dialog"
 import { Spinner } from "@components/ui/spinner"
+import { TablePagination } from "@components/ui/table-pagination"
+import usePaginatedList from "@hooks/usePaginatedList"
 import { CheckIcon, WandSparklesIcon } from "lucide-react"
 import { isRavenSettingsAdmin } from "../AdminSettingsForm"
 import type { RavenBotAIPrompt } from "@raven/types/RavenAI/RavenBotAIPrompt"
@@ -21,18 +23,22 @@ import _ from "@lib/translate"
 
 const isMac = typeof navigator !== "undefined" && navigator.userAgent.includes("Mac")
 
+export const COMMANDS_LIST_KEY = "raven-saved-prompts"
+
 /** AI → Commands: list of saved prompts. Non-admins only see the empty state. */
 const CommandListView = ({ onOpen, onCreate }: { onOpen: (id: string) => void; onCreate: () => void }) => {
     const isAdmin = isRavenSettingsAdmin()
+    const pagination = usePaginatedList(COMMANDS_LIST_KEY, "Raven Bot AI Prompt", isAdmin)
 
-    const { data, isLoading, error } = useFrappeGetDocList<RavenBotAIPrompt>(
+    const { data, error } = useFrappeGetDocList<RavenBotAIPrompt>(
         "Raven Bot AI Prompt",
         {
             fields: ["name", "prompt", "raven_bot", "is_global"],
             orderBy: { field: "modified", order: "desc" },
+            ...pagination.listArgs,
         },
-        isAdmin ? "raven-saved-prompts" : null,
-        { errorRetryCount: 2 },
+        pagination.swrKey,
+        { errorRetryCount: 2, keepPreviousData: true },
     )
 
     const columns = useMemo<ColumnDef<RavenBotAIPrompt>[]>(
@@ -62,7 +68,7 @@ const CommandListView = ({ onOpen, onCreate }: { onOpen: (id: string) => void; o
         [onOpen],
     )
 
-    const showEmptyState = !data || data.length === 0 || !isAdmin
+    const showEmptyState = !isAdmin || ((data?.length ?? 0) === 0 && pagination.totalCount === 0)
 
     return (
         <>
@@ -72,12 +78,12 @@ const CommandListView = ({ onOpen, onCreate }: { onOpen: (id: string) => void; o
             </SettingsPanelHeader>
             <SettingsPanelContent className="min-h-0 gap-4">
                 {error && <ErrorBanner error={error} />}
-                {isLoading && !error && (
+                {!data && !error && (
                     <div className="flex flex-1 items-center justify-center">
                         <Spinner />
                     </div>
                 )}
-                {!isLoading && !error && (
+                {!!data && !error && (
                     <>
                         {!showEmptyState && <AINotEnabledCallout />}
                         {showEmptyState ? (
@@ -105,15 +111,24 @@ const CommandListView = ({ onOpen, onCreate }: { onOpen: (id: string) => void; o
                                 )}
                             </Empty>
                         ) : (
-                            <ListView
-                                className="flex-1 min-h-0"
-                                scrollAreaClassName="flex-1"
-                                maxHeight="100%"
-                                rowHeight={44}
-                                data={data}
-                                columns={columns}
-                                getRowId={(row) => row.name}
-                            />
+                            <>
+                                <ListView
+                                    className="flex-1 min-h-0"
+                                    scrollAreaClassName="flex-1"
+                                    maxHeight="100%"
+                                    rowHeight={44}
+                                    data={data ?? []}
+                                    columns={columns}
+                                    getRowId={(row) => row.name}
+                                />
+                                <TablePagination
+                                    pageIndex={pagination.pageIndex}
+                                    pageSize={pagination.pageSize}
+                                    totalCount={pagination.totalCount}
+                                    onPageChange={pagination.onPageChange}
+                                    onPageSizeChange={pagination.onPageSizeChange}
+                                />
+                            </>
                         )}
                     </>
                 )}

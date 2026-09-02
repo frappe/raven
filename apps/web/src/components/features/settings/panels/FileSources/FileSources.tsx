@@ -22,6 +22,8 @@ import {
     SettingsPanelTitle,
 } from "@components/ui/settings-dialog"
 import { Spinner } from "@components/ui/spinner"
+import { TablePagination } from "@components/ui/table-pagination"
+import usePaginatedList from "@hooks/usePaginatedList"
 import { FileIcon, Trash2Icon } from "lucide-react"
 import { isRavenSettingsAdmin } from "../AdminSettingsForm"
 import { getTimePassed } from "@raven/lib/utils/dateConversions"
@@ -36,30 +38,34 @@ const FILE_SOURCES_KEY = "raven-ai-file-sources"
 export const FileSources = () => {
     const { mutate: globalMutate } = useSWRConfig()
     const isAdmin = isRavenSettingsAdmin()
+    const pagination = usePaginatedList(FILE_SOURCES_KEY, "Raven AI File Source", isAdmin)
 
-    const { data, isLoading, error } = useFrappeGetDocList<RavenAIFileSource>(
+    const { data, error } = useFrappeGetDocList<RavenAIFileSource>(
         "Raven AI File Source",
         {
             fields: ["name", "file_name", "file", "file_type", "creation"],
             orderBy: { field: "modified", order: "desc" },
+            ...pagination.listArgs,
         },
-        isAdmin ? FILE_SOURCES_KEY : null,
-        { errorRetryCount: 2 },
+        pagination.swrKey,
+        { errorRetryCount: 2, keepPreviousData: true },
     )
 
     const [selected, setSelected] = useState<RavenAIFileSource | null>(null)
     const { deleteDoc, loading: deleteLoading, error: deleteError } = useFrappeDeleteDoc()
 
+    const invalidateList = () => globalMutate((key) => typeof key === "string" && key.startsWith(FILE_SOURCES_KEY))
+
     const onDelete = () => {
         if (!selected) return
         deleteDoc("Raven AI File Source", selected.name).then(async () => {
-            await globalMutate(FILE_SOURCES_KEY)
+            await invalidateList()
             setSelected(null)
-        })
+        }).catch(() => { /* surfaced by the error banner */ })
     }
 
     const refresh = async () => {
-        await globalMutate(FILE_SOURCES_KEY)
+        await invalidateList()
     }
 
     const columns = useMemo<ColumnDef<RavenAIFileSource>[]>(
@@ -123,7 +129,7 @@ export const FileSources = () => {
         [],
     )
 
-    const showEmptyState = !data || data.length === 0 || !isAdmin
+    const showEmptyState = !isAdmin || ((data?.length ?? 0) === 0 && pagination.totalCount === 0)
 
     return (
         <>
@@ -137,12 +143,12 @@ export const FileSources = () => {
             </SettingsPanelHeader>
             <SettingsPanelContent className="min-h-0 gap-4">
                 {error && <ErrorBanner error={error} />}
-                {isLoading && !error && (
+                {!data && !error && (
                     <div className="flex flex-1 items-center justify-center">
                         <Spinner />
                     </div>
                 )}
-                {!isLoading && !error && (
+                {!!data && !error && (
                     <>
                         {!showEmptyState && <AINotEnabledCallout />}
                         {showEmptyState ? (
@@ -173,15 +179,24 @@ export const FileSources = () => {
                                 )}
                             </Empty>
                         ) : (
-                            <ListView
-                                className="flex-1 min-h-0"
-                                scrollAreaClassName="flex-1"
-                                maxHeight="100%"
-                                rowHeight={44}
-                                data={data}
-                                columns={columns}
-                                getRowId={(row) => row.name}
-                            />
+                            <>
+                                <ListView
+                                    className="flex-1 min-h-0"
+                                    scrollAreaClassName="flex-1"
+                                    maxHeight="100%"
+                                    rowHeight={44}
+                                    data={data ?? []}
+                                    columns={columns}
+                                    getRowId={(row) => row.name}
+                                />
+                                <TablePagination
+                                    pageIndex={pagination.pageIndex}
+                                    pageSize={pagination.pageSize}
+                                    totalCount={pagination.totalCount}
+                                    onPageChange={pagination.onPageChange}
+                                    onPageSizeChange={pagination.onPageSizeChange}
+                                />
+                            </>
                         )}
                     </>
                 )}

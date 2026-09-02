@@ -1,3 +1,4 @@
+import { COMMANDS_LIST_KEY } from "./CommandListView"
 import type { RavenBotAIPrompt } from "@raven/types/RavenAI/RavenBotAIPrompt"
 import SettingsRecordEditor from "../SettingsRecordEditor"
 import SavedPromptForm from "./SavedPromptForm"
@@ -10,7 +11,7 @@ const CommandEditorView = (props: Props) => (
     <SettingsRecordEditor<RavenBotAIPrompt>
         {...props}
         doctype="Raven Bot AI Prompt"
-        listKey="raven-saved-prompts"
+        listKey={COMMANDS_LIST_KEY}
         createDefaults={{ prompt: "", raven_bot: "", is_global: 0 }}
         createTitle={_("Create a Saved Command")}
         backLabel={_("Back to saved commands")}

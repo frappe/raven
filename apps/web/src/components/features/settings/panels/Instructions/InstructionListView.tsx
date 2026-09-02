@@ -13,24 +13,30 @@ import {
     SettingsPanelTitle,
 } from "@components/ui/settings-dialog"
 import { Spinner } from "@components/ui/spinner"
+import { TablePagination } from "@components/ui/table-pagination"
+import usePaginatedList from "@hooks/usePaginatedList"
 import { FileTextIcon, SparklesIcon } from "lucide-react"
 import { isRavenSettingsAdmin } from "../AdminSettingsForm"
 import type { RavenBotInstructionTemplate } from "@raven/types/RavenAI/RavenBotInstructionTemplate"
 import AINotEnabledCallout from "../ai/AINotEnabledCallout"
 import _ from "@lib/translate"
 
+export const INSTRUCTIONS_LIST_KEY = "raven-instruction-templates"
+
 /** AI → Instructions: list of saved instruction templates. Non-admins only see the empty state. */
 const InstructionListView = ({ onOpen, onCreate }: { onOpen: (id: string) => void; onCreate: () => void }) => {
     const isAdmin = isRavenSettingsAdmin()
+    const pagination = usePaginatedList(INSTRUCTIONS_LIST_KEY, "Raven Bot Instruction Template", isAdmin)
 
-    const { data, isLoading, error } = useFrappeGetDocList<RavenBotInstructionTemplate>(
+    const { data, error } = useFrappeGetDocList<RavenBotInstructionTemplate>(
         "Raven Bot Instruction Template",
         {
             fields: ["name", "template_name", "dynamic_instructions", "instruction"],
             orderBy: { field: "modified", order: "desc" },
+            ...pagination.listArgs,
         },
-        isAdmin ? "raven-instruction-templates" : null,
-        { errorRetryCount: 2 },
+        pagination.swrKey,
+        { errorRetryCount: 2, keepPreviousData: true },
     )
 
     const columns = useMemo<ColumnDef<RavenBotInstructionTemplate>[]>(
@@ -53,7 +59,7 @@ const InstructionListView = ({ onOpen, onCreate }: { onOpen: (id: string) => voi
         [onOpen],
     )
 
-    const showEmptyState = !data || data.length === 0 || !isAdmin
+    const showEmptyState = !isAdmin || ((data?.length ?? 0) === 0 && pagination.totalCount === 0)
 
     return (
         <>
@@ -63,12 +69,12 @@ const InstructionListView = ({ onOpen, onCreate }: { onOpen: (id: string) => voi
             </SettingsPanelHeader>
             <SettingsPanelContent className="min-h-0 gap-4">
                 {error && <ErrorBanner error={error} />}
-                {isLoading && !error && (
+                {!data && !error && (
                     <div className="flex flex-1 items-center justify-center">
                         <Spinner />
                     </div>
                 )}
-                {!isLoading && !error && (
+                {!!data && !error && (
                     <>
                         {!showEmptyState && <AINotEnabledCallout />}
                         {showEmptyState ? (
@@ -94,15 +100,24 @@ const InstructionListView = ({ onOpen, onCreate }: { onOpen: (id: string) => voi
                                 )}
                             </Empty>
                         ) : (
-                            <ListView
-                                className="flex-1 min-h-0"
-                                scrollAreaClassName="flex-1"
-                                maxHeight="100%"
-                                rowHeight={44}
-                                data={data}
-                                columns={columns}
-                                getRowId={(row) => row.name}
-                            />
+                            <>
+                                <ListView
+                                    className="flex-1 min-h-0"
+                                    scrollAreaClassName="flex-1"
+                                    maxHeight="100%"
+                                    rowHeight={44}
+                                    data={data ?? []}
+                                    columns={columns}
+                                    getRowId={(row) => row.name}
+                                />
+                                <TablePagination
+                                    pageIndex={pagination.pageIndex}
+                                    pageSize={pagination.pageSize}
+                                    totalCount={pagination.totalCount}
+                                    onPageChange={pagination.onPageChange}
+                                    onPageSizeChange={pagination.onPageSizeChange}
+                                />
+                            </>
                         )}
                     </>
                 )}

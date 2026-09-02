@@ -1,3 +1,4 @@
+import { AGENTS_LIST_KEY } from "./AgentListView"
 import { useContext } from "react"
 import { FrappeContext, type FrappeConfig } from "frappe-react-sdk"
 import { useNavigate } from "react-router"
@@ -18,7 +19,7 @@ const AgentEditorView = (props: Props) => (
     <SettingsRecordEditor<RavenBot>
         {...props}
         doctype="Raven Bot"
-        listKey="raven-bots"
+        listKey={AGENTS_LIST_KEY}
         createDefaults={{ bot_name: "", description: "", is_ai_bot: 0, enable_file_search: 1, enable_code_interpreter: 1 }}
         createTitle={_("Create an Agent")}
         backLabel={_("Back to agents")}

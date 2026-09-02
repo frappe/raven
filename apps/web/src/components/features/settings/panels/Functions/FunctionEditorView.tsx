@@ -1,3 +1,4 @@
+import { FUNCTIONS_LIST_KEY } from "./FunctionListView"
 import type { RavenAIFunction } from "@raven/types/RavenAI/RavenAIFunction"
 import SettingsRecordEditor from "../SettingsRecordEditor"
 import FunctionForm from "./FunctionForm"
@@ -10,7 +11,7 @@ const FunctionEditorView = (props: Props) => (
     <SettingsRecordEditor<RavenAIFunction>
         {...props}
         doctype="Raven AI Function"
-        listKey="raven-ai-functions"
+        listKey={FUNCTIONS_LIST_KEY}
         createDefaults={{ function_name: "", description: "", reference_doctype: "", function_path: "", params: { type: "object", properties: {} } }}
         createTitle={_("Create a Function")}
         backLabel={_("Back to functions")}

@@ -39,7 +39,8 @@ export function TablePagination({
 
     return (
         <div className="flex items-center justify-between pt-4">
-            <p className="text-sm text-ink-gray-4">
+            {/* tabular-nums: digits keep one width, so page flips don't shift the row. */}
+            <p className="text-sm text-ink-gray-4 tabular-nums">
                 {_("Showing {0}-{1} of {2}", [String(start), String(end), String(totalCount)])}
             </p>
 
@@ -49,8 +50,9 @@ export function TablePagination({
                     <Select value={String(pageSize)} onValueChange={(value) => onPageSizeChange(Number(value))}>
                         {/* text-sm: the trigger's own type step is 14px, which left the page
                             size a size larger than everything beside it — its own label and
-                            the "Showing x-y of n" count are both 13px. */}
-                        <SelectTrigger inputSize="sm" className="text-sm">
+                            the "Showing x-y of n" count are both 13px.
+                            min-w fits the widest option (100) so switching sizes doesn't shift the row. */}
+                        <SelectTrigger inputSize="sm" className="text-sm tabular-nums min-w-17.5 justify-end">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -63,7 +65,7 @@ export function TablePagination({
                     </Select>
                 </div>
 
-                <span className="text-sm text-ink-gray-4">
+                <span className="text-sm text-ink-gray-4 tabular-nums">
                     {_("Page {0} of {1}", [String(pageIndex + 1), String(totalPages)])}
                 </span>
 

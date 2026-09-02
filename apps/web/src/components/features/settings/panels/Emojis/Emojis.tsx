@@ -1,8 +1,9 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { ListView, type ListViewColumnMeta, type SortingState } from '@components/ui/list-view'
 import type { ColumnDef } from '@tanstack/react-table'
 import { TablePagination } from '@components/ui/table-pagination'
-import { useFetchCustomEmojis, useFetchCustomEmojisCount } from '@hooks/fetchers/useFetchCustomEmojis'
+import { useFetchCustomEmojis } from '@hooks/fetchers/useFetchCustomEmojis'
+import usePaginatedList from '@hooks/usePaginatedList'
 import { useSWRConfig } from 'frappe-react-sdk'
 import {
     SettingsPanelContent,
@@ -50,9 +51,8 @@ export const Emojis = () => {
     const { mutate: globalMutate } = useSWRConfig()
 
     const [sorting, setSorting] = useState<SortingState>([])
-    const [pageIndex, setPageIndex] = useState(0)
-    const [pageSize, setPageSize] = useState(20)
     const [open, setOpen] = useState(false)
+    const pagination = usePaginatedList("custom-emojis-settings", "Raven Custom Emoji", true)
 
     // The server fetch takes a single {field, order}; ListView holds TanStack sorting.
     const fetchSort = useMemo(() => {
@@ -60,26 +60,16 @@ export const Emojis = () => {
         return active ? { field: active.id, order: active.desc ? ('desc' as const) : ('asc' as const) } : undefined
     }, [sorting])
 
-    // Fetch data with current page settings
+    // Fetch data with current page settings (SDK auto-key: sort + page are both in the params)
     const { data, isLoading, error, mutate } = useFetchCustomEmojis(
         fetchSort,
-        { pageIndex, pageSize, totalCount: 0 }
+        { pageIndex: pagination.pageIndex, pageSize: pagination.pageSize, totalCount: 0 }
     )
-    const { count, mutate: mutateCount } = useFetchCustomEmojisCount()
-
-    // Deleting the last row of the last page leaves pageIndex past the end —
-    // the list then showed "No emojis found" with a phantom "Page 3 of 2".
-    // Clamp back onto the last real page whenever the count shrinks.
-    useEffect(() => {
-        if (count === undefined) return
-        const lastPage = Math.max(0, Math.ceil(count / pageSize) - 1)
-        if (pageIndex > lastPage) setPageIndex(lastPage)
-    }, [count, pageSize, pageIndex])
 
     const onAddEmoji = (refresh: boolean = false) => {
         if (refresh) {
             mutate()
-            mutateCount()
+            pagination.mutateCount()
             globalMutate('custom-emojis')
         }
         setOpen(false)
@@ -87,7 +77,7 @@ export const Emojis = () => {
 
     const onDeleteEmoji = () => {
         mutate()
-        mutateCount()
+        pagination.mutateCount()
         globalMutate('custom-emojis')
     }
 
@@ -180,11 +170,11 @@ export const Emojis = () => {
             </SettingsPanelHeader>
             <SettingsPanelContent className="min-h-0">
                 {error && <ErrorBanner error={error} />}
-                {!isLoading && count === 0 ? (
+                {!isLoading && (data?.length ?? 0) === 0 && pagination.totalCount === 0 ? (
                     <CustomEmojiEmptyState setOpen={setOpen} />
                 ) : (
                     <>
-                        {isLoading ? (
+                        {!data ? (
                             <div className="flex flex-1 items-center justify-center">
                                 <Spinner />
                             </div>
@@ -200,7 +190,7 @@ export const Emojis = () => {
                                 onSortingChange={(updater) => {
                                     // New sort re-orders the whole set — jump back to the first page.
                                     setSorting(updater)
-                                    setPageIndex(0)
+                                    pagination.onPageChange(0)
                                 }}
                                 rowHeight={44}
                                 emptyState={
@@ -217,14 +207,11 @@ export const Emojis = () => {
                             />
                         )}
                         <TablePagination
-                            pageIndex={pageIndex}
-                            pageSize={pageSize}
-                            totalCount={count}
-                            onPageChange={setPageIndex}
-                            onPageSizeChange={(size) => {
-                                setPageSize(size)
-                                setPageIndex(0)
-                            }}
+                            pageIndex={pagination.pageIndex}
+                            pageSize={pagination.pageSize}
+                            totalCount={pagination.totalCount}
+                            onPageChange={pagination.onPageChange}
+                            onPageSizeChange={pagination.onPageSizeChange}
                         />
                     </>
                 )}

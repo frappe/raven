@@ -17,7 +17,7 @@ type Props<T extends FieldValues> = {
     /** Set for detail/edit mode; absent for create mode. */
     id?: string
     doctype: string
-    /** Shared SWR key of the panel's list — revalidated after create/save/delete. */
+    /** SWR key prefix of the panel's list — every page + count key under it is revalidated after create/save/delete. */
     listKey: string
     createDefaults: DefaultValues<T>
     createTitle: string
@@ -54,7 +54,7 @@ const Create = <T extends FieldValues>({
 
     const onSubmit = async (data: T) => {
         const doc = await createDoc(doctype, data)
-        await globalMutate(listKey)
+        await globalMutate((key) => typeof key === "string" && key.startsWith(listKey))
         onSaved?.(doc.name)
     }
 
@@ -120,7 +120,7 @@ const DetailContent = <T extends FieldValues>({
         toast.success(_("Saved"))
         methods.reset({ ...createDefaults, ...doc } as T)
         mutate(doc, { revalidate: false })
-        await globalMutate(listKey)
+        await globalMutate((key) => typeof key === "string" && key.startsWith(listKey))
     }
 
     useSaveHotkey(() => { if (!loading) handleSubmit(onSubmit)() })
@@ -136,7 +136,7 @@ const DetailContent = <T extends FieldValues>({
                                 docName={id}
                                 deleteDescription={deleteDescription}
                                 onDeleted={async () => {
-                                    await globalMutate(listKey)
+                                    await globalMutate((key) => typeof key === "string" && key.startsWith(listKey))
                                     onDeleted?.()
                                 }}
                             />
