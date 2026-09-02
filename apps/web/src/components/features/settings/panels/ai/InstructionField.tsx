@@ -141,16 +141,20 @@ const InstructionPreview = ({ view }: { view: "editor" | "preview" }) => {
 
     const { control } = useFormContext<InstructionFieldForm>()
     const instruction = useWatch({ control, name: "instruction" })
+    const hasContent = !!instruction?.trim()
 
+    // No render round-trip for a blank editor.
     const { data } = useFrappeGetCall<{ message: string }>(
         "raven.api.ai_features.get_instruction_preview",
         { instruction },
-        view === "preview" ? undefined : null
+        view === "preview" && hasContent ? undefined : null
     )
 
     return (
         <div className="rounded-md border border-outline-gray-2 bg-surface-gray-2 px-3 py-2">
-            <p className="text-sm whitespace-pre-wrap">{data?.message}</p>
+            {hasContent
+                ? <p className="text-sm whitespace-pre-wrap">{data?.message}</p>
+                : <p className="text-sm text-ink-gray-5">{_("Nothing to preview")}</p>}
         </div>
     )
 }
