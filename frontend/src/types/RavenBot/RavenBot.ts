@@ -66,4 +66,6 @@ File search enables the assistant with knowledge from files that you upload. Onc
 	use_google_document_parser?: 0 | 1
 	/**	Google Document Processor ID : Data	*/
 	google_document_processor_id?: string
+	/**	Enable base64 image encoding for Local LLM vision : Check - When images are sent to a Local LLM agent, encode them as base64 and include them directly in the request.	*/
+	enable_vision_base64?: 0 | 1
 }

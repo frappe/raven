@@ -139,15 +139,38 @@ const AIFeaturesBotForm = (props: Props) => {
             )}
 
             {isLocalLLM && (
-                <Callout.Root size="1">
-                    <Callout.Icon>
-                        <BiInfoCircle />
-                    </Callout.Icon>
-                    <Callout.Text>
-                        Currently, code interpreter features are not available for Local LLM providers.
-                        These features require OpenAI's infrastructure.
-                    </Callout.Text>
-                </Callout.Root>
+                <>
+                    <Callout.Root size="1">
+                        <Callout.Icon>
+                            <BiInfoCircle />
+                        </Callout.Icon>
+                        <Callout.Text>
+                            Currently, code interpreter features are not available for Local LLM providers.
+                            These features require OpenAI's infrastructure.
+                        </Callout.Text>
+                    </Callout.Root>
+                    <Stack maxWidth={'480px'}>
+                        <Text as="label" size="2">
+                            <HStack align='center'>
+                                <Controller
+                                    control={control}
+                                    name='enable_vision_base64'
+                                    render={({ field }) => (
+                                        <Checkbox
+                                            checked={field.value ? true : false}
+                                            onCheckedChange={(v) => field.onChange(v ? 1 : 0)}
+                                        />
+                                    )}
+                                />
+                                <span>Enable vision (base64 image encoding)</span>
+                            </HStack>
+                        </Text>
+                        <HelperText>
+                            When images are sent to this agent, encode them as base64 and include them directly
+                            in the request. Enable this for vision-capable models (Ollama, LM Studio, etc.).
+                        </HelperText>
+                    </Stack>
+                </>
             )}
 
             <Heading as='h5' size='3' className='not-cal' weight='bold'>Advanced</Heading>

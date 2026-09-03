@@ -244,6 +244,13 @@
    "fieldtype": "Data",
    "label": "Google Document Processor ID",
    "length": 400
+  },
+  {
+   "default": "0",
+   "description": "When images are sent to a Local LLM agent, encode them as base64 and include them directly in the request. Enable this for vision-capable local models (Ollama, LM Studio, etc.).",
+   "fieldname": "enable_vision_base64",
+   "fieldtype": "Check",
+   "label": "Enable base64 image encoding for Local LLM vision"
   }
  ],
  "grid_page_length": 50,

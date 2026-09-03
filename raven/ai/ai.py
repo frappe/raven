@@ -353,6 +353,55 @@ def extract_file_content_for_agent(file_url: str, file_extension: str, bot, file
 	return extracted_content
 
 
+def _build_vision_content(file_url: str, user_text: str = "") -> list:
+	"""
+	Build an OpenAI-compatible vision content list with a base64-encoded image.
+	Used for local LLMs with vision capability (Ollama, LM Studio, etc.) that accept
+	the OpenAI chat completions format but cannot fetch server-side file paths.
+	"""
+	import base64
+	import mimetypes
+
+	content = []
+
+	if user_text:
+		content.append({"type": "text", "text": user_text})
+
+	try:
+		file_doc = frappe.get_doc("File", {"file_url": file_url})
+		file_path = file_doc.get_full_path()
+
+		with open(file_path, "rb") as f:
+			image_data = base64.b64encode(f.read()).decode("utf-8")
+
+		mime_type, _ = mimetypes.guess_type(file_path)
+		if not mime_type:
+			ext = file_path.rsplit(".", 1)[-1].lower() if "." in file_path else "jpeg"
+			mime_map = {
+				"jpg": "image/jpeg",
+				"jpeg": "image/jpeg",
+				"png": "image/png",
+				"gif": "image/gif",
+				"webp": "image/webp",
+			}
+			mime_type = mime_map.get(ext, "image/jpeg")
+
+		content.append(
+			{
+				"type": "image_url",
+				"image_url": {"url": f"data:{mime_type};base64,{image_data}"},
+			}
+		)
+	except Exception as e:
+		frappe.log_error(
+			f"Error encoding image for Local LLM vision: {str(e)}\nFile: {file_url}",
+			"Image Vision Encoding Error",
+		)
+		content.append({"type": "text", "text": f"[Image: {file_url}]"})
+
+	return content
+
+
 def process_message_with_agent(
 	message, bot, channel_id: str, is_new_conversation: bool, channel=None
 ):
@@ -428,11 +477,21 @@ def process_message_with_agent(
 			if message.text or message.content:
 				content += f"\n\nUser's question: {message.text or message.content}"
 		else:
-			content = f"[User uploaded an image: {file_url}]"
+			user_text = ""
 			if extracted_content:
-				content += f"\n\nExtracted content from the image:\n{extracted_content}"
+				user_text = f"Extracted content from the image:\n{extracted_content}\n\n"
 			if message.text or message.content:
-				content += f"\n\nUser's question: {message.text or message.content}"
+				user_text += message.text or message.content
+
+			if bot.model_provider == "Local LLM" and getattr(bot, "enable_vision_base64", 1):
+				# Encode image as base64 so local vision models (Ollama etc.) can see it
+				content = _build_vision_content(file_url, user_text or None)
+			else:
+				content = f"[User uploaded an image: {file_url}]"
+				if extracted_content:
+					content += f"\n\nExtracted content from the image:\n{extracted_content}"
+				if message.text or message.content:
+					content += f"\n\nUser's question: {message.text or message.content}"
 	else:
 		content = message.text or message.content or ""
 
@@ -446,13 +505,20 @@ def process_message_with_agent(
 			file_extension = file_url.split(".")[-1].lower() if "." in file_url else ""
 			extracted_content = extract_file_content_for_agent(file_url, file_extension, bot, file_handler)
 
-			file_prefix = f"[User uploaded a {'file' if recent_file_message.message_type == 'File' else 'image'}: {file_url}]"
-			if extracted_content:
-				file_prefix += f"\n\nExtracted content from the file:\n{extracted_content}\n\n"
+			if recent_file_message.message_type == "Image" and bot.model_provider == "Local LLM" and getattr(bot, "enable_vision_base64", 1):
+				# Encode image as base64 for local vision models, combining with the user's text
+				vision_text = ""
+				if extracted_content:
+					vision_text = f"Extracted content from the image:\n{extracted_content}\n\n"
+				vision_text += content
+				content = _build_vision_content(file_url, vision_text)
 			else:
-				file_prefix += "\n"
-
-			content = file_prefix + content
+				file_prefix = f"[User uploaded a {'file' if recent_file_message.message_type == 'File' else 'image'}: {file_url}]"
+				if extracted_content:
+					file_prefix += f"\n\nExtracted content from the file:\n{extracted_content}\n\n"
+				else:
+					file_prefix += "\n"
+				content = file_prefix + content
 
 	# Get conversation history if this is an existing thread
 	conversation_history = []

@@ -570,8 +570,11 @@ async def handle_ai_request_async(
 								{"role": msg["role"], "content": [{"type": "text", "text": msg["content"]}]}
 							)
 
-					# Add current user message
-					messages.append({"role": "user", "content": [{"type": "text", "text": message}]})
+					# Add current user message (may be a list for vision content with images)
+					if isinstance(message, list):
+						messages.append({"role": "user", "content": message})
+					else:
+						messages.append({"role": "user", "content": [{"type": "text", "text": message}]})
 
 					# Create the API call with or without tools
 					api_params = {
@@ -620,7 +623,10 @@ async def handle_ai_request_async(
 
 								messages = [
 									{"role": "system", "content": [{"type": "text", "text": agent.instructions}]},
-									{"role": "user", "content": [{"type": "text", "text": str(full_input)}]},
+									{
+										"role": "user",
+										"content": message if isinstance(message, list) else [{"type": "text", "text": str(full_input)}],
+									},
 									assistant_message,
 								]
 

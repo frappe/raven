@@ -45,4 +45,6 @@ File search enables the assistant with knowledge from files that you upload. Onc
 	dynamic_instructions?: 0 | 1
 	/**	Bot Functions : Table - Raven Bot Functions	*/
 	bot_functions?: RavenBotFunctions[]
+	/**	Enable base64 image encoding for Local LLM vision : Check - When images are sent to a Local LLM agent, encode them as base64 and include them directly in the request.	*/
+	enable_vision_base64?: 0 | 1
 }
