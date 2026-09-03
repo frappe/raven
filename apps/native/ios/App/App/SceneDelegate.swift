@@ -8,10 +8,26 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let windowScene = scene as? UIWindowScene else { return }
 
         window = UIWindow(windowScene: windowScene)
-        window?.rootViewController = CAPBridgeViewController()
+        window?.rootViewController = RavenBridgeViewController()
+        applyStoredTheme()
         window?.makeKeyAndVisible()
 
         SceneDelegateProxy.shared.scene(scene, willConnectTo: session, options: connectionOptions)
+    }
+
+    // In-app theme choice, mirrored by the web app into Capacitor Preferences.
+    // Drives the WebView's prefers-color-scheme and the canvas colors alike.
+    private func applyStoredTheme() {
+        switch UserDefaults.standard.string(forKey: "CapacitorStorage.appTheme") {
+        case "dark": window?.overrideUserInterfaceStyle = .dark
+        case "light": window?.overrideUserInterfaceStyle = .light
+        default: window?.overrideUserInterfaceStyle = .unspecified
+        }
+    }
+
+    // Re-read on every foreground so a theme changed in-app applies without a relaunch.
+    func sceneWillEnterForeground(_ scene: UIScene) {
+        applyStoredTheme()
     }
 
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {

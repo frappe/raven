@@ -27,3 +27,12 @@ allprojects {
 task clean(type: Delete) {
     delete rootProject.buildDir
 }
+
+// send-intent@7 targets SDK 35; Capacitor 8's androidx deps need 36.
+subprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty("android")) {
+            project.android.compileSdkVersion 36
+        }
+    }
+}

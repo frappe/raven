@@ -1,4 +1,5 @@
 import Cookies from "js-cookie"
+import { redirectToLogin } from "@/native/session"
 
 /**
  * Runtime recovery from a DEAD SESSION. The boot-time login check in App.tsx
@@ -15,11 +16,6 @@ import Cookies from "js-cookie"
  * that never reached Frappe (network down, proxy error) leaves the cookie
  * untouched and we correctly do nothing but keep retrying.
  */
-
-/** Same login redirect App.tsx does at boot — returns here after login. */
-export const redirectToLogin = () => {
-    window.location.href = `/login?redirect-to=${window.location.pathname}`
-}
 
 /** Global SWR onError: side-effect only — SWR's own retry behavior is untouched. */
 export const redirectToLoginIfSessionDied = () => {

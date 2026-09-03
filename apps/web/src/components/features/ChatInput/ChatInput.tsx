@@ -12,6 +12,7 @@ import { MentionButton } from "./MentionButton"
 import { EmojiPickerButton } from "./EmojiPickerButton"
 import { CreatePollDialog } from "./CreatePollDialog"
 import { uploadedFilesAtom, uploadingFilesAtom, pendingSendAtom, useAttachFile } from "./useFileInput"
+import { consumeSharedFiles } from "@/native/shareIn"
 import { registerComposerFocus } from "./composerFocus"
 import { useRavenEditor, EDITOR_MIN_H } from "@components/features/editor/useRavenEditor"
 import { useQuietSendMode } from "@hooks/useQuietHours"
@@ -99,6 +100,11 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
         setLinkSignal((n) => n + 1)
     }
     const onAddFile = useAttachFile(channelID)
+    useEffect(() => {
+        const sharedFiles = consumeSharedFiles()
+        if (sharedFiles.length) onAddFile(sharedFiles)
+        // Runs once per channel mount: the queue is emptied on read.
+    }, [channelID])
     const filesRef = useRef<(files: File[]) => void>(() => { })
     filesRef.current = onAddFile
     // Escape / Backspace-when-empty cancel the active reply (reads the latest replyTo).

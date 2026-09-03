@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+  <title>Raven</title>
+  <style>
+    /* Same wordmark font as the RN app's landing screen. */
+    @font-face { font-family: "Cal Sans"; src: url("/CalSans-SemiBold.otf") format("opentype"); font-display: swap; }
+    /* Espresso palette, both modes (tokens from apps/web espresso-colors.css). */
+    :root { color-scheme: light dark;
+            --bg: #ffffff; --fg: #171717; --card: #f3f3f3; --border: #e2e2e2;
+            --muted: #7c7c7c; --focus: #0d8ef8; --error: #e03434; --danger: #b41d1d; }
+    @media (prefers-color-scheme: dark) {
+      :root:not(.light) { --bg: #171717; --fg: #ffffff; --card: #262626; --border: #404040;
+              --muted: #7a7a7a; --focus: #60a5fa; --error: #f87171; --danger: #ff7575; }
+    }
+    /* In-app theme choice (class set by main.ts) outranks the system theme. */
+    :root.dark { --bg: #171717; --fg: #ffffff; --card: #262626; --border: #404040;
+                 --muted: #7a7a7a; --focus: #60a5fa; --error: #f87171; --danger: #ff7575; }
+    body { margin: 0; font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--fg);
+           /* Android WebView reports a 0 top inset; keep the title clear of the status bar. */
+           padding-top: 28px; /* fallback for WebViews without max() */
+           padding: max(env(safe-area-inset-top), 28px) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);}
+    /* Mirrors the RN landing screen: a centered column with the wordmark on top. */
+    #app { max-width: 480px; margin: 0 auto; padding: 0 24px 24px; min-height: 82dvh;
+           display: flex; flex-direction: column; justify-content: center; gap: 12px; }
+    .wordmark { font-family: "Cal Sans", -apple-system, system-ui, sans-serif; font-size: 48px; font-weight: 600; letter-spacing: -0.5px; margin: 0 0 8px; }
+    .label { font-size: 16px; margin: 0; }
+    #existing { display: flex; flex-direction: column; gap: 8px; }
+    #existing[hidden] { display: none; }
+    /* Long lists scroll internally; wordmark and form stay put. */
+    ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px;
+         max-height: min(376px, 60dvh); overflow-y: auto; overscroll-behavior: contain; }
+    li { position: relative; border-radius: 8px; overflow: hidden; flex: none; }
+    button { font-family: inherit; }
+    button.open { position: relative; z-index: 1; width: 100%; display: flex; align-items: center; gap: 8px;
+                  min-height: 56px; text-align: left; background: var(--card); border: none; border-radius: 8px;
+                  padding: 8px; color: inherit; font-size: 16px; }
+    button.open:active { opacity: 0.9; }
+    button.trash { position: absolute; top: 0; right: 0; bottom: 0; width: 48px; border: none;
+                   background: transparent; color: var(--danger); display: flex; align-items: center; justify-content: flex-end; padding-right: 6px; }
+    .avatar { width: 40px; height: 40px; border-radius: 50%; flex: none; background: var(--border);
+              display: flex; align-items: center; justify-content: center;
+              font-size: 18px; font-weight: 600; color: var(--muted); object-fit: cover; }
+    .meta { display: flex; flex-direction: column; min-width: 0; }
+    .meta .name { font-weight: 500; }
+    .meta .url { font-size: 14px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .or { display: flex; align-items: center; gap: 8px; padding-top: 16px; color: var(--muted); font-size: 16px; }
+    .or hr { flex: 1; border: none; border-top: 1px solid var(--border); margin: 0; }
+    form { display: flex; flex-direction: column; gap: 8px; }
+    input { font-size: 16px; min-height: 44px; border-radius: 8px; border: 1px solid var(--border);
+            background: transparent; color: inherit; padding: 0 12px; }
+    input::placeholder { color: var(--muted); }
+    input:focus { outline: none; border-color: var(--focus); }
+    button.primary { min-height: 44px; border: none; border-radius: 8px;
+                     background: var(--fg); color: var(--bg); font-size: 16px; font-weight: 500; }
+    button.primary:disabled { opacity: 0.5; }
+    button.primary:active { opacity: 0.8; }
+    #error { color: var(--error); margin: 0; font-size: 14px; min-height: 20px; }
+  </style>
+</head>
+<body><div id="app"></div><script type="module" src="/src/main.ts"></script></body>
+</html>

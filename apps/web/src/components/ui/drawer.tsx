@@ -1,9 +1,13 @@
 import * as React from "react"
 import { Drawer as DrawerPrimitive } from "vaul"
 import { cn } from "@lib/utils"
+import { isNative } from "@/native/platform"
 
 function Drawer({ ...props }: React.ComponentProps<typeof DrawerPrimitive.Root>) {
-    return <DrawerPrimitive.Root data-slot="drawer" {...props} />
+    // vaul's Safari-toolbar fix pins <body> position:fixed on open; it skips
+    // installed PWAs via display-mode:standalone, which the WebView never
+    // matches — so opt out ourselves or every sheet shifts the app upward.
+    return <DrawerPrimitive.Root data-slot="drawer" noBodyStyles={isNative()} {...props} />
 }
 
 /**

@@ -10,7 +10,11 @@
  * this only from (or shortly after) a user gesture. Silently a no-op on
  * platforms with neither. Haptics are decoration — never throw.
  */
+import { isNative } from "@/native/platform"
+import { nativeHapticTick } from "@/native/haptics"
+
 export const hapticTick = () => {
+    if (isNative()) { nativeHapticTick(); return }
     try {
         if (navigator.vibrate?.(10)) return
         const label = document.createElement("label")

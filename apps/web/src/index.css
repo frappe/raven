@@ -36,7 +36,9 @@
 
 @custom-variant dark (&:is(.dark *));
 
-@custom-variant standalone (@media (display-mode: standalone));
+/* Installed PWA, or the Capacitor shell (WKWebView never matches display-mode;
+   main.tsx tags <html class="native"> instead). */
+@custom-variant standalone (@media (display-mode: standalone), &:is(.native *));
 
 /* Reading/content tier for names + list-row labels: larger on mobile (15px) than
    desktop (13px), built ONLY from existing Espresso tokens (no --text-* overrides).
@@ -248,6 +250,14 @@
     overscroll-behavior: none;
   }
 
+  /* Capacitor shell only: WKWebView draws no status bar (unlike installed PWAs,
+     where iOS paints an opaque one above the page) — reserve the top inset once,
+     here at the root, instead of padding every header. On #root, not body:
+     Radix's scroll lock rewrites body padding on every modal open. */
+  .native #root {
+    padding-top: env(safe-area-inset-top);
+  }
+
   /* Native scrollbars, app-wide — everything that isn't the <ScrollArea>
      component (which draws its own overlay bar in the same colors). Thin bar,
      rounded thumb on a transparent track; the thumb matches frappe-ui's
@@ -266,6 +276,13 @@
     scrollbar-width: thin;
     scrollbar-color: var(--scrollbar-thumb) transparent;
   }
+}
+
+/* Capacitor shell: page roots size themselves with h-dvh (viewport, not parent) —
+   take the body's top inset off them so they don't overflow. Unlayered on purpose:
+   it must beat the utilities layer. */
+.native .h-dvh {
+  height: calc(100dvh - env(safe-area-inset-top));
 }
 
 :root {

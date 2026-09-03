@@ -32,6 +32,7 @@ import { usePushNotificationNavigation } from "@hooks/usePushNotificationNavigat
 import { useAppBadge } from "@hooks/useAppBadge"
 import { useClearReadNotifications } from "@hooks/useClearReadNotifications"
 import { useRemovedChannelCleanup } from "@hooks/useRemovedChannelCleanup"
+import { useNativeBridge } from "@/native/useNativeBridge"
 import DocumentTitle from "./DocumentTitle"
 import { AppUpdateAlert } from "./AppUpdateAlert"
 import { SessionBroadcast } from "./SessionBroadcast"
@@ -163,6 +164,8 @@ const AppListeners = ({ children }: { children: React.ReactNode }) => {
     // access lost): message store + socket room, stale last-visited, and a
     // redirect off the dead route if it's on screen
     useRemovedChannelCleanup()
+    // Native shell: push-tap routing (Task 6), Android back (Task 8).
+    useNativeBridge()
 
     if (!isReady) {
         return <MainPageSkeleton />

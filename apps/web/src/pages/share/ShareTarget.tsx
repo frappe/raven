@@ -11,6 +11,8 @@ import type { ChannelListItem, DMChannelListItem } from "@raven/types/common/Cha
 import type { UserData } from "@db"
 import _ from "@lib/translate"
 import { ChannelIcon } from "@components/common/ChannelIcon/ChannelIcon"
+import { ShareTargetSkeleton } from "@pages/share/ShareTargetSkeleton"
+import { pendingShareToParams, readSharedFiles, stashSharedFiles, takePendingShare } from "@/native/shareIn"
 
 /** Escape shared plain text before it goes into the (HTML) composer draft. */
 const escapeHtml = (raw: string) =>
@@ -23,15 +25,27 @@ const escapeHtml = (raw: string) =>
  * the composer restores drafts on mount, so the share arrives ready to edit
  * and send, never sent blind.
  *
- * Support (2026): Chromium only — Android Chrome/Edge/Samsung Internet,
- * ChromeOS, and installed PWAs on Windows. iOS Safari has no share_target, so
- * iPhones can't share INTO the app. GET/text-only by design: receiving FILES
- * requires a POST intercepted by a service worker that controls this page,
- * and ours (scoped to /assets/) deliberately doesn't.
+ * Two entry paths: the web manifest's `share_target` (GET params, Chromium
+ * only) and the native shell's send-intent intake (`?native=1`, reads the
+ * stashed Preferences payload via takePendingShare).
  */
 const ShareTarget = () => {
     const [params] = useSearchParams()
     const navigate = useNavigate()
+    // Native shares arrive as a stashed Preferences payload, not GET params:
+    // read it once (files stashed for the composer) and render like the rest.
+    const [nativeParams, setNativeParams] = useState<URLSearchParams | null>(null)
+    useEffect(() => {
+        if (params.get("native") !== "1") return
+        let disposed = false
+        takePendingShare().then(async (share) => {
+            if (disposed) return
+            if (!share) { setNativeParams(new URLSearchParams()); return }
+            stashSharedFiles(await readSharedFiles(share))
+            setNativeParams(pendingShareToParams(share))
+        }).catch(() => setNativeParams(new URLSearchParams()))
+        return () => { disposed = true }
+    }, [params])
     const { channels, dmChannels } = useChannelList()
     const [query, setQuery] = useState("")
 
@@ -42,19 +56,24 @@ const ShareTarget = () => {
         [workspaces],
     )
 
-    const title = params.get("title")?.trim() ?? ""
-    const text = params.get("text")?.trim() ?? ""
-    const url = params.get("url")?.trim() ?? ""
+    const effective = nativeParams ?? params
+    const sharedFileCount = Number(effective.get("files") ?? 0)
+    const title = effective.get("title")?.trim() ?? ""
+    const text = effective.get("text")?.trim() ?? ""
+    const url = effective.get("url")?.trim() ?? ""
     // Android apps are inconsistent: many put the link in `text`, some send
     // title = text. Collapse to "one text piece + one url piece", no duplicates.
     const sharedText = text || title
     const sharedUrl = url && !sharedText.includes(url) ? url : ""
-    const hasShare = Boolean(sharedText || sharedUrl)
+    const sharedNames = effective.get("names") ?? ""
+    const hasShare = !!(sharedText || sharedUrl || sharedFileCount > 0)
 
-    // Nothing shared (e.g. the page was opened directly) — go home.
+    // Nothing shared (e.g. the page was opened directly) — go home. While a
+    // native payload is still loading, hold off: it may yet produce a share.
     useEffect(() => {
+        if (params.get("native") === "1" && !nativeParams) return
         if (!hasShare) navigate("/", { replace: true })
-    }, [hasShare, navigate])
+    }, [hasShare, navigate, nativeParams, params])
 
     // Subscribe to the users map: on a cold start at /share-target (how the OS
     // share sheet opens the app), the rows render BEFORE the users load — a
@@ -81,11 +100,14 @@ const ShareTarget = () => {
         if (sharedText) pieces.push(escapeHtml(sharedText))
         // An explicit anchor so Tiptap parses it as a real link mark.
         if (sharedUrl) pieces.push(`<a href="${escapeHtml(sharedUrl)}">${escapeHtml(sharedUrl)}</a>`)
-        const html = `<p>${pieces.join(" ")}</p>`
 
-        // Append — never clobber a draft the user already has in that channel.
-        const existing = loadDraft(channel.name)
-        saveDraft(channel.name, existing ? existing + html : html)
+        // Files-only shares have no draft content — leave the draft untouched.
+        if (pieces.length > 0) {
+            const html = `<p>${pieces.join(" ")}</p>`
+            // Append — never clobber a draft the user already has in that channel.
+            const existing = loadDraft(channel.name)
+            saveDraft(channel.name, existing ? existing + html : html)
+        }
 
         const target = channel.is_direct_message
             ? `/dm-channel/${encodeURIComponent(channel.name)}`
@@ -93,6 +115,7 @@ const ShareTarget = () => {
         navigate(target, { replace: true })
     }
 
+    if (params.get("native") === "1" && !nativeParams) return <ShareTargetSkeleton />
     if (!hasShare) return null
 
     return (
@@ -103,6 +126,7 @@ const ShareTarget = () => {
                 {/* What's being shared, so the user knows what will land in the draft */}
                 <div className="rounded-lg bg-surface-gray-1 px-3 py-2 text-sm text-ink-gray-7">
                     <span className="line-clamp-2 wrap-break-word">{sharedText || sharedUrl}</span>
+                    {!sharedText && !sharedUrl && sharedNames && <span className="line-clamp-1 break-all text-ink-gray-7">{sharedNames}</span>}
                     {sharedText && sharedUrl && <span className="line-clamp-1 break-all text-ink-gray-5">{sharedUrl}</span>}
                 </div>
                 <Input

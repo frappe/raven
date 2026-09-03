@@ -1,4 +1,4 @@
-import { LogOut, Bell, SettingsIcon, Loader2 } from "lucide-react"
+import { LogOut, Bell, SettingsIcon, Loader2, ArrowLeftRight } from "lucide-react"
 import { useLogout } from "@hooks/useLogout"
 import { UserAvatar } from "@components/features/message/UserAvatar"
 import { Button } from "@components/ui/button"
@@ -16,6 +16,8 @@ import { UserData } from "@db"
 import { useSetAtom } from "jotai"
 import { settingsDialogOpenTab } from "@components/features/settings/settingsDialogAtom"
 import { disablePush, enablePush, isPushEnabled } from "@lib/push"
+import { isNative } from "@/native/platform"
+import { switchSite } from "@/native/back"
 import { toast } from "sonner"
 import { getErrorMessage } from "@lib/frappe"
 import { FrappeError } from "frappe-react-sdk"
@@ -110,6 +112,10 @@ const NavUserMenu = () => {
                     <span>{pushOn ? _("Disable Notifications") : _("Enable Notifications")}</span>
                 </DropdownMenuItem>}
                 <DropdownMenuSeparator />
+                {isNative() && <DropdownMenuItem onClick={() => switchSite()}>
+                    <ArrowLeftRight strokeWidth={1.5} />
+                    <span>{_("Switch site")}</span>
+                </DropdownMenuItem>}
                 {/* preventDefault keeps the menu open (spinner visible) while logout
                     runs; success hard-redirects to /login, failure toasts. */}
                 <DropdownMenuItem

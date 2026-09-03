@@ -5,6 +5,7 @@
   "description": "Messaging Application",
   "workspaces": [
     "apps/web",
+    "apps/native",
     "packages/*"
   ],
   "main": "index.js",
@@ -18,7 +19,12 @@
     "install-web": "cd frontend && yarn install",
     "build-web": "cd frontend && yarn build",
     "build-web-v3": "cd apps/web && yarn build",
-    "install-web-v3": "cd apps/web && yarn install"
+    "install-web-v3": "cd apps/web && yarn install",
+    "native:build": "cd apps/native && yarn build",
+    "native:sync": "cd apps/native && yarn sync",
+    "native:ios": "cd apps/native && yarn ios",
+    "native:android": "cd apps/native && yarn android",
+    "native:test": "cd apps/native && yarn test"
   },
   "keywords": [],
   "author": "",

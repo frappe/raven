@@ -15,6 +15,7 @@ import ThreadDrawerRoute from "@components/features/message/ThreadDrawerRoute"
 import { WorkspaceRedirect } from "@components/workspace-switcher/WorkspaceRedirect"
 import { FrappeProvider } from 'frappe-react-sdk'
 import { redirectToLoginIfSessionDied } from '@lib/authRecovery'
+import { redirectToLogin } from "@/native/session"
 import { initEmojiMart } from '@lib/emojiMart'
 import Cookies from 'js-cookie'
 import { Toaster } from "@components/ui/sonner"
@@ -167,7 +168,7 @@ function App() {
 
   useEffect(() => {
     if (shouldRedirectToLogin) {
-      window.location.href = `/login?redirect-to=${window.location.pathname}`
+      redirectToLogin()
     }
   }, [shouldRedirectToLogin])
 

@@ -1,4 +1,6 @@
 import { useEffect } from "react"
+import { isNative } from "@/native/platform"
+import { setNativeBadge } from "@/native/badge"
 import { channelUnreadStore } from "@stores/unread/store"
 import { channelStore } from "@stores/channels/store"
 import { unreadThreadsStore } from "@stores/threads/unreadStore"
@@ -20,7 +22,8 @@ import { unreadThreadsStore } from "@stores/threads/unreadStore"
  */
 export const useAppBadge = () => {
     useEffect(() => {
-        if (typeof navigator.setAppBadge !== "function") return
+        const hasWebBadge = typeof navigator.setAppBadge === "function"
+        if (!hasWebBadge && !isNative()) return
         // Unread conversations (channels + DMs, MUTED excluded — muted means "don't
         // interrupt me", and the icon badge is an interruption, same rule as every
         // in-app aggregate) + unread THREADS (pushes fire for thread replies too, so
@@ -37,6 +40,8 @@ export const useAppBadge = () => {
             const total = conversations + unreadThreadsStore.getCount()
             if (!force && total === lastApplied) return
             lastApplied = total
+            // Native plugin path when the web Badging API is unavailable.
+            if (isNative() && !hasWebBadge) { setNativeBadge(total); return }
             if (total > 0) navigator.setAppBadge(total).catch(() => { })
             else navigator.clearAppBadge?.().catch(() => { })
         }

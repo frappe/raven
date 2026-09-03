@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Canvas behind the WebView; matches the web app's surface-base. -->
+    <color name="shell_background">#ffffff</color>
+</resources>

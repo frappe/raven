@@ -1,0 +1,5 @@
+{
+  "extends": "@raven/typescript-config/base.json",
+  "compilerOptions": { "outDir": "dist-tsc", "lib": ["DOM", "ES2022"], "types": [] },
+  "include": ["src", "capacitor.config.ts"]
+}

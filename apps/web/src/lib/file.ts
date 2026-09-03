@@ -1,3 +1,6 @@
+import { isNative } from '@/native/platform'
+import { shareFileNative } from '@/native/share'
+
 /**
  * Function to return extension of a file
  * @param filename name of the file with extension
@@ -81,6 +84,8 @@ export const getAbsoluteFileURL = (fileURL: string, origin: string = window.loca
 
 /** Triggers a browser download of a (session-authenticated) file URL. */
 export const downloadFile = (url: string, fileName?: string) => {
+    // WebView has no download manager; hand the file to the OS share sheet instead.
+    if (isNative()) { void shareFileNative(getAbsoluteFileURL(url), fileName || url.split("/").pop() || "file"); return }
     const anchor = document.createElement('a')
     anchor.href = url
     anchor.download = fileName || ''
@@ -147,6 +152,12 @@ const attemptShare = async (data: ShareData): Promise<boolean> => {
  */
 export const shareFile = async (fileUrl: string, fileName: string): Promise<'shared' | 'copied' | 'failed'> => {
     const url = getAbsoluteFileURL(fileUrl)
+
+    if (isNative()) {
+        const result = await shareFileNative(url, fileName)
+        // A dismissed sheet is not an error — stay silent like a completed share.
+        return result === 'failed' ? 'failed' : 'shared'
+    }
 
     const file = await fetchAsFile(url, fileName)
     if (file && navigator.canShare?.({ files: [file] })) {

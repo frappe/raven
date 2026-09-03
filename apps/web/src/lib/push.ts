@@ -19,6 +19,10 @@
  * download the chunk.
  */
 
+import { isNative } from "@/native/platform"
+import { callNotificationAPI } from "@lib/pushApi"
+import { disableNativePush, enableNativePush, isNativePushEnabled } from "@/native/push"
+
 // v2 stored the token under this exact key (`firebase_token_${projectName}`).
 // Reusing it means devices that enabled push on v2 stay "enabled" after the v3
 // upgrade: the startup refresh re-mints the token and re-subscribes if it changed
@@ -65,10 +69,11 @@ export const isRavenPushConfigured = (): boolean => getBootPushConfig() !== null
  * the toggle until the PWA is installed.
  */
 export const isPushSupportedByBrowser = (): boolean =>
-    "serviceWorker" in navigator && "Notification" in window && "PushManager" in window
+    isNative() || ("serviceWorker" in navigator && "Notification" in window && "PushManager" in window)
 
 /** Whether THIS device has push enabled (source of truth: the stored token). */
-export const isPushEnabled = (): boolean => localStorage.getItem(TOKEN_STORAGE_KEY) !== null
+export const isPushEnabled = (): boolean =>
+    isNative() ? isNativePushEnabled() : localStorage.getItem(TOKEN_STORAGE_KEY) !== null
 
 /**
  * Running as an INSTALLED app (home screen / desktop PWA) rather than a browser
@@ -77,6 +82,7 @@ export const isPushEnabled = (): boolean => localStorage.getItem(TOKEN_STORAGE_K
  * sessions leave nothing extra at rest.
  */
 export const isStandalone = (): boolean =>
+    isNative() ||
     window.matchMedia("(display-mode: standalone)").matches ||
     // iOS home-screen apps report through navigator.standalone instead
     (navigator as { standalone?: boolean }).standalone === true
@@ -93,19 +99,6 @@ const getMessagingInstance = async () => {
     // initializeApp twice with the same name throws — reuse the app across calls
     const app = getApps()[0] ?? initializeApp(cfg.config)
     return { messaging: getMessaging(app), vapidKey: cfg.vapidKey }
-}
-
-/** POST to a whitelisted raven.api.notification method (plain fetch — no hook context here). */
-const callNotificationAPI = async (method: "subscribe" | "unsubscribe", body: Record<string, string | undefined>) => {
-    const response = await fetch(`/api/method/raven.api.notification.${method}`, {
-        method: "POST",
-        body: JSON.stringify(body),
-        headers: {
-            "Content-Type": "application/json",
-            ...(window.csrf_token ? { "X-Frappe-CSRF-Token": window.csrf_token } : {}),
-        },
-    })
-    if (!response.ok) throw new Error(`Failed to ${method} push token (${response.status})`)
 }
 
 /**
@@ -180,6 +173,7 @@ const mintAndSyncToken = async (): Promise<void> => {
  * @throws when unsupported/unconfigured or the token/subscribe calls fail.
  */
 export const enablePush = async (): Promise<boolean> => {
+    if (isNative()) return enableNativePush()
     const permission = await Notification.requestPermission()
     if (permission !== "granted") return false
     await mintAndSyncToken()
@@ -188,6 +182,7 @@ export const enablePush = async (): Promise<boolean> => {
 
 /** Disable push for this device: delete the FCM token + the server record. Best-effort. */
 export const disablePush = async (): Promise<void> => {
+    if (isNative()) return disableNativePush()
     const token = localStorage.getItem(TOKEN_STORAGE_KEY)
     if (!token) return
     // Clear local state first — the device should read "disabled" even if the
@@ -251,6 +246,7 @@ export const consumePendingNotificationClick = (): Promise<string | null> =>
  * push — refresh the (possibly rotated) FCM token off the critical path.
  */
 export const initPushNotifications = () => {
+    if (isNative()) return
     if (!isPushSupportedByBrowser()) return
     registerPushServiceWorker()
 

@@ -20,6 +20,9 @@ def get_client_id():
 
 	return {
 		"client_id": frappe.db.get_single_value("Raven Settings", "oauth_client"),
+		# Capability flag: the native shell only takes the OAuth path on sites that
+		# ship raven.api.native_auth; older sites fall back to the web login page.
+		"native_login": True,
 		"system_timezone": frappe.get_system_settings("time_zone"),
 		"app_name": app_name,
 		"sitename": frappe.local.site,
@@ -48,7 +51,11 @@ def create_oauth_client():
 
 	oauth_client.app_name = "Raven Mobile"
 	oauth_client.scopes = "all openid"
-	oauth_client.redirect_uris = "raven.thecommit.company:"
+	# Second URI is for the Capacitor shell: Foundation drops the query of a bare
+	# "scheme:?code=…" URL, so iOS needs a host in the redirect.
+	oauth_client.redirect_uris = (
+		"raven.thecommit.company: raven.thecommit.company://oauth"  # space-separated
+	)
 	oauth_client.default_redirect_uri = "raven.thecommit.company:"
 	oauth_client.grant_type = "Authorization Code"
 	oauth_client.response_type = "Code"

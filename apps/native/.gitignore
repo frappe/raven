@@ -1,0 +1,6 @@
+dist/
+dist-tsc/
+node_modules/
+
+# Machine-local dev overrides — see README "Developing against a local site"
+capacitor.config.local.json

@@ -4,6 +4,9 @@ import { errorResponseToast } from "@components/ui/error-banner"
 import { disablePush } from "@lib/push"
 import { db } from "@db"
 import _ from "@lib/translate"
+import { isNative, shellOrigin } from "@/native/platform"
+import { setNativeBadge } from "@/native/badge"
+import { logoutRedirectUrl } from "@/native/session"
 
 /**
  * localStorage prefixes that hold app data and must not survive a logout
@@ -116,10 +119,14 @@ export function useLogout(): { logout: () => Promise<void>; isLoggingOut: boolea
         }
         // A logged-out device claims no unread.
         navigator.clearAppBadge?.().catch(() => { })
+        // WebView has no Badging API; clear the OS badge through the plugin.
+        if (isNative()) await setNativeBadge(0)
 
         const base = import.meta.env.VITE_BASE_NAME
         const appPath = base ? `/${base}` : "/"
-        window.location.replace(`/login?redirect-to=${encodeURIComponent(appPath)}`)
+        // Native: Frappe's /login page has none of our JS, so the picker would be
+        // unreachable — hand off to the shell, which revokes the OAuth tokens too.
+        window.location.replace(logoutRedirectUrl(isNative(), window.location.origin, shellOrigin(), appPath))
     }, [frappeLogout])
 
     return { logout, isLoggingOut }

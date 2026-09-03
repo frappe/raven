@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react"
 import type { Editor } from "@tiptap/react"
+import { isNative } from "@/native/platform"
+import { subscribeNativeKeyboard } from "@/native/keyboard"
 
 /**
  * True while the on-screen keyboard is (likely) open *for the given composer editor*.
@@ -55,6 +57,7 @@ export function useIsKeyboardOpen(editor: Editor | null, enabled = true): boolea
         vv?.addEventListener("resize", compute)
         vv?.addEventListener("scroll", compute)
         document.addEventListener("visibilitychange", onVisibilityChange)
+        const unsubscribeNative = isNative() ? subscribeNativeKeyboard(setOpen) : undefined
 
         return () => {
             editor?.off("focus", onFocus)
@@ -62,6 +65,7 @@ export function useIsKeyboardOpen(editor: Editor | null, enabled = true): boolea
             vv?.removeEventListener("resize", compute)
             vv?.removeEventListener("scroll", compute)
             document.removeEventListener("visibilitychange", onVisibilityChange)
+            unsubscribeNative?.()
         }
     }, [editor, enabled])
 

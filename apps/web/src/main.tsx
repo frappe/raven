@@ -11,6 +11,14 @@ scan({
 
 
 import { initPushNotifications, isStandalone } from "@lib/push";
+import { initNativePush } from "@/native/push";
+import { hideNativeSplash } from "@/native/splash";
+import { isNative } from "@/native/platform";
+
+// Tag the document before first paint so `standalone:` styles apply in the shell
+// (WKWebView never matches the display-mode media query).
+if (isNative()) document.documentElement.classList.add("native")
+
 
 if (import.meta.env.DEV) {
   fetch('/api/method/raven.www.raven.get_context_for_dev', {
@@ -23,7 +31,10 @@ if (import.meta.env.DEV) {
       window.frappe.boot = v
       window.frappe._messages = window.frappe.boot["__messages"];
       // After boot lands — push config (firebase_client_config) comes from it
+      if (isNative()) initNativePush()
       initPushNotifications()
+      if (isNative()) hideNativeSplash()
+
       createRoot(document.getElementById('root')!).render(
         <StrictMode>
           <ThemeProvider>
@@ -33,6 +44,7 @@ if (import.meta.env.DEV) {
       )
     }
     )
+    .catch((e) => { console.error("Boot fetch failed", e); if (isNative()) hideNativeSplash() })
 } else {
   // Boot is inlined by the Jinja entry template. An OFFLINE (app-shell) load
   // serves the BUILT index.html from the service worker's cache instead — its
@@ -62,7 +74,9 @@ if (import.meta.env.DEV) {
       }
     }, 3000)
   }
+  if (isNative()) initNativePush()
   initPushNotifications()
+  if (isNative()) hideNativeSplash()
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <ThemeProvider>

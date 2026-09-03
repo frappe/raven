@@ -1,4 +1,7 @@
 import * as React from "react"
+import { isNative } from "@/native/platform"
+import { syncStatusBar } from "@/native/statusBar"
+import { syncNativeTheme } from "@/native/theme"
 
 type Theme = "dark" | "light" | "system"
 
@@ -50,6 +53,7 @@ function applyThemeToDocument(value: "light" | "dark") {
         || (value === "dark" ? "#171717" : "#ffffff")
     document.querySelectorAll('meta[name="theme-color"]')
         .forEach((meta) => meta.setAttribute("content", surface))
+    if (isNative()) syncStatusBar(value, surface)
 }
 
 function getStoredTheme(defaultTheme: Theme): Theme {
@@ -77,6 +81,8 @@ export function ThemeProvider({
         const resolved = resolveTheme(theme)
         applyThemeToDocument(resolved)
         setThemeValue(resolved)
+        // The shell reads this at launch to theme the picker and native canvas.
+        syncNativeTheme(theme)
 
         // Only "system" tracks the OS; react to OS light/dark changes while open.
         if (theme !== "system") return
