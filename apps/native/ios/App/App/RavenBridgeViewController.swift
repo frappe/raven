@@ -5,6 +5,11 @@ import Capacitor
 // The web app's useMobileBack already treats it as a plain history.back().
 // Instantiated by SceneDelegate (the storyboard root is not used at runtime).
 class RavenBridgeViewController: CAPBridgeViewController {
+    // App-local plugins are not in the generated plugin list; register by instance.
+    override func capacitorDidLoad() {
+        bridge?.registerPluginInstance(RavenShellPlugin())
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         webView?.allowsBackForwardNavigationGestures = true

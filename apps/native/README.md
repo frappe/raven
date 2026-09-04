@@ -5,8 +5,15 @@ Capacitor shell for the Raven native apps (iOS + Android).
 ## Overview
 
 The shell bundles only a site picker. It navigates the WebView to
-`https://<site>/raven`; `server.allowNavigation: ["*"]` injects the Capacitor
-bridge there. The web app (`apps/web/src/native/`) does all plugin calls.
+`https://<site>/raven`; the Capacitor bridge is injected there and the web app
+(`apps/web/src/native/`) does all plugin calls.
+
+`server.allowNavigation: ["*"]` is only there because the saved-site list is
+dynamic. The shell's own plugin (`RavenShellPlugin`, iOS + Android) gates every
+main-frame http(s) navigation: saved sites and the shell load in the WebView,
+anything else opens in the system browser. Never widen that gate — every page
+that loads in the WebView gets the full plugin bridge, including the keychain
+tokens. Its JS contract lives in `packages/lib/utils/ravenShell.ts`.
 
 ## Before first store submission
 
@@ -52,9 +59,12 @@ Committed native projects already include:
 - iOS: `GoogleService-Info.plist` is a member of the Xcode App target.
 - iOS: `App.entitlements` (`aps-environment`) via `CODE_SIGN_ENTITLEMENTS`;
   `UIBackgroundModes: remote-notification`.
-- Android: `POST_NOTIFICATIONS` permission.
-- Android: `de.mindlib.sendIntent.SendIntentActivity` with SEND/SEND_MULTIPLE
-  filters in AndroidManifest.
+- Android: `POST_NOTIFICATIONS` and `CAMERA` permissions; iOS: camera and
+  microphone usage strings (the composer's capture inputs need both).
+- Android: SEND/SEND_MULTIPLE filters on `MainActivity` (`singleTask`), read by
+  `RavenShellPlugin` — not send-intent's own `SendIntentActivity`, which is a
+  second `BridgeActivity` where the shell plugin would be missing. send-intent
+  is still used for the iOS share extension.
 - Android: `android/build.gradle` forces `compileSdkVersion 36` on subprojects
   (send-intent@7 targets 35).
 - Picker built with `target: es2017` (old Android WebViews reject optional
@@ -77,6 +87,14 @@ client. Tokens live in the iOS/Android keychain (SecureStorage).
   created without `skip_authorization`.
 - Keychain items are protected with `afterFirstUnlock`, so they survive an
   encrypted backup.
+- Opening a site from the picker goes through `reauth`: a stored refresh token
+  is exchanged silently and posted to `login_with_token`; the system browser is
+  opened for OAuth only when there is no token. "Switch site" keeps the session,
+  tokens and push
+  subscription, so coming back is silent too.
+- `login_with_token` is a top-level POST. Frappe CSRF-rejects it when the
+  WebView still holds a live `sid` for that site, so the shell expires the
+  site's cookies (`RavenShell.clearSiteCookies`) right before posting.
 
 Sites running a Raven without `raven.api.native_auth` report no `native_login`
 flag from `get_client_id`, so the shell skips OAuth there and uses the site's
@@ -100,8 +118,8 @@ To test silent re-login, quit the app first, then kill the session server-side:
 followed by `bench --site <site> execute frappe.cache.delete_key --args '["session"]'`.
 An open app re-saves its session to Redis after the `tabSessions` row is gone
 (Frappe `Session.update`), and Redis-only sessions resume indefinitely while
-`clear_sessions` only reads the table — so a kill under a running app looks
-like it did nothing.
+`clear_sessions` only reads the table — so clearing sessions while the app is
+open has no effect.
 
 ## Manual steps
 
@@ -119,9 +137,20 @@ Not scriptable — do once per environment:
      extension's entitlements.
    - (c) The `NSExtensionActivationRule` block from the send-intent README
      (lines ~96-113).
-   - (d) The `RavenShare` target + ShareViewController/AppDelegate snippets as
-     already written there.
+   - (d) The `RavenShare` target + ShareViewController snippet as written
+     there. Skip its AppDelegate snippet: this app is scene-based, so the
+     `raven://` handoff is already handled in `SceneDelegate.swift`
+     (`scene(_:openURLContexts:)` fills send-intent's `ShareStore`).
 3. Android release signing (keystore) is not in the repo.
+
+## Firebase config files
+
+`android/app/google-services.json` and `ios/App/App/GoogleService-Info.plist`
+are gitignored. Download both for the app `raven.thecommit.company` from the
+Firebase console (project `raven-c2659`) and put them at those paths. Android
+builds without the JSON (the Gradle script skips the google-services plugin and
+push stays off); the iOS target lists the plist as a resource, so Xcode fails
+until it is present. CI must inject both before building.
 
 ## Developing against a local site
 
@@ -134,7 +163,7 @@ so release builds stay locked down:
 
   ```json
   {
-      "server": { "allowNavigation": ["*", "http://10.0.2.2:8004"], "cleartext": true },
+      "server": { "allowNavigation": ["*", "http://10.0.2.2:8004", "http://127.0.0.1:8004"], "cleartext": true },
       "android": { "allowMixedContent": true }
   }
   ```
@@ -156,7 +185,18 @@ The emulator reaches the host at `10.0.2.2`; the iOS simulator uses
 ATS for local hosts). Use an API 34+ Android image — the stock API 28/30
 images ship WebView 66, which cannot run the v3 bundle.
 
-For a real-https loop with no overrides at all, tunnel the bench:
+Realtime on the Android emulator: Frappe's socket server resolves the site from
+the page's Origin hostname (or `default_site` for `localhost`/`127.0.0.1`), so a
+site added as `http://10.0.2.2:8004` connects but is rejected with "Invalid
+namespace". Map the host ports into the emulator instead and add the site as
+`http://127.0.0.1:8004` — not `localhost`, which Capacitor's asset server
+intercepts on every port:
+`adb reverse tcp:8004 tcp:8004 && adb reverse tcp:9004 tcp:9004`
+(the mapping is dropped by `cap run` and emulator restarts — re-run it). Put
+`http://127.0.0.1:8004` in the local override's `allowNavigation` as well. The
+iOS simulator already uses `localhost`.
+
+To test over real https with no overrides at all, tunnel the bench:
 `cloudflared tunnel --url http://localhost:8004` and add the printed URL in
 the picker.
 
@@ -175,14 +215,46 @@ subclassing `CAPBridgeViewController`) turns on `allowsBackForwardNavigationGest
 WKWebView leaves it off, while installed PWAs get the edge swipe from iOS.
 The web app's `useMobileBack` treats it as a normal `history.back()`.
 
-## Android bridge on remote pages
+## RavenShell plugin
 
-Capacitor 8 registers its bridge script (`addDocumentStartJavaScript`) for the
-app origin only, so remote pages would get no `window.Capacitor` on any modern
-WebView. `RemoteBridgePlugin` (registered in `MainActivity`) re-registers the
-same script for every origin, reaching `Bridge.getJSInjector()` by reflection.
-After a Capacitor upgrade, check that `isNativePlatform()` is still true on a
-remote page (Chrome DevTools → `chrome://inspect`).
+`apps/native/android/.../RavenShellPlugin.java` and
+`apps/native/ios/App/App/RavenShellPlugin.swift`; contract in
+`packages/lib/utils/ravenShell.ts`.
+
+- Navigation gate (both): main-frame http(s) loads are allowed only for the
+  saved sites (`Preferences` key `sites`) and the shell origin; everything else
+  is handed to the system browser. Sub-frames keep Capacitor's default policy.
+  Android checks twice — `shouldOverrideUrlLoading` never fires for POSTs, so
+  `shouldInterceptRequest` answers a blank 403 for a blocked main-frame POST.
+  Origins must match exactly, redirects included, which is why `validateSite`
+  saves the origin the site actually answered from (apex → www, http → https).
+- Android bridge on the saved sites: Capacitor 8 registers its bridge script
+  (`addDocumentStartJavaScript`) for the app origin only, so remote pages would
+  get no `window.Capacitor`. The plugin registers the same script for the saved
+  site origins (reaching `Bridge.getJSInjector()` by reflection) and re-registers
+  on `syncAllowedOrigins()`, which `sites.ts` calls after every save/remove.
+  After a Capacitor upgrade, check that `isNativePlatform()` is still true on a
+  remote page (Chrome DevTools → `chrome://inspect`). iOS needs nothing: the
+  bridge is a `WKUserScript`, which runs on every main-frame document.
+- Share intents (Android): `getShareIntent()` reads `MainActivity`'s SEND
+  intent (all items of a SEND_MULTIPLE, each `content://` copied into the app
+  cache so the stash survives the activity's URI grant), `clearShareIntent()`
+  forgets it, and a warm share fires the `shareReceived` event from
+  `onNewIntent`. `MainActivity.onCreate` drops a SEND intent that comes back
+  with a saved state or `FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY` — Android
+  re-delivers the task's root intent after process death, which would replay
+  an already-sent share. The web app also re-reads on mount and on every
+  foreground (iOS keeps a share in send-intent's store until read).
+- `clearSiteCookies({ url })`: expires one site's WebView cookies before
+  `login_with_token` — host-only and every parent-`Domain` form, since a
+  proxy may set `sid` with a Domain attribute.
+- Removing a site in the picker unsubscribes its push row (the web app mirrors
+  the FCM token per site under `pushToken.<origin>`, sent with the OAuth
+  bearer) and revokes its tokens; "Switch site" keeps everything.
+
+Theme changes on Android are applied through `onConfigurationChanged`
+(`uiMode` is in `configChanges`); never `recreate()` the activity — a recreate
+reloads the WebView from the shell URL and drops the page the user was on.
 
 ## Known limitations
 
@@ -193,6 +265,10 @@ remote page (Chrome DevTools → `chrome://inspect`).
 - WebView default error page when a site is down.
 - Android WebView persists cookies asynchronously — a kill within seconds of
   login can lose the session (real users unaffected).
+- A site's "Login with Google/GitHub" button (in-WebView login page, sites
+  without an OAuth client) leaves the WebView: the provider's page is not a
+  saved site, so the gate opens it in the system browser and the session ends
+  up there. Provision the OAuth client instead.
 
 ## Manual test matrix
 
@@ -208,9 +284,19 @@ remote page (Chrome DevTools → `chrome://inspect`).
 | Push tap: warm, cold, other-site | | n/a | | |
 | Badge set/clear | | n/a | | |
 | Share-in: url, image, multiple | | | | |
+| Share-in with no site saved yet → opens the share target after adding one | | | | |
+| Share the same link twice in a row (second one must arrive) | | | | |
+| Share, send, kill app, reopen from Recents → no replay (Android) | n/a | n/a | | |
+| Share while on the picker / during boot → delivered once a site opens | | | | |
+| Add a site that 301s (apex → www) → opens in the WebView, not the browser | | | | |
+| Remove site in picker → its pushes stop; tokens revoked | | | | |
 | Share-out file | | | | |
 | Camera tile | | n/a | | |
 | Share-in warm start (app already open) | | | | |
+| Message link → opens in system browser, not in the WebView | | | | |
+| Consent page "Deny" → picker shows access denied, browser closes | | | | |
+| Theme switch in-app, background + resume: page and scroll position kept (Android) | n/a | n/a | | |
+| Realtime: message arrives live without reload (socket.io 101 in chrome://inspect) | | | | |
 | Keyboard inset with composer | | | | |
 | Status bar light/dark | | | | |
 | Android back: chat → list → picker | n/a | n/a | | |

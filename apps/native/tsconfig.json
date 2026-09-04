@@ -1,5 +1,10 @@
 {
   "extends": "@raven/typescript-config/base.json",
-  "compilerOptions": { "outDir": "dist-tsc", "lib": ["DOM", "ES2022"], "types": [] },
+  "compilerOptions": {
+    "outDir": "dist-tsc",
+    "lib": ["DOM", "ES2022"],
+    "types": [],
+    "paths": { "@raven/lib/*": ["../../packages/lib/*"] }
+  },
   "include": ["src", "capacitor.config.ts"]
 }

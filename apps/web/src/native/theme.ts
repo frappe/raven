@@ -1,3 +1,4 @@
+import { APP_THEME_KEY } from "@raven/lib/utils/nativeKeys"
 import { isNative } from "./platform"
 
 /**
@@ -8,6 +9,6 @@ import { isNative } from "./platform"
 export const syncNativeTheme = (theme: "light" | "dark" | "system") => {
     if (!isNative()) return
     import("@capacitor/preferences")
-        .then(({ Preferences }) => Preferences.set({ key: "appTheme", value: theme }))
+        .then(({ Preferences }) => Preferences.set({ key: APP_THEME_KEY, value: theme }))
         .catch(() => { })
 }

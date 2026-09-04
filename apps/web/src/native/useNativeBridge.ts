@@ -1,10 +1,9 @@
-// src/native/useNativeBridge.ts
 import { useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { isNative } from "./platform"
 import { resolveNotificationTarget, subscribeNotificationTaps } from "./push"
 import { registerAndroidBack } from "./back"
-import { intentToPendingShare, HANDLED_SHARE_KEY, PENDING_SHARE_KEY, shareSignature } from "./shareIn"
+import { intentToPendingShare, readShareIntent, stashPendingShare, subscribeShareReceived } from "./shareIn"
 
 export const useNativeBridge = () => {
     const navigate = useNavigate()
@@ -18,43 +17,38 @@ export const useNativeBridge = () => {
             if (target.kind === "same-site") navigate(target.path)
             else window.location.href = target.url
         })
-        let unAppState: (() => void) | undefined
-        // Warm-start shares: the app is already open when the user shares into
-        // it, so the cold-start intent never fires — catch it on foreground.
-        const captureWarmShare = async () => {
+        // Warm-start shares: the app is already open when the user shares into it,
+        // so the shell's cold-start capture never runs; deliver it from here.
+        const deliverShare = async () => {
             try {
-                const { SendIntent } = await import("send-intent")
-                if (disposed) return
-                const intent = await SendIntent.checkSendIntentReceived()
-                if (disposed) return
-                const share = intentToPendingShare(intent)
+                const intent = await readShareIntent()
+                const share = intent && intentToPendingShare(intent)
                 if (disposed || !share) return
-                const { Preferences } = await import("@capacitor/preferences")
-                if (disposed) return
-                const sig = shareSignature(intent)
-                const { value: handled } = await Preferences.get({ key: HANDLED_SHARE_KEY })
-                if (disposed || handled === sig) return
-                // The activity keeps its last intent; skip one we already handled.
-                await Preferences.set({ key: PENDING_SHARE_KEY, value: JSON.stringify(share) })
-                await Preferences.set({ key: HANDLED_SHARE_KEY, value: sig })
+                await stashPendingShare(share)
                 if (disposed) return
                 navigate("/share-target?native=1")
             } catch {
-                // checkSendIntentReceived rejects when no share is pending.
+                // Nothing pending, or the plugin is unavailable.
             }
         }
+        const unShare = subscribeShareReceived(deliverShare)
+        // A share can arrive while no page listens (picker, boot, login reload). The
+        // plugin holds it, so re-read on mount and on every foreground.
+        deliverShare()
+        let unAppState: (() => void) | undefined
         import("@capacitor/app").then(async ({ App }) => {
             if (disposed) return
             const handle = await App.addListener("appStateChange", ({ isActive }) => {
-                if (isActive) captureWarmShare()
+                if (isActive) deliverShare()
             })
             if (disposed) { handle.remove().catch(() => { }); return }
             unAppState = () => handle.remove().catch(() => { })
-        })
+        }).catch(() => { })
         return () => {
             disposed = true
             unBack()
             unTap()
+            unShare()
             unAppState?.()
         }
     }, [navigate])

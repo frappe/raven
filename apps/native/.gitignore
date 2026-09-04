@@ -4,3 +4,13 @@ node_modules/
 
 # Machine-local dev overrides — see README "Developing against a local site"
 capacitor.config.local.json
+
+# Firebase project bindings and signing material: supplied per machine/CI, never committed.
+android/app/google-services.json
+ios/App/App/GoogleService-Info.plist
+*.jks
+*.keystore
+*.p8
+*.p12
+*.mobileprovision
+.env*

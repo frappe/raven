@@ -108,6 +108,7 @@ const makeDeps = (over: Partial<AuthDeps> = {}) => {
         onBrowserFinished: vi.fn(async (h: () => void) => { finishedHandler = h; return removedFinished }),
         post: vi.fn(async () => ({ status: 200, data: { access_token: "NEW", refresh_token: "R2", expires_in: 3600 } })),
         store: store as unknown as AuthDeps["store"],
+        clearCookies: vi.fn(async () => { }),
         navigate: vi.fn(),
         login: vi.fn(),
         progress: { show: vi.fn(async () => { }), hide: vi.fn(async () => { }) },
@@ -169,6 +170,46 @@ describe("signIn", () => {
         expect(removedUrl).toHaveBeenCalledTimes(1)
         expect(removedFinished).toHaveBeenCalledTimes(1)
         expect(deps.post).not.toHaveBeenCalled()
+    })
+    it("rejects on Frappe's deny redirect, which carries no state", async () => {
+        const { deps, emit } = makeDeps()
+        const pending = signIn("https://a.com", "CLIENT", "/raven/x", deps)
+        await pump()
+        emit(`${REDIRECT_URL}?error=access_denied`)
+        await expect(pending).rejects.toThrow("access_denied")
+        expect(deps.closeBrowser).toHaveBeenCalled()
+        expect(deps.login).not.toHaveBeenCalled()
+    })
+    it("ignores a stateless error other than access_denied, then settles on the real callback", async () => {
+        const { deps, emit } = makeDeps()
+        const pending = signIn("https://a.com", "CLIENT", "/raven/x", deps)
+        await pump()
+        emit(`${REDIRECT_URL}?error=server_error`)
+        emit(`${REDIRECT_URL}?state=STATE&code=CODE1`)
+        await pending
+        expect(deps.login).toHaveBeenCalledTimes(1)
+    })
+    it("clears the site's cookies before logging in", async () => {
+        const { deps, emit } = makeDeps()
+        const pending = signIn("https://a.com", "CLIENT", "/raven/x", deps)
+        await pump()
+        emit(`${REDIRECT_URL}?state=STATE&code=CODE1`)
+        await pending
+        expect(deps.clearCookies).toHaveBeenCalledWith("https://a.com")
+        const clearOrder = (deps.clearCookies as any).mock.invocationCallOrder[0]
+        const loginOrder = (deps.login as any).mock.invocationCallOrder[0]
+        expect(clearOrder).toBeLessThan(loginOrder)
+    })
+    it("awaits the beforeLogin hook before logging in", async () => {
+        const { deps, emit } = makeDeps()
+        const beforeLogin = vi.fn(async () => { })
+        const pending = signIn("https://a.com", "CLIENT", "/raven/x", deps, { beforeLogin })
+        await pump()
+        emit(`${REDIRECT_URL}?state=STATE&code=CODE1`)
+        await pending
+        const hookOrder = beforeLogin.mock.invocationCallOrder[0]
+        const loginOrder = (deps.login as any).mock.invocationCallOrder[0]
+        expect(hookOrder).toBeLessThan(loginOrder)
     })
     it("ignores an error callback with a mismatched state, then settles on the real callback", async () => {
         const { deps, store, emit } = makeDeps()
@@ -265,6 +306,25 @@ describe("reauth", () => {
         expect(deps.login).toHaveBeenCalledWith("https://a.com", "NEW", "/raven/x")
         expect(store.set).toHaveBeenCalledWith("https://a.com", expect.objectContaining({ accessToken: "NEW", refreshToken: "R2" }))
         expect(deps.openBrowser).not.toHaveBeenCalled()
+    })
+    it("clears cookies and runs beforeLogin before the refreshed login", async () => {
+        const { deps, store } = makeDeps()
+        store.map.set("https://a.com", { accessToken: "OLD", refreshToken: "RR", expiresAt: 0 })
+        const beforeLogin = vi.fn(async () => { })
+        await reauth("https://a.com", "/raven/x", "CLIENT", deps, { beforeLogin })
+        const loginOrder = (deps.login as any).mock.invocationCallOrder[0]
+        expect((deps.clearCookies as any).mock.invocationCallOrder[0]).toBeLessThan(loginOrder)
+        expect(beforeLogin.mock.invocationCallOrder[0]).toBeLessThan(loginOrder)
+    })
+    it("passes the hooks through to the interactive sign-in", async () => {
+        const { deps, emit } = makeDeps()
+        const beforeLogin = vi.fn(async () => { })
+        const pending = reauth("https://a.com", "/raven/x", "CLIENT", deps, { beforeLogin })
+        await pump()
+        emit(`${REDIRECT_URL}?state=STATE&code=CODE1`)
+        await pending
+        expect(beforeLogin).toHaveBeenCalledTimes(1)
+        expect(deps.login).toHaveBeenCalledTimes(1)
     })
     it("drops the tokens and signs in interactively when the refresh fails", async () => {
         const post = vi.fn(async (_url: string, form: Record<string, string>) => {

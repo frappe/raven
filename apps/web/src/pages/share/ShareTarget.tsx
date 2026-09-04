@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react"
-import { useNavigate, useSearchParams } from "react-router-dom"
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom"
 import { useChannelList } from "@stores/channels/useChannelList"
 import { usersStore } from "@stores/usersStore"
 import { UserAvatar } from "@components/features/message/UserAvatar"
@@ -35,9 +35,12 @@ const ShareTarget = () => {
     // Native shares arrive as a stashed Preferences payload, not GET params:
     // read it once (files stashed for the composer) and render like the rest.
     const [nativeParams, setNativeParams] = useState<URLSearchParams | null>(null)
+    // location.key: a second warm share re-navigates here with identical params.
+    const { key: locationKey } = useLocation()
     useEffect(() => {
         if (params.get("native") !== "1") return
         let disposed = false
+        setNativeParams(null)
         takePendingShare().then(async (share) => {
             if (disposed) return
             if (!share) { setNativeParams(new URLSearchParams()); return }
@@ -45,7 +48,7 @@ const ShareTarget = () => {
             setNativeParams(pendingShareToParams(share))
         }).catch(() => setNativeParams(new URLSearchParams()))
         return () => { disposed = true }
-    }, [params])
+    }, [params, locationKey])
     const { channels, dmChannels } = useChannelList()
     const [query, setQuery] = useState("")
 

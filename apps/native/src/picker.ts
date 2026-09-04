@@ -1,7 +1,11 @@
-import { signIn } from "./auth"
+import { defaultDeps, reauth } from "./auth"
 import { loadSites, normalizeSiteUrl, removeSite, saveSite, setDefaultSite, validateSite, type Site } from "./sites"
 
 let pickerRoot: HTMLElement | null = null
+let redirectTo = "/raven"
+
+/** Path the next opened site navigates to, e.g. the share target after a cold-start share. */
+export const setPickerRedirect = (path: string) => { redirectTo = path }
 
 const TRASH_ICON = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>`
 
@@ -55,23 +59,27 @@ export const openSite = async (site: Site) => {
         // Sites saved before OAuth/logo support (or before the admin created the client) pick it up here.
         const info = await validateSite(site.url)
         if (info) {
-            site = { ...site, name: info.name, clientId: info.clientId ?? site.clientId, logo: info.logo ?? site.logo }
+            // A site that now answers from another origin (apex → www) moves with its entry.
+            if (info.url !== site.url) await removeSite(site.url)
+            site = { ...site, url: info.url, name: info.name, clientId: info.clientId ?? site.clientId, logo: info.logo ?? site.logo }
             await saveSite(site)
         }
     }
-    if (!site.clientId) {
-        // Move the opened site to the front: the picker lists last-opened first.
+    // Front of the list (last-opened first) + auto-open target. Runs before any
+    // navigation: the login POST unloads this page, so nothing can run after it.
+    const persist = async () => {
         await saveSite(site)
         await setDefaultSite(site.url)
-        window.location.href = `${site.url}/raven`
+    }
+    if (!site.clientId) {
+        await persist()
+        window.location.href = `${site.url}${redirectTo}`
         return
     }
-    // The system browser handles the OAuth dance; the WebView loads /raven on success.
+    // Stored refresh token → silent login; none → the system browser runs the OAuth
+    // flow. Either way the WebView opens the site already signed in.
     try {
-        await signIn(site.url, site.clientId)
-        // Only a completed sign-in reorders the list and sets the auto-open target.
-        await saveSite(site)
-        await setDefaultSite(site.url)
+        await reauth(site.url, redirectTo, site.clientId, defaultDeps, { beforeLogin: persist })
     } catch (e) {
         showError(`Sign-in failed: ${String((e as { message?: string })?.message ?? e)}`)
     }
@@ -136,7 +144,7 @@ export const renderPicker = async (root: HTMLElement) => {
             const info = url ? await validateSite(url) : null
             if (!url || !info) { showError("Could not reach a Raven site at that address."); return }
             // Keep the client id so opening this site can sign in via OAuth.
-            const site = { url, name: info.name, clientId: info.clientId, logo: info.logo }
+            const site = { url: info.url, name: info.name, clientId: info.clientId, logo: info.logo }
             await saveSite(site)
             await openSite(site)
         } finally {

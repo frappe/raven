@@ -1,50 +1,27 @@
+import { Capacitor } from "@capacitor/core"
 import { Preferences } from "@capacitor/preferences"
 import { SendIntent } from "send-intent"
+import { intentToPendingShare, PENDING_SHARE_KEY, type ShareIntent } from "@raven/lib/utils/shareIntent"
+import { RavenShell } from "./shell"
 
-export const PENDING_SHARE_KEY = "pendingShare"
-export const HANDLED_SHARE_KEY = "handledShare"
-
-// Mirror of apps/web/src/native/shareIn.ts shareSignature — keep in sync.
-export const shareSignature = (intent: { title?: string; description?: string; type?: string; url?: string }) =>
-    JSON.stringify([intent.title ?? "", intent.description ?? "", intent.type ?? "", intent.url ?? ""])
-
-type PendingShare = {
-    title?: string
-    text?: string
-    url?: string
-    files?: { uri: string; type?: string; name?: string }[]
-}
-
-const isHttpUrl = (value: string | undefined) => !!value && /^https?:\/\//i.test(value)
-
-// Mirror of apps/web/src/native/shareIn.ts intentToPendingShare — keep in sync.
-const intentToPendingShare = (intent: { title?: string; description?: string; type?: string; url?: string }): PendingShare | null => {
-    const { title, description, type, url } = intent
-    if (!type || type.startsWith("text/")) {
-        const text = description ?? undefined
-        const httpUrl = isHttpUrl(url) ? url : undefined
-        if (!text && !httpUrl) return null
-        return { title: title ?? undefined, text, url: httpUrl }
+/** Android: MainActivity's SEND intent via the shell plugin. iOS: send-intent's share extension. */
+export const readShareIntent = async (): Promise<ShareIntent | null> => {
+    if (Capacitor.getPlatform() === "android") {
+        const { intent } = await RavenShell.getShareIntent()
+        if (!intent) return null
+        // The activity keeps its intent; forget it so no later read replays this share.
+        await RavenShell.clearShareIntent().catch(() => { })
+        return intent
     }
-    if (!url) return null
-    return { title: title ?? undefined, files: [{ uri: url, type, name: title ?? "shared" }] }
+    // Rejects when no share is pending; the plugin marks a delivered share as processed itself.
+    return SendIntent.checkSendIntentReceived().catch(() => null)
 }
 
 /** Stashes the pending share in Preferences; true when one was captured. */
 export const captureShareIntent = async (): Promise<boolean> => {
-    try {
-        const intent = await SendIntent.checkSendIntentReceived()
-        const payload = intentToPendingShare(intent)
-        if (!payload) return false
-        const sig = shareSignature(intent)
-        const { value: handled } = await Preferences.get({ key: HANDLED_SHARE_KEY })
-        if (handled === sig) return false
-        // The activity keeps its last intent; skip one we already handled.
-        await Preferences.set({ key: PENDING_SHARE_KEY, value: JSON.stringify(payload) })
-        await Preferences.set({ key: HANDLED_SHARE_KEY, value: sig })
-        return true
-    } catch {
-        // Rejects when no share is pending.
-        return false
-    }
+    const intent = await readShareIntent().catch(() => null)
+    const payload = intent && intentToPendingShare(intent)
+    if (!payload) return false
+    await Preferences.set({ key: PENDING_SHARE_KEY, value: JSON.stringify(payload) })
+    return true
 }

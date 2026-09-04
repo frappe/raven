@@ -35,13 +35,15 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-	<!-- Only relaxes ATS for localhost/.local, so the sim can reach a local
-	     bench over http. No effect on remote hosts; fine to ship. -->
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Raven uses the camera to take photos and videos to send in chat.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Raven uses the microphone to record videos and voice messages.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

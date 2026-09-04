@@ -1,39 +1,46 @@
-// OS share-in payload: the single source of truth for mapping a native
-// send-intent into what the ShareTarget page and the composer consume.
+// OS share-in on the web side: reading a warm share, and turning the shell's stash
+// into what the ShareTarget page and the composer consume. The mapping itself is
+// shared with the shell: @raven/lib/utils/shareIntent.
+import { PENDING_SHARE_KEY, type PendingShare, type ShareIntent } from "@raven/lib/utils/shareIntent"
+import { nativePlatform } from "./platform"
+import { ravenShell } from "./shell"
 
-export type PendingShare = {
-    title?: string
-    text?: string
-    url?: string
-    files?: { uri: string; type?: string; name?: string }[]
-}
-
-/** Shape of the send-intent plugin's `checkSendIntentReceived()` result. */
-export type IntentLike = { title?: string; description?: string; type?: string; url?: string }
-
-export const PENDING_SHARE_KEY = "pendingShare"
-export const HANDLED_SHARE_KEY = "handledShare"
-
-/** Stable fingerprint of a send-intent, used to skip re-delivered intents. */
-export const shareSignature = (intent: IntentLike): string =>
-    JSON.stringify([intent.title ?? "", intent.description ?? "", intent.type ?? "", intent.url ?? ""])
+export { intentToPendingShare, PENDING_SHARE_KEY, type PendingShare } from "@raven/lib/utils/shareIntent"
 
 let sharedFiles: File[] = []
 
-const isHttpUrl = (value: string | undefined) => !!value && /^https?:\/\//i.test(value)
-
-// text/* (or missing type) → text + url; anything else with a url → a file.
-// Null when nothing usable (no description and no url).
-export const intentToPendingShare = (intent: IntentLike): PendingShare | null => {
-    const { title, description, type, url } = intent
-    if (!type || type.startsWith("text/")) {
-        const text = description ?? undefined
-        const httpUrl = isHttpUrl(url) ? url : undefined
-        if (!text && !httpUrl) return null
-        return { title: title ?? undefined, text, url: httpUrl }
+/** Android: MainActivity's SEND intent via the shell plugin. iOS: send-intent's share extension. */
+export const readShareIntent = async (): Promise<ShareIntent | null> => {
+    if (nativePlatform() === "android") {
+        const { shell } = await ravenShell()
+        const { intent } = await shell.getShareIntent()
+        if (!intent) return null
+        // The activity keeps its intent; forget it so no later read replays this share.
+        await shell.clearShareIntent().catch(() => { })
+        return intent
     }
-    if (!url) return null
-    return { title: title ?? undefined, files: [{ uri: url, type, name: title ?? "shared" }] }
+    const { SendIntent } = await import("send-intent")
+    // Rejects when no share is pending; the plugin marks a delivered share as processed itself.
+    return SendIntent.checkSendIntentReceived().catch(() => null)
+}
+
+/** Fires when a share arrives while the app is open. iOS: send-intent's DOM event; Android: the shell plugin. */
+export const subscribeShareReceived = (handler: () => void): (() => void) => {
+    let disposed = false
+    let handle: { remove: () => Promise<void> } | undefined
+    window.addEventListener("sendIntentReceived", handler)
+    if (nativePlatform() === "android") {
+        ravenShell().then(async ({ shell }) => {
+            const h = await shell.addListener("shareReceived", handler)
+            if (disposed) { h.remove().catch(() => { }); return }
+            handle = h
+        }).catch(() => { })
+    }
+    return () => {
+        disposed = true
+        window.removeEventListener("sendIntentReceived", handler)
+        handle?.remove().catch(() => { })
+    }
 }
 
 /** Maps a PendingShare to the ?title&text&url contract ShareTarget parses. */
@@ -45,6 +52,12 @@ export const pendingShareToParams = (share: PendingShare): URLSearchParams => {
     p.set("files", String(share.files?.length ?? 0))
     p.set("names", (share.files ?? []).map((f) => f.name ?? "shared").join(", "))
     return p
+}
+
+/** Stashes a share for /share-target?native=1. */
+export const stashPendingShare = async (share: PendingShare) => {
+    const { Preferences } = await import("@capacitor/preferences")
+    await Preferences.set({ key: PENDING_SHARE_KEY, value: JSON.stringify(share) })
 }
 
 /** Reads and clears the share the shell stashed for us. */
@@ -66,7 +79,7 @@ export const readSharedFiles = async (share: PendingShare): Promise<File[]> => {
     const { Filesystem } = await import("@capacitor/filesystem")
     const results = await Promise.allSettled(
         share.files.map(async (f) => {
-            // send-intent hands back percent-encoded content:// and file:// URIs.
+            // Share payloads hand back percent-encoded content:// and file:// URIs.
             const { data } = await Filesystem.readFile({ path: decodeURIComponent(f.uri) })
             const bytes = Uint8Array.from(atob(data as string), (c) => c.charCodeAt(0))
             return new File([bytes], f.name ?? "shared", { type: f.type ?? "application/octet-stream" })

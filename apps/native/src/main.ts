@@ -3,20 +3,21 @@ import { armSplashFallback } from "./splash"
 import { FirebaseMessaging } from "@capacitor-firebase/messaging"
 import { Preferences } from "@capacitor/preferences"
 import { reauth, signOut } from "./auth"
-import { getDefaultSite, loadSites, setDefaultSite, takePendingOpen } from "./sites"
+import { getDefaultSite, loadSites, setDefaultSite } from "./sites"
 import { captureShareIntent } from "./shareIntake"
-import { renderPicker, showError } from "./picker"
+import { SHARE_TARGET_PATH } from "@raven/lib/utils/shareIntent"
+import { APP_THEME_KEY, LAST_AUTO_NAV_KEY } from "@raven/lib/utils/nativeKeys"
+import { renderPicker, setPickerRedirect, showError } from "./picker"
 import { themeClass } from "./theme"
 import { registerPickerBack } from "./back"
 
 const root = document.getElementById("app")!
-const LAST_AUTO_NAV_KEY = "lastAutoNav"
 const AUTO_NAV_GAP_MS = 15000
 
 const boot = async () => {
     armSplashFallback(8000)
     // In-app theme choice outranks the system theme on the picker too.
-    const theme = await Preferences.get({ key: "appTheme" }).catch(() => ({ value: null }))
+    const theme = await Preferences.get({ key: APP_THEME_KEY }).catch(() => ({ value: null }))
     const override = themeClass(theme.value)
     if (override) document.documentElement.classList.add(override)
     // The picker is the persistent floor; it sits behind the splash while we decide.
@@ -72,14 +73,15 @@ const boot = async () => {
         return true
     }
     let hadTarget = false
-    // Tap → share intake → pendingOpen → defaultSite (existing order).
+    // Tap → share intake → defaultSite, in that order.
     if (tapped) { hadTarget = true; if (await go(tapped)) return }
     if (await captureShareIntent()) {
         const site = await getDefaultSite()
-        if (site) { hadTarget = true; if (await go(`${site}/raven/share-target?native=1`)) return }
+        if (site) { hadTarget = true; if (await go(`${site}${SHARE_TARGET_PATH}`)) return }
+        // Not delivered (no site yet, or the site failed to load): whichever site the
+        // user opens from the picker opens the share target instead of /raven.
+        setPickerRedirect(SHARE_TARGET_PATH)
     }
-    const pending = await takePendingOpen()
-    if (pending) { hadTarget = true; if (await go(pending)) return }
     const site = await getDefaultSite()
     if (site) { hadTarget = true; if (await go(`${site}/raven`)) return }
 

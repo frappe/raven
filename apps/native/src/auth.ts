@@ -4,6 +4,7 @@ import { App } from "@capacitor/app"
 import { SplashScreen } from "@capacitor/splash-screen"
 import { SecureStoragePlugin } from "capacitor-secure-storage-plugin"
 import { codeChallengeS256, randomString } from "./pkce"
+import { RavenShell } from "./shell"
 import { disarmSplashFallback } from "./splash"
 
 // Host segment is required: Foundation parses "scheme:?code=…" with a nil query.
@@ -93,6 +94,8 @@ export type AuthDeps = {
     onBrowserFinished: (handler: () => void) => Promise<() => void>
     post: (url: string, form: Record<string, string>) => Promise<{ status: number; data: any }>
     store: typeof tokenStore
+    // A live sid on the site would make Frappe CSRF-reject the login POST.
+    clearCookies: (site: string) => Promise<void>
     navigate: (url: string) => void
     login: typeof loginWithToken
     // Covers the picker from callback until the web app hides the splash.
@@ -120,6 +123,7 @@ export const defaultDeps: AuthDeps = {
         return { status: res.status, data: res.data }
     },
     store: tokenStore,
+    clearCookies: (site) => RavenShell.clearSiteCookies({ url: site }).catch(() => { }),
     navigate: (url) => { window.location.href = url },
     login: loginWithToken,
     progress: {
@@ -136,7 +140,16 @@ export const defaultDeps: AuthDeps = {
     pkce: { verifier: () => randomString(32), challenge: codeChallengeS256, state: () => randomString(16) },
 }
 
-export const signIn = async (site: string, clientId: string, redirectTo = "/raven", deps: AuthDeps = defaultDeps) => {
+/** beforeLogin runs after the token is stored and before the login POST unloads the page. */
+export type LoginHooks = { beforeLogin?: () => Promise<void> }
+
+const completeLogin = async (site: string, token: string, redirectTo: string, deps: AuthDeps, hooks: LoginHooks) => {
+    await deps.clearCookies(site)
+    await hooks.beforeLogin?.()
+    deps.login(site, token, redirectTo)
+}
+
+export const signIn = async (site: string, clientId: string, redirectTo = "/raven", deps: AuthDeps = defaultDeps, hooks: LoginHooks = {}) => {
     const verifier = deps.pkce.verifier()
     const state = deps.pkce.state()
     const challenge = await deps.pkce.challenge(verifier)
@@ -159,8 +172,17 @@ export const signIn = async (site: string, clientId: string, redirectTo = "/rave
     removeUrl = await deps.onAppUrlOpen((url) => {
         if (settled) return
         const cb = parseCallback(url)
-        if (!cb || cb.state !== state) return
-        if (cb.error) { finish(() => rejectCallback(new Error(cb.error_description || cb.error))); return }
+        if (!cb) return
+        // Frappe's deny redirect (`?error=access_denied`) carries no state and is the
+        // only stateless error accepted; the scheme is public, so anything else must
+        // carry our state. A code always needs the strict check.
+        if (cb.error) {
+            const ours = cb.state === state || (cb.state === undefined && cb.error === "access_denied")
+            if (!ours) return
+            finish(() => rejectCallback(new Error(cb.error_description || cb.error)))
+            return
+        }
+        if (cb.state !== state) return
         if (!cb.code) { finish(() => rejectCallback(new Error("Callback carried no authorization code"))); return }
         finish(() => resolveCallback(cb))
     })
@@ -206,14 +228,14 @@ export const signIn = async (site: string, clientId: string, redirectTo = "/rave
         await deps.progress.hide()
         throw e
     }
-    deps.login(site, tokens.accessToken, redirectTo)
+    await completeLogin(site, tokens.accessToken, redirectTo, deps, hooks)
 }
 
 export type ReauthPlan = "refresh" | "signin" | "site-login"
 export const decideReauth = (tokens: StoredTokens | null, clientId?: string): ReauthPlan =>
     tokens?.refreshToken && clientId ? "refresh" : clientId ? "signin" : "site-login"
 
-export const reauth = async (site: string, to: string, clientId?: string, deps: AuthDeps = defaultDeps) => {
+export const reauth = async (site: string, to: string, clientId?: string, deps: AuthDeps = defaultDeps, hooks: LoginHooks = {}) => {
     const tokens = await deps.store.get(site)
     const plan = decideReauth(tokens, clientId)
     if (plan === "site-login") {
@@ -238,14 +260,14 @@ export const reauth = async (site: string, to: string, clientId?: string, deps: 
             // The browser is about to open; a lingering splash would hide the picker on cancel.
             await deps.progress.hide()
             await deps.store.remove(site)
-            await signIn(site, cid, to, deps)
+            await signIn(site, cid, to, deps, hooks)
             return
         }
         await deps.store.set(site, next)
-        deps.login(site, next.accessToken, to)
+        await completeLogin(site, next.accessToken, to, deps, hooks)
         return
     }
-    await signIn(site, clientId!, to, deps)
+    await signIn(site, clientId!, to, deps, hooks)
 }
 
 export const signOut = async (site: string, deps: AuthDeps = defaultDeps) => {

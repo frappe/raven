@@ -7,8 +7,9 @@ const config: CapacitorConfig = {
     appName: "Raven",
     webDir: "dist",
     server: {
-        // The shell navigates to any Raven site the user adds; the bridge must
-        // be injected there, so every host is allowed.
+        // The saved-site list is dynamic, so it cannot be expressed here. The
+        // RavenShell plugin gates navigation instead: only saved sites (and the
+        // shell) load in the WebView, everything else opens in the system browser.
         allowNavigation: ["*"],
     },
     ios: { contentInset: "never" },
