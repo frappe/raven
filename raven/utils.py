@@ -109,10 +109,13 @@ def set_channel_unread(channel_id: str, message_id: str = None, user: str = None
 	anchor message — the anchor and everything after it become unread.
 
 	Anchor: `message_id` when given, else the latest non-System message in the
-	channel. The new watermark is set one microsecond below the anchor's
-	creation, so the anchor becomes the first unread message and everything
-	before it stays read (when the anchor is the channel's first message this
-	marks the whole channel unread).
+	channel NOT authored by the user — unread counts exclude the user's own
+	messages, so anchoring on one would produce a count of zero and the mark
+	would be invisible (the "I replied last, now mark it unread" case). The new
+	watermark is set one microsecond below the anchor's creation, so the anchor
+	becomes the first unread message and everything before it stays read (when
+	the anchor is the channel's first message this marks the whole channel
+	unread).
 
 	This is the one intentional *backward* watermark move, so it writes
 	`last_visit` directly and bypasses the monotonic guard in
@@ -140,6 +143,7 @@ def set_channel_unread(channel_id: str, message_id: str = None, user: str = None
 			.select(message.creation)
 			.where(message.channel_id == channel_id)
 			.where(message.message_type != "System")
+			.where(message.owner != user)
 			.orderby(message.creation, order=Order.desc)
 			.orderby(message.name, order=Order.desc)
 			.limit(1)
