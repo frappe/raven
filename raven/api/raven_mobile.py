@@ -29,7 +29,7 @@ def get_client_id():
 	)
 	return {
 		# Only a client that accepts the app's redirect URI is usable.
-		"client_id": client_id if NATIVE_REDIRECT_URI in (redirect_uris or "") else None,
+		"client_id": client_id if NATIVE_REDIRECT_URI in (redirect_uris or "").split() else None,
 		"system_timezone": frappe.get_system_settings("time_zone"),
 		"app_name": app_name,
 		"sitename": frappe.local.site,
