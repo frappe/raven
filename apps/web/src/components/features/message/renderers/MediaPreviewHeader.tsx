@@ -101,7 +101,8 @@ export const MediaPreviewHeader = ({
                         {import.meta.env.VITE_NATIVE ? <Share /> : <ArrowDownToLineIcon />}
                     </Button>
                 )}
-                {onShare && (
+                {/* In the app the button above shares already; a second would do the same. */}
+                {onShare && !import.meta.env.VITE_NATIVE && (
                     <Button
                         variant="ghost"
                         size="md"
