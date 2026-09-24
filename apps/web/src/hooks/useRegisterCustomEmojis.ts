@@ -4,6 +4,7 @@ import { useDebounceCallback } from "usehooks-ts"
 import { useSetAtom } from "jotai"
 import { RavenCustomEmoji } from "@raven/types/RavenMessaging/RavenCustomEmoji"
 import { initEmojiMart, customEmojiCategoriesAtom } from "@lib/emojiMart"
+import { fileSrc } from "@hooks/useFileSrc"
 
 /** Coalesce a burst of Raven Custom Emoji changes before refetching the list. */
 const REFETCH_DEBOUNCE_MS = 1000
@@ -36,7 +37,8 @@ export const useRegisterCustomEmojis = () => {
                 id: emoji.emoji_name,
                 name: emoji.emoji_name,
                 keywords: emoji.keywords ? emoji.keywords.split(/[\s,]+/).filter(Boolean) : [],
-                skins: [{ src: emoji.image }],
+                // The image lives on the site, which the native app is not served from.
+                skins: [{ src: fileSrc(emoji.image as string) }],
             }))
         const categories = emojis.length ? [{ id: "raven", name: "Custom", emojis }] : []
         initEmojiMart(categories)
