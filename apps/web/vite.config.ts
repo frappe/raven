@@ -86,6 +86,8 @@ return {
       "@utils": path.resolve(__dirname, "./src/utils"),
       "@stores": path.resolve(__dirname, "./src/stores"),
       "@assets": path.resolve(__dirname, "./src/assets"),
+      // The backend's public folder, whose artwork the app bundles rather than fetching.
+      "@raven/public": path.resolve(__dirname, "../../raven/public"),
       "@raven/types": path.resolve(__dirname, "../../packages/types"),
       "@raven/lib": path.resolve(__dirname, "../../packages/lib"),
       "@db": path.resolve(__dirname, "./src/db/db"),

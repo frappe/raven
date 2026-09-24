@@ -31,14 +31,17 @@ export const useRegisterCustomEmojis = () => {
 
     useEffect(() => {
         if (!data) return
+        // An emoji without a name or an image has nothing to show; the guard names what survives.
+        const usable = (emoji: RavenCustomEmoji): emoji is RavenCustomEmoji & { image: string } =>
+            Boolean(emoji.image && emoji.emoji_name)
         const emojis = data
-            .filter((emoji) => emoji.image && emoji.emoji_name)
+            .filter(usable)
             .map((emoji) => ({
                 id: emoji.emoji_name,
                 name: emoji.emoji_name,
                 keywords: emoji.keywords ? emoji.keywords.split(/[\s,]+/).filter(Boolean) : [],
-                // The image lives on the site, which the native app is not served from.
-                skins: [{ src: fileSrc(emoji.image as string) }],
+                // The image sits on the site, and the app is not served from there.
+                skins: [{ src: fileSrc(emoji.image) }],
             }))
         const categories = emojis.length ? [{ id: "raven", name: "Custom", emojis }] : []
         initEmojiMart(categories)

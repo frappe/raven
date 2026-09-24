@@ -11,7 +11,7 @@ import { pendingNotice, pendingPath, pendingRelogin } from "./pending"
 import { unsubscribeSitePush } from "./push"
 import { completeSite, forgetSite, loadSites, normalizeSiteUrl, probeSite, saveSite, setDefaultSite, wipeSiteData, type ProbeResult, type Site } from "./sites"
 import { versionAtLeast, versionMismatch } from "./version"
-import logo from "../../../../raven/public/raven_logo.svg"
+import logo from "@raven/public/raven_logo.svg"
 
 type ProbeError = Exclude<ProbeResult, { site: Site }>["error"]
 /** A failure the picker words itself; anything else shows the thrown message as is. */
