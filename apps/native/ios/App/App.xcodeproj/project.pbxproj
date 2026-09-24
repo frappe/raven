@@ -400,7 +400,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = RavenShare/RavenShare.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 303;
+				CURRENT_PROJECT_VERSION = 304;
 				DEVELOPMENT_TEAM = W6346TTZQX;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = RavenShare/Info.plist;
@@ -424,7 +424,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = RavenShare/RavenShare.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 303;
+				CURRENT_PROJECT_VERSION = 304;
 				DEVELOPMENT_TEAM = W6346TTZQX;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = RavenShare/Info.plist;
@@ -559,7 +559,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 303;
+				CURRENT_PROJECT_VERSION = 304;
 				DEVELOPMENT_TEAM = W6346TTZQX;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -583,7 +583,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 303;
+				CURRENT_PROJECT_VERSION = 304;
 				DEVELOPMENT_TEAM = W6346TTZQX;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -605,7 +605,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = RavenNotifications/RavenNotifications.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 303;
+				CURRENT_PROJECT_VERSION = 304;
 				DEVELOPMENT_TEAM = W6346TTZQX;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = RavenNotifications/Info.plist;
@@ -629,7 +629,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = RavenNotifications/RavenNotifications.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 303;
+				CURRENT_PROJECT_VERSION = 304;
 				DEVELOPMENT_TEAM = W6346TTZQX;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = RavenNotifications/Info.plist;
