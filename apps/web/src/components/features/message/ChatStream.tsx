@@ -244,7 +244,7 @@ export default function ChatStream({ channelID, pinnedMessagesString, initialMes
         <ScrollViewportContext.Provider value={viewport}>
             <DateTrackerContext.Provider value={tracker}>
                 <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-                    <FloatingDatePill />
+                    {online && <FloatingDatePill />}
                     <MessageActionMenu channelID={channelID} canInteract={canInteract}>
                         <div
                             ref={containerRef}
