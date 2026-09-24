@@ -7,7 +7,12 @@ import UserNotifications
 final class NotificationService: UNNotificationServiceExtension {
     // Held so the timeout can deliver what has been built so far. The download's thread and the
     // timeout both reach them, so every touch is on this queue and the push is handed over once.
-    private let queue = DispatchQueue(label: "raven.notification.service")
+    private let queue: DispatchQueue = {
+        let queue = DispatchQueue(label: "raven.notification.service")
+        queue.setSpecific(key: NotificationService.onQueue, value: true)
+        return queue
+    }()
+    private static let onQueue = DispatchSpecificKey<Bool>()
     // Who sent the message, which names the person the notification is shown as coming from.
     private var sender: String?
     // The site, named beside the sender when this device has more than one to tell apart.
@@ -17,7 +22,7 @@ final class NotificationService: UNNotificationServiceExtension {
     }
     private var deliver: ((UNNotificationContent) -> Void)?
     private var content: UNMutableNotificationContent?
-    private var download: URLSessionTask?
+    private var downloads: [URLSessionTask] = []
     // iOS gives the extension seconds: a face is worth a short wait, never the notification.
     private static let session: URLSession = {
         let configuration = URLSessionConfiguration.ephemeral
@@ -44,19 +49,31 @@ final class NotificationService: UNNotificationServiceExtension {
         if content.threadIdentifier.isEmpty, let tag = info["tag"] as? String { content.threadIdentifier = tag }
 
         sender = info["from_user"] as? String
-        guard let avatar = url(from: info) else { return finish() }
-        if let cached = AvatarStore.file(for: avatar) { return finish(face: cached) }
-        download = Self.session.downloadTask(with: avatar) { [weak self] location, _, _ in
-            guard let self = self else { return }
-            guard let location = location, let stored = AvatarStore.keep(location, for: avatar) else { return self.finish() }
-            self.finish(face: stored)
+        // Both pictures at once: the sender's face on the left, a channel's workspace logo on the right.
+        var face: URL?
+        var logo: URL?
+        let both = DispatchGroup()
+        obtain(url(from: info), into: both) { face = $0 }
+        obtain(logoURL(from: info), into: both) { logo = $0 }
+        both.notify(queue: queue) { self.finish(face: face, logo: logo) }
+    }
+
+    /// A picture from the store, or fetched into it; nil when there is none or it fails.
+    private func obtain(_ url: URL?, into group: DispatchGroup, done: @escaping (URL?) -> Void) {
+        guard let url = url else { return }
+        if let cached = AvatarStore.file(for: url) { return done(cached) }
+        group.enter()
+        let task = Self.session.downloadTask(with: url) { location, _, _ in
+            done(location.flatMap { AvatarStore.keep($0, for: url) })
+            group.leave()
         }
-        download?.resume()
+        queue.sync { downloads.append(task) }
+        task.resume()
     }
 
     // iOS is about to show the push as it arrived; hand over what is ready.
     override func serviceExtensionTimeWillExpire() {
-        download?.cancel()
+        queue.sync { downloads.forEach { $0.cancel() } }
         finish()
     }
 
@@ -96,12 +113,24 @@ final class NotificationService: UNNotificationServiceExtension {
         return (try? content.updating(from: intent)) ?? content
     }
 
-    private func finish(face: URL? = nil) {
-        queue.sync {
-            guard let deliver = deliver, let content = content else { return }
+    private func finish(face: URL? = nil, logo: URL? = nil) {
+        let body: () -> Void = {
+            guard let deliver = self.deliver, let content = self.content else { return }
             self.deliver = nil
-            deliver(asMessage(content, face: face))
+            deliver(self.withLogo(self.asMessage(content, face: face), logo: logo))
         }
+        // The pictures arriving call this on the queue already; the timeout calls it from elsewhere.
+        if DispatchQueue.getSpecific(key: Self.onQueue) == true { body() } else { queue.sync(execute: body) }
+    }
+
+    /// The workspace logo as the picture on the right, a copy since iOS moves an attachment away.
+    private func withLogo(_ content: UNNotificationContent, logo: URL?) -> UNNotificationContent {
+        guard let logo = logo, let dressed = content.mutableCopy() as? UNMutableNotificationContent else { return content }
+        let copy = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".jpg")
+        guard (try? FileManager.default.copyItem(at: logo, to: copy)) != nil,
+              let attachment = try? UNNotificationAttachment(identifier: "workspace", url: copy) else { return content }
+        dressed.attachments = [attachment]
+        return dressed
     }
 
     /// The site's hostname, which is the name it puts on a title it words itself.
@@ -111,9 +140,14 @@ final class NotificationService: UNNotificationServiceExtension {
         return sitename?.isEmpty == false ? sitename : nil
     }
 
-    /// The face on the notification: a channel's workspace, or the sender of a direct message.
+    /// A channel's workspace logo; a direct message has none.
+    private func logoURL(from info: [AnyHashable: Any]) -> URL? {
+        guard let logo = info["workspace_image"] as? String, !logo.isEmpty else { return nil }
+        return URL(string: logo)
+    }
+
+    /// The sender's face: the site puts it in the data, and the relay in its own options.
     private func url(from info: [AnyHashable: Any]) -> URL? {
-        if let logo = info["workspace_image"] as? String, !logo.isEmpty { return URL(string: logo) }
         if let image = info["image"] as? String, !image.isEmpty { return URL(string: image) }
         guard let options = info["fcm_options"] as? [AnyHashable: Any], let image = options["image"] as? String else { return nil }
         return URL(string: image)

@@ -18,14 +18,13 @@ public class RavenNotificationService extends MessagingService {
         Map<String, String> data = message.getData();
         String title = data.get("push_title");
         if (title == null || title.isEmpty() || RavenApplication.pageHandlesNotifications()) return;
-        String workspaceImage = data.get("workspace_image");
-        // A channel wears its workspace's logo; a direct message wears the sender's face.
-        String face = empty(workspaceImage) ? data.get("image") : workspaceImage;
         JSObject options = new JSObject();
         options.put("title", title);
         options.put("body", data.get("push_body"));
         options.put("site", data.get("sitename"));
-        options.put("image", face);
+        options.put("image", data.get("image"));
+        // With a workspace logo the notification leads with it; without one, with the sender's face.
+        options.put("logo", data.get("workspace_image"));
         options.put("tag", data.get("tag"));
         JSObject payload = new JSObject();
         for (Map.Entry<String, String> entry : data.entrySet()) payload.put(entry.getKey(), entry.getValue());
@@ -33,7 +32,4 @@ public class RavenNotificationService extends MessagingService {
         ConversationNotification.post(this, options);
     }
 
-    private static boolean empty(String value) {
-        return value == null || value.isEmpty();
-    }
 }

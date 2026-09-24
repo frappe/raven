@@ -20,9 +20,9 @@ import java.util.Iterator;
 import java.util.List;
 
 /**
- * Chat-style notification: the site as the header, the sender's avatar per message,
- * and one conversation's messages stacked. Posted by the notification service for a push
- * the app draws, and by the page for a push that belongs to another saved site.
+ * A message notification: chat-style, with the sender's face per message and a conversation's
+ * messages stacked, or, for a workspace with a logo, the standard layout with the logo on the right.
+ * Posted by the notification service, and by the page for a push from another saved site.
  */
 final class ConversationNotification {
     private ConversationNotification() {}
@@ -32,14 +32,18 @@ final class ConversationNotification {
         String tag = options.getString("tag");
         int id = (int) (System.currentTimeMillis() % Integer.MAX_VALUE);
         NotificationManager manager = context.getSystemService(NotificationManager.class);
-        List<NotificationCompat.MessagingStyle.Message> history = history(manager, tag);
-        String image = options.getString("image");
-        Bitmap avatar = AvatarCache.cached(context, image);
-        show(context, manager, options, tag, id, history, avatar, false);
-        // A face that has to be fetched arrives after the notification, and updates it in place.
-        if (avatar != null) return;
-        Bitmap fetched = AvatarCache.fetch(context, image);
-        if (fetched != null) show(context, manager, options, tag, id, history, fetched, true);
+        // A workspace logo needs the standard layout: the conversation one has no picture on the right.
+        String logoUrl = options.getString("logo");
+        boolean branded = logoUrl != null && !logoUrl.isEmpty();
+        String url = branded ? logoUrl : options.getString("image");
+        // Only the conversation layout stacks earlier messages; the standard one replaces them.
+        List<NotificationCompat.MessagingStyle.Message> history = branded ? Collections.emptyList() : history(manager, tag);
+        Bitmap picture = AvatarCache.cached(context, url);
+        show(context, manager, options, tag, id, history, picture, branded, false);
+        // A picture that has to be fetched arrives after the notification, and updates it in place.
+        if (picture != null || url == null || url.isEmpty()) return;
+        Bitmap fetched = AvatarCache.fetch(context, url);
+        if (fetched != null) show(context, manager, options, tag, id, history, fetched, branded, true);
     }
 
     private static void show(
@@ -49,27 +53,38 @@ final class ConversationNotification {
         String tag,
         int id,
         List<NotificationCompat.MessagingStyle.Message> history,
-        Bitmap avatar,
+        Bitmap picture,
+        boolean branded,
         boolean update
     ) {
-        // MessagingStyle needs a named device user; only the senders' messages are shown.
-        NotificationCompat.MessagingStyle style = new NotificationCompat.MessagingStyle(new Person.Builder().setName("You").build())
-            .setConversationTitle(options.getString("site"))
-            .setGroupConversation(true);
-        for (NotificationCompat.MessagingStyle.Message message : history) style.addMessage(message);
-        Person.Builder sender = new Person.Builder().setName(options.getString("title", ""));
-        Bitmap round = circle(avatar);
-        if (round != null) sender.setIcon(IconCompat.createWithBitmap(round));
-        style.addMessage(options.getString("body", ""), System.currentTimeMillis(), sender.build());
-        Notification notification = new NotificationCompat.Builder(context, RavenApplication.MESSAGES_CHANNEL)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setStyle(style)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+        String title = options.getString("title", "");
+        String body = options.getString("body", "");
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, RavenApplication.MESSAGES_CHANNEL)
+            .setSmallIcon(R.drawable.ic_launcher_foreground);
+        if (branded) {
+            builder.setContentTitle(title)
+                .setContentText(body)
+                .setSubText(options.getString("site"))
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(body));
+            if (picture != null) builder.setLargeIcon(picture);
+        } else {
+            // MessagingStyle needs a named device user; only the senders' messages are shown.
+            NotificationCompat.MessagingStyle style = new NotificationCompat.MessagingStyle(new Person.Builder().setName("You").build())
+                .setConversationTitle(options.getString("site"))
+                .setGroupConversation(true);
+            for (NotificationCompat.MessagingStyle.Message message : history) style.addMessage(message);
+            Person.Builder sender = new Person.Builder().setName(title);
+            Bitmap round = circle(picture);
+            if (round != null) sender.setIcon(IconCompat.createWithBitmap(round));
+            style.addMessage(body, System.currentTimeMillis(), sender.build());
+            builder.setStyle(style);
+        }
+        builder.setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             // The face arriving must not sound a second time for the same message.
             .setOnlyAlertOnce(update)
-            .setContentIntent(tapIntent(context, id, options.getJSObject("data")))
-            .build();
+            .setContentIntent(tapIntent(context, id, options.getJSObject("data")));
+        Notification notification = builder.build();
         // (tag, 0) is the identity FCM posts under, so a tagged post replaces the
         // background entry for the same conversation as well as an earlier re-post.
         manager.notify(tag, tag != null ? 0 : id, notification);
