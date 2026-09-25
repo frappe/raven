@@ -285,6 +285,9 @@ has_permission = {
 }
 
 on_session_creation = "raven.api.user_availability.set_user_active"
+
+# The bundled native app runs from its own origins; allow them on API calls without site config.
+before_request = ["raven.api.native.set_cors"]
 on_logout = "raven.api.user_availability.set_user_inactive"
 
 export_python_type_annotations = True

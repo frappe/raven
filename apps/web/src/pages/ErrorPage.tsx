@@ -64,7 +64,7 @@ const ErrorPage = () => {
                     {!isStaleBuild && (
                         // "/" resolves to the last workspace + channel (IndexRedirect),
                         // and navigating away from an errored route clears the boundary.
-                        <Button variant="outline" onClick={() => navigate("/")}>
+                        <Button variant="subtle" onClick={() => navigate("/")}>
                             {_("Back to channels")}
                         </Button>
                     )}

@@ -37,7 +37,10 @@ export const formatDate = (date?: string | Date, format?: string) => {
 }
 
 export const getDateObject = (timestamp: string): dayjs.Dayjs => {
-
+    // Check the input before the timezone step. dayjs.tz finds the zone offset through
+    // Intl.DateTimeFormat, and Safari throws there on an invalid date where Chrome
+    // returns Invalid Date. Callers get an invalid dayjs back and can test isValid().
+    if (!timestamp || !dayjs(timestamp).isValid()) return dayjs(NaN)
     return dayjs.tz(timestamp, SYSTEM_TIMEZONE).local()
 }
 
