@@ -1,3 +1,4 @@
+import { siteUrl } from "@lib/site"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { DownloadIcon, PrinterIcon } from "lucide-react"
 import { Button } from "@components/ui/button"
@@ -74,9 +75,9 @@ export const DocumentPrintDialog = ({
 
     const previewUrl = `/printview?${buildParams("_lang", { trigger_print: "0" })}`
 
-    const onPrint = () => window.open(`/printview?${buildParams("_lang", { trigger_print: "1" })}`, "_blank")
+    const onPrint = () => window.open(siteUrl(`/printview?${buildParams("_lang", { trigger_print: "1" })}`), "_blank")
     const onDownloadPdf = () =>
-        window.open(`/api/method/frappe.utils.print_format.download_pdf?${buildParams("language")}`, "_blank")
+        window.open(siteUrl(`/api/method/frappe.utils.print_format.download_pdf?${buildParams("language")}`), "_blank")
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>

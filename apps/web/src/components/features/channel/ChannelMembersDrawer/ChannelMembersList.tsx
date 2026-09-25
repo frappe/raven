@@ -85,7 +85,7 @@ const ChannelMembersList = ({ members, channel, allowSettingChange }: { members:
  *  scroll. On desktop env() is 0 and this is the old h-2. Module-level so
  *  Virtuoso's component type stays stable. */
 const MembersListFooter = () => (
-    <div className="h-[calc(env(safe-area-inset-bottom)+0.5rem)]" aria-hidden="true" />
+    <div className="h-[calc(var(--inset-bottom)+0.5rem)]" aria-hidden="true" />
 )
 const membersListComponents = { Footer: MembersListFooter }
 

@@ -1,3 +1,4 @@
+import { siteUrl } from "@lib/site"
 import { commandMenuOpenAtom } from "@components/features/cmdk/atoms"
 import NavUserMenu from "@components/features/header/NavUserMenu/NavUserMenu"
 import { Avatar, AvatarFallback, AvatarImage } from "@components/ui/avatar"
@@ -42,7 +43,7 @@ const suppressNextClick = () => {
 }
 
 const RavenLogo = () => {
-    return <img src="/assets/raven/raven_logo.svg" alt="Raven Logo" className="w-8 h-8" />
+    return <img src={siteUrl("/assets/raven/raven_logo.svg")} alt="Raven Logo" className="w-8 h-8" />
 }
 
 /**
@@ -335,7 +336,7 @@ const WorkspaceItem = ({ workspace }: { workspace: WorkspaceFields }) => {
                         {/* Badge anchors to the avatar, not the full-width rail cell */}
                         <div className="relative">
                             <Avatar className="w-8 h-8 rounded">
-                                <AvatarImage src={workspace.logo} alt={workspace.workspace_name} draggable={false} />
+                                <AvatarImage src={workspace.logo && siteUrl(workspace.logo)} alt={workspace.workspace_name} draggable={false} />
                                 {/* rounded (not the fallback's default rounded-full) to
                                     match the square-ish Avatar root and loaded logo */}
                                 <AvatarFallback className="rounded text-xs bg-surface-gray-2 text-ink-gray-7">

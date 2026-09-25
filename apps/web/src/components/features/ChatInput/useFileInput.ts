@@ -1,4 +1,5 @@
 import { atomWithStorage } from 'jotai/utils'
+import { siteStorage } from '@lib/site'
 import { atomFamily } from 'jotai-family'
 import { atom, getDefaultStore, useSetAtom } from 'jotai'
 import { FrappeConfig, FrappeContext, useFrappeDeleteDoc } from 'frappe-react-sdk'
@@ -68,11 +69,14 @@ export interface UploadedFile {
 
 
 
+/** Native picks still being handed over per channel: the picker has closed, the files are not here yet. */
+export const preparingFilesAtom = atomFamily((_channelID: string) => atom(0))
+
 /** Atom to track files that are being uploaded per channel */
 export const uploadingFilesAtom = atomFamily((_channelID: string) => atom<QueuedFileType[]>([]))
 
 /** Atom to track files that are uploaded per channel */
-export const uploadedFilesAtom = atomFamily((channelID: string) => atomWithStorage<UploadedFile[]>(`uploaded-files-${channelID}`, []))
+export const uploadedFilesAtom = atomFamily((channelID: string) => atomWithStorage<UploadedFile[]>(`uploaded-files-${channelID}`, [], siteStorage()))
 
 /**
  * A send that arrived while files were still uploading — held, then dispatched once every

@@ -4,6 +4,7 @@ import { useAtomValue, useSetAtom } from "jotai"
 import { useHotkeys } from "react-hotkeys-hook"
 import { useHistoryBackClose } from "@hooks/useHistoryBackClose"
 import { toast } from "sonner"
+import { useFileSrc } from "@hooks/useFileSrc"
 import { ChevronLeft, ChevronRight, FileText, Film, Music, MusicIcon } from "lucide-react"
 import { Badge } from "@components/ui/badge"
 import { Button } from "@components/ui/button"
@@ -21,6 +22,7 @@ import { cn } from "@lib/utils"
 import _ from "@lib/translate"
 import { attachmentPreviewAtom, type Attachment, type AttachmentPreviewState } from "@utils/attachmentPreview"
 import FileTypeIcon from "@components/common/FileIcons/FileTypeIcon"
+import { FileImage } from "@components/common/FileImage"
 
 /** Minimum horizontal travel (px) for a touch swipe to count as paging. */
 const SWIPE_THRESHOLD = 50
@@ -63,6 +65,7 @@ const AttachmentPreviewContent = ({
     const isPreview = display.mode === "preview"
     const current = attachments[index] ?? attachments[0]
     const user = useUser(current.owner)
+    const resolvedUrl = useFileSrc(current.fileUrl)
 
     // PDFs render inline via <embed> on desktop only — mobile browsers won't,
     // so they fall back to the download card alongside non-previewable files.
@@ -241,7 +244,7 @@ const AttachmentPreviewContent = ({
                 Desktop keeps the in-flow row (the PDF embed needs its reserved
                 space). */}
             <div ref={setHeaderEl} className={cn(
-                "shrink-0 p-3 transition-opacity duration-150 max-md:absolute max-md:inset-x-0 max-md:top-0 max-md:z-20",
+                "shrink-0 p-3 transition-opacity duration-150 max-md:absolute max-md:inset-x-0 max-md:top-0 max-md:z-20 standalone:max-md:pt-[calc(0.75rem+var(--inset-top))]",
                 chromeHidden && "pointer-events-none opacity-0",
             )}>
                 <MediaPreviewHeader
@@ -346,6 +349,7 @@ const AttachmentPreviewContent = ({
                     // other media kinds which share the SwipeDownToClose wrapper below.
                     <ZoomableImage
                         key={current.fileUrl}
+                        // ZoomableImage resolves the site path itself; a resolved one would break on a second pass.
                         src={current.fileUrl}
                         alt={current.fileName}
                         onDismiss={close}
@@ -360,7 +364,10 @@ const AttachmentPreviewContent = ({
                     <SwipeDownToClose onDismiss={close} onProgress={onDismissProgress}>
                         {current.kind === "video" ? (
                             <video
-                                src={current.fileUrl}
+                                // iOS: #t paints the first frame, and playsInline keeps it in the viewer.
+                                src={resolvedUrl && `${resolvedUrl}#t=0.001`}
+                                playsInline
+                                preload="metadata"
                                 controls
                                 className="max-h-full md:max-w-[90%]"
                                 onClick={(event) => event.stopPropagation()}
@@ -385,7 +392,7 @@ const AttachmentPreviewContent = ({
                             // (Touches INSIDE the embed never reach us — the dismiss drag
                             // only works from the frame around it; desktop-only anyway.)
                             <embed
-                                src={current.fileUrl}
+                                src={resolvedUrl}
                                 type="application/pdf"
                                 className="h-full w-full max-w-5xl rounded-md"
                                 onClick={(event) => event.stopPropagation()}
@@ -413,7 +420,7 @@ const AttachmentPreviewContent = ({
                         // Extra bottom padding on mobile = the home-indicator
                         // safe area, so the tiles sit clear of the OS home /
                         // app-switch swipe zone (zero on devices without one).
-                        "shrink-0 p-3 transition-opacity duration-150 max-md:absolute max-md:inset-x-0 max-md:bottom-0 max-md:z-20 max-md:pb-[calc(0.75rem+env(safe-area-inset-bottom))]",
+                        "shrink-0 p-3 transition-opacity duration-150 max-md:absolute max-md:inset-x-0 max-md:bottom-0 max-md:z-20 max-md:pb-[calc(0.75rem+var(--inset-bottom))]",
                         chromeHidden && "pointer-events-none opacity-0",
                     )}
                     onClick={(event) => { if (event.target === event.currentTarget) close() }}
@@ -517,7 +524,7 @@ const FilmstripThumb = forwardRef<HTMLDivElement, {
                 }}
             >
                 {attachment.kind === "image" ? (
-                    <img
+                    <FileImage
                         src={attachment.thumbnail || attachment.fileUrl}
                         alt={attachment.fileName}
                         className="h-full w-full object-cover"
@@ -549,7 +556,8 @@ StripItem.displayName = "StripItem"
  * the surrounding backdrop still does.
  */
 const DownloadCard = ({ attachment, isMobile }: { attachment: Attachment; isMobile: boolean }) => {
-    const openInTab = isMobile && attachment.kind === "pdf"
+    // Native has no tab and no session in the browser; the share sheet takes the PDF too.
+    const openInTab = isMobile && attachment.kind === "pdf" && !import.meta.env.VITE_NATIVE
     const action = () =>
         openInTab
             ? window.open(attachment.fileUrl, "_blank", "noopener")
@@ -566,7 +574,7 @@ const DownloadCard = ({ attachment, isMobile }: { attachment: Attachment; isMobi
                 <p className="text-sm text-ink-gray-5">{_("No preview available")}</p>
             </div>
             <Button variant="solid" theme="gray" onClick={action}>
-                {openInTab ? _("Open") : _("Download")}
+                {openInTab ? _("Open") : import.meta.env.VITE_NATIVE ? _("Share") : _("Download")}
             </Button>
         </div>
     )

@@ -1,3 +1,4 @@
+import { siteKey } from "@lib/site"
 import { useLayoutEffect, useReducer, useRef, useState } from "react"
 import { useAtomValue } from "jotai"
 import { ClockIcon, EllipsisVerticalIcon, MoonStarIcon, XIcon } from "lucide-react"
@@ -69,7 +70,7 @@ const DISMISSED_AT_KEY = "raven-quiet-hours-banner-dismissed-at"
 
 const isDismissedThisPeriod = () => {
     try {
-        const at = Number(localStorage.getItem(DISMISSED_AT_KEY))
+        const at = Number(localStorage.getItem(siteKey(DISMISSED_AT_KEY)))
         const periodStart = currentQuietPeriodStartMs()
         return Number.isFinite(at) && periodStart !== null && at >= periodStart
     } catch {
@@ -104,7 +105,7 @@ export const QuietHoursBanner = ({ mode }: { mode: QuietSendMode }) => {
 
     const dismiss = () => {
         try {
-            localStorage.setItem(DISMISSED_AT_KEY, String(Date.now()))
+            localStorage.setItem(siteKey(DISMISSED_AT_KEY), String(Date.now()))
         } catch {
             // Storage unavailable — the banner just returns next mount.
         }

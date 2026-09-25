@@ -1,3 +1,4 @@
+import { siteUrl } from "@lib/site"
 import { Extension } from "@tiptap/core"
 import { Suggestion } from "@tiptap/suggestion"
 import { Data, SearchIndex } from "emoji-mart"
@@ -249,7 +250,7 @@ export const EmojiSuggestion = Extension.create<EmojiSuggestionOptions>({
                     renderItem: (emoji) =>
                         srcOf(emoji) ? (
                             <>
-                                <img src={srcOf(emoji)} alt={emoji.id} loading="lazy" className="h-5 w-5 object-contain" />
+                                <img src={siteUrl(srcOf(emoji))} alt={emoji.id} loading="lazy" className="h-5 w-5 object-contain" />
                                 <span className="truncate text-ink-gray-6">:{emoji.id}:</span>
                             </>
                         ) : (

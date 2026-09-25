@@ -13,3 +13,10 @@ interface Window {
     /** Injected by the Jinja entry template (raven.html) for POSTs outside frappe-react-sdk */
     csrf_token?: string,
 }
+/** Raven version the bundle was built from (vite define). */
+declare const __RAVEN_VERSION__: string
+
+interface ImportMetaEnv {
+    /** "1" in the native (Capacitor) build, undefined otherwise. */
+    readonly VITE_NATIVE?: "1"
+}

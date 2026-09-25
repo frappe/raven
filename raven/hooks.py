@@ -39,6 +39,8 @@ sounds = [
 ]
 
 extend_bootinfo = "raven.boot.boot_session"
+
+before_request = ["raven.api.native.set_cors"]
 # include js, css files in header of web template
 # web_include_css = "/assets/raven/css/raven.css"
 # web_include_js = "/assets/raven/js/raven.js"

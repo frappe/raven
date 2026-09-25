@@ -2,6 +2,7 @@ import { AudioLinesIcon, Music, Pause, Play } from "lucide-react"
 import { Slider } from "@components/ui/slider"
 import { getFileName } from "@raven/lib/utils/operations"
 import { useAudioPlayer, formatTime } from "./AudioPlayer"
+import { useFileSrc } from "@hooks/useFileSrc"
 import _ from "@lib/translate"
 import type { Message } from "@raven/types/common/Message"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip"
@@ -48,7 +49,7 @@ const AudioCard = ({ message }: { message: FileLikeMessage }) => {
                     }}
                     className="w-full max-w-72 group/audio h-16 flex cursor-pointer items-center gap-1 overflow-hidden rounded-lg border border-outline-gray-2 bg-surface-base outline-none focus-visible:focus-ring"
                 >
-                    <audio src={message.file} {...audioProps} />
+                    <audio src={useFileSrc(message.file)} {...audioProps} />
 
                     {/* Square cover — Music icon until a real cover thumbnail exists */}
                     <div className="flex aspect-square size-16 max-w-16 w-full items-center justify-center bg-surface-gray-2 text-ink-gray-4">

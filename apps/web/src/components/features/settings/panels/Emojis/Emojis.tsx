@@ -1,3 +1,4 @@
+import { siteUrl } from '@lib/site'
 import { useState, useMemo } from 'react'
 import { ListView, type ListViewColumnMeta, type SortingState } from '@components/ui/list-view'
 import type { ColumnDef } from '@tanstack/react-table'
@@ -110,7 +111,7 @@ export const Emojis = () => {
             cell: ({ row }) => (
                 <div className='flex items-center gap-2 min-w-0'>
                     <img
-                        src={row.original.image}
+                        src={siteUrl(row.original.image)}
                         alt={row.original.emoji_name}
                         className='w-8 h-8 rounded-md object-contain object-center shrink-0'
                     />

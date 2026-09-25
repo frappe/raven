@@ -57,7 +57,8 @@ export const useComposerGate = (
     // resolved list drops members whose user records haven't loaded yet, so on
     // a refresh it could briefly miss the current user — flashing the
     // "not a member" banner before the composer.
-    const isMember = isDM || memberIds.includes(currentUser)
+    // member_id on the channel-list entry is the offline answer: the roster fetch needs the network.
+    const isMember = isDM || memberIds.includes(currentUser) || Boolean(channel?.member_id)
 
     // useJoinChannel updates the member store itself (including the roster
     // refresh), so the banner flips as soon as the join succeeds. Nothing
@@ -68,7 +69,7 @@ export const useComposerGate = (
     }, [joinChannel])
 
     let state: ComposerGateState
-    if (!channelsLoaded || (!isDM && membersLoading)) state = "loading"
+    if (!channelsLoaded || (!isDM && membersLoading && !channel?.member_id)) state = "loading"
     else if (isArchived) state = "archived"
     else if (isOpen || isMember) state = "composer"
     else state = "not-member"
@@ -120,7 +121,7 @@ const ComposerBlockedBanner = ({
     return <div className="md:px-3 md:pb-3 w-full">
         {/* max(inset, 1rem): Android Chrome reports a 0 safe-area inset (unlike
             iOS's 34px), which left this flush against the screen bottom. */}
-        <div className="flex md:min-h-[98px] flex-col items-center justify-center gap-2 md:rounded-lg rounded-none md:border border-t border-outline-gray-2 bg-surface-gray-1 md:px-3 px-4 py-4 standalone:pb-[max(env(safe-area-inset-bottom),1rem)] text-sm text-ink-gray-6">
+        <div className="flex md:min-h-[98px] flex-col items-center justify-center gap-2 md:rounded-lg rounded-none md:border border-t border-outline-gray-2 bg-surface-gray-1 md:px-3 px-4 py-4 standalone:pb-[max(var(--inset-bottom),1rem)] text-sm text-ink-gray-6">
             <span className="text-p-base text-center">
                 {message}
             </span>

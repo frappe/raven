@@ -1,4 +1,5 @@
 import { atomWithStorage } from "jotai/utils"
+import { siteStorage } from "@lib/site"
 
 /**
  * "Reopen where I left off" memory — read by the boot/index redirect and
@@ -11,10 +12,10 @@ import { atomWithStorage } from "jotai/utils"
  * module-scope read, atom reads are live: the index route re-evaluates with
  * current values every time you navigate home.
  */
-export const lastWorkspaceAtom = atomWithStorage<string>("ravenLastWorkspace", "", undefined, {
+export const lastWorkspaceAtom = atomWithStorage<string>("ravenLastWorkspace", "", siteStorage(), {
     getOnInit: true,
 })
 
-export const lastChannelAtom = atomWithStorage<string>("ravenLastChannel", "", undefined, {
+export const lastChannelAtom = atomWithStorage<string>("ravenLastChannel", "", siteStorage(), {
     getOnInit: true,
 })

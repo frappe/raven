@@ -1,5 +1,6 @@
 import { getDefaultStore } from "jotai"
 import { atomWithLazy, atomWithStorage } from "jotai/utils"
+import { siteStorage } from "@lib/site"
 
 export type ChatStyle = "Simple" | "Left-Right"
 export type TimeFormat = "12-hour" | "24-hour"
@@ -67,7 +68,7 @@ export const quietHoursConfigAtom = atomWithLazy<QuietHoursConfig | null>(
 export const getQuietHoursConfig = (): QuietHoursConfig | null => getDefaultStore().get(quietHoursConfigAtom)
 
 
-export const imageGroupingLayoutAtom = atomWithStorage<"stack" | "grid">("raven-image-grouping-layout", "stack")
+export const imageGroupingLayoutAtom = atomWithStorage<"stack" | "grid">("raven-image-grouping-layout", "stack", siteStorage())
 
 export type EnterKeyBehaviour = "new-line" | "send-message"
 
@@ -81,7 +82,7 @@ export type EnterKeyBehaviour = "new-line" | "send-message"
 export const EnterKeyBehaviourAtom = atomWithStorage<EnterKeyBehaviour>(
     "raven-enter-key-behaviour",
     "send-message",
-    undefined,
+    siteStorage(),
     { getOnInit: true },
 )
 
@@ -99,7 +100,7 @@ export const QuickEmojisAtom = atomWithStorage<QuickEmoji[]>("raven-quick-emojis
     { id: "🎉", native: "🎉" },
     { id: "🔥", native: "🔥" },
     { id: "🤔", native: "🤔" },
-])
+], siteStorage())
 
 /**
  * The reaction toggled by double-tapping a message on mobile. getOnInit so the
@@ -108,6 +109,6 @@ export const QuickEmojisAtom = atomWithStorage<QuickEmoji[]>("raven-quick-emojis
 export const DoubleTapReactionAtom = atomWithStorage<QuickEmoji>(
     "raven-double-tap-reaction",
     { id: "👍", native: "👍" },
-    undefined,
+    siteStorage(),
     { getOnInit: true },
 )

@@ -1,3 +1,4 @@
+import { siteUrl } from "@lib/site"
 import { Fragment, useEffect, useRef, useState } from "react"
 import { useAtom, useAtomValue, useSetAtom } from "jotai"
 import { useHistoryBackClose } from "@hooks/useHistoryBackClose"
@@ -755,7 +756,7 @@ export const MessageActionMenu = ({
                                         >
                                             {emoji.src ? (
                                                 <img
-                                                    src={emoji.src}
+                                                    src={siteUrl(emoji.src)}
                                                     alt={emoji.id}
                                                     loading="lazy"
                                                     className="h-6 w-6 object-contain"

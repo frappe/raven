@@ -13,6 +13,16 @@ from raven.utils import get_channel_members, make_api_call
 MAX_NOTIFICATION_CONTENT_LENGTH = 1000
 
 
+def with_site(title: str) -> str:
+	"""Names the site in a title the device itself draws; the app draws the site as a header instead."""
+	return f"{title} · {get_site_name()}"
+
+
+def site_tag(key: str) -> str:
+	"""Per site: a shared tag lets one site replace or clear another site's notification."""
+	return f"{get_site_name()}:{key}"
+
+
 def push_disabled():
 	"""No pushes from developer mode / localhost — restored backups from local
 	environments must never notify real devices."""
@@ -144,6 +154,15 @@ def send_push_notification_via_raven_cloud(message, raven_settings):
 
 		image = get_image_absolute_url(message_owner_image)
 
+		# A channel is shown as its workspace: two workspaces can name a channel the same.
+		workspace_name, workspace_image = "", ""
+		if not channel_doc.is_direct_message and channel_doc.workspace:
+			# A workspace deleted under the channel leaves the notification without one, not unsent.
+			workspace_name, logo = frappe.get_cached_value(
+				"Raven Workspace", channel_doc.workspace, ["workspace_name", "logo"]
+			) or ("", "")
+			workspace_image = get_image_absolute_url(logo) if logo else ""
+
 		data = {
 			"base_url": frappe.utils.get_url(),
 			"message_url": url,
@@ -158,6 +177,8 @@ def send_push_notification_via_raven_cloud(message, raven_settings):
 			"is_thread": "1" if channel_doc.is_thread else "0",
 			"creation": get_milliseconds_since_epoch(message.creation),
 			"image": image if image else "",
+			"workspace": workspace_name or "",
+			"workspace_image": workspace_image or "",
 		}
 
 		if replied_users:
@@ -169,7 +190,7 @@ def send_push_notification_via_raven_cloud(message, raven_settings):
 						"body": truncated_content,
 					},
 					"data": data,
-					"tag": message.channel_id,
+					"tag": site_tag(message.channel_id),
 					"click_action": url,
 					"image": image,
 				}
@@ -184,7 +205,7 @@ def send_push_notification_via_raven_cloud(message, raven_settings):
 						"body": truncated_content,
 					},
 					"data": data,
-					"tag": message.channel_id,
+					"tag": site_tag(message.channel_id),
 					"click_action": url,
 					"image": image,
 				}
@@ -199,7 +220,7 @@ def send_push_notification_via_raven_cloud(message, raven_settings):
 						"body": truncated_content,
 					},
 					"data": data,
-					"tag": message.channel_id,
+					"tag": site_tag(message.channel_id),
 					"click_action": url,
 					"image": image,
 				}
@@ -209,6 +230,58 @@ def send_push_notification_via_raven_cloud(message, raven_settings):
 
 	except Exception as e:
 		frappe.log_error(title="Raven Cloud Push Notification Error")
+
+
+# The app draws its own notification from the data; every other device shows what the site sent.
+ANDROID_APP_DEVICE = "android native app"
+
+
+def split_for_app(messages):
+	"""Android draws any push carrying a title itself, so the app's copy carries none.
+
+	The app's notification service builds the chat-style notification from the data instead.
+	"""
+	tokens = push_tokens({user for message in messages for user in message.get("users", [])})
+	split = []
+	for message in messages:
+		app_tokens, other_tokens = [], []
+		for user in message.get("users", []):
+			app, others = tokens.get(user, ([], []))
+			app_tokens += app
+			other_tokens += others
+		plain = {key: value for key, value in message.items() if key != "users"}
+		notification = message.get("notification") or {}
+		if other_tokens:
+			titled = {**notification, "title": with_site(notification.get("title", ""))}
+			split.append({**plain, "tokens": other_tokens, "notification": titled})
+		if app_tokens:
+			data = {
+				**(message.get("data") or {}),
+				# The relay writes its own empty title and body into the data of a push without one.
+				"push_title": notification.get("title", ""),
+				"push_body": notification.get("body", ""),
+			}
+			split.append(
+				{key: value for key, value in plain.items() if key != "notification"}
+				| {"tokens": app_tokens, "data": data}
+			)
+	return split
+
+
+def push_tokens(users):
+	"""This site's tokens per user, each as (the app's Android ones, everything else)."""
+	if not users:
+		return {}
+	rows = frappe.get_all(
+		"Raven Push Token",
+		filters={"user": ["in", list(users)]},
+		fields=["user", "fcm_token", "device_information"],
+	)
+	tokens = {}
+	for row in rows:
+		app, others = tokens.setdefault(row.user, ([], []))
+		(app if (row.device_information or "") == ANDROID_APP_DEVICE else others).append(row.fcm_token)
+	return tokens
 
 
 def make_post_call_for_notification(messages, raven_settings):
@@ -222,14 +295,21 @@ def make_post_call_for_notification(messages, raven_settings):
 	api_key = raven_settings.push_notification_api_key
 	api_secret = raven_settings.get_password("push_notification_api_secret")
 
-	url = f"{raven_settings.push_notification_server_url}/api/method/raven_cloud.api.notification.send_to_users"
+	# The token endpoint, not the user one: only this site knows which device is the app.
+	url = (
+		f"{raven_settings.push_notification_server_url}/api/method/raven_cloud.api.notification.send"
+	)
+
+	split = split_for_app(messages)
+	if not split:
+		return
 
 	make_api_call(
 		url=url,
 		api_key=api_key,
 		api_secret=api_secret,
 		method="POST",
-		params={"messages": json.dumps(messages), "site_name": get_site_name()},
+		params={"messages": json.dumps(split), "site_name": get_site_name()},
 	)
 
 
@@ -273,7 +353,7 @@ def send_reminder_push(reminder, user_id):
 						"data": data,
 						# One reminder = one notification — tag by the reminder, not the
 						# channel, so it never coalesces with message notifications.
-						"tag": reminder.name,
+						"tag": site_tag(reminder.name),
 						"click_action": url,
 					}
 				],
@@ -312,7 +392,7 @@ def send_notification_to_user(user_id, title, message, data=None, user_image_pat
 				link = frappe.utils.get_url() + "/raven"
 			push_notification.send_notification_to_user(
 				user_id=user_id,
-				title=title,
+				title=with_site(title),
 				body=message,
 				icon=icon_url,
 				data=data,
@@ -352,7 +432,7 @@ def send_notification_to_topic(channel_id, title, message, data=None, user_image
 				link = frappe.utils.get_url() + "/raven"
 			push_notification.send_notification_to_topic(
 				topic_name=channel_id,
-				title=title,
+				title=with_site(title),
 				body=message,
 				icon=icon_url,
 				data=data,

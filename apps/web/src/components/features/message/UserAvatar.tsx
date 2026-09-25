@@ -1,3 +1,4 @@
+import { siteUrl } from '@lib/site'
 import { memo, useMemo } from 'react'
 import { Avatar, AvatarFallback, AvatarImage } from '@components/ui/avatar'
 import { cn } from '@lib/utils'
@@ -197,7 +198,7 @@ export const UserAvatar = memo<UserAvatarProps>(({
         <div className={cn("relative inline-block", className)}>
             <Avatar className={cn(sizeClasses.avatar, avatarClassName)}>
                 <AvatarImage
-                    src={user.user_image}
+                    src={user.user_image && siteUrl(user.user_image)}
                     alt={`${displayName}'s profile picture`}
                     className={!user.enabled ? 'grayscale' : ''}
                 />

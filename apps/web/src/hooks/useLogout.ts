@@ -4,6 +4,8 @@ import Cookies from "js-cookie"
 import { errorResponseToast } from "@components/ui/error-banner"
 import { disablePush } from "@lib/push"
 import { db } from "@db"
+import { siteKey, siteOrigin } from "@lib/site"
+import { clearSessionUser } from "@lib/sessionUser"
 import _ from "@lib/translate"
 
 /**
@@ -41,7 +43,7 @@ const clearLocalStorage = () => {
     for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i)
         if (!key || LOCAL_STORAGE_KEEP.includes(key)) continue
-        if (LOCAL_STORAGE_PREFIXES.some((prefix) => key.startsWith(prefix))) doomed.push(key)
+        if (LOCAL_STORAGE_PREFIXES.some((prefix) => key.startsWith(siteKey(prefix)))) doomed.push(key)
     }
     doomed.forEach((key) => localStorage.removeItem(key))
 }
@@ -93,11 +95,28 @@ export function useLogout(): { logout: () => Promise<void>; isLoggingOut: boolea
     const logout = useCallback(async () => {
         setIsLoggingOut(true)
 
-        // Best-effort: stop this device receiving pushes for a logged-out session.
+        // Best-effort: stop this device receiving pushes for a logged-out session, remembering
+        // that this site had them so signing in again does not start from off.
         try {
-            await disablePush()
+            await disablePush(true)
         } catch (e) {
             console.error("Failed to disable push notifications on logout", e)
+        }
+
+        if (import.meta.env.VITE_NATIVE) {
+            // Native: revoke the tokens, wipe the site's local data, back to the picker. The site
+            // stays saved, signed out; clearing the default keeps the picker from reopening it.
+            const [{ signOut }, { setDefaultSite }] = await Promise.all([import("../native/auth"), import("../native/sites")])
+            await signOut(siteOrigin())
+            await setDefaultSite(null)
+            // Logged out as far as the beforeunload cache writer is concerned; it wipes instead of persisting.
+            clearSessionUser()
+            clearLocalStorage()
+            await clearIndexedDB()
+            await import("../native/download").then((m) => m.clearMediaCache())
+            await import("../native/badge").then((m) => m.setNativeBadge(0))
+            window.location.replace("/")
+            return
         }
 
         try {

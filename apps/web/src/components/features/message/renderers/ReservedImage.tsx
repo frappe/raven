@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from "react"
 import { cn } from "@lib/utils"
+import { useFileSrc } from "@hooks/useFileSrc"
 
 /**
  * An image that NEVER changes size: the parent supplies a fixed box (computed
@@ -35,7 +36,7 @@ export const ReservedImage = ({
         <div className="relative h-full w-full overflow-hidden">
             <img
                 ref={imgRef}
-                src={src}
+                src={useFileSrc(src)}
                 alt={alt}
                 loading="lazy"
                 onLoad={() => setLoaded(true)}

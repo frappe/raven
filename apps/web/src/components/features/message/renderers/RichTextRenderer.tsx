@@ -1,3 +1,4 @@
+import { fileSrc } from "@hooks/useFileSrc"
 import { useMemo, useState } from "react"
 import { Element, Text, domToReact, htmlToDOM, type DOMNode, type HTMLReactParserOptions } from "html-react-parser"
 import { UserMention, ChannelMention } from "./MessageMention"
@@ -151,7 +152,7 @@ const options: HTMLReactParserOptions = {
             const alt = node.attribs.alt ?? ""
             // `emoji` class → sized by `.tiptap .emoji` (same rule as the composer),
             // which beats `.tiptap img` on specificity. Consistent inline emoji size.
-            return <img src={src} alt={alt} title={alt} loading="lazy" className="emoji" />
+            return <img src={fileSrc(src)} alt={alt} title={alt} loading="lazy" className="emoji" />
         }
 
         // Code blocks: <pre><code class="language-xxx">…</code></pre>. Returning

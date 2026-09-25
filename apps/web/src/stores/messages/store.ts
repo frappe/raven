@@ -1,4 +1,4 @@
-import Cookies from "js-cookie"
+import { sessionUser } from "@lib/sessionUser"
 import type { Message } from "@raven/types/common/Message"
 import {
     applyInitialPage,
@@ -40,6 +40,8 @@ type Listener = () => void
 class ChannelMessagesStore {
     private states = new Map<string, ChannelMessagesState>()
     private listeners = new Map<string, Set<Listener>>()
+    /** Write-through for the offline cache; installed only where that cache is on. */
+    onChange?: (channelID: string, state: ChannelMessagesState) => void
     /** Subscribers to the SET of hydrated channels (membership), not their contents. */
     private hydratedListeners = new Set<Listener>()
     /** Reference-stable snapshot of hydrated channel IDs; new ref only on membership change. */
@@ -183,7 +185,7 @@ class ChannelMessagesStore {
             // anchored on the user's own message (most visibly in threads).
             // Bot messages are the exception: a bot can post with owner set to
             // the current user, and the user didn't write those — they ARE new.
-            const currentUser = Cookies.get("user_id")
+            const currentUser = sessionUser().name
             for (const id of state.order) {
                 const message = state.byId.get(id)
                 if (!message) continue
@@ -315,6 +317,7 @@ class ChannelMessagesStore {
         if (current === next) return
         this.states.set(channelID, next)
         this.listeners.get(channelID)?.forEach((listener) => listener())
+        this.onChange?.(channelID, next)
     }
 
     /**

@@ -5,7 +5,16 @@ import frappe
 from frappe.tests import IntegrationTestCase
 
 from raven.api.native import APP_HEADER, APP_ORIGINS, boot, set_cors
-from raven.api.raven_mobile import MIN_APP_VERSION, NATIVE_REDIRECT_URI, get_client_id
+from raven.api.raven_mobile import (
+	MIN_APP_VERSION,
+	NATIVE_REDIRECT_URI,
+	create_oauth_client,
+	get_client_id,
+)
+from raven.patches.v3_0.add_native_oauth_redirect import execute as run_redirect_patch
+
+# Frappe 15 and 16 have no such field; there every client is public.
+HAS_AUTH_METHOD = frappe.get_meta("OAuth Client").has_field("token_endpoint_auth_method")
 
 
 class TestNative(IntegrationTestCase):
@@ -23,7 +32,10 @@ class TestNative(IntegrationTestCase):
 				"grant_type": "Authorization Code",
 				"response_type": "Code",
 			}
-		).insert(ignore_permissions=True)
+		)
+		if HAS_AUTH_METHOD:
+			self.client.token_endpoint_auth_method = "None"
+		self.client.insert(ignore_permissions=True)
 		frappe.db.set_single_value("Raven Settings", "oauth_client", self.client.name)
 
 	def tearDown(self):
@@ -45,6 +57,43 @@ class TestNative(IntegrationTestCase):
 		self.client.redirect_uris = "raven.thecommit.company:"
 		self.client.save(ignore_permissions=True)
 		self.assertIsNone(get_client_id()["client_id"])
+
+	def test_client_info_hides_client_that_demands_a_secret(self):
+		if not HAS_AUTH_METHOD:
+			return
+		self.client.token_endpoint_auth_method = "Client Secret Basic"
+		self.client.save(ignore_permissions=True)
+		self.assertIsNone(get_client_id()["client_id"])
+
+	def test_created_client_is_public(self):
+		frappe.db.set_single_value("Raven Settings", "oauth_client", None)
+		create_oauth_client()
+		client = frappe.get_doc(
+			"OAuth Client", frappe.db.get_single_value("Raven Settings", "oauth_client")
+		)
+		self.assertIn(NATIVE_REDIRECT_URI, client.redirect_uris)
+		if HAS_AUTH_METHOD:
+			self.assertEqual(client.token_endpoint_auth_method, "None")
+		self.assertEqual(get_client_id()["client_id"], client.name)
+
+	def test_patch_makes_an_existing_client_usable(self):
+		# A client from the React Native app: its bare redirect only, and Frappe's default auth method.
+		self.client.redirect_uris = "raven.thecommit.company:"
+		if HAS_AUTH_METHOD:
+			self.client.token_endpoint_auth_method = "Client Secret Basic"
+		self.client.save(ignore_permissions=True)
+		self.assertIsNone(get_client_id()["client_id"])
+		run_redirect_patch()
+		self.assertEqual(get_client_id()["client_id"], self.client.name)
+
+	def test_older_frappe_without_the_auth_method_field(self):
+		# Frappe 15 and 16: the field is absent from the doctype, so nothing reads or sets it.
+		with patch("raven.api.raven_mobile.has_auth_method", return_value=False) as checked:
+			self.client.redirect_uris = "raven.thecommit.company:"
+			self.client.save(ignore_permissions=True)
+			run_redirect_patch()
+			self.assertEqual(get_client_id()["client_id"], self.client.name)
+		self.assertTrue(checked.called)
 
 	def test_client_info_without_client(self):
 		frappe.db.set_single_value("Raven Settings", "oauth_client", None)

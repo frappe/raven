@@ -1,3 +1,4 @@
+import { siteUrl } from "@lib/site"
 import { useMemo } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@components/ui/avatar"
 import { cn } from "@lib/utils"
@@ -57,7 +58,7 @@ export function GroupedAvatars({
                         borderColorClass,
                     )}
                 >
-                    <AvatarImage src={user.user_image} alt={user.full_name} />
+                    <AvatarImage src={user.user_image && siteUrl(user.user_image)} alt={user.full_name} />
                     <AvatarFallback>
                         {user.full_name.charAt(0).toLocaleUpperCase()}
                     </AvatarFallback>

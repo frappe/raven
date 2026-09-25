@@ -1,4 +1,4 @@
-import { ArrowDownToLineIcon, Share2, X } from "lucide-react"
+import { ArrowDownToLineIcon, Share, Share2, X } from "lucide-react"
 import { Badge } from "@components/ui/badge"
 import { Button } from "@components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip"
@@ -94,14 +94,15 @@ export const MediaPreviewHeader = ({
                         variant="ghost"
                         size="md"
                         isIconButton
-                        title={_("Download")}
-                        aria-label={_("Download")}
+                        title={import.meta.env.VITE_NATIVE ? _("Share") : _("Download")}
+                        aria-label={import.meta.env.VITE_NATIVE ? _("Share") : _("Download")}
                         onClick={onDownload}
                     >
-                        <ArrowDownToLineIcon />
+                        {import.meta.env.VITE_NATIVE ? <Share /> : <ArrowDownToLineIcon />}
                     </Button>
                 )}
-                {onShare && (
+                {/* In the app the button above shares already; a second would do the same. */}
+                {onShare && !import.meta.env.VITE_NATIVE && (
                     <Button
                         variant="ghost"
                         size="md"

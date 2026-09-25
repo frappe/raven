@@ -1,3 +1,4 @@
+import { siteUrl } from "@lib/site"
 import { useState } from "react"
 import { useController, useFormContext } from "react-hook-form"
 import { useFrappeFileUpload } from "frappe-react-sdk"
@@ -33,7 +34,7 @@ const WorkspaceLogoField = ({ disabled = false }: { disabled?: boolean }) => {
 
     const avatar = (
         <Avatar className="h-24 w-24 rounded-xl">
-            {value && <AvatarImage src={value} alt={_("Workspace Logo")} className="object-cover" />}
+            {value && <AvatarImage src={siteUrl(value)} alt={_("Workspace Logo")} className="object-cover" />}
             <AvatarFallback className="rounded-xl text-2xl">
                 {name?.charAt(0)?.toUpperCase()}
             </AvatarFallback>

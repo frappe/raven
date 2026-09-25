@@ -70,7 +70,8 @@ export const MessageImages = ({ messages, attachments }: { messages: Message[]; 
                     // the row belongs to the whole batch — delegation needs the member
                     data-message-id={single.message_id}
                     data-media-root=""
-                    className="max-w-full cursor-pointer overflow-hidden rounded-lg"
+                    // Gray card like the album cards: visible while the image loads and when it never does.
+                    className="max-w-full cursor-pointer overflow-hidden rounded-lg bg-surface-gray-2"
                     style={fitImageBox(single.width, single.height)}
                     onClick={() => openImage(single)}
                 >

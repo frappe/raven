@@ -20,7 +20,7 @@ export const UnreadFilterPill = ({ active, onToggle }: UnreadFilterPillProps) =>
         size="lg"
         aria-pressed={active}
         onClick={() => onToggle(!active)}
-        className="absolute right-4 bottom-[calc(0.5rem+env(safe-area-inset-bottom))] z-10 rounded-full shadow-lg md:hidden"
+        className="absolute right-4 bottom-[calc(0.5rem+var(--inset-bottom))] z-10 rounded-full shadow-lg md:hidden"
     >
         {_("Unread")}
         {active && <X />}

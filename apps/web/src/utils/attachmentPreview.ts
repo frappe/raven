@@ -1,3 +1,4 @@
+import { siteOrigin } from "@lib/site"
 import { atom } from "jotai"
 import dayjs from "dayjs"
 import { getFileName } from "@raven/lib/utils/operations"
@@ -106,7 +107,7 @@ const toAttachment = (message: Message): Attachment | null => {
     const base = {
         id: media.name,
         fileName: getFileName(url),
-        fileUrl: new URL(url, window.location.origin).href,
+        fileUrl: new URL(url, siteOrigin()).href,
         size: media.file_size,
         owner: media.owner,
         creation: media.creation,
@@ -154,7 +155,7 @@ export const stagedFilesToAttachments = (files: StagedFile[], owner: string): At
     files.map((file) => ({
         id: file.id,
         fileName: file.fileName,
-        fileUrl: new URL(file.fileURL, window.location.origin).href,
+        fileUrl: new URL(file.fileURL, siteOrigin()).href,
         kind: getAttachmentKind(file.fileURL),
         size: file.size,
         owner,

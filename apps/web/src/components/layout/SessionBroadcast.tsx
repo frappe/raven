@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import Cookies from "js-cookie"
+import { sessionUser } from "@lib/sessionUser"
 import {
     AlertDialog,
     AlertDialogContent,
@@ -37,7 +37,7 @@ import _ from "@lib/translate"
 const isRealToken = (token: unknown): token is string =>
     typeof token === "string" && token.length > 0 && token !== "{{ csrf_token }}"
 
-const currentUserID = () => Cookies.get("user_id") ?? ""
+const currentUserID = () => sessionUser().name
 
 type BootMessage = { event: "boot"; data: { csrf_token?: string; user?: string } }
 

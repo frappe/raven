@@ -2,7 +2,8 @@ import { useRef, useState } from "react"
 import { Plus, Camera, Images, FileBox, type LucideIcon, FilesIcon, ChartBar, Video } from "lucide-react"
 import { Button } from "@components/ui/button"
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle, DrawerTrigger } from "@components/ui/drawer"
-import { useAttachFile } from "./useFileInput"
+import { useSetAtom } from "jotai"
+import { preparingFilesAtom, useAttachFile } from "./useFileInput"
 import { CreatePollDialog } from "./CreatePollDialog"
 import AttachFrappeDocumentDialog from "./AttachFrappeDocumentDialog"
 import { isAndroid } from "@utils/platform"
@@ -29,6 +30,8 @@ import _ from "@lib/translate"
  *     here — WebKit's accept handling is broken (rdar 36726477) and no accept
  *     value skips the sheet, so restricting types only costs Android's direct
  *     picker its media files. One extra tap on iOS is a platform limitation.
+ *   - iOS app: a WKWebView shows that chooser for photos too, anchored to the
+ *     closed sheet, so Photos and Files open native pickers (native/pick.ts).
  */
 export const MobileComposerActions = ({
     channelID,
@@ -39,10 +42,25 @@ export const MobileComposerActions = ({
     const [pollOpen, setPollOpen] = useState(false)
     const [docOpen, setDocOpen] = useState(false)
     const onAddFile = useAttachFile(channelID)
+    const setPreparing = useSetAtom(preparingFilesAtom(channelID))
     const cameraInputRef = useRef<HTMLInputElement>(null)
     const videoCaptureRef = useRef<HTMLInputElement>(null)
     const galleryInputRef = useRef<HTMLInputElement>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
+
+    const iosApp = !!import.meta.env.VITE_NATIVE && window.Capacitor?.getPlatform() === "ios"
+    // The ternary keeps the native chunk out of browser builds entirely.
+    const pickNative = import.meta.env.VITE_NATIVE
+        ? (kind: "files" | "photos") => {
+            // The row shows from here: the picker hides it while open, and the wait starts when it closes.
+            setPreparing((n) => n + 1)
+            import("../../../native/pick")
+                .then((m) => m.pickNativeFiles(kind))
+                .then((files) => { if (files.length) onAddFile(files) })
+                .catch(() => { })
+                .finally(() => setPreparing((n) => n - 1))
+        }
+        : () => { }
 
     const onPicked = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files?.length) onAddFile(e.target.files)
@@ -54,8 +72,8 @@ export const MobileComposerActions = ({
         // Android only: capture resolves to ONE camera intent, so photo and
         // video capture need separate tiles (see the file inputs below).
         ...(isAndroid ? [{ icon: Video, label: _("Video"), onSelect: () => videoCaptureRef.current?.click() }] : []),
-        { icon: Images, label: _("Photos"), onSelect: () => galleryInputRef.current?.click() },
-        { icon: FilesIcon, label: _("Files"), onSelect: () => fileInputRef.current?.click() },
+        { icon: Images, label: _("Photos"), onSelect: () => (iosApp ? pickNative("photos") : galleryInputRef.current?.click()) },
+        { icon: FilesIcon, label: _("Files"), onSelect: () => (iosApp ? pickNative("files") : fileInputRef.current?.click()) },
         { icon: ChartBar, label: _("Poll"), onSelect: () => setPollOpen(true) },
         { icon: FileBox, label: _("Document"), onSelect: () => setDocOpen(true) },
     ]

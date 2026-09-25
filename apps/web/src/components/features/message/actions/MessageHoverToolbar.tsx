@@ -1,3 +1,4 @@
+import { siteUrl } from "@lib/site"
 import { Fragment, useState } from "react"
 import { useAtomValue, useSetAtom } from "jotai"
 import { MoreHorizontal, Reply, SmilePlus } from "lucide-react"
@@ -111,7 +112,7 @@ export const MessageHoverToolbar = ({
                     >
                         {emoji.src ? (
                             <img
-                                src={emoji.src}
+                                src={siteUrl(emoji.src)}
                                 alt={emoji.id}
                                 loading="lazy"
                                 className="md:h-4.5 md:w-4.5 h-5 w-5 object-contain"

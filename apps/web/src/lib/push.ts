@@ -1,3 +1,4 @@
+import { siteFetch, siteKey } from "@lib/site"
 /**
  * Web push via Raven Cloud (v3+).
  *
@@ -65,10 +66,12 @@ export const isRavenPushConfigured = (): boolean => getBootPushConfig() !== null
  * the toggle until the PWA is installed.
  */
 export const isPushSupportedByBrowser = (): boolean =>
-    "serviceWorker" in navigator && "Notification" in window && "PushManager" in window
+    !!import.meta.env.VITE_NATIVE || ("serviceWorker" in navigator && "Notification" in window && "PushManager" in window)
 
 /** Whether THIS device has push enabled (source of truth: the stored token). */
-export const isPushEnabled = (): boolean => localStorage.getItem(TOKEN_STORAGE_KEY) !== null
+// Same key as NATIVE_TOKEN_KEY in native/push.ts; importing it would pull that module into browser bundles.
+export const isPushEnabled = (): boolean =>
+    localStorage.getItem(siteKey(import.meta.env.VITE_NATIVE ? "raven-native-fcm-token" : TOKEN_STORAGE_KEY)) !== null
 
 /**
  * Running as an INSTALLED app (home screen / desktop PWA) rather than a browser
@@ -97,7 +100,7 @@ const getMessagingInstance = async () => {
 
 /** POST to a whitelisted raven.api.notification method (plain fetch — no hook context here). */
 const callNotificationAPI = async (method: "subscribe" | "unsubscribe", body: Record<string, string | undefined>) => {
-    const response = await fetch(`/api/method/raven.api.notification.${method}`, {
+    const response = await siteFetch(`/api/method/raven.api.notification.${method}`, {
         method: "POST",
         body: JSON.stringify(body),
         headers: {
@@ -159,7 +162,7 @@ const mintAndSyncToken = async (): Promise<void> => {
     const { getToken } = await import("firebase/messaging")
     const token = await getToken(messaging, { vapidKey, serviceWorkerRegistration: registration })
 
-    const oldToken = localStorage.getItem(TOKEN_STORAGE_KEY)
+    const oldToken = localStorage.getItem(siteKey(TOKEN_STORAGE_KEY))
     if (oldToken === token) return
 
     // Token rotated (or first enable): drop the stale server record, register the new one.
@@ -169,7 +172,7 @@ const mintAndSyncToken = async (): Promise<void> => {
         environment: "Web",
         device_information: navigator.userAgent,
     })
-    localStorage.setItem(TOKEN_STORAGE_KEY, token)
+    localStorage.setItem(siteKey(TOKEN_STORAGE_KEY), token)
 }
 
 /**
@@ -180,6 +183,7 @@ const mintAndSyncToken = async (): Promise<void> => {
  * @throws when unsupported/unconfigured or the token/subscribe calls fail.
  */
 export const enablePush = async (): Promise<boolean> => {
+    if (import.meta.env.VITE_NATIVE) return (await import("../native/push")).enableNativePush()
     const permission = await Notification.requestPermission()
     if (permission !== "granted") return false
     await mintAndSyncToken()
@@ -187,12 +191,14 @@ export const enablePush = async (): Promise<boolean> => {
 }
 
 /** Disable push for this device: delete the FCM token + the server record. Best-effort. */
-export const disablePush = async (): Promise<void> => {
-    const token = localStorage.getItem(TOKEN_STORAGE_KEY)
+/** `keep` when a sign-out is what turns it off: the next sign-in turns it back on. */
+export const disablePush = async (keep = false): Promise<void> => {
+    if (import.meta.env.VITE_NATIVE) return (await import("../native/push")).disableNativePush(keep)
+    const token = localStorage.getItem(siteKey(TOKEN_STORAGE_KEY))
     if (!token) return
     // Clear local state first — the device should read "disabled" even if the
     // network calls below fail (the server token then dies as an FCM zombie).
-    localStorage.removeItem(TOKEN_STORAGE_KEY)
+    localStorage.removeItem(siteKey(TOKEN_STORAGE_KEY))
     try {
         const { messaging } = await getMessagingInstance()
         const { deleteToken } = await import("firebase/messaging")
@@ -213,8 +219,11 @@ export const disablePush = async (): Promise<void> => {
  * makes a newer notification replace the older one, so there's at most one per
  * conversation. Used to sweep out entries for already-read conversations.
  */
-export const getDeliveredNotifications = async (): Promise<Notification[]> => {
+export type DeliveredNotification = { tag?: string | null; close(): void }
+
+export const getDeliveredNotifications = async (): Promise<DeliveredNotification[]> => {
     try {
+        if (import.meta.env.VITE_NATIVE) return await (await import("../native/push")).getNativeDeliveredNotifications()
         const registration = await swRegistration
         return (await registration?.getNotifications()) ?? []
     } catch {
@@ -267,7 +276,7 @@ export const initPushNotifications = () => {
     if (Notification.permission === "denied") {
         // The user explicitly blocked notifications — our token is dead, and
         // the toggle should read disabled.
-        localStorage.removeItem(TOKEN_STORAGE_KEY)
+        localStorage.removeItem(siteKey(TOKEN_STORAGE_KEY))
         return
     }
     if (Notification.permission !== "granted") {

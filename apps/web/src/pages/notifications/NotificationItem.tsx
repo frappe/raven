@@ -1,3 +1,4 @@
+import { siteUrl } from "@lib/site"
 import { Fragment, memo, useRef } from "react"
 import { AtSign, CheckCheck, SmilePlus, type LucideIcon } from "lucide-react"
 import { cn } from "@lib/utils"
@@ -337,7 +338,7 @@ const renderReactedSentence = (reactions: { reaction: string; is_custom: 0 | 1 }
                         {i > 0 && <span>,&nbsp;</span>}
                         {r.is_custom ? (
                             <img
-                                src={r.reaction}
+                                src={siteUrl(r.reaction)}
                                 alt=""
                                 loading="lazy"
                                 className="h-4 w-4 inline-block"

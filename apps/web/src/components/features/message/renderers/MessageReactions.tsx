@@ -1,3 +1,4 @@
+import { siteUrl } from "@lib/site"
 import { useMemo, useRef } from "react"
 import { useSetAtom } from "jotai"
 import { useLiveQuery } from "dexie-react-hooks"
@@ -174,7 +175,7 @@ const ReactionButton = ({
                 >
                     {reaction.is_custom ? (
                         <img
-                            src={reaction.reaction}
+                            src={siteUrl(reaction.reaction)}
                             alt={reaction.emoji_name}
                             loading="lazy"
                             className="h-4.5 w-4.5 object-contain"

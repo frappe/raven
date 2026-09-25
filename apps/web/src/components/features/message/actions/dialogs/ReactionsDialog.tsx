@@ -1,3 +1,4 @@
+import { siteUrl } from "@lib/site"
 import { useMemo } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@components/ui/dialog"
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from "@components/ui/drawer"
@@ -20,12 +21,12 @@ const customEmojiLabel = (reaction: ReactionObject) => `:${reaction.emoji_name}:
  *  pb-0 so rows can scroll to its true bottom edge, scroll-fade softening the cut.
  *  Desktop keeps its old edge-to-edge panel (env() has no home indicator there). */
 const PANEL_SCROLLER =
-    "max-h-80 min-h-80 overflow-y-auto px-4 md:px-6 scroll-fade max-md:pb-[calc(env(safe-area-inset-bottom)+1rem)]"
+    "max-h-80 min-h-80 overflow-y-auto px-4 md:px-6 scroll-fade max-md:pb-[calc(var(--inset-bottom)+1rem)]"
 
 /** Renders one reaction's glyph — a custom emoji image, or the Apple-set native emoji. */
 const EmojiGlyph = ({ reaction }: { reaction: ReactionObject }) =>
     reaction.is_custom ? (
-        <img src={reaction.reaction} alt={reaction.emoji_name} loading="lazy" className="h-4 w-4 object-contain" />
+        <img src={siteUrl(reaction.reaction)} alt={reaction.emoji_name} loading="lazy" className="h-4 w-4 object-contain" />
     ) : (
         <em-emoji native={reaction.reaction} set="native" size="1.1em" fallback={reaction.reaction} />
     )
@@ -110,7 +111,7 @@ const ReactionsBody = ({ reactions }: { reactions: ReactionObject[] }) => {
                         with the name. Native emojis need no caption. */}
                     {reaction.is_custom ? (
                         <Badge variant="subtle" size='lg'>
-                            <img src={reaction.reaction} alt={reaction.emoji_name} loading="lazy" className="size-4 object-contain" />
+                            <img src={siteUrl(reaction.reaction)} alt={reaction.emoji_name} loading="lazy" className="size-4 object-contain" />
                             {customEmojiLabel(reaction)}
                         </Badge>
                     ) : null}

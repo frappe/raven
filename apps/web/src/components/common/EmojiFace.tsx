@@ -1,3 +1,4 @@
+import { siteUrl } from "@lib/site"
 import type { QuickEmoji } from "@utils/preferences"
 
 /**
@@ -8,7 +9,7 @@ import type { QuickEmoji } from "@utils/preferences"
  */
 export const EmojiFace = ({ emoji }: { emoji: QuickEmoji }) =>
     emoji.src ? (
-        <img src={emoji.src} alt={emoji.id} loading="lazy" className="h-4.5 w-4.5 object-contain" aria-hidden="true" />
+        <img src={siteUrl(emoji.src)} alt={emoji.id} loading="lazy" className="h-4.5 w-4.5 object-contain" aria-hidden="true" />
     ) : (
         <span className="flex h-4.5 w-4.5 items-center justify-center" aria-hidden="true">
             <em-emoji native={emoji.native} set="native" size="1.1em" fallback={emoji.id} />

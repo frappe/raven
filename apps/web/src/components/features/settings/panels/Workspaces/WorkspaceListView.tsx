@@ -1,3 +1,4 @@
+import { siteUrl } from "@lib/site"
 import { useMemo } from "react"
 import WorkspaceActions from "@components/features/workspaces/WorkspaceActions"
 import { Avatar, AvatarFallback, AvatarImage } from "@components/ui/avatar"
@@ -119,7 +120,7 @@ function WorkspaceNameCell({
     const content = (
         <div className="flex items-center gap-2 min-w-0">
             <Avatar className="h-8 w-8 rounded-md border border-outline-gray-2">
-                <AvatarImage src={workspace.logo} alt={workspace.workspace_name} />
+                <AvatarImage src={workspace.logo && siteUrl(workspace.logo)} alt={workspace.workspace_name} />
                 <AvatarFallback className="rounded-md">
                     {workspace.workspace_name?.charAt(0)?.toUpperCase()}
                 </AvatarFallback>

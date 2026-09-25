@@ -50,6 +50,7 @@ function applyThemeToDocument(value: "light" | "dark") {
         || (value === "dark" ? "#171717" : "#ffffff")
     document.querySelectorAll('meta[name="theme-color"]')
         .forEach((meta) => meta.setAttribute("content", surface))
+    if (import.meta.env.VITE_NATIVE) import("../native/statusBar").then((m) => m.syncStatusBar(value))
 }
 
 function getStoredTheme(defaultTheme: Theme): Theme {
@@ -77,6 +78,8 @@ export function ThemeProvider({
         const resolved = resolveTheme(theme)
         applyThemeToDocument(resolved)
         setThemeValue(resolved)
+        // The native canvas and the picker read this at launch.
+        if (import.meta.env.VITE_NATIVE) import("../native/theme").then((m) => m.syncNativeTheme(theme))
 
         // Only "system" tracks the OS; react to OS light/dark changes while open.
         if (theme !== "system") return

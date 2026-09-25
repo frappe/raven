@@ -1,3 +1,5 @@
+import { OfflineState } from "@components/common/OfflineState"
+import { useOnlineStatus } from "@stores/connectionState"
 import { useState, useCallback, useRef } from "react"
 import { Outlet, useMatch, useNavigate } from "react-router-dom"
 import { BellCheckIcon, Check, CheckCheckIcon, Inbox, MoreVertical } from "lucide-react"
@@ -42,6 +44,7 @@ export default function Notifications() {
     const [activeTab, setActiveTab] = useState<NotificationTab>("all")
     const [showUnread, setShowUnread] = useState(true)
     const isMobile = useIsMobile()
+    const online = useOnlineStatus()
 
     // The open notification is route-driven: `/notifications/:channelID/:messageID`
     // renders NotificationChatRoute in the Outlet. Being in history means the mobile
@@ -217,7 +220,10 @@ export default function Notifications() {
                                 clicks — transparent elements still hit-test. */}
                         {currentData.length === 0 && !isLoading && (
                             <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
-                                {error ? (
+                                {/* Native offline: a retry would fail too; the list refetches itself on reconnect. */}
+                                {error && import.meta.env.VITE_NATIVE && !online ? (
+                                    <OfflineState />
+                                ) : error ? (
                                     <ErrorBanner
                                         error={error}
                                         layout="centered"

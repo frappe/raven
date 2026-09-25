@@ -1,6 +1,7 @@
 import { FrappeConfig, FrappeContext, useSWR } from "frappe-react-sdk"
 import { useContext, useRef } from "react"
 import { toast } from "sonner"
+import { isOnline } from "@stores/connectionState"
 import _ from "@lib/translate"
 
 /**
@@ -28,8 +29,9 @@ export const useActiveSocketConnection = () => {
             },
             onError: () => {
                 // After a couple of failed reconnect attempts, tell the user realtime is down.
+                // Offline, the banner already says so.
                 if (failureCount.current >= 2) {
-                    if (!toastShown.current) {
+                    if (!toastShown.current && isOnline()) {
                         toast.error(_("Realtime events aren't working. Please refresh the page."), {
                             duration: 5000,
                             id: "socket-connection-error",

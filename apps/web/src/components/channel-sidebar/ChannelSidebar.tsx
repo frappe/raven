@@ -1,3 +1,4 @@
+import { siteKey, siteUrl } from "@lib/site"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useSetAtom } from "jotai"
 import { NavLink, useMatch, useNavigate, useParams } from "react-router-dom"
@@ -64,7 +65,7 @@ export function ChannelSidebar() {
         workspaceID,
     )
 
-    const [groupsState, setGroupsState] = useLocalStorage<GroupsState>("channel-sidebar-groups-state", {})
+    const [groupsState, setGroupsState] = useLocalStorage<GroupsState>(siteKey("channel-sidebar-groups-state"), {})
     const [scrollerRef, setScrollerRef] = useState<HTMLElement | null>(null)
 
     const navigate = useNavigate()
@@ -317,7 +318,7 @@ const WorkspaceSwitcherItem = ({
  *  Exported for the mobile catch-up drawer (long-press Home). */
 export const WorkspaceLogo = ({ workspace, className }: { workspace: WorkspaceFields, className?: string }) => (
     <Avatar className={cn("size-4.5 shrink-0 rounded-sm", className)}>
-        <AvatarImage src={workspace.logo} alt={workspace.workspace_name} />
+        <AvatarImage src={workspace.logo && siteUrl(workspace.logo)} alt={workspace.workspace_name} />
         <AvatarFallback className="rounded-none bg-surface-gray-3 text-2xs text-ink-gray-5">
             {workspace.workspace_name.charAt(0)}
         </AvatarFallback>
