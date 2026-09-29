@@ -8,6 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip"
 import { useTheme } from "@components/theme-provider"
 import { customEmojiCategoriesAtom } from "@lib/emojiMart"
+import { sitePath } from "@hooks/useFileSrc"
 import _ from "@lib/translate"
 
 /** A picked emoji from emoji-mart (`native` for standard, `src` for custom). */
@@ -32,7 +33,7 @@ export const EmojiPickerButton = ({ editor }: { editor: Editor }) => {
                 .chain()
                 .focus()
                 .insertContent([
-                    { type: "customEmoji", attrs: { src: emoji.src, alt: `:${emoji.id}:` } },
+                    { type: "customEmoji", attrs: { src: sitePath(emoji.src), alt: `:${emoji.id}:` } },
                     { type: "text", text: " " },
                 ])
                 .run()

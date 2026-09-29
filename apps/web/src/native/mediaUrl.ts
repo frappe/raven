@@ -22,3 +22,13 @@ export const mediaSrc = (path: string): string => {
     const { folder, file } = mediaFolder(url)
     return `${mediaBase()}${folder}/${file}?src=${encodeURIComponent(url)}`
 }
+
+/** The site URL behind a media address from either platform; null for any other address. */
+export const mediaTarget = (src: string): string | null => {
+    if (!src.startsWith("raven-media://") && !src.includes(MEDIA_PATH)) return null
+    try {
+        return new URL(src).searchParams.get("src")
+    } catch {
+        return null
+    }
+}

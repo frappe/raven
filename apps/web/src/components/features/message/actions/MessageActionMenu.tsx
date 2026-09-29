@@ -1,4 +1,4 @@
-import { siteUrl } from "@lib/site"
+import { fileSrc } from "@hooks/useFileSrc"
 import { Fragment, useEffect, useRef, useState } from "react"
 import { useAtom, useAtomValue, useSetAtom } from "jotai"
 import { useHistoryBackClose } from "@hooks/useHistoryBackClose"
@@ -756,7 +756,7 @@ export const MessageActionMenu = ({
                                         >
                                             {emoji.src ? (
                                                 <img
-                                                    src={siteUrl(emoji.src)}
+                                                    src={fileSrc(emoji.src)}
                                                     alt={emoji.id}
                                                     loading="lazy"
                                                     className="h-6 w-6 object-contain"
