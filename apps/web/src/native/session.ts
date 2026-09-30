@@ -1,4 +1,5 @@
 import { isRejectedExchange, refreshTokens, tokenStore, type StoredTokens } from "./auth"
+import { forgetBoot } from "./appBoot"
 import { pendingRelogin } from "./pending"
 import { setDefaultSite, type Site } from "./sites"
 
@@ -105,6 +106,7 @@ export const switchSite = async () => {
 /** A revoked session: forget the tokens, then the picker signs this site in again on its own. */
 export const reloginAt = async (url: string) => {
     endSession()
+    forgetBoot(url)
     await tokenStore.remove(url)
     await pendingRelogin.set(url)
     await setDefaultSite(null)

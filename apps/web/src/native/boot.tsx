@@ -3,7 +3,7 @@ import { createRoot, type Root } from "react-dom/client"
 import type { FrappeConfig } from "frappe-react-sdk"
 import { ThemeProvider } from "@components/theme-provider"
 import { setActiveSite } from "@lib/site"
-import { loadBoot } from "./appBoot"
+import { bootFromCache, loadBoot } from "./appBoot"
 import { NativeSocket } from "./nativeSocket"
 import { BootErrorScreen } from "./BootErrorScreen"
 import { onRequestError, reloginAt, setSessionLostHandler, setTokenRefreshedHandler, startSession } from "./session"
@@ -59,9 +59,14 @@ const boot = async () => {
     // Storage keys and URLs are scoped from here on; boot needs the token.
     setActiveSite(session.site.url, session.getToken)
     void import("./media").then((m) => m.setMediaSession(session.getToken()))
-    const status = await loadBoot()
-    if (status === "unauthorized") return reloginAt(session.site.url)
-    if (status !== "ok") return render(<BootErrorScreen status={status} host={new URL(session.site.url).host} />)
+    // With a cached boot the app opens at once, and the site's answer lands behind it.
+    const cached = bootFromCache()
+    const fresh = loadBoot()
+    if (!cached) {
+        const status = await fresh
+        if (status === "unauthorized") return reloginAt(session.site.url)
+        if (status !== "ok") return render(<BootErrorScreen status={status} host={new URL(session.site.url).host} />)
+    }
     // Loaded only now: App's module graph reads boot and scoped storage keys at import.
     const { default: App } = await import("../App")
     const socket = new NativeSocket({ url: socketUrl(session.site.url), namespace: session.site.sitename, origin: session.site.url }, session.getToken)
@@ -69,6 +74,8 @@ const boot = async () => {
     socket.start().catch(() => { })
     render(<App native={{ url: session.site.url, siteName: session.site.sitename, getToken: session.getToken, onRequestError, socket: socket as unknown as FrappeConfig["socket"] }} />)
     initNativePush()
+    // An app opened from the cache still answers to a revoked session.
+    if (cached) void fresh.then((status) => { if (status === "unauthorized") void reloginAt(session.site.url) })
     void refreshSite(session.site)
     // Media eviction follows the message cache: after each flush, throttled, and once at start.
     // Imported here, not at the top: the cache module opens the site-scoped database on load.

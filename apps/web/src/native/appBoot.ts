@@ -2,7 +2,8 @@ import { siteFetch, siteKey, siteToken, siteUrl } from "@lib/site"
 import { setSessionUser } from "@lib/sessionUser"
 
 const CACHE_KEY = "raven-boot-cache"
-const BOOT_TIMEOUT_MS = 8000
+// A site rebuilding its boot after a logout can take seconds; a dead network is shown at SLOW_BOOT_MS long before this.
+const BOOT_TIMEOUT_MS = 20_000
 
 /** The fields of Frappe's session boot this module reads; the rest passes through untouched. */
 type Boot = {
@@ -37,11 +38,36 @@ const nativeStatus = async (): Promise<number> => {
     }
 }
 
+const readCache = (): Boot | null => {
+    try {
+        const cached = localStorage.getItem(siteKey(CACHE_KEY))
+        return cached ? (JSON.parse(cached) as Boot) : null
+    } catch {
+        return null
+    }
+}
+
+/** Drops a site's cached boot: the next sign-in there may be another account. */
+export const forgetBoot = (siteUrl: string) => {
+    try {
+        localStorage.removeItem(`${siteUrl}|${CACHE_KEY}`)
+    } catch {
+        // Storage off: there is no cache to drop.
+    }
+}
+
+/** Installs this site's last good boot; false when there is none. */
+export const bootFromCache = (): boolean => {
+    const cached = readCache()
+    if (cached) install(cached)
+    return cached !== null
+}
+
 /** Boot from the site, else the last good copy for this site when the site gave no answer at all. */
 export const loadBoot = async (): Promise<BootStatus> => {
     let res: Response
     let body: { message: Boot } | undefined
-    // Nothing renders until this settles: a network that swallows the request must not hold the launch screen.
+    // Without a cached boot nothing renders until this settles: a swallowed request must not hold the launch screen.
     const abort = new AbortController()
     const timer = setTimeout(() => abort.abort(), BOOT_TIMEOUT_MS)
     try {
@@ -49,8 +75,8 @@ export const loadBoot = async (): Promise<BootStatus> => {
         // Inside the timeout too: a connection can stall after the headers.
         if (res.ok) body = (await res.json()) as { message: Boot }
     } catch {
-        const cached = localStorage.getItem(siteKey(CACHE_KEY))
-        if (cached) { install(JSON.parse(cached) as Boot); return "ok" }
+        const cached = readCache()
+        if (cached) { install(cached); return "ok" }
         if (navigator.onLine === false) return "offline"
         const status = await nativeStatus()
         // No answer with the device online is the site's fault: down, or its address changed.

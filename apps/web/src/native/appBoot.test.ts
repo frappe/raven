@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { loadBoot } from "./appBoot"
+import { bootFromCache, forgetBoot, loadBoot } from "./appBoot"
 
 const native = vi.hoisted(() => ({ status: 0 }))
 vi.mock("@capacitor/core", () => ({ CapacitorHttp: { get: async () => { if (!native.status) throw new Error("connect"); return { status: native.status, data: "" } } } }))
@@ -68,7 +68,7 @@ describe("loadBoot", () => {
             init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")))
         }))
         const loading = loadBoot()
-        await vi.advanceTimersByTimeAsync(8000)
+        await vi.advanceTimersByTimeAsync(20_000)
         expect(await loading).toBe("ok")
         vi.useRealTimers()
     })
@@ -80,7 +80,7 @@ describe("loadBoot", () => {
             json: () => new Promise((_, reject) => { init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError"))) }),
         }) as unknown as Response)
         const loading = loadBoot()
-        await vi.advanceTimersByTimeAsync(8000)
+        await vi.advanceTimersByTimeAsync(20_000)
         expect(await loading).toBe("ok")
         vi.useRealTimers()
     })
@@ -98,5 +98,24 @@ describe("loadBoot", () => {
     it("is unavailable on any other failure", async () => {
         vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("", { status: 500 }))
         expect(await loadBoot()).toBe("unavailable")
+    })
+})
+
+describe("bootFromCache", () => {
+    it("installs the site's last good boot", () => {
+        store.set(siteKey("raven-boot-cache"), JSON.stringify(boot))
+        expect(bootFromCache()).toBe(true)
+        expect(window.frappe.boot.user.name).toBe("alice@x.com")
+        expect(sessionUser().name).toBe("alice@x.com")
+    })
+    it("is gone once forgotten, so another account never opens from it", () => {
+        store.set(siteKey("raven-boot-cache"), JSON.stringify(boot))
+        forgetBoot("https://a.com")
+        expect(bootFromCache()).toBe(false)
+    })
+    it("is false with no cache or an unreadable one", () => {
+        expect(bootFromCache()).toBe(false)
+        store.set(siteKey("raven-boot-cache"), "{")
+        expect(bootFromCache()).toBe(false)
     })
 })
