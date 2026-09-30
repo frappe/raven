@@ -50,6 +50,8 @@ export type LastMessageDetails = {
     owner?: string
     is_bot_message?: 0 | 1
     bot?: string | null
+    /** Custom emojis in the message (name → src). `content` alone can't tell them from typed `:name:`. */
+    custom_emojis?: Record<string, string>
 }
 
 /**
@@ -61,7 +63,7 @@ export const getMessageAuthorId = (
     owner: string,
 ): string => (message.is_bot_message ? message.bot || owner : owner)
 
-const parseLastMessageDetails = (raw: unknown): LastMessageDetails | null => {
+export const parseLastMessageDetails = (raw: unknown): LastMessageDetails | null => {
     if (!raw) return null
     try {
         return typeof raw === "string" ? (JSON.parse(raw) as LastMessageDetails) : (raw as LastMessageDetails)

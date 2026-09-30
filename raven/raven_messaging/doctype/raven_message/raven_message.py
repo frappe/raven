@@ -398,16 +398,7 @@ class RavenMessage(Document):
 	def set_last_message_timestamp(self):
 
 		# Update directly via SQL since we do not want to invalidate the document cache
-		message_details = json.dumps(
-			{
-				"message_id": self.name,
-				"content": self.content,
-				"message_type": self.message_type,
-				"owner": self.owner,
-				"is_bot_message": self.is_bot_message,
-				"bot": self.bot,
-			}
-		)
+		message_details = get_last_message_details(self)
 
 		raven_channel = frappe.qb.DocType("Raven Channel")
 		query = (
@@ -460,16 +451,7 @@ class RavenMessage(Document):
 		if frappe.db.get_value("Raven Channel", self.channel_id, "last_message_id") != self.name:
 			return
 
-		message_details = json.dumps(
-			{
-				"message_id": self.name,
-				"content": self.content,
-				"message_type": self.message_type,
-				"owner": self.owner,
-				"is_bot_message": self.is_bot_message,
-				"bot": self.bot,
-			}
-		)
+		message_details = get_last_message_details(self)
 
 		# Same direct update as set_last_message_timestamp (no document-cache
 		# invalidation). The where clause re-checks last_message_id, so if a
@@ -868,12 +850,12 @@ class RavenMessage(Document):
 
 		# An edit can change the text shown in the channel's sidebar teaser.
 		# Create and delete already keep the teaser fresh — this covers edits.
-		# Gated on an actual content change (not the sticky is_edited flag), so
+		# Gated on a text change (not the sticky is_edited flag), so
 		# reaction updates and metadata saves don't rewrite the teaser. AI
 		# streaming saves the doc on every token — skip those too.
 		if self.message_type != "System" and not self.flags.is_ai_streaming:
 			old_doc = self.get_doc_before_save()
-			if old_doc and old_doc.content != self.content:
+			if old_doc and old_doc.text != self.text:
 				self.update_channel_last_message_on_edit()
 
 		if self.is_edited or self.is_thread or self.flags.editing_metadata:
@@ -1032,22 +1014,22 @@ class RavenMessage(Document):
 					"name": ("!=", self.name),
 					"message_type": ("!=", "System"),
 				},
-				fields=["name", "creation", "content", "message_type", "owner", "is_bot_message", "bot"],
+				fields=[
+					"name",
+					"creation",
+					"content",
+					"text",
+					"message_type",
+					"owner",
+					"is_bot_message",
+					"bot",
+				],
 				order_by="creation desc, name desc",
 				limit=1,
 			)
 			if previous:
 				prev = previous[0]
-				details = json.dumps(
-					{
-						"message_id": prev.name,
-						"content": prev.content,
-						"message_type": prev.message_type,
-						"owner": prev.owner,
-						"is_bot_message": prev.is_bot_message,
-						"bot": prev.bot,
-					}
-				)
+				details = get_last_message_details(prev)
 				frappe.db.set_value(
 					"Raven Channel",
 					self.channel_id,
@@ -1099,6 +1081,38 @@ def on_doctype_update():
 	# Index the selector (channel or message type) first for faster queries (less rows to sort in the next step)
 	frappe.db.add_index("Raven Message", ["channel_id", "creation"])
 	frappe.db.add_index("Raven Message", ["message_type", "creation"])
+
+
+def get_last_message_details(message) -> str:
+	"""Teaser stored in Raven Channel.last_message_details. `message` is a doc or a row with `text`."""
+	details = {
+		"message_id": message.name,
+		"content": message.content,
+		"message_type": message.message_type,
+		"owner": message.owner,
+		"is_bot_message": message.is_bot_message,
+		"bot": message.bot,
+	}
+	# `content` flattens a custom emoji to its `:name:` shortcode, same as typed text.
+	# Listing the real ones (with their image) lets the DM list render only those.
+	custom_emojis = get_custom_emojis(message.text)
+	if custom_emojis:
+		details["custom_emojis"] = custom_emojis
+	return json.dumps(details)
+
+
+def get_custom_emojis(html: str | None) -> dict[str, str]:
+	"""`{name: image src}` for each custom emoji in the message HTML, in order of appearance."""
+	if not html or "customEmoji" not in html:
+		return {}
+	soup = BeautifulSoup(html, "html.parser")
+	emojis = {}
+	for img in soup.find_all("img", attrs={"data-type": "customEmoji"}):
+		name = img.get("alt", "").strip(":")
+		src = img.get("src")
+		if name and src:
+			emojis.setdefault(name, src)
+	return emojis
 
 
 def get_milliseconds_since_epoch(timestamp: str) -> str:
