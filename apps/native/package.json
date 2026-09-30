@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "sync": "cap sync",
+    "clean": "rm -rf ../web/dist-native android/app/src/main/assets android/app/src/main/res/xml/config.xml android/capacitor-cordova-android-plugins android/.gradle android/build android/app/build ios/App/App/public ios/App/App/capacitor.config.json ios/App/App/config.xml ios/capacitor-cordova-ios-plugins ios/App/CapApp-SPM/.build ios/DerivedData",
     "ios": "cap open ios",
     "android": "cap open android",
     "testflight": "bash scripts/testflight.sh"

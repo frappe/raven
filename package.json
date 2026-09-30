@@ -18,6 +18,7 @@
     "install-web": "cd apps/web && yarn install",
     "native:build": "cd apps/web && yarn build:native",
     "native:sync": "yarn native:build && cd apps/native && yarn sync",
+    "native:clean": "cd apps/native && yarn clean",
     "native:ios": "cd apps/native && yarn ios",
     "native:android": "cd apps/native && yarn android",
     "native:testflight": "cd apps/native && yarn testflight"
