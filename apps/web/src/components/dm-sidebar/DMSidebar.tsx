@@ -12,6 +12,7 @@ import { db, type UserData } from "@db"
 import { cn } from "@lib/utils"
 import { formatRelativeDate } from "@lib/date"
 import { getMessageTeaser } from "@utils/messageUtils"
+import { TeaserText } from "@components/dm-sidebar/TeaserText"
 import { getUserDisplayName, isCurrentUser } from "@utils/userDisplay"
 import { useChannelDraft } from "@components/features/ChatInput/draft"
 import _ from "@lib/translate"
@@ -377,7 +378,7 @@ function DMRowShell({
                         )}
                     >
                         {isDraft && <span className="font-medium text-ink-gray-6">{_("Draft")}: </span>}
-                        {lastMessage}
+                        <TeaserText text={lastMessage} />
                     </div>}
                     {unread > 0 && (
                         <Badge size="sm" variant="subtle" theme="gray">

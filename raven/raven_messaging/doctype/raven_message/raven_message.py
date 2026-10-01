@@ -143,20 +143,24 @@ class RavenMessage(Document):
 		for spoiler in soup.find_all(attrs={"data-spoiler": True}):
 			spoiler.string = "▒▒▒▒▒▒"
 
+		# Code keeps its backticks, so previews show it as code (a `:name:` in it stays text).
+		if "<code" in self.text:
+			for code in soup.find_all("code"):
+				code.string = f"`{code.get_text()}`"
+
+		# A custom emoji has no unicode character, so the plain text carries its `:name:`
+		# (clients show a known `:name:` as the emoji).
+		if "customEmoji" in self.text:
+			for emoji in soup.find_all("img", attrs={"data-type": "customEmoji"}):
+				emoji.replace_with(emoji.get("alt") or "")
+
 		text_content = soup.get_text(" ", strip=True)
 
-		if not text_content:
-			# No text — derive a preview from inline media (GIF / custom emoji), so the
-			# DM list + notifications aren't blank for an emoji-only or GIF-only message.
-			imgs = soup.find_all("img")
-			if any("media.tenor.com" in (img.get("src") or "") for img in imgs):
-				text_content = "Sent a GIF"
-			else:
-				shortcodes = [
-					img.get("alt") for img in imgs if img.get("data-type") == "customEmoji" and img.get("alt")
-				]
-				if shortcodes:
-					text_content = " ".join(shortcodes)
+		# A GIF-only message has no text; give the DM list + notifications a preview.
+		if not text_content and any(
+			"media.tenor.com" in (img.get("src") or "") for img in soup.find_all("img")
+		):
+			text_content = "Sent a GIF"
 
 		self.content = text_content
 

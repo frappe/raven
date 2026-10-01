@@ -5,6 +5,7 @@ import { getDefaultStore } from "jotai"
 import { customEmojiCategoriesAtom } from "@lib/emojiMart"
 import { createSuggestionRender, findSuggestionMatchAfterNonWord } from "./createSuggestion"
 import { emojiPluginKey } from "./suggestion"
+import { isInCode } from "./customEmojiInput"
 
 const MAX_SUGGESTIONS = 8
 
@@ -226,6 +227,8 @@ export const EmojiSuggestion = Extension.create<EmojiSuggestionOptions>({
                 // Fire after brackets/quotes/dashes too (not just space), but never
                 // mid-word — keeps "https://" from opening the emoji popup.
                 findSuggestionMatch: findSuggestionMatchAfterNonWord,
+                // Code keeps `:` as typed, so no popup in inline code or a code block.
+                allow: ({ state, range }) => !isInCode(state, range.from),
                 items: ({ query }) => searchEmojis(query, this.options),
                 command: ({ editor, range, props }) => {
                     const native = nativeOf(props)
