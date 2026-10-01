@@ -2,6 +2,7 @@
 # For license information, please see license.txt
 import datetime
 import json
+import re
 
 import frappe
 from bs4 import BeautifulSoup
@@ -137,26 +138,16 @@ class RavenMessage(Document):
 				)
 				self.links += f"{href}\n"
 
-		# Spoilers (||text||) must not leak in the derived preview (DM list, push
-		# notifications, search) — replace each spoiler's text with a placeholder
-		# before extracting plain text.
-		for spoiler in soup.find_all(attrs={"data-spoiler": True}):
-			spoiler.string = "▒▒▒▒▒▒"
+		text_content, positions = get_text_and_emoji_positions(soup, self.text)
+		if positions:
+			# Keyed by the exact HTML, so the teaser can reuse it without a second parse.
+			self.flags.emoji_positions = (self.text, positions)
 
-		text_content = soup.get_text(" ", strip=True)
-
-		if not text_content:
-			# No text — derive a preview from inline media (GIF / custom emoji), so the
-			# DM list + notifications aren't blank for an emoji-only or GIF-only message.
-			imgs = soup.find_all("img")
-			if any("media.tenor.com" in (img.get("src") or "") for img in imgs):
-				text_content = "Sent a GIF"
-			else:
-				shortcodes = [
-					img.get("alt") for img in imgs if img.get("data-type") == "customEmoji" and img.get("alt")
-				]
-				if shortcodes:
-					text_content = " ".join(shortcodes)
+		# A GIF-only message has no text; give the DM list + notifications a preview.
+		if not text_content and any(
+			"media.tenor.com" in (img.get("src") or "") for img in soup.find_all("img")
+		):
+			text_content = "Sent a GIF"
 
 		self.content = text_content
 
@@ -1084,7 +1075,7 @@ def on_doctype_update():
 
 
 def get_last_message_details(message) -> str:
-	"""Teaser stored in Raven Channel.last_message_details. `message` is a doc or a row with `text`."""
+	"""Teaser stored in Raven Channel.last_message_details."""
 	details = {
 		"message_id": message.name,
 		"content": message.content,
@@ -1093,26 +1084,56 @@ def get_last_message_details(message) -> str:
 		"is_bot_message": message.is_bot_message,
 		"bot": message.bot,
 	}
-	# `content` flattens a custom emoji to its `:name:` shortcode, same as typed text.
-	# Listing the real ones (with their image) lets the DM list render only those.
-	custom_emojis = get_custom_emojis(message.text)
-	if custom_emojis:
-		details["custom_emojis"] = custom_emojis
+	# `content` holds a custom emoji as its `:name:`, same as typed text. The positions
+	# of the real ones let the DM list render exactly those as images.
+	if message.text and "customEmoji" in message.text:
+		cached = (getattr(message, "flags", None) or {}).get("emoji_positions")
+		if cached and cached[0] == message.text:
+			positions = cached[1]
+		else:
+			soup = BeautifulSoup(message.text, "html.parser")
+			text, positions = get_text_and_emoji_positions(soup, message.text)
+			positions = positions if text == message.content else []
+		if positions:
+			details["custom_emoji_positions"] = positions
 	return json.dumps(details)
 
 
-def get_custom_emojis(html: str | None) -> dict[str, str]:
-	"""`{name: image src}` for each custom emoji in the message HTML, in order of appearance."""
-	if not html or "customEmoji" not in html:
-		return {}
-	soup = BeautifulSoup(html, "html.parser")
-	emojis = {}
-	for img in soup.find_all("img", attrs={"data-type": "customEmoji"}):
-		name = img.get("alt", "").strip(":")
-		src = img.get("src")
-		if name and src:
-			emojis.setdefault(name, src)
-	return emojis
+# A `:name:` shortcode, not right after a word char or colon. The DM list (TeaserText.tsx)
+# and the composer (customEmoji.ts) use this exact pattern.
+SHORTCODE = re.compile(r"(?<![A-Za-z0-9_:]):[A-Za-z0-9_-]+:")
+EMOJI_MARK = "\ue000"
+
+
+def get_text_and_emoji_positions(soup: BeautifulSoup, html: str) -> tuple[str, list[int]]:
+	"""Plain text of a message's `html` (parsed as `soup`), and which of its SHORTCODE
+	matches are real custom emojis."""
+	# Spoilers (||text||) must not leak in the derived preview (DM list, push
+	# notifications, search).
+	for spoiler in soup.find_all(attrs={"data-spoiler": True}):
+		spoiler.string = "▒▒▒▒▒▒"
+
+	emojis = (
+		soup.find_all("img", attrs={"data-type": "customEmoji"}) if "customEmoji" in html else None
+	)
+	if not emojis:
+		return soup.get_text(" ", strip=True), []
+
+	# A custom emoji has no unicode character, so the text carries its `:name:`. A mark
+	# before each one records where it lands once the text is joined.
+	for emoji in emojis:
+		emoji.replace_with(EMOJI_MARK + (emoji.get("alt") or ""))
+	chunks = soup.get_text(" ", strip=True).split(EMOJI_MARK)
+	text = "".join(chunks)
+	# The message itself held a mark (a private-use char): positions can't be trusted.
+	if len(chunks) - 1 != len(emojis):
+		return text, []
+
+	starts, offset = set(), 0
+	for chunk in chunks[:-1]:
+		offset += len(chunk)
+		starts.add(offset)
+	return text, [n for n, match in enumerate(SHORTCODE.finditer(text)) if match.start() in starts]
 
 
 def get_milliseconds_since_epoch(timestamp: str) -> str:

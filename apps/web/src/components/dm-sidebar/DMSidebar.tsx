@@ -246,7 +246,7 @@ const DMRow = memo(function DMRow({ dmChannel, peerUser }: DMRowProps) {
                 name={displayName}
                 date={date}
                 lastMessage={draft || lastMessage}
-                lastMessageEmojis={draft ? undefined : lastMessageDetails?.custom_emojis}
+                lastMessageEmojiPositions={draft ? undefined : lastMessageDetails?.custom_emoji_positions}
                 isDraft={Boolean(draft)}
                 unread={unread}
                 isActive={isActive}
@@ -310,8 +310,8 @@ interface DMRowShellProps {
     name: string
     date?: string
     lastMessage?: string
-    /** Custom emojis (name → src) in `lastMessage` to render as images. */
-    lastMessageEmojis?: Record<string, string>
+    /** Which `:name:` matches in `lastMessage` to render as custom emoji images. */
+    lastMessageEmojiPositions?: number[]
     /** The preview line is an unsent draft — prefix it with a "Draft:" label. */
     isDraft?: boolean
     unread?: number
@@ -323,7 +323,7 @@ function DMRowShell({
     name,
     date = "",
     lastMessage = "",
-    lastMessageEmojis,
+    lastMessageEmojiPositions,
     isDraft = false,
     unread = 0,
     isActive,
@@ -383,7 +383,7 @@ function DMRowShell({
                         )}
                     >
                         {isDraft && <span className="font-medium text-ink-gray-6">{_("Draft")}: </span>}
-                        <TeaserText text={lastMessage} emojis={lastMessageEmojis} />
+                        <TeaserText text={lastMessage} emojiPositions={lastMessageEmojiPositions} />
                     </div>}
                     {unread > 0 && (
                         <Badge size="sm" variant="subtle" theme="gray">

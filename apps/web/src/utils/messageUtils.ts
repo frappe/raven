@@ -50,8 +50,8 @@ export type LastMessageDetails = {
     owner?: string
     is_bot_message?: 0 | 1
     bot?: string | null
-    /** Custom emojis in the message (name → src). `content` alone can't tell them from typed `:name:`. */
-    custom_emojis?: Record<string, string>
+    /** Which `:name:` matches in `content` are real custom emojis (0-based), not typed text. */
+    custom_emoji_positions?: number[]
 }
 
 /**

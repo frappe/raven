@@ -1,4 +1,6 @@
-import { Node, mergeAttributes } from "@tiptap/core"
+import { InputRule, Node, mergeAttributes } from "@tiptap/core"
+import { getDefaultStore } from "jotai"
+import { customEmojiSrcByNameAtom } from "@lib/emojiMart"
 
 /**
  * An inline custom emoji — an atomic image node. Custom emojis have no unicode
@@ -31,6 +33,21 @@ export const CustomEmoji = Node.create({
         return ["img", mergeAttributes(HTMLAttributes, { "data-type": "customEmoji", class: "emoji" })]
     },
 
-    /** Plain-text representation (copy / last_message preview) — the shortcode. */
+    /** Plain-text representation (copy, `editor.getText()`) — the shortcode. */
     renderText: ({ node }) => node.attrs.alt ?? "",
+
+    addInputRules() {
+        return [
+            // Typing `:name:` of a custom emoji inserts that emoji. Same shortcode pattern as
+            // the server (raven_message.py SHORTCODE), so "a:b:" stays text everywhere.
+            new InputRule({
+                find: /(?<![A-Za-z0-9_:]):([A-Za-z0-9_-]+):$/,
+                handler: ({ range, match, chain }) => {
+                    const src = getDefaultStore().get(customEmojiSrcByNameAtom).get(match[1])
+                    if (!src) return null
+                    chain().insertContentAt(range, { type: this.name, attrs: { src, alt: match[0] } }).run()
+                },
+            }),
+        ]
+    },
 })
