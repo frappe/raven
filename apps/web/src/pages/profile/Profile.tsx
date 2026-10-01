@@ -75,7 +75,7 @@ const Profile = () => {
                         <div className="flex flex-col w-full items-center gap-4 px-4 py-4 text-left">
                             {/* Tapping the avatar opens the Upload / Remove photo menu */}
                             <ProfileImageMenu />
-                            <div className="flex min-w-0 flex-1 flex-col gap-2">
+                            <div className="flex w-full min-w-0 flex-1 flex-col gap-2">
                                 <span className="truncate text-4xl-semibold text-center text-ink-gray-9">{myProfile.full_name}</span>
                                 {myProfile.availability_status && (
                                     <span className="flex items-center justify-center gap-1.5 text-base md:text-sm text-ink-gray-5">
@@ -83,9 +83,9 @@ const Profile = () => {
                                         <span className="truncate">{myProfile.availability_status}</span>
                                     </span>
                                 )}
-                                <div className="text-center w-full">
-                                    {myProfile?.custom_status && <span className="truncate text-center text-lg md:text-sm text-ink-gray-6">{myProfile.custom_status}</span>}
-                                </div>
+                                {myProfile.custom_status && (
+                                    <p className="text-center text-lg md:text-sm text-ink-gray-6 break-words line-clamp-2">{myProfile.custom_status}</p>
+                                )}
                             </div>
 
                         </div>
