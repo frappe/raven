@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import type { Editor } from "@tiptap/react"
 
 /**
@@ -19,6 +19,8 @@ import type { Editor } from "@tiptap/react"
  */
 export function useIsKeyboardOpen(editor: Editor | null, enabled = true): boolean {
     const [open, setOpen] = useState(false)
+    // Native plugin state; the viewport gap is unreliable there (WKWebView lags, Android never resizes).
+    const nativeOpen = useRef(false)
 
     useEffect(() => {
         if (!enabled) return
@@ -26,7 +28,7 @@ export function useIsKeyboardOpen(editor: Editor | null, enabled = true): boolea
 
         const compute = () => {
             const gap = vv ? window.innerHeight - vv.height - vv.offsetTop : 0
-            setOpen((editor?.isFocused ?? false) || gap > 120)
+            setOpen(nativeOpen.current || (editor?.isFocused ?? false) || gap > 120)
         }
 
         compute()
@@ -55,8 +57,17 @@ export function useIsKeyboardOpen(editor: Editor | null, enabled = true): boolea
         vv?.addEventListener("resize", compute)
         vv?.addEventListener("scroll", compute)
         document.addEventListener("visibilitychange", onVisibilityChange)
+        // Registered after an import: an unmount before it resolves must still drop the listener.
+        let disposed = false
+        let unsubscribeNative: (() => void) | undefined
+        if (import.meta.env.VITE_NATIVE) import("../native/keyboard").then((m) => {
+            if (disposed) return
+            unsubscribeNative = m.subscribeNativeKeyboard((isOpen) => { nativeOpen.current = isOpen; compute() })
+        })
 
         return () => {
+            disposed = true
+            unsubscribeNative?.()
             editor?.off("focus", onFocus)
             editor?.off("blur", onBlur)
             vv?.removeEventListener("resize", compute)

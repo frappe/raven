@@ -1,4 +1,6 @@
 import { RavenUser } from "@raven/types/Raven/RavenUser"
+import type { Message } from "@raven/types/common/Message"
+import { siteKey } from "@lib/site"
 import { Dexie, type EntityTable } from "dexie"
 
 export type UserData = Pick<RavenUser, 'name' | 'full_name' | 'user_image' | 'first_name' | 'enabled' | 'type' | 'availability_status' | 'custom_status' | 'contact_number'>
@@ -59,7 +61,11 @@ export interface OutboxVisit {
     queued_at: number
 }
 
-const db = new Dexie("RavenDB") as Dexie & {
+/** The newest messages of one channel or thread, oldest first. */
+export type MessageWindow = { channel_id: string; rows: Message[] }
+
+// One database per site in native (siteKey scopes the name); the plain name in the browser.
+const db = new Dexie(siteKey("RavenDB")) as Dexie & {
     users: EntityTable<
         UserData,
         "name" // primary key "name"
@@ -70,6 +76,10 @@ const db = new Dexie("RavenDB") as Dexie & {
     >
     visit_outbox: EntityTable<
         OutboxVisit,
+        "channel_id" // primary key "channel_id"
+    >
+    message_windows: EntityTable<
+        MessageWindow,
         "channel_id" // primary key "channel_id"
     >
 }
@@ -90,6 +100,11 @@ db.version(2).stores({
 // (which showed phantom "New messages" dividers/badges for already-read messages).
 db.version(3).stores({
     visit_outbox: "channel_id"
+})
+
+// v4: the newest messages of every visited channel, for offline cold starts.
+db.version(4).stores({
+    message_windows: "channel_id"
 })
 
 export { db }

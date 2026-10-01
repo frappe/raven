@@ -30,7 +30,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
             // about to touch. The offset clears the notch/status bar in the
             // installed app (safe-area inset is 0 in a plain browser tab).
             position={isMobile ? "top-center" : "bottom-right"}
-            mobileOffset={{ top: "calc(env(safe-area-inset-top) + 12px)" }}
+            mobileOffset={{ top: "calc(var(--inset-top) + 12px)" }}
             closeButton
             expand={false}
             visibleToasts={3}

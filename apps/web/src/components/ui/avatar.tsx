@@ -1,6 +1,7 @@
 import * as React from "react"
 
 import { cn } from "@lib/utils"
+import { useFileSrc } from "@hooks/useFileSrc"
 
 type ImageStatus = "loading" | "loaded" | "error"
 
@@ -54,6 +55,8 @@ function AvatarImage({
 }: React.ComponentProps<"img">) {
   const { status, setStatus } = React.useContext(AvatarContext)
   const ref = React.useRef<HTMLImageElement>(null)
+  // Private site files need the token in native; useFileSrc routes them through the media proxy.
+  const fileSrc = useFileSrc(src)
 
   // Every new src starts over. A layout effect runs before paint, so an image
   // known to be loaded flips the status in the same frame and the fallback never
@@ -80,7 +83,7 @@ function AvatarImage({
     <img
       ref={ref}
       data-slot="avatar-image"
-      src={src}
+      src={fileSrc}
       alt={alt}
       loading={known ? "eager" : "lazy"}
       decoding={known ? "sync" : "async"}

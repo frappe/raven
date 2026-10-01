@@ -1,3 +1,4 @@
+import { siteBaseName, siteOrigin } from "@lib/site"
 import { useContext, useMemo } from "react"
 import dayjs, { type Dayjs } from "dayjs"
 import { getDefaultStore, useAtomValue, useSetAtom } from "jotai"
@@ -283,8 +284,8 @@ export const useMessageActions = (
                     // Pathname-based links broke inside threads (?message_id belongs to
                     // the channel's stream) and in the notification/search panes (no
                     // channel in the URL at all).
-                    const base = import.meta.env.VITE_BASE_NAME ? `/${import.meta.env.VITE_BASE_NAME}` : ""
-                    const url = `${window.location.origin}${base}/message/${encodeURIComponent(message.name)}`
+                    const base = siteBaseName() ? `/${siteBaseName()}` : ""
+                    const url = `${siteOrigin()}${base}/message/${encodeURIComponent(message.name)}`
                     navigator.clipboard
                         .writeText(url)
                         .then(() => toast.success(_("Link copied")))

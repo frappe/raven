@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useOnlineStatus } from "@stores/connectionState"
+import { OfflineState } from "@components/common/OfflineState"
 import { useSearchParams } from "react-router-dom"
 import { useAtom, useAtomValue } from "jotai"
 import { ArrowDown, LoaderCircle } from "lucide-react"
@@ -178,6 +180,7 @@ export default function ChatStream({ channelID, pinnedMessagesString, initialMes
     // Tracks how far the user has read (the newest in-view message) and flushes
     // that watermark to the server (last_visit), which defines unread counts.
     const { onMessageInView } = useChannelReadTracker(channelID, { isAtBottom, hasNewerMessages })
+    const online = useOnlineStatus()
 
     // Puts this channel's not-yet-confirmed sends (the saved outbox) back on screen,
     // so pending/failed messages survive a refresh and reappear when you reopen it.
@@ -241,7 +244,7 @@ export default function ChatStream({ channelID, pinnedMessagesString, initialMes
         <ScrollViewportContext.Provider value={viewport}>
             <DateTrackerContext.Provider value={tracker}>
                 <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-                    <FloatingDatePill />
+                    {online && <FloatingDatePill />}
                     <MessageActionMenu channelID={channelID} canInteract={canInteract}>
                         <div
                             ref={containerRef}
@@ -254,6 +257,9 @@ export default function ChatStream({ channelID, pinnedMessagesString, initialMes
                             <div className="flex min-w-0 w-full flex-col md:px-3 pb-6">
                                 {isLoading ? (
                                     <MessageListSkeleton />
+                                ) : error && import.meta.env.VITE_NATIVE && !online ? (
+                                    // Native offline: a retry would fail too; the stream refetches itself on reconnect.
+                                    <OfflineState />
                                 ) : error ? (
                                     <StreamError error={error} onRetry={jumpToLatest} />
                                 ) : blocks.length === 0 ? (
@@ -265,7 +271,9 @@ export default function ChatStream({ channelID, pinnedMessagesString, initialMes
                                 land atomically with `blocks` changes for scroll compensation to be exact. */}
                                         {hasOlderMessages && (
                                             <div className="flex h-10 shrink-0 items-center justify-center">
-                                                {loadingOlder && (
+                                                {!online ? (
+                                                    <span className="truncate px-4 text-sm text-ink-gray-5">{_("Older messages load when you're back online.")}</span>
+                                                ) : loadingOlder && (
                                                     <LoaderCircle className="h-4 w-4 animate-spin text-ink-gray-5" />
                                                 )}
                                             </div>
@@ -331,7 +339,9 @@ export default function ChatStream({ channelID, pinnedMessagesString, initialMes
                                 detached, this slot exists whether or not a fetch is running. */}
                                         {hasNewerMessages && (
                                             <div className="flex h-10 shrink-0 items-center justify-center">
-                                                {loadingNewer && (
+                                                {!online ? (
+                                                    <span className="truncate px-4 text-sm text-ink-gray-5">{_("Newer messages load when you're back online.")}</span>
+                                                ) : loadingNewer && (
                                                     <LoaderCircle className="h-4 w-4 animate-spin text-ink-gray-5" />
                                                 )}
                                             </div>

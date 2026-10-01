@@ -1,3 +1,4 @@
+import { siteKey } from "@lib/site"
 import { useSyncExternalStore } from "react"
 
 /**
@@ -10,7 +11,7 @@ import { useSyncExternalStore } from "react"
  * sidebars can show live draft indicators (useChannelDraft) — the composer
  * writes on a debounce and every write notifies.
  */
-const key = (channelID: string) => `raven-draft-${channelID}`
+const key = (channelID: string) => siteKey(`raven-draft-${channelID}`)
 
 /** In-memory mirror of the persisted drafts, lazily filled on first read. */
 const cache = new Map<string, string>()

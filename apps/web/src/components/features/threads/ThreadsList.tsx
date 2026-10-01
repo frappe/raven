@@ -1,3 +1,5 @@
+import { OfflineState } from "@components/common/OfflineState"
+import { useOnlineStatus } from "@stores/connectionState"
 import { memo, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { FrappeConfig, FrappeContext } from "frappe-react-sdk"
 import { useHotkeys } from "react-hotkeys-hook"
@@ -160,6 +162,7 @@ export default function ThreadsList({
     onThreadClick,
     activeThreadID,
 }: ThreadsListProps) {
+    const online = useOnlineStatus()
     const { rows, leavingIds, isLoading, error, hasMore, loadMore, refresh } = useThreadList(threadType, {
         channel: channelFilter,
         onlyShowUnread,
@@ -216,7 +219,10 @@ export default function ThreadsList({
     // no Virtuoso mounted the wrapper has no scroller, which PullToRefresh
     // treats as "at the top".
     let body: ReactNode
-    if (error) {
+    if (error && import.meta.env.VITE_NATIVE && !online) {
+        // Native offline: a retry would fail too; the list refetches itself on reconnect.
+        body = <EmptyOverlay><OfflineState /></EmptyOverlay>
+    } else if (error) {
         body = (
             <EmptyOverlay>
                 {/* pointer-events-auto: the overlay is pointer-events-none (keeps

@@ -1,3 +1,4 @@
+import { siteKey } from "@lib/site"
 import { useCallback, useMemo } from "react"
 import { useLocalStorage } from "usehooks-ts"
 import _ from "@lib/translate"
@@ -20,7 +21,7 @@ export const toMostRecent = (list: string[], item: string, limit: number = MAX_R
  * the list on every tab close).
  */
 export const useRecentlyUsedDocType = () => {
-	const [recent, setRecent] = useLocalStorage<string[]>(STORAGE_KEY, [])
+	const [recent, setRecent] = useLocalStorage<string[]>(siteKey(STORAGE_KEY), [])
 
 	const addRecentlyUsedDocType = useCallback(
 		(doctype: string) => setRecent((previous) => toMostRecent(previous, doctype)),

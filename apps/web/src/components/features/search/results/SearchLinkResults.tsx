@@ -37,7 +37,7 @@ const SearchLinkResults = ({ searchValue, filters, onSelect, selectedID }: Searc
 
     useFrappeEventListener('link_previews_updated', () => mutate())
 
-    if (error) return <ErrorBanner error={error} />
+    if (error) return <div className="p-3"><ErrorBanner error={error} /></div>
     if (isLoading) return <LinkPreviewSkeletonList />
     if (results.length === 0) return <SearchNoResults title={_('No links found')} />
 

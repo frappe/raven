@@ -136,7 +136,7 @@ const SavedMessagesList = ({ searchQuery, channel, onSelect, selectedID }: Saved
     const results = data?.message ?? []
     const hasMore = results.length === limit
 
-    if (error) return <ErrorBanner error={error} />
+    if (error) return <div className="p-3"><ErrorBanner error={error} /></div>
     if (isLoading) return <MessageListSkeleton />
     if (results.length === 0) {
         // Absolute overlay centers over the whole pane (the Later left pane is `relative`),

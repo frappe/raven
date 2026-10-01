@@ -7,6 +7,7 @@ import { getErrorMessage } from "@lib/frappe"
 import _ from "@lib/translate"
 import type { Message } from "@raven/types/common/Message"
 import { errorResponseToast } from "@components/ui/error-banner"
+import { sitePath } from "@hooks/useFileSrc"
 
 /** The server's reaction blob shape (calculate_message_reaction), keyed by emoji / emoji_name. */
 type ReactionEntry = { reaction: string; users: string[]; count: number; is_custom?: boolean }
@@ -57,7 +58,7 @@ const toggleReactionBlob = (
  * reactions that arrived meanwhile. On success the realtime `message_reacted` echo
  * replaces the blob with server truth (idempotent).
  *
- * `reaction` is the native emoji char, or for a custom emoji its image URL; `emojiName`
+ * `picked` is the native emoji char, or for a custom emoji its image address; `emojiName`
  * is the custom emoji's name (which is the blob key for customs).
  */
 export const useToggleReaction = () => {
@@ -65,7 +66,9 @@ export const useToggleReaction = () => {
     const { name: currentUser } = useUserCookieData()
 
     return useCallback(
-        (message: Message, reaction: string, isCustom = false, emojiName?: string) => {
+        (message: Message, picked: string, isCustom = false, emojiName?: string) => {
+            // A custom emoji is saved as its site path, so every device can load it.
+            const reaction = isCustom ? sitePath(picked) : picked
             const channelID = message.channel_id
             const messageID = message.name
             const key = isCustom ? emojiName ?? reaction : reaction
