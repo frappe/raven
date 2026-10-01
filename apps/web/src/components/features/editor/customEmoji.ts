@@ -38,10 +38,10 @@ export const CustomEmoji = Node.create({
 
     addInputRules() {
         return [
-            // Typing `:name:` of a custom emoji inserts that emoji. Same shortcode pattern as
-            // the server (raven_message.py SHORTCODE), so "a:b:" stays text everywhere.
+            // Typing `:name:` of a custom emoji inserts that emoji. Not right after a word
+            // char or colon, so times and URLs ("10:30:", "a:b:") stay text.
             new InputRule({
-                find: /(?<![A-Za-z0-9_:]):([A-Za-z0-9_-]+):$/,
+                find: /(?<![A-Za-z0-9_:]):([^\s:]+):$/,
                 handler: ({ range, match, chain }) => {
                     const src = getDefaultStore().get(customEmojiSrcByNameAtom).get(match[1])
                     if (!src) return null

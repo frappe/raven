@@ -2,7 +2,6 @@
 # For license information, please see license.txt
 import datetime
 import json
-import re
 
 import frappe
 from bs4 import BeautifulSoup
@@ -138,10 +137,10 @@ class RavenMessage(Document):
 				)
 				self.links += f"{href}\n"
 
-		text_content, positions = get_text_and_emoji_positions(soup, self.text)
-		if positions:
+		text_content, custom_emojis = get_text_and_custom_emojis(soup, self.text)
+		if custom_emojis:
 			# Keyed by the exact HTML, so the teaser can reuse it without a second parse.
-			self.flags.emoji_positions = (self.text, positions)
+			self.flags.custom_emojis = (self.text, custom_emojis)
 
 		# A GIF-only message has no text; give the DM list + notifications a preview.
 		if not text_content and any(
@@ -1084,30 +1083,27 @@ def get_last_message_details(message) -> str:
 		"is_bot_message": message.is_bot_message,
 		"bot": message.bot,
 	}
-	# `content` holds a custom emoji as its `:name:`, same as typed text. The positions
-	# of the real ones let the DM list render exactly those as images.
+	# `content` holds a custom emoji as its `:name:`, same as typed text. Locating the
+	# real ones lets the DM list render exactly those as images.
 	if message.text and "customEmoji" in message.text:
-		cached = (getattr(message, "flags", None) or {}).get("emoji_positions")
+		cached = (getattr(message, "flags", None) or {}).get("custom_emojis")
 		if cached and cached[0] == message.text:
-			positions = cached[1]
+			custom_emojis = cached[1]
 		else:
 			soup = BeautifulSoup(message.text, "html.parser")
-			text, positions = get_text_and_emoji_positions(soup, message.text)
-			positions = positions if text == message.content else []
-		if positions:
-			details["custom_emoji_positions"] = positions
+			text, custom_emojis = get_text_and_custom_emojis(soup, message.text)
+			custom_emojis = custom_emojis if text == message.content else []
+		if custom_emojis:
+			details["custom_emojis"] = custom_emojis
 	return json.dumps(details)
 
 
-# A `:name:` shortcode, not right after a word char or colon. The DM list (TeaserText.tsx)
-# and the composer (customEmoji.ts) use this exact pattern.
-SHORTCODE = re.compile(r"(?<![A-Za-z0-9_:]):[A-Za-z0-9_-]+:")
 EMOJI_MARK = "\ue000"
 
 
-def get_text_and_emoji_positions(soup: BeautifulSoup, html: str) -> tuple[str, list[int]]:
-	"""Plain text of a message's `html` (parsed as `soup`), and which of its SHORTCODE
-	matches are real custom emojis."""
+def get_text_and_custom_emojis(soup: BeautifulSoup, html: str) -> tuple[str, list[list]]:
+	"""Plain text of a message's `html` (parsed as `soup`), and each custom emoji in it as
+	`[shortcode, n]`: the emoji is the nth (0-based) occurrence of `shortcode` in the text."""
 	# Spoilers (||text||) must not leak in the derived preview (DM list, push
 	# notifications, search).
 	for spoiler in soup.find_all(attrs={"data-spoiler": True}):
@@ -1121,19 +1117,35 @@ def get_text_and_emoji_positions(soup: BeautifulSoup, html: str) -> tuple[str, l
 
 	# A custom emoji has no unicode character, so the text carries its `:name:`. A mark
 	# before each one records where it lands once the text is joined.
-	for emoji in emojis:
-		emoji.replace_with(EMOJI_MARK + (emoji.get("alt") or ""))
-	chunks = soup.get_text(" ", strip=True).split(EMOJI_MARK)
-	text = "".join(chunks)
-	# The message itself held a mark (a private-use char): positions can't be trusted.
-	if len(chunks) - 1 != len(emojis):
-		return text, []
+	# A message holding the mark (a private-use char) itself keeps it, with no emoji list.
+	mark = "" if EMOJI_MARK in html else EMOJI_MARK
+	shortcodes = [emoji.get("alt") or "" for emoji in emojis]
+	for emoji, shortcode in zip(emojis, shortcodes):
+		emoji.replace_with(mark + shortcode)
+	marked = soup.get_text(" ", strip=True)
+	if not mark:
+		return marked, []
 
-	starts, offset = set(), 0
-	for chunk in chunks[:-1]:
-		offset += len(chunk)
-		starts.add(offset)
-	return text, [n for n, match in enumerate(SHORTCODE.finditer(text)) if match.start() in starts]
+	chunks = marked.split(EMOJI_MARK)
+	text = "".join(chunks)
+	custom_emojis, start = [], 0
+	for chunk, shortcode in zip(chunks, shortcodes):
+		start += len(chunk)
+		n = nth_occurrence(text, shortcode, start)
+		if n is not None:
+			custom_emojis.append([shortcode, n])
+	return text, custom_emojis
+
+
+def nth_occurrence(text: str, sub: str, start: int) -> int | None:
+	"""Which occurrence of `sub` begins at `start`, scanning left to right without overlaps
+	(the DM list scans the same way). None if none does."""
+	if not sub:
+		return None
+	n, index = 0, text.find(sub)
+	while -1 < index < start:
+		n, index = n + 1, text.find(sub, index + len(sub))
+	return n if index == start else None
 
 
 def get_milliseconds_since_epoch(timestamp: str) -> str:

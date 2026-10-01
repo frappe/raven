@@ -50,8 +50,9 @@ export type LastMessageDetails = {
     owner?: string
     is_bot_message?: 0 | 1
     bot?: string | null
-    /** Which `:name:` matches in `content` are real custom emojis (0-based), not typed text. */
-    custom_emoji_positions?: number[]
+    /** Each real custom emoji in `content` as `[shortcode, n]`: the nth (0-based) occurrence
+     *  of that shortcode. Typed `:name:` text is never listed. */
+    custom_emojis?: [shortcode: string, n: number][]
 }
 
 /**
