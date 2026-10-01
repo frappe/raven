@@ -1,6 +1,6 @@
-import { InputRule, Node, mergeAttributes } from "@tiptap/core"
-import { getDefaultStore } from "jotai"
-import { customEmojiSrcByNameAtom } from "@lib/emojiMart"
+import { Node, mergeAttributes } from "@tiptap/core"
+import { Plugin, PluginKey } from "@tiptap/pm/state"
+import { customEmojiInputTransaction } from "./customEmojiInput"
 
 /**
  * An inline custom emoji — an atomic image node. Custom emojis have no unicode
@@ -36,18 +36,20 @@ export const CustomEmoji = Node.create({
     /** Plain-text representation (copy, `editor.getText()`) — the shortcode. */
     renderText: ({ node }) => node.attrs.alt ?? "",
 
-    addInputRules() {
+    // A known `:name:` is always the emoji: typed, pasted, or already in a draft or a
+    // message being edited.
+    addProseMirrorPlugins() {
         return [
-            // Typing `:name:` of a custom emoji inserts that emoji. Not right after a word
-            // char or colon, so times and URLs ("10:30:", "a:b:") stay text.
-            new InputRule({
-                find: /(?<![A-Za-z0-9_:]):([^\s:]+):$/,
-                handler: ({ range, match, chain }) => {
-                    const src = getDefaultStore().get(customEmojiSrcByNameAtom).get(match[1])
-                    if (!src) return null
-                    chain().insertContentAt(range, { type: this.name, attrs: { src, alt: match[0] } }).run()
-                },
+            new Plugin({
+                key: new PluginKey("customEmojiInput"),
+                appendTransaction: (transactions, _oldState, state) =>
+                    transactions.some((tr) => tr.docChanged) ? customEmojiInputTransaction(state, transactions) : null,
             }),
         ]
+    },
+
+    onCreate() {
+        const tr = customEmojiInputTransaction(this.editor.state)
+        if (tr) this.editor.view.dispatch(tr.setMeta("addToHistory", false))
     },
 })

@@ -11,7 +11,7 @@ import { useUsersById } from "@hooks/useMessageRowLookups"
 import { db, type UserData } from "@db"
 import { cn } from "@lib/utils"
 import { formatRelativeDate } from "@lib/date"
-import { getMessageTeaser, parseLastMessageDetails, type LastMessageDetails } from "@utils/messageUtils"
+import { getMessageTeaser } from "@utils/messageUtils"
 import { TeaserText } from "@components/dm-sidebar/TeaserText"
 import { getUserDisplayName, isCurrentUser } from "@utils/userDisplay"
 import { useChannelDraft } from "@components/features/ChatInput/draft"
@@ -233,8 +233,7 @@ const DMRow = memo(function DMRow({ dmChannel, peerUser }: DMRowProps) {
 
     const displayName = getUserDisplayName(peerUser.full_name || peerUser.name, isCurrentUser(peerUser.name))
     const date = formatRelativeDate(dmChannel.last_message_timestamp)
-    const lastMessageDetails = parseLastMessageDetails(dmChannel.last_message_details)
-    const lastMessage = getMessageTeaser(lastMessageDetails, currentUser)
+    const lastMessage = getMessageTeaser(dmChannel.last_message_details, currentUser)
     // An unsent draft beats the last message as the preview (WhatsApp-style):
     // it's the thing you'd want to be reminded of when scanning the list.
     const draft = useChannelDraft(dmChannel.name)
@@ -246,7 +245,6 @@ const DMRow = memo(function DMRow({ dmChannel, peerUser }: DMRowProps) {
                 name={displayName}
                 date={date}
                 lastMessage={draft || lastMessage}
-                lastMessageEmojis={draft ? undefined : lastMessageDetails?.custom_emojis}
                 isDraft={Boolean(draft)}
                 unread={unread}
                 isActive={isActive}
@@ -310,8 +308,6 @@ interface DMRowShellProps {
     name: string
     date?: string
     lastMessage?: string
-    /** Real custom emojis in `lastMessage`. */
-    lastMessageEmojis?: LastMessageDetails["custom_emojis"]
     /** The preview line is an unsent draft — prefix it with a "Draft:" label. */
     isDraft?: boolean
     unread?: number
@@ -323,7 +319,6 @@ function DMRowShell({
     name,
     date = "",
     lastMessage = "",
-    lastMessageEmojis,
     isDraft = false,
     unread = 0,
     isActive,
@@ -383,7 +378,7 @@ function DMRowShell({
                         )}
                     >
                         {isDraft && <span className="font-medium text-ink-gray-6">{_("Draft")}: </span>}
-                        <TeaserText text={lastMessage} emojis={lastMessageEmojis} />
+                        <TeaserText text={lastMessage} />
                     </div>}
                     {unread > 0 && (
                         <Badge size="sm" variant="subtle" theme="gray">

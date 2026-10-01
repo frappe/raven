@@ -137,10 +137,24 @@ class RavenMessage(Document):
 				)
 				self.links += f"{href}\n"
 
-		text_content, custom_emojis = get_text_and_custom_emojis(soup, self.text)
-		if custom_emojis:
-			# Keyed by the exact HTML, so the teaser can reuse it without a second parse.
-			self.flags.custom_emojis = (self.text, custom_emojis)
+		# Spoilers (||text||) must not leak in the derived preview (DM list, push
+		# notifications, search) — replace each spoiler's text with a placeholder
+		# before extracting plain text.
+		for spoiler in soup.find_all(attrs={"data-spoiler": True}):
+			spoiler.string = "▒▒▒▒▒▒"
+
+		# Code keeps its backticks, so previews show it as code (a `:name:` in it stays text).
+		if "<code" in self.text:
+			for code in soup.find_all("code"):
+				code.string = f"`{code.get_text()}`"
+
+		# A custom emoji has no unicode character, so the plain text carries its `:name:`
+		# (clients show a known `:name:` as the emoji).
+		if "customEmoji" in self.text:
+			for emoji in soup.find_all("img", attrs={"data-type": "customEmoji"}):
+				emoji.replace_with(emoji.get("alt") or "")
+
+		text_content = soup.get_text(" ", strip=True)
 
 		# A GIF-only message has no text; give the DM list + notifications a preview.
 		if not text_content and any(
@@ -388,7 +402,16 @@ class RavenMessage(Document):
 	def set_last_message_timestamp(self):
 
 		# Update directly via SQL since we do not want to invalidate the document cache
-		message_details = get_last_message_details(self)
+		message_details = json.dumps(
+			{
+				"message_id": self.name,
+				"content": self.content,
+				"message_type": self.message_type,
+				"owner": self.owner,
+				"is_bot_message": self.is_bot_message,
+				"bot": self.bot,
+			}
+		)
 
 		raven_channel = frappe.qb.DocType("Raven Channel")
 		query = (
@@ -441,7 +464,16 @@ class RavenMessage(Document):
 		if frappe.db.get_value("Raven Channel", self.channel_id, "last_message_id") != self.name:
 			return
 
-		message_details = get_last_message_details(self)
+		message_details = json.dumps(
+			{
+				"message_id": self.name,
+				"content": self.content,
+				"message_type": self.message_type,
+				"owner": self.owner,
+				"is_bot_message": self.is_bot_message,
+				"bot": self.bot,
+			}
+		)
 
 		# Same direct update as set_last_message_timestamp (no document-cache
 		# invalidation). The where clause re-checks last_message_id, so if a
@@ -840,12 +872,12 @@ class RavenMessage(Document):
 
 		# An edit can change the text shown in the channel's sidebar teaser.
 		# Create and delete already keep the teaser fresh — this covers edits.
-		# Gated on a text change (not the sticky is_edited flag), so
+		# Gated on an actual content change (not the sticky is_edited flag), so
 		# reaction updates and metadata saves don't rewrite the teaser. AI
 		# streaming saves the doc on every token — skip those too.
 		if self.message_type != "System" and not self.flags.is_ai_streaming:
 			old_doc = self.get_doc_before_save()
-			if old_doc and old_doc.text != self.text:
+			if old_doc and old_doc.content != self.content:
 				self.update_channel_last_message_on_edit()
 
 		if self.is_edited or self.is_thread or self.flags.editing_metadata:
@@ -1004,22 +1036,22 @@ class RavenMessage(Document):
 					"name": ("!=", self.name),
 					"message_type": ("!=", "System"),
 				},
-				fields=[
-					"name",
-					"creation",
-					"content",
-					"text",
-					"message_type",
-					"owner",
-					"is_bot_message",
-					"bot",
-				],
+				fields=["name", "creation", "content", "message_type", "owner", "is_bot_message", "bot"],
 				order_by="creation desc, name desc",
 				limit=1,
 			)
 			if previous:
 				prev = previous[0]
-				details = get_last_message_details(prev)
+				details = json.dumps(
+					{
+						"message_id": prev.name,
+						"content": prev.content,
+						"message_type": prev.message_type,
+						"owner": prev.owner,
+						"is_bot_message": prev.is_bot_message,
+						"bot": prev.bot,
+					}
+				)
 				frappe.db.set_value(
 					"Raven Channel",
 					self.channel_id,
@@ -1071,81 +1103,6 @@ def on_doctype_update():
 	# Index the selector (channel or message type) first for faster queries (less rows to sort in the next step)
 	frappe.db.add_index("Raven Message", ["channel_id", "creation"])
 	frappe.db.add_index("Raven Message", ["message_type", "creation"])
-
-
-def get_last_message_details(message) -> str:
-	"""Teaser stored in Raven Channel.last_message_details."""
-	details = {
-		"message_id": message.name,
-		"content": message.content,
-		"message_type": message.message_type,
-		"owner": message.owner,
-		"is_bot_message": message.is_bot_message,
-		"bot": message.bot,
-	}
-	# `content` holds a custom emoji as its `:name:`, same as typed text. Locating the
-	# real ones lets the DM list render exactly those as images.
-	if message.text and "customEmoji" in message.text:
-		cached = (getattr(message, "flags", None) or {}).get("custom_emojis")
-		if cached and cached[0] == message.text:
-			custom_emojis = cached[1]
-		else:
-			soup = BeautifulSoup(message.text, "html.parser")
-			text, custom_emojis = get_text_and_custom_emojis(soup, message.text)
-			custom_emojis = custom_emojis if text == message.content else []
-		if custom_emojis:
-			details["custom_emojis"] = custom_emojis
-	return json.dumps(details)
-
-
-EMOJI_MARK = "\ue000"
-
-
-def get_text_and_custom_emojis(soup: BeautifulSoup, html: str) -> tuple[str, list[list]]:
-	"""Plain text of a message's `html` (parsed as `soup`), and each custom emoji in it as
-	`[shortcode, n]`: the emoji is the nth (0-based) occurrence of `shortcode` in the text."""
-	# Spoilers (||text||) must not leak in the derived preview (DM list, push
-	# notifications, search).
-	for spoiler in soup.find_all(attrs={"data-spoiler": True}):
-		spoiler.string = "▒▒▒▒▒▒"
-
-	emojis = (
-		soup.find_all("img", attrs={"data-type": "customEmoji"}) if "customEmoji" in html else None
-	)
-	if not emojis:
-		return soup.get_text(" ", strip=True), []
-
-	# A custom emoji has no unicode character, so the text carries its `:name:`. A mark
-	# before each one records where it lands once the text is joined.
-	# A message holding the mark (a private-use char) itself keeps it, with no emoji list.
-	mark = "" if EMOJI_MARK in html else EMOJI_MARK
-	shortcodes = [emoji.get("alt") or "" for emoji in emojis]
-	for emoji, shortcode in zip(emojis, shortcodes):
-		emoji.replace_with(mark + shortcode)
-	marked = soup.get_text(" ", strip=True)
-	if not mark:
-		return marked, []
-
-	chunks = marked.split(EMOJI_MARK)
-	text = "".join(chunks)
-	custom_emojis, start = [], 0
-	for chunk, shortcode in zip(chunks, shortcodes):
-		start += len(chunk)
-		n = nth_occurrence(text, shortcode, start)
-		if n is not None:
-			custom_emojis.append([shortcode, n])
-	return text, custom_emojis
-
-
-def nth_occurrence(text: str, sub: str, start: int) -> int | None:
-	"""Which occurrence of `sub` begins at `start`, scanning left to right without overlaps
-	(the DM list scans the same way). None if none does."""
-	if not sub:
-		return None
-	n, index = 0, text.find(sub)
-	while -1 < index < start:
-		n, index = n + 1, text.find(sub, index + len(sub))
-	return n if index == start else None
 
 
 def get_milliseconds_since_epoch(timestamp: str) -> str:

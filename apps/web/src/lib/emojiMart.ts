@@ -16,15 +16,6 @@ export interface EmojiMartCustomCategory {
  */
 export const customEmojiCategoriesAtom = atom<EmojiMartCustomCategory[]>([])
 
-/** Custom emoji image src by name (DM teasers, the composer's `:name:` rule). */
-export const customEmojiSrcByNameAtom = atom((get) => {
-    const srcByName = new Map<string, string>()
-    for (const category of get(customEmojiCategoriesAtom)) {
-        for (const emoji of category.emojis) srcByName.set(emoji.id, emoji.skins[0].src)
-    }
-    return srcByName
-})
-
 const loadAppleData = async () => {
     const response = await fetch("/assets/raven/emojis/emojis.json")
     return response.json()

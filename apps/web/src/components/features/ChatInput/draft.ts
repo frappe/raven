@@ -51,6 +51,10 @@ export const getDraftTeaser = (channelID: string): string => {
     const html = loadDraft(channelID)
     if (!html) return ""
     return html
+        // Same plain text as a sent message's teaser: a custom emoji as its `:name:`,
+        // code in backticks (see RavenMessage.parse_html_content).
+        .replace(/<img [^>]*data-type="customEmoji"[^>]*>/g, (img) => ` ${img.match(/alt="([^"]*)"/)?.[1] ?? ""} `)
+        .replace(/<\/?code[^>]*>/g, "`")
         .replace(/<[^>]*>/g, " ")
         .replace(/&nbsp;/g, " ")
         .replace(/&amp;/g, "&")

@@ -50,9 +50,6 @@ export type LastMessageDetails = {
     owner?: string
     is_bot_message?: 0 | 1
     bot?: string | null
-    /** Each real custom emoji in `content` as `[shortcode, n]`: the nth (0-based) occurrence
-     *  of that shortcode. Typed `:name:` text is never listed. */
-    custom_emojis?: [shortcode: string, n: number][]
 }
 
 /**
@@ -64,7 +61,7 @@ export const getMessageAuthorId = (
     owner: string,
 ): string => (message.is_bot_message ? message.bot || owner : owner)
 
-export const parseLastMessageDetails = (raw: unknown): LastMessageDetails | null => {
+const parseLastMessageDetails = (raw: unknown): LastMessageDetails | null => {
     if (!raw) return null
     try {
         return typeof raw === "string" ? (JSON.parse(raw) as LastMessageDetails) : (raw as LastMessageDetails)

@@ -1,53 +1,38 @@
-import type { ReactNode } from "react"
-import { useAtomValue } from "jotai"
-import { customEmojiSrcByNameAtom } from "@lib/emojiMart"
-import type { LastMessageDetails } from "@utils/messageUtils"
+import {
+    splitCustomEmojiShortcodes,
+    useCustomEmojiShortcodes,
+    type CustomEmojiShortcodes,
+} from "@lib/customEmojiShortcodes"
 
-type CustomEmojis = NonNullable<LastMessageDetails["custom_emojis"]>
+/** A `code` span: the server keeps message code in backticks (RavenMessage.parse_html_content). */
+const CODE_SPAN = /(`[^`]+`)/
 
-/**
- * Plain-text teaser with its real custom emojis shown as images. Each one is the nth
- * occurrence of its shortcode (from the server); other `:name:` text stays text.
- */
-export function TeaserText({ text, emojis }: { text: string; emojis?: CustomEmojis }) {
-    // Only rows with emojis subscribe to the emoji list.
-    return emojis?.length ? <EmojiTeaserText text={text} emojis={emojis} /> : text
+/** Plain-text teaser: code spans shown as code, known custom emoji `:name:`s as the emoji. */
+export function TeaserText({ text }: { text: string }) {
+    const shortcodes = useCustomEmojiShortcodes(text)
+    if (!text.includes("`")) return withEmojis(text, shortcodes) ?? text
+    return text.split(CODE_SPAN).map((chunk, i) =>
+        i % 2 ? (
+            <code key={i} className="rounded-sm bg-surface-gray-2 px-1 font-mono text-ink-gray-6">
+                {chunk.slice(1, -1)}
+            </code>
+        ) : (
+            <span key={i}>{withEmojis(chunk, shortcodes) ?? chunk}</span>
+        ),
+    )
 }
 
-function EmojiTeaserText({ text, emojis }: { text: string; emojis: CustomEmojis }) {
-    const srcByName = useAtomValue(customEmojiSrcByNameAtom)
-
-    const spans: { start: number; end: number; src: string; shortcode: string }[] = []
-    for (const [shortcode, n] of emojis) {
-        const start = nthOccurrence(text, shortcode, n)
-        const src = srcByName.get(shortcode.slice(1, -1))
-        if (start !== -1 && src) spans.push({ start, end: start + shortcode.length, src, shortcode })
-    }
-    spans.sort((a, b) => a.start - b.start)
-
-    const parts: ReactNode[] = []
-    let last = 0
-    for (const { start, end, src, shortcode } of spans) {
-        parts.push(text.slice(last, start))
-        parts.push(
+const withEmojis = (text: string, shortcodes: CustomEmojiShortcodes | null) =>
+    splitCustomEmojiShortcodes(text, shortcodes)?.map((part, i) =>
+        typeof part === "string" ? (
+            part
+        ) : (
             <img
-                key={start}
-                src={src}
-                alt={shortcode}
+                key={i}
+                src={part.src}
+                alt={part.shortcode}
                 loading="lazy"
                 className="inline-block size-4 object-contain align-text-bottom"
             />
-        )
-        last = end
-    }
-    parts.push(text.slice(last))
-    return parts
-}
-
-/** Index of the nth (0-based) occurrence of `sub`, scanning left to right without overlaps
- *  (the server's nth_occurrence scans the same way). -1 if there are fewer. */
-const nthOccurrence = (text: string, sub: string, n: number): number => {
-    let index = text.indexOf(sub)
-    for (let i = 0; i < n && index !== -1; i++) index = text.indexOf(sub, index + sub.length)
-    return index
-}
+        ),
+    )
