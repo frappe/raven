@@ -50,6 +50,7 @@ export const ScheduleSendSheet = ({ open, onOpenChange, sendOptions, onScheduleP
     <Drawer open={open} onOpenChange={onOpenChange}>
         <DrawerContent
             // Keep the composer keyboard steady: no focus moves on open or close.
+            keepKeyboard
             onOpenAutoFocus={(event) => event.preventDefault()}
             onCloseAutoFocus={(event) => event.preventDefault()}
         >

@@ -48,7 +48,11 @@ function DrawerOverlay({ className, ...props }: React.ComponentProps<typeof Draw
     )
 }
 
-function DrawerContent({ className, children, showHandle = true, onOpenAutoFocus, ...props }: React.ComponentProps<typeof DrawerPrimitive.Content> & { showHandle?: boolean }) {
+function DrawerContent({ className, children, showHandle = true, keepKeyboard = false, onOpenAutoFocus, ...props }: React.ComponentProps<typeof DrawerPrimitive.Content> & {
+    showHandle?: boolean
+    /** Leave focus behind the sheet, so a field's keyboard stays up (the composer's send options). */
+    keepKeyboard?: boolean
+}) {
     return (
         <DrawerPortal>
             <DrawerOverlay />
@@ -65,7 +69,7 @@ function DrawerContent({ className, children, showHandle = true, onOpenAutoFocus
                 onOpenAutoFocus={(event) => {
                     // vaul leaves focus where it was: a field behind the sheet would keep the keyboard up over it.
                     const active = document.activeElement
-                    if (active instanceof HTMLElement && !(event.target as Element).contains(active)) active.blur()
+                    if (!keepKeyboard && active instanceof HTMLElement && !(event.target as Element).contains(active)) active.blur()
                     onOpenAutoFocus?.(event)
                 }}
                 {...props}
