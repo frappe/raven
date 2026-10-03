@@ -3,7 +3,7 @@ import { channelUnreadStore } from "@stores/unread/store"
 import { linkPreviewStore } from "@stores/linkPreviews/store"
 import { channelStore } from "@stores/channels/store"
 import { getConnectionEpoch, isWindowStale, markWindowFresh } from "@stores/connectionFreshness"
-import { MessagesPage } from "./types"
+import { isOptimistic, MessagesPage } from "./types"
 
 const PAGE_SIZE = 30
 
@@ -192,8 +192,9 @@ export const recomputeUnreadAnchor = (channelID: string) => {
 
 /** The deepest window a quiet reconcile will replace. Replacing a deeper one with a
  *  smaller refetch would delete the older messages the user scrolled back to and yank
- *  their scroll — so deeper stale windows are left alone here, and useChannelMessages
- *  reloads them fresh on the next open instead. (70 + one page of headroom = 100.) */
+ *  their scroll — so deeper stale windows only catch up on new messages here
+ *  (catchUpDeepWindow), and useChannelMessages reloads them fresh on the next open.
+ *  (70 + one page of headroom = 100.) */
 export const MAX_QUIET_RECONCILE_WINDOW = 70
 
 /**
@@ -225,13 +226,14 @@ export const reconcileStaleWindow = async (client: FrappeCallClient, channelID: 
     //  - a window scrolled back into history is thrown away and refetched on
     //    re-entry (useChannelMessages), so it heals itself
     if (state.status !== "ready" || state.hasNewerMessages) return
-    // Scrolled back too far to replace safely — leave it stale, reload on next open.
-    if (state.order.length > MAX_QUIET_RECONCILE_WINDOW) return
-    // The user is being navigated to a specific message right now — don't replace
-    // the window under them. The channel stays marked stale, so the next open (or
-    // the next break) tries again.
-    if (targetClaims.has(channelID)) return
     if (!isWindowStale(channelID)) return
+    // A load in flight (a jump to a message, or the first page) stamps the window itself,
+    // and replacing the window under it would throw its page away.
+    if (initialLoadInFlight(channelID)) return
+    // A finished jump's claim (targetClaims) doesn't stop this: at the bottom, the refetch
+    // keeps the jumped-to page, and skipping it would hide what arrived while away.
+    // Too deep to replace without yanking the scroll: take only what arrived after it.
+    if (state.order.length > MAX_QUIET_RECONCILE_WINDOW) return catchUpDeepWindow(client, channelID)
 
     const key = `${channelID}:reconcile`
     if (inFlight.has(key)) return
@@ -264,6 +266,48 @@ export const reconcileStaleWindow = async (client: FrappeCallClient, channelID: 
     } catch {
         // Best effort: the channel just stays marked stale; the next open (or the
         // next break) retries.
+    } finally {
+        inFlight.delete(key)
+    }
+}
+
+const initialLoadInFlight = (channelID: string) =>
+    [...inFlightInitial.keys()].some((key) => key.startsWith(`${channelID}:initial:`))
+
+/**
+ * Brings a window too deep for the quiet replace up to date with what arrived during
+ * the gap: the messages after its newest one. The channel on screen refreshes only here
+ * (tapping a notification for it doesn't reopen it), so it can't wait for the next open.
+ * It stays marked stale, since edits and deletes on rows it already has can't be seen
+ * this way; the next open reloads it.
+ */
+const catchUpDeepWindow = async (client: FrappeCallClient, channelID: string) => {
+    const key = `${channelID}:catchup`
+    if (inFlight.has(key)) return
+    const state = channelMessagesStore.getState(channelID)
+    // Unconfirmed sends have no server row to count from.
+    let newest: string | undefined
+    for (let i = state.order.length - 1; i >= 0 && !newest; i--) {
+        const message = state.byId.get(state.order[i])
+        if (message && !isOptimistic(message)) newest = message.name
+    }
+    if (!newest) return
+    inFlight.add(key)
+    const token = windowIntent.get(channelID)
+    try {
+        const response = await client.get<PageResponse>("raven.api.chat_stream.get_newer_messages", {
+            channel_id: channelID,
+            from_message: newest,
+            limit: MAX_QUIET_RECONCILE_WINDOW + PAGE_SIZE,
+            update_last_visit: false,
+        })
+        // A load replaced the window while this ran, and its page already has these.
+        if (windowIntent.get(channelID) !== token) return
+        seedPreviews(response.message)
+        channelMessagesStore.setNewerPage(channelID, response.message)
+        recomputeUnreadAnchor(channelID)
+    } catch {
+        // Best effort: the window stays stale, so the next break or open retries.
     } finally {
         inFlight.delete(key)
     }
