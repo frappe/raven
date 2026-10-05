@@ -99,11 +99,16 @@ export const saveSite = async (site: Site) => {
 
 /** Drops the list entry and the default; tokens are the session module's job. */
 /** Everything stored for a site: its scoped keys, its database, and the media cache all sites share. */
-export const wipeSiteData = async (url: string) => {
+/** What one account left on the device for a site: storage, messages and cached media. The site and its push choice stay. */
+export const wipeAccountData = async (url: string) => {
     const prefix = `${url}|`
     Object.keys(localStorage).filter((key) => key.startsWith(prefix)).forEach((key) => localStorage.removeItem(key))
     indexedDB.deleteDatabase(`${prefix}RavenDB`)
     await import("./download").then((m) => m.clearMediaCache()).catch(() => { })
+}
+
+export const wipeSiteData = async (url: string) => {
+    await wipeAccountData(url)
     await import("./push").then((m) => m.forgetPushPreference(url)).catch(() => { })
 }
 

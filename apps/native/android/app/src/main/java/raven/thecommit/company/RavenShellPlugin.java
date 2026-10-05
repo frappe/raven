@@ -177,20 +177,35 @@ public class RavenShellPlugin extends Plugin {
         return host != null && !host.startsWith(getContext().getPackageName());
     }
 
+    /** Far above any site's upload limit: a stream past it is dropped, not left to fill the device. */
+    private static final long MAX_SHARED_BYTES = 1L << 30;
+
     private Uri copyToCache(Uri uri, String name) {
         File dir = new File(getContext().getCacheDir(), "shared/" + System.nanoTime());
         if (!dir.mkdirs()) return null;
         File file = new File(dir, name.replace('/', '_'));
+        boolean copied = false;
         try (InputStream in = getContext().getContentResolver().openInputStream(uri);
              OutputStream out = new FileOutputStream(file)) {
             if (in == null) return null;
             byte[] buffer = new byte[64 * 1024];
+            long total = 0;
             int read;
-            while ((read = in.read(buffer)) != -1) out.write(buffer, 0, read);
+            while ((read = in.read(buffer)) != -1) {
+                total += read;
+                if (total > MAX_SHARED_BYTES) {
+                    Logger.warn("RavenShell: shared file over the size limit, dropped");
+                    return null;
+                }
+                out.write(buffer, 0, read);
+            }
+            copied = true;
             return Uri.fromFile(file);
         } catch (Exception e) {
             Logger.error("RavenShell: could not copy shared file", e);
             return null;
+        } finally {
+            if (!copied) deleteRecursively(dir);
         }
     }
 

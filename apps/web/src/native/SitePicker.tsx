@@ -9,7 +9,7 @@ import { revokeTokens, signIn, tokenStore } from "./auth"
 import { subscribeNativeKeyboard } from "./keyboard"
 import { pendingNotice, pendingPath, pendingRelogin } from "./pending"
 import { unsubscribeSitePush } from "./push"
-import { completeSite, forgetSite, loadSites, normalizeSiteUrl, probeSite, saveSite, setDefaultSite, wipeSiteData, type ProbeResult, type Site } from "./sites"
+import { completeSite, forgetSite, loadSites, normalizeSiteUrl, probeSite, saveSite, setDefaultSite, wipeAccountData, wipeSiteData, type ProbeResult, type Site } from "./sites"
 import { versionAtLeast, versionMismatch } from "./version"
 import logo from "@raven/public/raven_logo.svg"
 
@@ -141,7 +141,8 @@ export const SitePicker = () => {
             // A dead session lands here with its site named; sign it in again without a tap.
             const url = await pendingRelogin.take()
             const site = url && list.find((s) => s.url === url)
-            if (site) run(site.url, () => open(site))
+            // The sign-in may be another account: none of the last one's data may carry over to it.
+            if (site) run(site.url, async () => { await wipeAccountData(site.url); await open(site) })
         })
     }, [])
 

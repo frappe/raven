@@ -60,7 +60,10 @@ final class ShareViewController: UIViewController {
     // The app reads the copy from the shared container; the original's grant ends with this extension.
     private func write(_ data: Data, name: String, type: String) -> [String: String]? {
         guard let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group) else { return nil }
-        let file = container.appendingPathComponent(name)
+        // A folder of its own: two shared files can carry the same name.
+        let folder = container.appendingPathComponent("shared/\(UUID().uuidString)", isDirectory: true)
+        guard (try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)) != nil else { return nil }
+        let file = folder.appendingPathComponent(name)
         guard (try? data.write(to: file)) != nil else { return nil }
         return ["title": name, "description": "", "type": type, "url": file.absoluteString]
     }

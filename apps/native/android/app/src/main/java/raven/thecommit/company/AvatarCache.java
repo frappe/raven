@@ -109,15 +109,26 @@ final class AvatarCache {
         }
     }
 
+    /** An avatar URL is the sender's to set: anything past this is not a picture worth holding in memory. */
+    private static final int MAX_AVATAR_BYTES = 5 * 1024 * 1024;
+
     private static byte[] download(String url) {
         try {
             HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
             connection.setConnectTimeout(3000);
             connection.setReadTimeout(3000);
+            if (connection.getContentLengthLong() > MAX_AVATAR_BYTES) {
+                connection.disconnect();
+                return null;
+            }
             try (InputStream in = connection.getInputStream(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
                 byte[] buffer = new byte[16 * 1024];
                 int read;
-                while ((read = in.read(buffer)) != -1) out.write(buffer, 0, read);
+                while ((read = in.read(buffer)) != -1) {
+                    // A server may leave the length out, or understate it.
+                    if (out.size() + read > MAX_AVATAR_BYTES) return null;
+                    out.write(buffer, 0, read);
+                }
                 return out.toByteArray();
             }
         } catch (Exception e) {

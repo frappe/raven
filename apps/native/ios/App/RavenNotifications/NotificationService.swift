@@ -59,12 +59,20 @@ final class NotificationService: UNNotificationServiceExtension {
     }
 
     /// A picture from the store, or fetched into it; nil when there is none or it fails.
+    // An avatar URL is the sender's to set: anything past this is not a picture worth decoding.
+    private static let maxAvatarBytes = 5 * 1024 * 1024
+
+    private static func withinLimit(_ file: URL) -> Bool {
+        let size = (try? file.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0
+        return size <= maxAvatarBytes
+    }
+
     private func obtain(_ url: URL?, into group: DispatchGroup, done: @escaping (URL?) -> Void) {
         guard let url = url else { return }
         if let cached = AvatarStore.file(for: url) { return done(cached) }
         group.enter()
         let task = Self.session.downloadTask(with: url) { location, _, _ in
-            done(location.flatMap { AvatarStore.keep($0, for: url) })
+            done(location.flatMap { Self.withinLimit($0) ? AvatarStore.keep($0, for: url) : nil })
             group.leave()
         }
         queue.sync { downloads.append(task) }
