@@ -69,8 +69,11 @@ export interface UploadedFile {
 
 
 
-/** Native picks still being handed over per channel: the picker has closed, the files are not here yet. */
-export const preparingFilesAtom = atomFamily((_channelID: string) => atom(0))
+/** A row for a native pick still being read; `pick` ties the rows of one pick together. */
+export type PreparingFile = { id: string; pick: number; fileName?: string; size?: number }
+
+/** Per channel: one unnamed row per pick, then one row per picked file while it is read. */
+export const preparingFilesAtom = atomFamily((_channelID: string) => atom<PreparingFile[]>([]))
 
 /** Atom to track files that are being uploaded per channel */
 export const uploadingFilesAtom = atomFamily((_channelID: string) => atom<QueuedFileType[]>([]))

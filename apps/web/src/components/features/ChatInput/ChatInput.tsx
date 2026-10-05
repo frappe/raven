@@ -140,7 +140,7 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
         useMemo(() => selectAtom(uploadingFilesAtom(channelID), (f) => f.some((file) => file.status === "uploading")), [channelID]),
     )
     // A pick still being handed over holds a send too, or the message would leave without it.
-    const hasUploadsInFlight = useAtomValue(preparingFilesAtom(channelID)) > 0 || isUploading
+    const hasUploadsInFlight = useAtomValue(preparingFilesAtom(channelID)).length > 0 || isUploading
     const hasFailedUploads = useAtomValue(
         useMemo(() => selectAtom(uploadingFilesAtom(channelID), (f) => f.some((file) => file.status === "error")), [channelID]),
     )

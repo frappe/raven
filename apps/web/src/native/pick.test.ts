@@ -3,9 +3,10 @@ import { pickNativeFiles } from "./pick"
 
 const m = vi.hoisted(() => ({
     pickFiles: vi.fn(), pickMedia: vi.fn(), convertHeicToJpeg: vi.fn(), deleteFile: vi.fn(async () => { }),
+    dismissed: [] as (() => void)[], addListener: vi.fn(),
     read: vi.fn(), toastError: vi.fn(),
 }))
-vi.mock("@capawesome/capacitor-file-picker", () => ({ FilePicker: { pickFiles: m.pickFiles, pickMedia: m.pickMedia, convertHeicToJpeg: m.convertHeicToJpeg } }))
+vi.mock("@capawesome/capacitor-file-picker", () => ({ FilePicker: { pickFiles: m.pickFiles, pickMedia: m.pickMedia, convertHeicToJpeg: m.convertHeicToJpeg, addListener: m.addListener } }))
 vi.mock("@capacitor/filesystem", () => ({ Filesystem: { deleteFile: m.deleteFile } }))
 vi.mock("./shareIn", () => ({ readNativeFiles: m.read }))
 vi.mock("sonner", () => ({ toast: { error: m.toastError } }))
@@ -15,7 +16,12 @@ const picked = (name: string, mimeType: string) => ({ path: `file:///tmp/x/${nam
 const asFiles = (list: { name: string }[]) => list.map((f) => ({ name: f.name }) as File)
 
 describe("pickNativeFiles", () => {
-    beforeEach(() => { Object.values(m).forEach((fn) => fn.mockReset()); m.deleteFile.mockResolvedValue(undefined); m.read.mockImplementation(async (list) => asFiles(list)) })
+    beforeEach(() => {
+        Object.values(m).forEach((fn) => { if (typeof fn === "function") fn.mockReset() })
+        m.dismissed = []
+        m.addListener.mockImplementation(async (_event: string, listener: () => void) => { m.dismissed.push(listener); return { remove: async () => { } } })
+        m.deleteFile.mockResolvedValue(undefined); m.read.mockImplementation(async (list) => asFiles(list))
+    })
 
     it("opens the photo library with transcoding on, and the document picker for files", async () => {
         m.pickMedia.mockResolvedValue({ files: [] }); m.pickFiles.mockResolvedValue({ files: [] })
@@ -46,6 +52,32 @@ describe("pickNativeFiles", () => {
         m.convertHeicToJpeg.mockResolvedValue({ path: "file:///tmp/y/IMG_1.jpg" })
         await pickNativeFiles("photos")
         expect(m.deleteFile.mock.calls.map((c) => (c as unknown as [{ path: string }])[0].path).sort()).toEqual(["file:///tmp/x/IMG_1.HEIC", "file:///tmp/x/b.mov", "file:///tmp/y/IMG_1.jpg"])
+    })
+    it("names the picks before converting or reading them, a HEIC photo by its .jpg name", async () => {
+        m.pickMedia.mockResolvedValue({ files: [picked("IMG_1.HEIC", "image/heic"), { name: "gone.png", mimeType: "image/png", size: 1 }, picked("b.mov", "video/quicktime")] })
+        const order: string[] = []
+        m.convertHeicToJpeg.mockImplementation(async () => { order.push("convert"); return { path: "file:///tmp/y/IMG_1.jpg" } })
+        await pickNativeFiles("photos", { onNamed: (named) => { order.push("named"); expect(named).toEqual([{ name: "IMG_1.jpg", size: 1 }, { name: "b.mov", size: 1 }]) } })
+        expect(order).toEqual(["named", "convert"])
+    })
+    it("reports a closed picker only while its files are still on their way, never for a cancel", async () => {
+        vi.useFakeTimers()
+        const onClosed = vi.fn()
+        // A slow copy: closed, then the files arrive later.
+        let hand: (v: { files: unknown[] }) => void = () => { }
+        m.pickMedia.mockReturnValueOnce(new Promise((resolve) => { hand = resolve }))
+        const slow = pickNativeFiles("photos", { onClosed })
+        await vi.waitFor(() => expect(m.dismissed).toHaveLength(1))
+        m.dismissed[0]()
+        await vi.advanceTimersByTimeAsync(150)
+        expect(onClosed).toHaveBeenCalledTimes(1)
+        hand({ files: [] }); await slow
+        // A cancel: the plugin answers right after the picker closes.
+        m.pickMedia.mockImplementationOnce(async () => { m.dismissed[1](); throw new Error("pickMedia canceled.") })
+        await pickNativeFiles("photos", { onClosed })
+        await vi.advanceTimersByTimeAsync(150)
+        expect(onClosed).toHaveBeenCalledTimes(1)
+        vi.useRealTimers()
     })
     it("says so when the reader drops a file", async () => {
         m.pickFiles.mockResolvedValue({ files: [picked("a.pdf", "application/pdf"), picked("b.pdf", "application/pdf")] })

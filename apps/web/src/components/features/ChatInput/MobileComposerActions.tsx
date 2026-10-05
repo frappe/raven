@@ -3,11 +3,14 @@ import { Plus, Camera, Images, FileBox, type LucideIcon, FilesIcon, ChartBar, Vi
 import { Button } from "@components/ui/button"
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle, DrawerTrigger } from "@components/ui/drawer"
 import { useSetAtom } from "jotai"
-import { preparingFilesAtom, useAttachFile } from "./useFileInput"
+import { preparingFilesAtom, useAttachFile, type PreparingFile } from "./useFileInput"
 import { CreatePollDialog } from "./CreatePollDialog"
 import AttachFrappeDocumentDialog from "./AttachFrappeDocumentDialog"
 import { isAndroid } from "@utils/platform"
 import _ from "@lib/translate"
+
+/** Numbers each native pick, so its rows are cleared together. */
+let pickCount = 0
 
 /**
  * Mobile composer overflow: a single "+" opens a bottom sheet of circle icon
@@ -52,13 +55,22 @@ export const MobileComposerActions = ({
     // The ternary keeps the native chunk out of browser builds entirely.
     const pickNative = import.meta.env.VITE_NATIVE
         ? (kind: "files" | "photos") => {
-            // The row shows from here: the picker hides it while open, and the wait starts when it closes.
-            setPreparing((n) => n + 1)
+            const pick = ++pickCount
+            const others = (rows: PreparingFile[]) => rows.filter((row) => row.pick !== pick)
+            const clear = () => setPreparing(others)
             import("../../../native/pick")
-                .then((m) => m.pickNativeFiles(kind))
-                .then((files) => { if (files.length) onAddFile(files) })
+                .then((m) => m.pickNativeFiles(kind, {
+                    // Shown only once the picker closes with files on their way, never over the open picker.
+                    onClosed: () => setPreparing((rows) => [...others(rows), { id: `${pick}`, pick }]),
+                    onNamed: (named) => setPreparing((rows) => [
+                        ...others(rows),
+                        ...named.map((file, index) => ({ id: `${pick}:${index}`, pick, fileName: file.name, size: file.size })),
+                    ]),
+                }))
+                // Cleared in the same step the files are added, so the rows swap without a gap.
+                .then((files) => { clear(); if (files.length) onAddFile(files) })
                 .catch(() => { })
-                .finally(() => setPreparing((n) => n - 1))
+                .finally(clear)
         }
         : () => { }
 
