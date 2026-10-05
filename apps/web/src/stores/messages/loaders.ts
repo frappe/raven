@@ -193,7 +193,7 @@ export const recomputeUnreadAnchor = (channelID: string) => {
 /** The deepest window a quiet reconcile will replace. Replacing a deeper one with a
  *  smaller refetch would delete the older messages the user scrolled back to and yank
  *  their scroll — so deeper stale windows only catch up on new messages here
- *  (catchUpDeepWindow), and useChannelMessages reloads them fresh on the next open.
+ *  (catchUpWindow), and useChannelMessages reloads them fresh on the next open.
  *  (70 + one page of headroom = 100.) */
 export const MAX_QUIET_RECONCILE_WINDOW = 70
 
@@ -230,10 +230,11 @@ export const reconcileStaleWindow = async (client: FrappeCallClient, channelID: 
     // A load in flight (a jump to a message, or the first page) stamps the window itself,
     // and replacing the window under it would throw its page away.
     if (initialLoadInFlight(channelID)) return
-    // A finished jump's claim (targetClaims) doesn't stop this: at the bottom, the refetch
-    // keeps the jumped-to page, and skipping it would hide what arrived while away.
-    // Too deep to replace without yanking the scroll: take only what arrived after it.
-    if (state.order.length > MAX_QUIET_RECONCILE_WINDOW) return catchUpDeepWindow(client, channelID)
+    // Replacing would yank the scroll of a deep window, or drop the page a jump landed on
+    // (targetClaims) once enough arrived: take only what arrived after it instead.
+    if (state.order.length > MAX_QUIET_RECONCILE_WINDOW || targetClaims.has(channelID)) {
+        return catchUpWindow(client, channelID)
+    }
 
     const key = `${channelID}:reconcile`
     if (inFlight.has(key)) return
@@ -275,13 +276,13 @@ const initialLoadInFlight = (channelID: string) =>
     [...inFlightInitial.keys()].some((key) => key.startsWith(`${channelID}:initial:`))
 
 /**
- * Brings a window too deep for the quiet replace up to date with what arrived during
+ * Brings a window the quiet replace must not touch up to date with what arrived during
  * the gap: the messages after its newest one. The channel on screen refreshes only here
  * (tapping a notification for it doesn't reopen it), so it can't wait for the next open.
  * It stays marked stale, since edits and deletes on rows it already has can't be seen
  * this way; the next open reloads it.
  */
-const catchUpDeepWindow = async (client: FrappeCallClient, channelID: string) => {
+const catchUpWindow = async (client: FrappeCallClient, channelID: string) => {
     const key = `${channelID}:catchup`
     if (inFlight.has(key)) return
     const state = channelMessagesStore.getState(channelID)
