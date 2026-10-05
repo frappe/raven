@@ -191,8 +191,11 @@ const DrawerBody = ({ onNavigate, onClose }: {
     const location = useLocation()
     const afterLeave = (left: WorkspaceFields) => {
         const next = myWorkspaces.find((workspace) => workspace.name !== left.name)
-        // Home must not reopen a workspace that was left.
-        if (left.name === currentWorkspace) setLastWorkspace(next?.name ?? "")
+        // Home must not reopen a workspace that was left, nor a channel of it under the next one.
+        if (left.name === currentWorkspace) {
+            setLastWorkspace(next?.name ?? "")
+            setLastChannel("")
+        }
         // Only a screen inside the left workspace moves: to the next one, or home when none is left.
         const base = `/${encodeURIComponent(left.name)}`
         if (location.pathname !== base && !location.pathname.startsWith(`${base}/`)) return
