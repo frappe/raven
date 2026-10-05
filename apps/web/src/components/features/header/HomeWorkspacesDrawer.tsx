@@ -1,22 +1,26 @@
-import { useContext, useEffect, useMemo, useReducer } from "react"
-import { useNavigate } from "react-router-dom"
+import { useContext, useEffect, useMemo, useReducer, useState } from "react"
+import { useLocation, useNavigate } from "react-router-dom"
 import { FrappeContext, type FrappeConfig } from "frappe-react-sdk"
 import { prefetchChannel, type FrappeCallClient } from "@stores/messages/loaders"
 import { atom, useAtomValue, useSetAtom } from "jotai"
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@components/ui/drawer"
 import { Badge } from "@components/ui/badge"
 import { ChannelIcon } from "@components/common/ChannelIcon/ChannelIcon"
-import { WorkspaceLogo } from "@components/channel-sidebar/ChannelSidebar"
 import { useChannels } from "@stores/channels/useChannelList"
 import { channelUnreadStore } from "@stores/unread/store"
 import { useWorkspaces, type WorkspaceFields } from "@hooks/useWorkspaces"
+import { isJoinable } from "@hooks/useWorkspaceMembership"
+import { JoinWorkspaceSheet } from "@components/features/workspaces/JoinWorkspaceSheet"
+import { LeaveWorkspaceDialog } from "@components/features/workspaces/LeaveWorkspaceDialog"
+import { WorkspaceTile } from "./WorkspaceTile"
+import { WorkspaceTileSheet } from "./WorkspaceTileSheet"
+import { Plus } from "lucide-react"
 import useCurrentRavenUser from "@raven/lib/hooks/useCurrentRavenUser"
 import { lastChannelAtom, lastWorkspaceAtom } from "@utils/lastVisitedAtoms"
 import { useNavigateFromDrawer } from "@hooks/useNavigateFromDrawer"
 import { useHistoryBackClose } from "@hooks/useHistoryBackClose"
 import { useNoDragWhileScrolled } from "@hooks/useNoDragWhileScrolled"
 import type { ChannelListItem } from "@raven/types/common/ChannelListItem"
-import { cn } from "@lib/utils"
 import _ from "@lib/translate"
 
 /**
@@ -27,9 +31,10 @@ import _ from "@lib/translate"
  * TWO ZONES with deliberately different anatomy, so the two jobs never compete
  * (nested workspace-rows + channel-rows always read as mush):
  *
- *  - A horizontal STRIP of workspace logos on top — v2's rail rotated sideways
- *    and summoned on demand. Tap switches workspace; a dot marks workspaces
- *    with unreads; the current one is ringed. Works when everything is read.
+ *  - A GRID of workspace logos on top, four to a row — v2's rail summoned on
+ *    demand. Tap switches workspace, a long-press shows its options; a dot marks
+ *    workspaces with unreads; the current one is ringed. A last tile lists the
+ *    workspaces you can join. Works when everything is read.
  *  - A LIST of unread channels beneath, full-width rows in the sidebar idiom,
  *    grouped under plain-text workspace names (headers are labels, not rows —
  *    nothing competes with the channel rows for tap weight).
@@ -176,6 +181,26 @@ const DrawerBody = ({ onNavigate, onClose }: {
     }, [unreadRows])
     const showSectionHeaders = myWorkspaces.length > 1
 
+    // Public workspaces open to anyone: the grid ends with a tile that lists them.
+    const joinable = useMemo(() => workspaces.filter(isJoinable), [workspaces])
+    const [joinOpen, setJoinOpen] = useState(false)
+
+    // A long-pressed tile shows its options; choosing Leave asks to confirm.
+    const [pressed, setPressed] = useState<WorkspaceFields | null>(null)
+    const [leaving, setLeaving] = useState<WorkspaceFields | null>(null)
+    const location = useLocation()
+    const afterLeave = (left: WorkspaceFields) => {
+        const next = myWorkspaces.find((workspace) => workspace.name !== left.name)
+        // Home must not reopen a workspace that was left.
+        if (left.name === currentWorkspace) setLastWorkspace(next?.name ?? "")
+        // Only a screen inside the left workspace moves: to the next one, or home when none is left.
+        const base = `/${encodeURIComponent(left.name)}`
+        if (location.pathname !== base && !location.pathname.startsWith(`${base}/`)) return
+        if (next) return openWorkspace(next)
+        navigate("/")
+        onClose()
+    }
+
     return (
         <div className="flex min-h-0 flex-col pb-2">
             {/* Zone 1 — the workspace grid. WRAPS instead of scrolling: every
@@ -185,31 +210,38 @@ const DrawerBody = ({ onNavigate, onClose }: {
                 in a stable grid and get room for their two-line names. */}
             <div className="grid grid-cols-4 items-start gap-1 px-3 pb-3 pt-1">
                 {myWorkspaces.map((workspace) => (
-                    <button
+                    <WorkspaceTile
                         key={workspace.name}
+                        workspace={workspace}
+                        isCurrent={workspace.name === currentWorkspace}
+                        hasUnread={unreadWorkspaceIDs.has(workspace.name)}
+                        onOpen={() => openWorkspace(workspace)}
+                        onLongPress={() => setPressed(workspace)}
+                    />
+                ))}
+                {joinable.length > 0 && (
+                    <button
                         type="button"
-                        onClick={() => openWorkspace(workspace)}
-                        className="flex w-full flex-col items-center gap-2 rounded-lg px-1 py-2 active:bg-surface-gray-2"
+                        onClick={() => setJoinOpen(true)}
+                        aria-label={_("Join a workspace")}
+                        className="flex w-full flex-col items-center rounded-lg px-1 py-2 active:bg-surface-gray-2"
                     >
-                        <span className="relative">
-                            <WorkspaceLogo
-                                workspace={workspace}
-                                className={cn(
-                                    "size-12 rounded-lg text-base",
-                                    workspace.name === currentWorkspace && "ring ring-outline-gray-2 ring-offset-1 ring-offset-surface-elevation-1",
-                                )}
-                            />
-                            {/* Same ambient signal as the Home tab: a dot, not a count. */}
-                            {unreadWorkspaceIDs.has(workspace.name) && (
-                                <span className="absolute -right-1 -top-1 size-2.5 rounded-full bg-surface-red-6 ring-2 ring-surface-elevation-1" aria-hidden="true" />
-                            )}
-                        </span>
-                        <span className="w-full text-center text-xs leading-snug text-ink-gray-6 line-clamp-2 break-words">
-                            {workspace.workspace_name}
+                        <span className="flex size-12 items-center justify-center rounded-lg border border-dashed border-outline-gray-3 text-ink-gray-6">
+                            <Plus className="size-5" />
                         </span>
                     </button>
-                ))}
+                )}
             </div>
+            <JoinWorkspaceSheet open={joinOpen} onOpenChange={setJoinOpen} workspaces={joinable} onJoined={openWorkspace} />
+            <WorkspaceTileSheet
+                workspace={pressed}
+                onClose={() => setPressed(null)}
+                onLeave={(workspace) => {
+                    setPressed(null)
+                    setLeaving(workspace)
+                }}
+            />
+            <LeaveWorkspaceDialog workspace={leaving} onClose={() => setLeaving(null)} onLeft={afterLeave} />
 
 
 
