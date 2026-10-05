@@ -6,11 +6,13 @@ import { useUser } from "@hooks/useUser"
 import { useCurrentChannelID } from "@hooks/useCurrentChannelID"
 import _ from "@lib/translate"
 import { useChannel } from "@hooks/useChannel"
+import { useEnsureChannel } from "@hooks/useEnsureChannel"
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from "@components/ui/empty"
 
 export default function DirectMessage() {
     const channelID = useCurrentChannelID()
     const { dmChannel, isLoading } = useChannel(channelID)
+    const checking = useEnsureChannel(channelID, Boolean(dmChannel))
 
     const peerUser = useUser(dmChannel?.peer_user_id || "")
 
@@ -20,7 +22,7 @@ export default function DirectMessage() {
 
     // Users are loaded app-wide before this renders, so the only real wait here
     // is the channel list — gate the skeleton on that, not the (sync) peer lookup.
-    if (isLoading) {
+    if (isLoading || checking) {
         return <DirectMessagePageSkeleton />
     }
 
