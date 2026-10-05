@@ -66,6 +66,9 @@ function DrawerContent({ className, children, showHandle = true, keepKeyboard = 
                     // default. Callers that want edge-to-edge content (e.g. the full
                     // emoji picker) pass p-0, which wins over this.
                     "fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-xl border-t border-outline-gray-2 bg-surface-elevation-1 outline-none pb-[var(--inset-bottom)]",
+                    // The native app never resizes the page for the keyboard: a sheet that keeps it up sits on top
+                    // of it. Only the native app sets --keyboard-height; a browser resizes the page itself.
+                    keepKeyboard && "bottom-[var(--keyboard-height,0px)]",
                     className
                 )}
                 onOpenAutoFocus={(event) => {
