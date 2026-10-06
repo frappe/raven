@@ -29,9 +29,13 @@ def register_site_on_raven_cloud() -> None:
 	"""
 	Register the site on Raven Cloud
 	"""
+	frappe.only_for("System Manager")
+	register_site()
+
+
+def register_site() -> None:
 	from raven.utils import make_api_call
 
-	frappe.only_for("System Manager")
 	raven_settings = frappe.get_single("Raven Settings")
 
 	if raven_settings.push_notification_service == "Raven":
@@ -49,7 +53,8 @@ def register_site_on_raven_cloud() -> None:
 
 		raven_settings.config = message.get("config")
 		raven_settings.vapid_public_key = message.get("vapid_public_key")
-		raven_settings.save()
+		# Callers check who may register: a System Manager, or the Frappe Cloud setup job.
+		raven_settings.save(ignore_permissions=True)
 	else:
 		frappe.throw(_("Push notification service is not set to Raven Cloud."))
 
