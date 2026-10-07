@@ -166,10 +166,15 @@ const matchYouTubePlaylist = (href: string): { listID: string } | null => {
     }
 }
 
+// iOS serves the app from capacitor://, so an embed's request carries no Referer and YouTube
+// refuses it (error 153). There the link opens in the YouTube app, or Safari without it.
+const OPENS_IN_YOUTUBE = !!import.meta.env.VITE_NATIVE && window.Capacitor?.getPlatform?.() === "ios"
+
 /**
  * Click-to-play facade: just the video's thumbnail + a play button, swapping in
  * the real iframe (with autoplay) only when clicked — a channel full of YouTube
- * links must not boot a player per message. Video boxes are aspect-video at the
+ * links must not boot a player per message. On iOS the tap opens the link in
+ * YouTube instead (see OPENS_IN_YOUTUBE). Video boxes are aspect-video at the
  * same max widths as MessageVideo; Music tracks are square (album art) at a
  * smaller width. Either way the box is fixed, so message height stays
  * deterministic for the scroll engine in both states.
@@ -215,8 +220,9 @@ const YouTubeEmbed = ({ videoID, square, href }: { videoID: string; square?: boo
             ) : (
                 <button
                     type="button"
-                    aria-label={_("Play video")}
-                    onClick={() => setPlaying(true)}
+                    aria-label={OPENS_IN_YOUTUBE ? _("Open in YouTube") : _("Play video")}
+                    onClick={() => (OPENS_IN_YOUTUBE ? window.open(href, "_blank") : setPlaying(true))}
+                    // A pressed look, not just hover: on iOS the tap leaves the app at once.
                     className="group relative block size-full cursor-pointer"
                 >
                     <img
@@ -228,9 +234,9 @@ const YouTubeEmbed = ({ videoID, square, href }: { videoID: string; square?: boo
                         onLoad={(e) => {
                             if (thumb === "maxresdefault" && e.currentTarget.naturalWidth <= 120) fallback()
                         }}
-                        className="size-full object-cover"
+                        className="size-full object-cover transition-[filter] duration-100 group-active:brightness-75"
                     />
-                    <span className="absolute inset-0 m-auto flex size-14 items-center justify-center rounded-full bg-black-700 transition-colors group-hover:bg-black-800">
+                    <span className="absolute inset-0 m-auto flex size-14 items-center justify-center rounded-full bg-black-700 transition duration-100 group-hover:bg-black-800 group-active:scale-90 group-active:bg-black-900">
                         <Play className="size-6 fill-white text-white" />
                     </span>
                     {title && (
