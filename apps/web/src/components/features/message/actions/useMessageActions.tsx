@@ -32,7 +32,8 @@ import { parsePinnedIds } from "@stores/messages/selectors"
 import { isOptimistic } from "@stores/messages/types"
 import { channelStore } from "@stores/channels/store"
 import { useChannelPinnedString } from "@stores/channels/useChannelList"
-import { seedThreadMeta } from "@stores/threads/useThreadMeta"
+import { applyThreadDetails, type ThreadDetails } from "@stores/threads/details"
+import { getConnectionEpoch } from "@stores/connectionFreshness"
 import _ from "@lib/translate"
 import type { Message } from "@raven/types/common/Message"
 import { useUserCookieData } from "@hooks/useUserCookieData"
@@ -211,13 +212,15 @@ export const useMessageActions = (
                     // screenshot. navigateFromDrawer holds navigation until the sheet is
                     // gone; the create_thread round-trip runs during that wait. No close
                     // to pass: the sheet dismisses itself after onSelect.
+                    const epochAtStart = getConnectionEpoch()
+                    const startedAt = Date.now()
                     navigateFromDrawer(
-                        call.post("raven.api.threads.create_thread", { message_id: threadID })
-                            .then(() => {
-                                // Reflect the new thread on the parent (shows the pill) and seed an
-                                // empty reply count, then open it.
+                        call.post<{ message: ThreadDetails }>("raven.api.threads.create_thread", { message_id: threadID })
+                            .then((res) => {
+                                // Seed the thread's members and reply count, then reflect it on the
+                                // parent (shows the pill) and open it.
+                                applyThreadDetails(threadID, res.message, epochAtStart, startedAt)
                                 channelMessagesStore.messageEdited(message.channel_id, threadID, { is_thread: 1 })
-                                seedThreadMeta(threadID, 0)
                                 return target
                             })
                             .catch((e) => {

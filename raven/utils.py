@@ -410,6 +410,19 @@ def count_thread_replies(thread_id: str) -> int:
 	return result[0][0] if result else 0
 
 
+def thread_details(thread_id: str) -> dict:
+	"""
+	Members and reply count of a thread, both from the cache. The caller checks permission.
+	"""
+	return {
+		"members": {
+			user: {"is_admin": member["is_admin"], "channel_member_name": member["name"]}
+			for user, member in get_channel_members(thread_id).items()
+		},
+		"message_count": get_thread_reply_count(thread_id),
+	}
+
+
 def get_thread_reply_count(thread_id: str) -> int:
 	"""
 	Get the number of replies in a thread (a batch = one reply), cached.

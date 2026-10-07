@@ -94,7 +94,7 @@ export default function ThreadDrawer({
         : undefined
 
     // Gate the actions by your membership in the thread (already in the members store, seeded by
-    // the pill / get_thread_details). Only members can leave; only thread admins can delete.
+    // its page / get_thread_details). Only members can leave; only thread admins can delete.
     const { name: currentUser } = useUserCookieData()
     const { members } = useChannelMembers(threadID ?? "")
     const me = members.find((m) => m.name === currentUser)

@@ -8,6 +8,7 @@ from raven.utils import (
 	create_members_added_system_message,
 	get_channel_members,
 	get_thread_reply_count,
+	thread_details,
 )
 
 
@@ -27,10 +28,25 @@ def get_thread_details(thread_id: str):
 	if not frappe.has_permission(doctype="Raven Message", doc=thread_id, ptype="read"):
 		frappe.throw(_("You do not have permission to read this thread."), frappe.PermissionError)
 
-	return {
-		"members": get_channel_members(thread_id),
-		"message_count": get_thread_reply_count(thread_id),
-	}
+	return thread_details(thread_id)
+
+
+def _add_thread_members(threads: list, fetch_members, with_details) -> list:
+	"""
+	Members of each channel thread, from the cache. DM and AI threads show the peer or the bot instead.
+	v2 reads `participants` (fetch_members, the default). v3 reads `details`, the members and
+	reply count get_thread_details returns, so its rows paint without a request each.
+	"""
+	participants = fetch_members not in (False, "false", "False", 0, "0")
+	details = with_details in (True, "true", "True", 1, "1")
+	for thread in threads:
+		if thread["is_ai_thread"] or thread["is_dm_thread"]:
+			continue
+		if participants:
+			thread["participants"] = [{"user_id": member} for member in get_channel_members(thread["name"])]
+		if details:
+			thread["details"] = thread_details(thread["name"])
+	return threads
 
 
 @frappe.whitelist(methods=["GET"])
@@ -43,6 +59,7 @@ def get_all_threads(
 	limit: int = 10,
 	only_show_unread: bool = False,
 	fetch_members: bool = True,
+	with_details: bool = False,
 ):
 	"""
 	Get all the threads in which the user is a participant
@@ -118,17 +135,7 @@ def get_all_threads(
 
 	threads = query.run(as_dict=True)
 
-	# v2 renders participants in the list, so it fetches them inline (the default). v3 sends
-	# fetch_members=False and lazy-loads members per row on view (get_thread_details →
-	# channelMembersStore), avoiding this per-thread get_channel_members fan-out. reply_count
-	# is computed in the query above (free) either way.
-	if fetch_members not in (False, "false", "False", 0, "0"):
-		for thread in threads:
-			if not thread["is_ai_thread"] and not thread["is_dm_thread"]:
-				thread_members = get_channel_members(thread["name"])
-				thread["participants"] = [{"user_id": member} for member in thread_members]
-
-	return threads
+	return _add_thread_members(threads, fetch_members, with_details)
 
 
 @frappe.whitelist(methods=["GET"])
@@ -140,6 +147,7 @@ def get_other_threads(
 	start_after: int = 0,
 	limit: int = 10,
 	fetch_members: bool = True,
+	with_details: bool = False,
 ):
 	"""
 	Get all the threads in which the user is not a participant, but is a member of the channel
@@ -217,15 +225,7 @@ def get_other_threads(
 
 	threads = query.run(as_dict=True)
 
-	# v2 fetches members inline (default); v3 sends fetch_members=False and lazy-loads on
-	# row view (see get_all_threads) to avoid the per-thread fan-out.
-	if fetch_members not in (False, "false", "False", 0, "0"):
-		for thread in threads:
-			if not thread["is_ai_thread"] and not thread["is_dm_thread"]:
-				thread_members = get_channel_members(thread["name"])
-				thread["participants"] = [{"user_id": member} for member in thread_members]
-
-	return threads
+	return _add_thread_members(threads, fetch_members, with_details)
 
 
 @frappe.whitelist(methods=["GET"])
@@ -361,4 +361,9 @@ def create_thread(message_id: str):
 	thread_message.is_thread = 1
 	thread_message.save(ignore_permissions=True)
 
-	return {"channel_id": thread_message.channel_id, "thread_id": thread_channel.name}
+	# The details let the client paint the new thread's pill without another request.
+	return {
+		"channel_id": thread_message.channel_id,
+		"thread_id": thread_channel.name,
+		**thread_details(thread_channel.name),
+	}

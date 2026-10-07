@@ -4,7 +4,7 @@ import frappe
 from frappe import _
 from frappe.query_builder import Order
 
-from raven.utils import track_channel_visit
+from raven.utils import thread_details, track_channel_visit
 
 
 def message_columns(message):
@@ -90,6 +90,22 @@ def _link_previews_sidecar(messages) -> dict:
 		return {}
 
 	return previews_for_urls(urls[:_SIDECAR_MAX_URLS])
+
+
+def _threads_sidecar(messages) -> dict:
+	"""
+	Members and reply count of every thread started in this window, keyed by thread id.
+	The client seeds its thread stores from this, so a thread's avatars paint with its
+	message instead of one request per thread later. Both come from the cache.
+	"""
+	return {message.name: thread_details(message.name) for message in messages if message.is_thread}
+
+
+def _sidecars(messages) -> dict:
+	"""
+	Every side-car for a page, built once from the messages the endpoint returns.
+	"""
+	return {"previews": _link_previews_sidecar(messages), "threads": _threads_sidecar(messages)}
 
 
 def _complete_boundary_batch(channel_id: str, boundary, older: bool):
@@ -243,7 +259,7 @@ def get_messages(
 		"has_old_messages": has_old_messages,
 		"has_new_messages": False,
 		"last_visit": last_visit,
-		"previews": _link_previews_sidecar(messages),
+		**_sidecars(messages),
 	}
 
 
@@ -268,7 +284,7 @@ def get_messages_around_base(channel_id: str, base_message: str, limit: int = 20
 		**older_messages,
 		**newer_messages,
 		"messages": combined_messages,
-		"previews": _link_previews_sidecar(combined_messages),
+		**_sidecars(combined_messages),
 		"from_timestamp": from_timestamp,
 		"last_visit": frappe.db.get_value(
 			"Raven Channel Member",
@@ -292,7 +308,8 @@ def get_older_messages(channel_id: str, from_message: str, limit: int = 20):
 	# Fetch older messages for the channel
 	from_timestamp = frappe.get_cached_value("Raven Message", from_message, "creation")
 
-	return fetch_older_messages(channel_id, from_message, from_timestamp, limit)
+	response = fetch_older_messages(channel_id, from_message, from_timestamp, limit)
+	return {**response, **_sidecars(response["messages"])}
 
 
 def fetch_older_messages(
@@ -341,7 +358,6 @@ def fetch_older_messages(
 	return {
 		"messages": messages,
 		"has_old_messages": has_old_messages,
-		"previews": _link_previews_sidecar(messages),
 	}
 
 
@@ -375,7 +391,7 @@ def get_newer_messages(
 		# Now if the user scrolls to the bottom, we need to update the unread count
 		track_channel_visit(channel_id=channel_id, commit=True, publish_event_for_user=True)
 
-	return response
+	return {**response, **_sidecars(response["messages"])}
 
 
 def fetch_newer_messages(
@@ -437,5 +453,4 @@ def fetch_newer_messages(
 	return {
 		"messages": messages,
 		"has_new_messages": has_new_messages,
-		"previews": _link_previews_sidecar(messages),
 	}

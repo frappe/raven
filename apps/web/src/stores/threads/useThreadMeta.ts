@@ -2,16 +2,9 @@ import { useCallback, useSyncExternalStore } from "react"
 import type { FrappeConfig } from "frappe-react-sdk"
 import { threadMetaStore } from "@stores/threads/store"
 import { getConnectionEpoch } from "@stores/connectionFreshness"
-import { seedChannelMembers } from "@hooks/useChannelMembers"
-import type { MemberMeta } from "@stores/members/store"
+import { applyThreadDetails, type ThreadDetails } from "@stores/threads/details"
 
 type Caller = FrappeConfig["call"]
-type ThreadDetails = { members: Record<string, MemberMeta>; message_count: number }
-
-/** Seed a thread's reply count from get_thread_details (one-time, won't clobber a live value). */
-export const seedThreadMeta = (threadID: string, replyCount: number, lastMessageTimestamp?: string) => {
-    threadMetaStore.seed(threadID, replyCount, lastMessageTimestamp)
-}
 
 /** Threads with a get_thread_details fetch in flight — dedupes concurrent pills / remounts. */
 const inFlight = new Set<string>()
@@ -37,10 +30,7 @@ export const loadThreadDetails = (call: Caller, threadID: string) => {
     const startedAt = Date.now()
     call
         .get<{ message: ThreadDetails }>("raven.api.threads.get_thread_details", { thread_id: threadID })
-        .then((res) => {
-            seedChannelMembers(threadID, res.message.members ?? {})
-            threadMetaStore.applyFetched(threadID, res.message.message_count, epochAtStart, startedAt)
-        })
+        .then((res) => applyThreadDetails(threadID, res.message, epochAtStart, startedAt))
         .finally(() => inFlight.delete(threadID))
 }
 

@@ -31,11 +31,6 @@ export const refetchChannelMembersIfLoaded = (call: Caller, channelID: string) =
     if (channelMembersStore.isLoaded(channelID)) loadChannelMembers(call, channelID, true)
 }
 
-/** Seed members directly without a fetch — e.g. from get_thread_details (same shape). */
-export const seedChannelMembers = (channelID: string, members: Record<string, MemberMeta>) => {
-    channelMembersStore.setMembers(channelID, members)
-}
-
 /**
  * A channel's (or thread's) members, store-backed. Triggers the lazy fetch on mount,
  * resolves member ids → UserData via usersStore, and returns the same shape the old
@@ -43,7 +38,7 @@ export const seedChannelMembers = (channelID: string, members: Record<string, Me
  */
 export const useChannelMembers = (channelID: string, options?: { autoFetch?: boolean }) => {
     // autoFetch=false: read the store but don't trigger get_channel_members — for callers
-    // that seed it another way (the thread pill seeds from get_thread_details).
+    // that seed it another way (thread pills and rows are seeded by their page).
     const autoFetch = options?.autoFetch ?? true
     const { call } = useContext(FrappeContext) as FrappeConfig
     const entry = useSyncExternalStore(

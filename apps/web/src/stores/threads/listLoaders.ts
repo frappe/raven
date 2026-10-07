@@ -2,6 +2,7 @@ import type { FrappeConfig } from "frappe-react-sdk"
 import type { FrappeError } from "frappe-react-sdk"
 import type { ThreadMessage } from "src/types/ThreadMessage"
 import { getConnectionEpoch, isWindowStale, markWindowFresh, markWindowSuspect } from "@stores/connectionFreshness"
+import { applyThreadDetails, type ThreadDetails } from "@stores/threads/details"
 import { ThreadTab, threadListStore } from "./listStore"
 
 export type ThreadCall = FrappeConfig["call"]
@@ -34,20 +35,17 @@ const endpointFor = (tab: ThreadTab) =>
 
 const isAi = (tab: ThreadTab): 0 | 1 => (tab === "ai" ? 1 : 0)
 
-type ThreadsResponse = { message: ThreadMessage[] }
-
-// NOTE: the list does NOT seed threadMetaStore here. The reply count is shown from the
-// row's `reply_count` until a row scrolls into view, at which point `loadThreadDetails`
-// (members + count) seeds both stores — and that loader is gated on the count being
-// absent, so pre-seeding it here would suppress the members fetch.
+type ThreadsResponse = { message: (ThreadMessage & { details?: ThreadDetails })[] }
 
 const fetchPage = (
     call: ThreadCall,
     tab: ThreadTab,
     startAfter: number,
     filters: ThreadFilters,
-): Promise<ThreadMessage[]> =>
-    call
+): Promise<ThreadMessage[]> => {
+    const epochAtStart = getConnectionEpoch()
+    const startedAt = Date.now()
+    return call
         .get<ThreadsResponse>(endpointFor(tab), {
             is_ai_thread: isAi(tab),
             channel_id: filters.channel && filters.channel !== "*all" ? filters.channel : undefined,
@@ -55,13 +53,20 @@ const fetchPage = (
             // get_other_threads has no unread filter — and threads you don't participate in
             // can't be unread for you, so the client unread filter yields empty there anyway.
             only_show_unread: tab !== "other" && filters.onlyShowUnread ? true : undefined,
-            // v3 lazy-loads members per row on view (see ThreadRow → loadThreadDetails); the
-            // API still fetches them inline for v2 (fetch_members defaults True there).
+            // Members + reply count per channel thread (`details`), not v2's participants.
             fetch_members: false,
+            with_details: true,
             start_after: startAfter,
             limit: PAGE_SIZE,
         })
-        .then((res) => res.message ?? [])
+        .then((res) =>
+            // Seed the thread stores, so rows paint with their avatars; the rows keep only their own fields.
+            (res.message ?? []).map(({ details, ...row }) => {
+                if (details) applyThreadDetails(row.name, details, epochAtStart, startedAt)
+                return row
+            }),
+        )
+}
 
 /** First load of a view (a tab or a filter combo). An already-loaded view is
  *  shown as-is — but if the connection broke since it was fetched (phone

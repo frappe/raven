@@ -95,12 +95,10 @@ const ThreadRow = memo(function ThreadRow({
     const peer = dmChannel?.peer_user_id ? usersById.get(dmChannel.peer_user_id) : undefined
     const user = usersById.get(getMessageAuthorId(thread, thread.owner)) ?? null
 
-    // Members + reply count come from the stores, lazily. A regular channel thread fetches its
-    // details (members + count) ONCE the row actually scrolls into view — gated on
-    // useHasBeenInView (not mere mount), because Virtuoso mounts more rows than are visible, so
-    // mount-gating would over-fetch the whole first page. Warms the same stores the thread pill
-    // + detail use (and loadThreadDetails self-dedupes, so a thread already loaded by a channel
-    // pill isn't refetched). DM/AI threads derive their avatar from the peer/bot — no fetch.
+    // Members + reply count come from the stores, seeded by the list page itself. A row only
+    // fetches its own when that seed is stale (a connection break), once it scrolls into view —
+    // gated on useHasBeenInView, because Virtuoso mounts more rows than are visible.
+    // DM/AI threads derive their avatar from the peer/bot — no fetch.
     const { call } = useContext(FrappeContext) as FrappeConfig
     const { ref: inViewRef, hasBeenInView } = useHasBeenInView({ rootMargin: "200px" })
     const isChannelThread = thread.is_dm_thread !== 1 && thread.is_ai_thread !== 1
@@ -108,10 +106,10 @@ const ThreadRow = memo(function ThreadRow({
         if (isChannelThread && hasBeenInView) loadThreadDetails(call, thread.name)
     }, [call, thread.name, isChannelThread, hasBeenInView])
 
-    // Members from the store (seeded by loadThreadDetails, kept live by channel_members_updated).
+    // Members from the store (kept live by channel_members_updated).
     const { members } = useChannelMembers(thread.name, { autoFetch: false })
-    // Count from threadMetaStore (live via thread_reply); falls back to the row's fetch-time
-    // value until this row's details land.
+    // Count from threadMetaStore (live via thread_reply); falls back to the row's own count
+    // when the page carried no details (DM and AI threads).
     const replyCount = useThreadReplyCount(thread.name) ?? thread.reply_count
 
     const channelDetails: ThreadChannelDetails = useMemo(() => {

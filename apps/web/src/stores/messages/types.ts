@@ -1,5 +1,6 @@
 import type { Message } from "@raven/types/common/Message"
 import type { LinkPreviewData } from "@stores/linkPreviews/store"
+import type { ThreadDetails } from "@stores/threads/details"
 
 /** Status of a message optimistically inserted on send, before the server ack lands. */
 export type MessageStatus = "sending" | "failed"
@@ -52,6 +53,8 @@ export type MessagesPage = {
      *  paint together with their messages. Lives on the response only —
      *  never persist it with message windows. */
     previews?: Record<string, LinkPreviewData | null>
+    /** Members and reply count of every thread started in this window, keyed by thread id. */
+    threads?: Record<string, ThreadDetails>
 }
 
 /** A date divider between messages from different days. */

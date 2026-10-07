@@ -14,12 +14,18 @@ type Entry = {
 /** Shared stable reference for unloaded channels — keeps getSnapshot identity stable. */
 const IDLE: Entry = { members: {}, status: "idle" }
 
+const sameMembers = (a: Record<string, MemberMeta>, b: Record<string, MemberMeta>) => {
+    const ids = Object.keys(a)
+    if (ids.length !== Object.keys(b).length) return false
+    return ids.every((id) => b[id] && b[id].is_admin === a[id].is_admin && b[id].channel_member_name === a[id].channel_member_name)
+}
+
 /**
  * Per-channel member lists (a thread is a Raven Channel too, so the same store keys
  * threads by their id — no channel/thread distinction). Lazy: an entry only exists once
- * something reads it (a member drawer opens, a thread pill comes into view). Realtime
- * (`channel_members_updated`, common to channels + threads) refetches ONLY already-loaded
- * entries, so we never build member lists for threads the user hasn't looked at.
+ * something loads it (a member drawer opens, a page of messages or threads carries it).
+ * Realtime (`channel_members_updated`, common to channels + threads) refetches ONLY
+ * already-loaded entries, so we never build member lists for threads the user hasn't loaded.
  *
  * Holds the raw meta map (is_admin / channel_member_name); the hook resolves ids →
  * UserData via usersStore. Replaces the per-consumer SWR + per-render rebuild in the
@@ -60,6 +66,12 @@ class ChannelMembersStore {
 
     /** Replace a channel's members (from get_channel_members / get_thread_details). */
     setMembers(channelID: string, members: Record<string, MemberMeta>) {
+        const prev = this.entries.get(channelID)
+        // Every page that shows a thread re-sends its members; unchanged ones keep their object.
+        if (prev && sameMembers(prev.members, members)) {
+            this.setStatus(channelID, "loaded")
+            return
+        }
         this.entries.set(channelID, { members, status: "loaded" })
         this.notify(channelID)
     }

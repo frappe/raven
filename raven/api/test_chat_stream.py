@@ -271,3 +271,103 @@ class TestChatStream(IntegrationTestCase):
 		# Loop over and check indexes of all messages
 		for i, message in enumerate(response["messages"]):
 			self.assertEqual(message.text, f"Test Message {99-i}")
+
+
+class TestThreadsSidecar(IntegrationTestCase):
+	def setUp(self):
+		for name in frappe.get_all("Raven Channel", {"channel_name": "threads-sidecar"}, pluck="name"):
+			frappe.delete_doc("Raven Channel", name, force=True)
+		channel = frappe.get_doc(
+			{
+				"doctype": "Raven Channel",
+				"channel_name": "Threads Sidecar",
+				"type": "Public",
+				"workspace": "Public Workspace",
+			}
+		)
+		channel.flags.do_not_add_member = True
+		self.channel = channel.insert().name
+
+	def tearDown(self):
+		frappe.delete_doc("Raven Channel", self.channel, force=True)
+
+	def test_threads_sidecar(self):
+		"""
+		Every chat stream page carries the members and reply count of each thread started in it,
+		in the same shape as get_thread_details. Messages without a thread are left out.
+		"""
+		from raven.api.threads import create_thread, get_thread_details
+
+		plain = frappe.get_doc(
+			{
+				"doctype": "Raven Message",
+				"channel_id": self.channel,
+				"text": "Plain",
+				"message_type": "Text",
+			}
+		).insert(ignore_permissions=True)
+		root = frappe.get_doc(
+			{
+				"doctype": "Raven Message",
+				"channel_id": self.channel,
+				"text": "Thread root",
+				"message_type": "Text",
+			}
+		).insert(ignore_permissions=True)
+		created = create_thread(root.name)
+		try:
+			frappe.get_doc(
+				{"doctype": "Raven Message", "channel_id": root.name, "text": "Reply", "message_type": "Text"}
+			).insert(ignore_permissions=True)
+
+			threads = get_messages(self.channel)["threads"]
+			self.assertEqual(list(threads), [root.name])
+			self.assertEqual(threads[root.name], get_thread_details(root.name))
+			self.assertEqual(threads[root.name]["message_count"], 1)
+			for meta in threads[root.name]["members"].values():
+				self.assertEqual(set(meta), {"is_admin", "channel_member_name"})
+
+			# create_thread answers with the same details, before any reply.
+			self.assertEqual(created["message_count"], 0)
+			self.assertEqual(created["members"], threads[root.name]["members"])
+
+			# Jump to a message: one side-car for the whole page.
+			around = get_messages(self.channel, base_message=root.name)
+			self.assertEqual(around["threads"], {root.name: threads[root.name]})
+
+			self.assertEqual(get_older_messages(self.channel, root.name)["threads"], {})
+			self.assertEqual(
+				get_newer_messages(self.channel, plain.name)["threads"], {root.name: threads[root.name]}
+			)
+		finally:
+			frappe.delete_doc("Raven Channel", root.name, force=True)
+
+	def test_thread_list_details(self):
+		"""
+		The thread list carries get_thread_details for each channel thread when asked,
+		and v2's participants by default.
+		"""
+		from raven.api.threads import create_thread, get_all_threads, get_thread_details
+
+		root = frappe.get_doc(
+			{
+				"doctype": "Raven Message",
+				"channel_id": self.channel,
+				"text": "Thread root",
+				"message_type": "Text",
+			}
+		).insert(ignore_permissions=True)
+		create_thread(root.name)
+		try:
+			v3 = [
+				t for t in get_all_threads(channel_id=self.channel, fetch_members=False, with_details=True)
+			]
+			self.assertEqual([t["name"] for t in v3], [root.name])
+			self.assertEqual(v3[0]["details"], get_thread_details(root.name))
+			self.assertNotIn("participants", v3[0])
+
+			v2 = get_all_threads(channel_id=self.channel)
+			self.assertIn("participants", v2[0])
+			self.assertNotIn("details", v2[0])
+		finally:
+			frappe.delete_doc("Raven Channel", root.name, force=True)

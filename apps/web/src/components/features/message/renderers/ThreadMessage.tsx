@@ -144,13 +144,15 @@ const LoadedThreadPill = ({ threadID, channelID, isInView, align }: { threadID: 
 
 /**
  * The "N replies" affordance under any thread-parent message (single or batch member).
- * Fetches the thread's members + reply count only once the message scrolls into view —
- * a channel full of threads doesn't fire a request per thread on load. Visibility stays
+ * The messages page carries the thread's members + reply count (threads side-car). A pill
+ * without them fetches its own once the message scrolls into view. Visibility stays
  * watched after that, so a count made suspect by a connection break refetches only when
  * the pill is actually on screen.
  * `channelID` = the message's channel (the thread's parent) — see ThreadButtonProps.
  */
 export const MessageThreadPill = ({ threadID, channelID, align }: { threadID: string; channelID: string; align?: ThreadPillAlign }) => {
     const { ref, isInView, hasBeenInView } = useInView()
-    return <div ref={ref} className={align === "end" ? "self-end" : undefined}>{hasBeenInView ? <LoadedThreadPill threadID={threadID} channelID={channelID} isInView={isInView} align={align} /> : <ThreadPillSkeleton align={align} />}</div>
+    // A thread seeded by its messages page renders with them, before any visibility check.
+    const seeded = useThreadReplyCount(threadID) !== undefined
+    return <div ref={ref} className={align === "end" ? "self-end" : undefined}>{hasBeenInView || seeded ? <LoadedThreadPill threadID={threadID} channelID={channelID} isInView={isInView} align={align} /> : <ThreadPillSkeleton align={align} />}</div>
 }
