@@ -89,6 +89,8 @@ class ThreadMetaStore {
             replyCount,
             lastMessageTimestamp: prev?.lastMessageTimestamp,
             epoch: epochAtFetchStart,
+            // Kept, so a slower fetch that went out before the last patch is still rejected.
+            patchedAt: prev?.patchedAt,
         })
         this.notify(threadID)
     }
