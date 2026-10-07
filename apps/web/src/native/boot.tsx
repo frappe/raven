@@ -77,12 +77,7 @@ const boot = async () => {
     // An app opened from the cache still answers to a revoked session.
     if (cached) void fresh.then((status) => { if (status === "unauthorized") void reloginAt(session.site.url) })
     void refreshSite(session.site)
-    // Media eviction follows the message cache: after each flush, throttled, and once at start.
-    // Imported here, not at the top: the cache module opens the site-scoped database on load.
-    void Promise.all([import("./media"), import("@stores/messages/messageCache")]).then(([m, cache]) => {
-        cache.setCacheFlushListener(() => { void m.trimMediaCache() })
-        void m.trimMediaCache()
-    })
+    void import("./media").then((m) => m.watchMediaCache()).catch(() => { })
 }
 
 // A failure before anything rendered would leave the launch screen up with nothing to tap.

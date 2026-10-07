@@ -57,7 +57,7 @@ export const useComposerGate = (
     // resolved list drops members whose user records haven't loaded yet, so on
     // a refresh it could briefly miss the current user — flashing the
     // "not a member" banner before the composer.
-    // member_id on the channel-list entry is the offline answer: the roster fetch needs the network.
+    // member_id on the channel-list entry answers before the roster fetch lands.
     const isMember = isDM || memberIds.includes(currentUser) || Boolean(channel?.member_id)
 
     // useJoinChannel updates the member store itself (including the roster

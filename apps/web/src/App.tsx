@@ -18,8 +18,6 @@ import { redirectToLoginIfSessionDied } from '@lib/authRecovery'
 import { initEmojiMart } from '@lib/emojiMart'
 import { isLoggedIn } from "@lib/sessionUser"
 import { siteKey, APP_HEADERS } from '@lib/site'
-import { offlineCacheEnabled } from "@lib/offline"
-import { enableMessageCache } from "@stores/messages/messageCache"
 import { Toaster } from "@components/ui/sonner"
 import { TooltipProvider } from "@radix-ui/react-tooltip"
 import { LucideProvider } from "lucide-react"
@@ -240,34 +238,10 @@ const CACHE_KEYS = [
   "raven.api.login.get_context",
   "workspaces_list",
   "channel_list",
-  "unread_channel_counts",
-  "my_profile",
   "message-actions-list",
 ]
 
 const isCachedKey = (key: string) => CACHE_KEYS.some((cacheKey) => key.includes(cacheKey))
-
-/** SWR cache that writes cached keys back to localStorage shortly after they change. */
-class PersistedCache extends Map<string, string | number> {
-  private timer?: ReturnType<typeof setTimeout>
-
-  constructor(private persist: () => void) {
-    super()
-  }
-
-  restore(entries: [string, string | number][]) {
-    for (const [key, value] of entries) super.set(key, value)
-  }
-
-  set(key: string, value: string | number) {
-    super.set(key, value)
-    if (offlineCacheEnabled() && isCachedKey(key)) {
-      clearTimeout(this.timer)
-      this.timer = setTimeout(this.persist, 1000)
-    }
-    return this
-  }
-}
 
 function localStorageProvider() {
   // When initializing, we restore the data from `localStorage` into a map.
@@ -281,6 +255,8 @@ function localStorageProvider() {
     }
   }
 
+  const map = new Map<string, string | number>(JSON.parse(cache))
+
   const persist = () => {
     if (!isLoggedIn()) {
       localStorage.removeItem(siteKey('app-cache'))
@@ -291,8 +267,6 @@ function localStorageProvider() {
     localStorage.setItem(siteKey('app-cache'), JSON.stringify(cacheEntries))
     localStorage.setItem(siteKey('app-cache-timestamp'), Date.now().toString())
   }
-  const map = new PersistedCache(persist)
-  map.restore(JSON.parse(cache))
 
   window.addEventListener('beforeunload', persist)
   // Backgrounding is the last signal before the OS kills a native app.
@@ -307,7 +281,6 @@ function localStorageProvider() {
 // Initialize emoji-mart (Apple set). Custom emojis are registered later, once
 // fetched, via useRegisterCustomEmojis (re-init keeps this data).
 initEmojiMart()
-enableMessageCache()
 
 const getSiteName = () => {
   if (window.frappe?.boot?.versions?.frappe.startsWith('14')) {

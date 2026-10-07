@@ -4,7 +4,6 @@ import { linkPreviewStore } from "@stores/linkPreviews/store"
 import { channelStore } from "@stores/channels/store"
 import { getConnectionEpoch, isWindowStale, markWindowFresh } from "@stores/connectionFreshness"
 import { isOnline } from "@stores/connectionState"
-import { readCachedWindow } from "./messageCache"
 import { MessagesPage } from "./types"
 
 const PAGE_SIZE = 30
@@ -96,17 +95,6 @@ export const loadInitialMessages = (
 
     channelMessagesStore.startLoading(channelID)
     const run = (async () => {
-        // The cached window paints while the fetch runs, unless the fetch lands first. It is
-        // never stamped fresh, so the freshness counter refetches it on the next reconnect.
-        let fetched = false
-        let fromCache = false
-        if (!baseMessage) {
-            readCachedWindow(channelID).then((cached) => {
-                if (!cached || fetched || windowIntent.get(channelID) !== token) return
-                channelMessagesStore.setInitialPage(channelID, cached)
-                fromCache = true
-            })
-        }
         try {
             const response = await client.get<PageResponse>("raven.api.chat_stream.get_messages", {
                 channel_id: channelID,
@@ -121,7 +109,6 @@ export const loadInitialMessages = (
             })
             // A newer initial load started while we were fetching — discard this response.
             if (windowIntent.get(channelID) !== token) return
-            fetched = true
             seedPreviews(response.message)
             channelMessagesStore.setInitialPage(channelID, response.message)
             // Baseline the read tracker with the server's last_visit so it won't re-post a
@@ -131,8 +118,7 @@ export const loadInitialMessages = (
         } catch (error) {
             // Same staleness rule for failures — don't show an error for a superseded fetch.
             if (windowIntent.get(channelID) !== token) return
-            // A cached window stays on screen, or lands after this; the reconnect reconcile replaces it.
-            if (!fromCache) channelMessagesStore.failLoading(channelID, errorMessage(error))
+            channelMessagesStore.failLoading(channelID, errorMessage(error))
         } finally {
             inFlightInitial.delete(key)
         }

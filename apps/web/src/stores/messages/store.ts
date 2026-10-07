@@ -40,8 +40,6 @@ type Listener = () => void
 class ChannelMessagesStore {
     private states = new Map<string, ChannelMessagesState>()
     private listeners = new Map<string, Set<Listener>>()
-    /** Write-through for the offline cache; installed only where that cache is on. */
-    onChange?: (channelID: string, state: ChannelMessagesState) => void
     /** Subscribers to the SET of hydrated channels (membership), not their contents. */
     private hydratedListeners = new Set<Listener>()
     /** Reference-stable snapshot of hydrated channel IDs; new ref only on membership change. */
@@ -317,7 +315,6 @@ class ChannelMessagesStore {
         if (current === next) return
         this.states.set(channelID, next)
         this.listeners.get(channelID)?.forEach((listener) => listener())
-        this.onChange?.(channelID, next)
     }
 
     /**

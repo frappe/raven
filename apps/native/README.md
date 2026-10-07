@@ -149,22 +149,14 @@ that is down.
 
 ## Offline
 
-- Data at rest is kept only in the native app and an installed PWA (`offlineCacheEnabled`).
-- Per site: a Dexie database named by the site origin (users, outboxes, and the newest 20
-  messages of every visited channel or thread, written through from the message store),
-  plus the persisted SWR cache (channel list, workspaces, unread counts, profile) written
-  shortly after every change.
-- An offline cold start renders boot, the workspace, channels, unread counts, and the
-  cached messages; sends queue in the outbox and flush on reconnect; the cached windows
-  are never stamped fresh, so the freshness counter refetches them on reconnect.
 - Offline signal (`src/stores/connectionState.ts`, `src/native/reachability.ts`):
   `navigator.onLine` only covers a device with no network. Native adds the site: while the
   socket is down (a disconnect, or a first connect that takes more than 10 s) a ping to the
   site decides, every 15 s, and a failed ping marks the site unreachable after a 5 s
   debounce. Realtime being down alone never reads as offline. Coming back bumps the
   freshness counter, so views that failed while offline refetch themselves. The banner, the
-  pagination guard, and the static edge rows read `isOnline()`. Browser code never calls
-  `setSiteReachable`, so it is unchanged there.
+  pagination guard, the static edge rows and the date pill read `isOnline()`. Browser code
+  never calls `setSiteReachable`, so it is unchanged there.
 - A view that failed to load while offline (messages, threads, notifications) shows
   `OfflineState` in native, a calm "You're offline" with no retry, and reloads on reconnect.
 
@@ -245,12 +237,8 @@ therefore load through `RavenMedia` (`src/native/mediaUrl.ts`, `media.ts`):
   skips to the start itself and never stops at the end. `RangeStream` wraps both answers:
   a cached file is returned whole with an end bound, and a 206 body from the site reads
   as the whole resource. iOS answers ranges itself.
-- Eviction (`trimMediaCache`, after every message-cache flush, throttled to once a minute,
-  and once at boot): the page lists the cache folders of every cached message's file,
-  newest message first, and the plugin trims only while the folder exceeds 200 MB: folders
-  outside that list go first (oldest first), then the list from its end. The offline
-  window keeps its media from the live edge back. The trim runs from a lazily imported
-  module because the cache module opens the site-scoped database on load.
+- Eviction (`watchMediaCache`, at boot and on every return to the foreground, at most once
+  an hour): while the folder exceeds 200 MB, the plugin deletes cache folders oldest first.
 - Logout wipes `media/`.
 
 ## Insets and keyboard
