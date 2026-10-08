@@ -450,9 +450,9 @@ def make_api_call(url: str, api_key: str, api_secret: str, method: str, params: 
 	auth_header = {"Authorization": f"Basic {token}"}
 
 	if method == "GET":
-		response = requests.get(url, headers=auth_header, params=params)
+		response = requests.get(url, headers=auth_header, params=params, timeout=15)
 	elif method == "POST":
-		response = requests.post(url, headers=auth_header, json=params)
+		response = requests.post(url, headers=auth_header, json=params, timeout=15)
 
 	# Raven Cloud refuses keys that were rotated. On Frappe Cloud, get the current ones.
 	if response.status_code in (401, 403):

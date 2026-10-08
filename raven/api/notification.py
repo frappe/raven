@@ -24,6 +24,15 @@ def are_push_notifications_enabled() -> bool:
 		return False
 
 
+@frappe.whitelist(methods=["GET"])
+def get_push_notification_config() -> dict:
+	"""Return the public browser configuration after background registration finishes."""
+	settings = frappe.get_single("Raven Settings")
+	if settings.push_notification_service != "Raven":
+		return {}
+	return {"firebase_client_config": settings.config, "vapid_public_key": settings.vapid_public_key}
+
+
 @frappe.whitelist(methods=["POST"])
 def register_site_on_raven_cloud() -> None:
 	"""
@@ -53,13 +62,12 @@ def register_site() -> None:
 
 		raven_settings.config = message.get("config")
 		raven_settings.vapid_public_key = message.get("vapid_public_key")
-		# Callers check who may register: a System Manager, or the Frappe Cloud setup job.
-		raven_settings.save(ignore_permissions=True)
+		raven_settings.save()
 	else:
 		frappe.throw(_("Push notification service is not set to Raven Cloud."))
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def sync_user_tokens_to_raven_cloud():
 	"""
 	Sync all the tokens available on this site to Raven Cloud
