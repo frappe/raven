@@ -21,4 +21,15 @@ describe("native badge", () => {
         await setNativeBadge(0)
         expect(plugin.clear).toHaveBeenCalledTimes(1)
     })
+
+    it("drops a write that a newer count overtook", async () => {
+        plugin.set.mockClear()
+        plugin.clear.mockClear()
+        // Both writes wait on the plugin import; the 4 was asked for first but is now outdated.
+        const old = setNativeBadge(4)
+        await setNativeBadge(0)
+        await old
+        expect(plugin.clear).toHaveBeenCalledTimes(1)
+        expect(plugin.set).not.toHaveBeenCalled()
+    })
 })
