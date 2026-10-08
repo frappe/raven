@@ -61,16 +61,16 @@ public class MainActivity extends BridgeActivity {
         int bars = WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout();
         ViewCompat.setOnApplyWindowInsetsListener(host, (v, insets) -> {
             Insets bar = insets.getInsets(bars);
+            float density = getResources().getDisplayMetrics().density;
             // The three-button bar is tappable (gesture navigation's is not), and it ends where our bars
             // begin: give it the breathing room the home pill and the iOS home indicator have.
             if (insets.getInsets(WindowInsetsCompat.Type.tappableElement()).bottom > 0) {
-                bar = Insets.of(bar.left, bar.top, bar.right, bar.bottom + Math.round(BUTTON_BAR_GAP_DP * getResources().getDisplayMetrics().density));
+                bar = Insets.of(bar.left, bar.top, bar.right, bar.bottom + Math.round(BUTTON_BAR_GAP_DP * density));
             }
             WindowInsetsCompat consumed = new WindowInsetsCompat.Builder(insets).setInsets(bars, Insets.NONE).build();
             // Insets dispatch for the keyboard too; rewriting root variables restyles the whole page.
             if (bar.equals(lastBars)) return consumed;
             lastBars = bar;
-            float density = getResources().getDisplayMetrics().density;
             String script = String.format(Locale.ROOT,
                 "document.documentElement.style.cssText+=';--inset-top:%.1fpx;--inset-bottom:%.1fpx;--inset-left:%.1fpx;--inset-right:%.1fpx;'",
                 bar.top / density, bar.bottom / density, bar.left / density, bar.right / density);
