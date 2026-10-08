@@ -23,6 +23,8 @@ import com.getcapacitor.BridgeWebViewClient;
 public class MainActivity extends BridgeActivity {
     private ScriptHandler insetScript;
     private Insets lastBars;
+    // Space between the three-button navigation bar and the page's bottom bars.
+    private static final int BUTTON_BAR_GAP_DP = 8;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -59,6 +61,11 @@ public class MainActivity extends BridgeActivity {
         int bars = WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout();
         ViewCompat.setOnApplyWindowInsetsListener(host, (v, insets) -> {
             Insets bar = insets.getInsets(bars);
+            // The three-button bar is tappable (gesture navigation's is not), and it ends where our bars
+            // begin: give it the breathing room the home pill and the iOS home indicator have.
+            if (insets.getInsets(WindowInsetsCompat.Type.tappableElement()).bottom > 0) {
+                bar = Insets.of(bar.left, bar.top, bar.right, bar.bottom + Math.round(BUTTON_BAR_GAP_DP * getResources().getDisplayMetrics().density));
+            }
             WindowInsetsCompat consumed = new WindowInsetsCompat.Builder(insets).setInsets(bars, Insets.NONE).build();
             // Insets dispatch for the keyboard too; rewriting root variables restyles the whole page.
             if (bar.equals(lastBars)) return consumed;
