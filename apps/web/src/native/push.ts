@@ -12,15 +12,13 @@ export const NATIVE_TOKEN_KEY = "raven-native-fcm-token"
 /** Preferences key mirroring the token per site, for unsubscribing a site removed in the picker. */
 const pushTokenKey = (origin: string) => `pushToken.${origin}`
 
-/** A site taken off the device asks for nothing when it comes back. */
+/** A site taken off the device comes back undecided, like a new one. */
 export const forgetPushPreference = (url: string) => withPrefs((p) => p.remove({ key: pushWantedKey(url) }))
 
-/** Preferences key remembering that a site had push on, which a sign-out leaves behind. */
+/** Preferences key with a site's push choice: "1" on, "0" turned off in the app, absent undecided. A sign-out keeps it. */
 const pushWantedKey = (origin: string) => `pushWanted.${origin}`
-const rememberPush = (wanted: boolean) => {
-    const key = pushWantedKey(siteOrigin())
-    return withPrefs((p) => (wanted ? p.set({ key, value: "1" }) : p.remove({ key })))
-}
+const rememberPush = (wanted: boolean) =>
+    withPrefs((p) => p.set({ key: pushWantedKey(siteOrigin()), value: wanted ? "1" : "0" }))
 
 const isNativePushEnabled = () => localStorage.getItem(siteKey(NATIVE_TOKEN_KEY)) !== null
 
@@ -179,22 +177,21 @@ export const subscribeForeignSiteNotifications = (): (() => void) =>
         await shell.showNotification({ title, body, site, image: data.image || undefined, tag, data })
     }))
 
-/** Startup: refresh a rotated token for a site that already subscribed. */
-/** Push a site had on before a sign-out, which this device may still have permission for. */
-const pushWanted = async () => {
+const pushChoice = async () => {
     const { value } = await withPrefs((p) => p.get({ key: pushWantedKey(siteOrigin()) }))
-    return value === "1"
+    return value === "1" ? "on" : value === "0" ? "off" : "undecided"
 }
 
+/** Startup: turn push on where the device allows it, and refresh a rotated token where it is on. */
 export const initNativePush = () => {
     if (!isNativePushEnabled()) {
-        // Signing in again picks up where the sign-out left off, and never asks: an unanswered
-        // permission would be a prompt nobody opened settings for.
-        void pushWanted().then(async (wanted) => {
-            if (!wanted) return
+        // Allowing notifications is the opt-in: a site not turned off here gets push wherever the
+        // device allows it, and an undecided site asks the one time the system has never asked.
+        void pushChoice().then(async (choice) => {
+            if (choice === "off") return
             const { fm } = await messaging()
             const { receive } = await fm.checkPermissions()
-            if (receive === "granted") await enableNativePush()
+            if (receive === "granted" || (receive === "prompt" && choice === "undecided")) await enableNativePush()
         }).catch(() => { })
         return
     }
