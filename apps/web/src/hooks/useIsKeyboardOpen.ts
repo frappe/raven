@@ -73,6 +73,9 @@ export function useIsKeyboardOpen(editor: Editor | null, enabled = true): boolea
         let unsubscribeNative: (() => void) | undefined
         if (import.meta.env.VITE_NATIVE) import("../native/keyboard").then((m) => {
             if (disposed) return
+            // The keyboard may have opened before this listener existed.
+            nativeOpen.current = m.isNativeKeyboardOpen()
+            compute()
             unsubscribeNative = m.subscribeNativeKeyboard((isOpen) => { nativeOpen.current = isOpen; compute() })
         })
 

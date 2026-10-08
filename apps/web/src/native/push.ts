@@ -2,6 +2,7 @@ import { siteFetch, siteKey, siteOrigin } from "@lib/site"
 import { refreshTokens } from "./auth"
 import { inAppPath } from "./links"
 import { pendingPath } from "./pending"
+import { reapplyNativeBadge } from "./badge"
 import { listenNative, nativePlatform, withPrefs } from "./platform"
 import { ravenShell } from "./shell"
 import { loadSites, setDefaultSite, type Site } from "./sites"
@@ -62,6 +63,7 @@ export const enableNativePush = async (): Promise<boolean> => {
     const { fm } = await messaging()
     const { receive } = await fm.requestPermissions()
     if (receive !== "granted") return false
+    void reapplyNativeBadge()
     const { token } = await fm.getToken()
     await syncToken(token)
     await rememberPush(true).catch(() => { })

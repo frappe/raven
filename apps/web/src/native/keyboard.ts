@@ -8,9 +8,16 @@ export const subscribeNativeKeyboard = (onChange: (open: boolean, height: number
     return () => { unShow(); unHide() }
 }
 
+// Followed from app start (trackKeyboardInset), so a listener added later starts from the truth.
+let keyboardOpen = false
+export const isNativeKeyboardOpen = () => keyboardOpen
+
 // The page never resizes for the keyboard; the composer lifts itself by this variable instead.
 export const trackKeyboardInset = (): (() => void) => {
     const root = document.documentElement
-    const unsubscribe = subscribeNativeKeyboard((_open, height) => root.style.setProperty("--keyboard-height", `${height}px`))
+    const unsubscribe = subscribeNativeKeyboard((open, height) => {
+        keyboardOpen = open
+        root.style.setProperty("--keyboard-height", `${height}px`)
+    })
     return () => { unsubscribe(); root.style.removeProperty("--keyboard-height") }
 }
