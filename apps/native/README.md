@@ -198,8 +198,9 @@ that is down.
   the web keep their inputs.
 - Links (`links.ts`): the site's own `/raven/…` links route in the app; any other URL keeps
   Capacitor's default and opens in the system browser.
-- Android back (`back.ts`): a root page (footer tab or workspace home) goes to the picker
-  with the session kept; deeper pages go one step back.
+- Android back (`back.ts`): an open sheet or viewer closes first; a root page (footer tab or
+  workspace home) sends the app to the background, as Android apps do; deeper pages go one
+  step back.
 - `NativeBridge.tsx`, mounted from `AppListeners`, registers the listeners that need the
   router; the flows themselves live in their modules.
 - Haptics, badge, drawer, theme: the existing hooks branch to the plugins.
