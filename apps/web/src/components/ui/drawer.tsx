@@ -1,11 +1,32 @@
 import * as React from "react"
 import { Drawer as DrawerPrimitive } from "vaul"
 import { cn } from "@lib/utils"
+import { useHistoryBackClose } from "@hooks/useHistoryBackClose"
 
-function Drawer({ ...props }: React.ComponentProps<typeof DrawerPrimitive.Root>) {
+type OpenProps = { open?: boolean; defaultOpen?: boolean; onOpenChange?: (open: boolean) => void }
+
+/**
+ * Open state for every sheet, controlled by the caller or by its trigger, so the
+ * back button/gesture closes the sheet instead of leaving the page (useHistoryBackClose).
+ */
+const useSheetOpen = ({ open: openProp, defaultOpen, onOpenChange }: OpenProps) => {
+    const [openState, setOpenState] = React.useState(defaultOpen ?? false)
+    const open = openProp ?? openState
+    const setOpen = React.useCallback(
+        (next: boolean) => {
+            if (openProp === undefined) setOpenState(next)
+            onOpenChange?.(next)
+        },
+        [openProp, onOpenChange],
+    )
+    useHistoryBackClose(open, () => setOpen(false))
+    return { open, onOpenChange: setOpen }
+}
+
+function Drawer({ open, defaultOpen, onOpenChange, ...props }: React.ComponentProps<typeof DrawerPrimitive.Root>) {
     // vaul's Safari-toolbar fix (body position:fixed on open) shifts the whole app in a WebView.
     // vaul only skips it for installed PWAs (display-mode:standalone); this skips it for the WebView too.
-    return <DrawerPrimitive.Root data-slot="drawer" noBodyStyles={!!import.meta.env.VITE_NATIVE} {...props} />
+    return <DrawerPrimitive.Root data-slot="drawer" noBodyStyles={!!import.meta.env.VITE_NATIVE} {...props} {...useSheetOpen({ open, defaultOpen, onOpenChange })} />
 }
 
 /**
@@ -16,8 +37,8 @@ function Drawer({ ...props }: React.ComponentProps<typeof DrawerPrimitive.Root>)
  * dragging this one down reveals it again. A plain <Drawer> here would just
  * paint over the parent with no stacking relationship.
  */
-function DrawerNested({ ...props }: React.ComponentProps<typeof DrawerPrimitive.NestedRoot>) {
-    return <DrawerPrimitive.NestedRoot data-slot="drawer" {...props} />
+function DrawerNested({ open, defaultOpen, onOpenChange, ...props }: React.ComponentProps<typeof DrawerPrimitive.NestedRoot>) {
+    return <DrawerPrimitive.NestedRoot data-slot="drawer" {...props} {...useSheetOpen({ open, defaultOpen, onOpenChange })} />
 }
 
 function DrawerTrigger({ ...props }: React.ComponentProps<typeof DrawerPrimitive.Trigger>) {

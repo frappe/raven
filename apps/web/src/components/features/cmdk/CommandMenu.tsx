@@ -16,7 +16,6 @@ import SettingsList from './SettingsList'
 import QuickActions from './CommandList'
 import NavigationList from './NavigationList'
 import { commandMenuOpenAtom } from './atoms'
-import { useHistoryBackClose } from '@hooks/useHistoryBackClose'
 import { useNavigateFromDrawer } from '@hooks/useNavigateFromDrawer'
 import { useChannel } from '@hooks/useChannel'
 import { useUser } from '@hooks/useUser'
@@ -66,13 +65,6 @@ const CommandMenu = () => {
         enableOnFormTags: true,
         enableOnContentEditable: true,
     }, [open, navigate])
-
-    // MOBILE only: the open palette drawer owns the system back gesture
-    // (atom-driven overlay above the routes). Every selection closes AND
-    // navigates in one handler — the hook's history.state guard is what keeps
-    // that from popping the destination. Desktop keeps browser-back as plain
-    // navigation (no gesture problem to solve there).
-    useHistoryBackClose(isMobile && open, () => setOpen(false))
 
     if (isMobile) {
         return (
