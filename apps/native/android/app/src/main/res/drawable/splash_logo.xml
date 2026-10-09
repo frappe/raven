@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Raven glyph cropped to its ink; stroke colour follows the day/night splash palette. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="68dp" android:height="64.5dp"
+    android:viewportWidth="15.35" android:viewportHeight="14.56">
+    <group android:translateX="-6.62" android:translateY="-7.04">
+        <path android:pathData="M6.63123 8.11224C8.27607 8.11249 8.46411 8.11229 12.4665 8.11238C16.2049 8.11246 18.2131 8.13765 20.0251 10.6361C21.8372 13.1346 20.2657 16.8634 20.2657 16.8634L20.6601 18.7846C20.9296 20.0973 19.4202 21.0366 18.3615 20.2151L17.0523 19.1992C16.9106 19.0892 16.7205 19.0687 16.5536 19.1346C15.2105 19.6652 13.4971 19.746 11.9356 19.6548C9.41266 19.5074 7.69377 17.2525 7.69377 14.7253V12.733" android:strokeColor="@color/splash_foreground" android:strokeWidth="2.14084" android:fillColor="#00000000" />
+    </group>
+</vector>

@@ -36,7 +36,19 @@
 
 @custom-variant dark (&:is(.dark *));
 
-@custom-variant standalone (@media (display-mode: standalone));
+@custom-variant standalone {
+  @media (display-mode: standalone) { @slot }
+  :root.native & { @slot }
+}
+
+/* Insets the page pads itself with. Browsers and iOS read the safe area; Android native
+   overrides these inline from the system bars (MainActivity), so the page can draw under them. */
+:root {
+  --inset-top: env(safe-area-inset-top, 0px);
+  --inset-bottom: env(safe-area-inset-bottom, 0px);
+  --inset-left: env(safe-area-inset-left, 0px);
+  --inset-right: env(safe-area-inset-right, 0px);
+}
 
 /* Reading/content tier for names + list-row labels: larger on mobile (15px) than
    desktop (13px), built ONLY from existing Espresso tokens (no --text-* overrides).

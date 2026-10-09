@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import type { Editor } from "@tiptap/react"
 
 /**
@@ -14,17 +14,27 @@ import type { Editor } from "@tiptap/react"
  * shrink is a secondary signal — pure viewport math is flaky in a standalone iOS PWA (innerHeight can
  * shrink with the keyboard, and page scroll eats the gap), so it's an OR, not the source of truth.
  *
+ * In the native app the keyboard plugin's show/hide events are the only signal.
+ *
  * Pass `enabled: false` (e.g. on desktop, where the result is unused) to skip the focus +
  * visualViewport listeners entirely — it just returns false.
  */
 export function useIsKeyboardOpen(editor: Editor | null, enabled = true): boolean {
     const [open, setOpen] = useState(false)
+    // Native plugin state; the viewport gap is unreliable there (WKWebView lags, Android never resizes).
+    const nativeOpen = useRef(false)
 
     useEffect(() => {
         if (!enabled) return
         const vv = window.visualViewport
 
         const compute = () => {
+            // Native reports the keyboard itself; focus is no proof there: Android's Back closes
+            // the keyboard and leaves the editor focused.
+            if (import.meta.env.VITE_NATIVE) {
+                setOpen(nativeOpen.current)
+                return
+            }
             const gap = vv ? window.innerHeight - vv.height - vv.offsetTop : 0
             setOpen((editor?.isFocused ?? false) || gap > 120)
         }
@@ -50,13 +60,28 @@ export function useIsKeyboardOpen(editor: Editor | null, enabled = true): boolea
             }
         }
 
-        editor?.on("focus", onFocus)
-        editor?.on("blur", onBlur)
-        vv?.addEventListener("resize", compute)
-        vv?.addEventListener("scroll", compute)
+        // Focus and viewport signals are for browsers; the native app listens to the plugin below.
+        if (!import.meta.env.VITE_NATIVE) {
+            editor?.on("focus", onFocus)
+            editor?.on("blur", onBlur)
+            vv?.addEventListener("resize", compute)
+            vv?.addEventListener("scroll", compute)
+        }
         document.addEventListener("visibilitychange", onVisibilityChange)
+        // Registered after an import: an unmount before it resolves must still drop the listener.
+        let disposed = false
+        let unsubscribeNative: (() => void) | undefined
+        if (import.meta.env.VITE_NATIVE) import("../native/keyboard").then((m) => {
+            if (disposed) return
+            // The keyboard may have opened before this listener existed.
+            nativeOpen.current = m.isNativeKeyboardOpen()
+            compute()
+            unsubscribeNative = m.subscribeNativeKeyboard((isOpen) => { nativeOpen.current = isOpen; compute() })
+        })
 
         return () => {
+            disposed = true
+            unsubscribeNative?.()
             editor?.off("focus", onFocus)
             editor?.off("blur", onBlur)
             vv?.removeEventListener("resize", compute)

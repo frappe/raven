@@ -3,6 +3,7 @@ import { channelUnreadStore } from "@stores/unread/store"
 import { linkPreviewStore } from "@stores/linkPreviews/store"
 import { channelStore } from "@stores/channels/store"
 import { getConnectionEpoch, isWindowStale, markWindowFresh } from "@stores/connectionFreshness"
+import { isOnline } from "@stores/connectionState"
 import { MessagesPage } from "./types"
 
 const PAGE_SIZE = 30
@@ -140,7 +141,8 @@ export const prefetchChannel = (client: FrappeCallClient, channelID: string) => 
 }
 
 export const loadOlderMessages = async (client: FrappeCallClient, channelID: string) => {
-    if (!channelMessagesStore.beginPagination(channelID, "older")) return
+    // Offline: the stream shows a static row instead of a spinner that fails.
+    if (!isOnline() || !channelMessagesStore.beginPagination(channelID, "older")) return
     const oldestID = channelMessagesStore.getState(channelID).order[0]
     try {
         const response = await client.get<PageResponse>("raven.api.chat_stream.get_older_messages", {
@@ -156,7 +158,7 @@ export const loadOlderMessages = async (client: FrappeCallClient, channelID: str
 }
 
 export const loadNewerMessages = async (client: FrappeCallClient, channelID: string) => {
-    if (!channelMessagesStore.beginPagination(channelID, "newer")) return
+    if (!isOnline() || !channelMessagesStore.beginPagination(channelID, "newer")) return
     const state = channelMessagesStore.getState(channelID)
     const newestID = state.order[state.order.length - 1]
     try {

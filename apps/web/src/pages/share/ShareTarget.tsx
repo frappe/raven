@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react"
-import { useNavigate, useSearchParams } from "react-router-dom"
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom"
 import { useChannelList } from "@stores/channels/useChannelList"
 import { usersStore } from "@stores/usersStore"
 import { UserAvatar } from "@components/features/message/UserAvatar"
 import { PageHeader } from "@components/layout/PageHeader"
 import { Input } from "@components/ui/input"
 import { loadDraft, saveDraft } from "@components/features/ChatInput/draft"
+import { FileSummary } from "@components/features/ChatInput/InputFiles"
+import { peekSharedFiles } from "@components/features/ChatInput/sharedFiles"
+import { getAttachmentKind } from "@utils/attachmentPreview"
 import { useWorkspaces } from "@hooks/useWorkspaces"
 import type { ChannelListItem, DMChannelListItem } from "@raven/types/common/ChannelListItem"
 import type { UserData } from "@db"
@@ -22,13 +25,36 @@ import { escapeHtml } from "@utils/htmlUtils"
  *
  * Support (2026): Chromium only — Android Chrome/Edge/Samsung Internet,
  * ChromeOS, and installed PWAs on Windows. iOS Safari has no share_target, so
- * iPhones can't share INTO the app. GET/text-only by design: receiving FILES
+ * iPhones can't share INTO the web app. GET/text-only by design: receiving FILES
  * requires a POST intercepted by a service worker that controls this page,
  * and ours (scoped to /assets/) deliberately doesn't.
+ *
+ * The native app takes shares, files included, on both platforms: the shell
+ * stashes them and native/shareIn hands them to this page.
  */
 const ShareTarget = () => {
     const [params] = useSearchParams()
     const navigate = useNavigate()
+    // Native shares arrive as a stashed payload, not GET params: read it once, files queued for the composer.
+    const [nativeParams, setNativeParams] = useState<URLSearchParams | null>(null)
+    const [sharedFiles, setSharedFiles] = useState<File[]>([])
+    const isNativeShare = !!import.meta.env.VITE_NATIVE && params.get("native") === "1"
+    // location.key: a second warm share re-navigates here with identical params.
+    const { key: locationKey } = useLocation()
+    useEffect(() => {
+        if (!isNativeShare) return
+        let disposed = false
+        setNativeParams(null)
+        import("../../native/shareIn")
+            .then((m) => m.loadNativeShare())
+            .catch(() => new URLSearchParams())
+            .then((loaded) => {
+                if (disposed) return
+                setNativeParams(loaded)
+                setSharedFiles(peekSharedFiles())
+            })
+        return () => { disposed = true }
+    }, [isNativeShare, locationKey])
     const { channels, dmChannels } = useChannelList()
     const [query, setQuery] = useState("")
 
@@ -39,19 +65,25 @@ const ShareTarget = () => {
         [workspaces],
     )
 
-    const title = params.get("title")?.trim() ?? ""
-    const text = params.get("text")?.trim() ?? ""
-    const url = params.get("url")?.trim() ?? ""
+    const effective = nativeParams ?? params
+    const sharedFileCount = Number(effective.get("files") ?? 0)
+    const sharedNames = effective.get("names") ?? ""
+    const title = effective.get("title")?.trim() ?? ""
+    const text = effective.get("text")?.trim() ?? ""
+    const url = effective.get("url")?.trim() ?? ""
     // Android apps are inconsistent: many put the link in `text`, some send
     // title = text. Collapse to "one text piece + one url piece", no duplicates.
     const sharedText = text || title
     const sharedUrl = url && !sharedText.includes(url) ? url : ""
-    const hasShare = Boolean(sharedText || sharedUrl)
+    const hasShare = Boolean(sharedText || sharedUrl || sharedFileCount > 0)
+    // File names stand in for the rows only when no shared file could be read.
+    const showNames = !sharedText && !sharedUrl && !sharedFiles.length && !!sharedNames
 
-    // Nothing shared (e.g. the page was opened directly) — go home.
+    // Nothing shared (page opened directly) — go home; a native payload still loading may yet arrive.
     useEffect(() => {
+        if (isNativeShare && !nativeParams) return
         if (!hasShare) navigate("/", { replace: true })
-    }, [hasShare, navigate])
+    }, [hasShare, navigate, isNativeShare, nativeParams])
 
     // Subscribe to the users map: on a cold start at /share-target (how the OS
     // share sheet opens the app), the rows render BEFORE the users load — a
@@ -98,10 +130,19 @@ const ShareTarget = () => {
 
             <div className="space-y-2 p-3">
                 {/* What's being shared, so the user knows what will land in the draft */}
-                <div className="rounded-lg bg-surface-gray-1 px-3 py-2 text-sm text-ink-gray-7">
-                    <span className="line-clamp-2 wrap-break-word">{sharedText || sharedUrl}</span>
-                    {sharedText && sharedUrl && <span className="line-clamp-1 break-all text-ink-gray-5">{sharedUrl}</span>}
-                </div>
+                {(sharedText || sharedUrl || showNames) && (
+                    <div className="rounded-lg bg-surface-gray-1 px-3 py-2 text-sm text-ink-gray-7">
+                        <span className="line-clamp-2 wrap-break-word">{sharedText || sharedUrl}</span>
+                        {showNames && <span className="line-clamp-1 break-all text-ink-gray-7">{sharedNames}</span>}
+                        {sharedText && sharedUrl && <span className="line-clamp-1 break-all text-ink-gray-5">{sharedUrl}</span>}
+                    </div>
+                )}
+                {sharedFiles.length > 0 && (
+                    // Capped, so a big share leaves the conversation list in view.
+                    <div className="flex max-h-44 flex-col gap-2 overflow-y-auto">
+                        {sharedFiles.map((file, index) => <SharedFileRow key={index} file={file} />)}
+                    </div>
+                )}
                 <Input
                     type="search"
                     placeholder={_("Search conversations")}
@@ -152,6 +193,22 @@ const ShareTarget = () => {
                     <p className="px-4 py-8 text-center text-sm text-ink-gray-5">{_("No conversations found")}</p>
                 )}
             </div>
+        </div>
+    )
+}
+
+/** One shared file as the composer will show it, drawn from the shared bytes before anything uploads. */
+const SharedFileRow = ({ file }: { file: File }) => {
+    const [imageSrc, setImageSrc] = useState<string>()
+    useEffect(() => {
+        if (getAttachmentKind(file.name) !== "image") return
+        const url = URL.createObjectURL(file)
+        setImageSrc(url)
+        return () => URL.revokeObjectURL(url)
+    }, [file])
+    return (
+        <div className="flex items-center gap-2 rounded-md border border-outline-gray-2 p-2">
+            <FileSummary name={file.name} size={file.size} imageSrc={imageSrc} />
         </div>
     )
 }

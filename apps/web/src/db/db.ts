@@ -1,4 +1,5 @@
 import { RavenUser } from "@raven/types/Raven/RavenUser"
+import { siteKey } from "@lib/site"
 import { Dexie, type EntityTable } from "dexie"
 
 export type UserData = Pick<RavenUser, 'name' | 'full_name' | 'user_image' | 'first_name' | 'enabled' | 'type' | 'availability_status' | 'custom_status' | 'contact_number'>
@@ -59,7 +60,8 @@ export interface OutboxVisit {
     queued_at: number
 }
 
-const db = new Dexie("RavenDB") as Dexie & {
+// One database per site in native (siteKey scopes the name); the plain name in the browser.
+const db = new Dexie(siteKey("RavenDB")) as Dexie & {
     users: EntityTable<
         UserData,
         "name" // primary key "name"

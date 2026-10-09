@@ -1,3 +1,4 @@
+import { siteUrl } from "@lib/site"
 import {
     Select,
     SelectContent,
@@ -46,7 +47,7 @@ export const WorkspaceSelect = ({
                             {/* rounded (not rounded-full) matches the workspace switcher's logos;
                                 fallback shares the radius so no-logo workspaces aren't square. */}
                             <Avatar className="h-5 w-5 shrink-0 rounded-sm border border-outline-gray-2">
-                                <AvatarImage src={workspace.logo} alt={workspace.workspace_name} />
+                                <AvatarImage src={workspace.logo && siteUrl(workspace.logo)} alt={workspace.workspace_name} />
                                 <AvatarFallback className="rounded-sm text-xs bg-surface-gray-2 text-ink-gray-7">
                                     {workspace.workspace_name?.charAt(0)?.toUpperCase()}
                                 </AvatarFallback>

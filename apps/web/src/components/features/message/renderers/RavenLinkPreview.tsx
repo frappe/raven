@@ -1,3 +1,4 @@
+import { siteBaseName, siteOrigin } from "@lib/site"
 import { useCallback, useSyncExternalStore, type ReactNode } from "react"
 import { Link } from "react-router-dom"
 import { MessageSquareTextIcon } from "lucide-react"
@@ -52,10 +53,10 @@ export const matchRavenLink = (href: string): RavenLink | null => {
     } catch {
         return null
     }
-    if (url.origin !== window.location.origin) return null
+    if (url.origin !== siteOrigin()) return null
 
     // Strip the app base (/raven) — copied links always carry it.
-    const base = import.meta.env.VITE_BASE_NAME
+    const base = siteBaseName()
     let path = url.pathname
     if (base) {
         if (path !== `/${base}` && !path.startsWith(`/${base}/`)) return null

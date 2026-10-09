@@ -2,6 +2,7 @@ import { BarChart3Icon, File, FileText, Film, MessageSquareText, Music, type Luc
 import { getAttachmentKind, type AttachmentKind } from "@utils/attachmentPreview"
 import { formatBytes, getFileExtension } from "@lib/file"
 import { getFileName } from "@raven/lib/utils/operations"
+import { FileImage } from "@components/common/FileImage"
 import { type FileBearingMessage } from "../fileMessage"
 import _ from "@lib/translate"
 import type { Message } from "@raven/types/common/Message"
@@ -65,7 +66,7 @@ export const MessagePreview = ({ message }: { message: Message }) => {
         return (
             <>
                 {kind === "image" || !Icon ? (
-                    <img
+                    <FileImage
                         src={media.file_thumbnail || file}
                         alt={name}
                         loading="lazy"

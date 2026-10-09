@@ -3,7 +3,7 @@ import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from '@componen
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@components/ui/command'
 import _ from '@lib/translate'
 import { defaultFilter } from 'cmdk'
-import React, { useState } from 'react'
+import React, { useLayoutEffect, useRef, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useNavigate } from 'react-router-dom'
 import { ArrowDownIcon, ArrowUpIcon, CornerDownLeftIcon, TextSearch } from 'lucide-react'
@@ -17,7 +17,6 @@ import QuickActions from './CommandList'
 import NavigationList from './NavigationList'
 import { commandMenuOpenAtom } from './atoms'
 import { useNavigateFromDrawer } from '@hooks/useNavigateFromDrawer'
-import { useResetScrollOnSearch } from '@hooks/useResetScrollOnSearch'
 import { useChannel } from '@hooks/useChannel'
 import { useUser } from '@hooks/useUser'
 import { ChannelIcon } from '@components/common/ChannelIcon/ChannelIcon'
@@ -104,9 +103,20 @@ const CommandPalette = ({ inDrawer = false }: { inDrawer?: boolean }) => {
     // so the sheet can't get baked into the OS back-swipe screenshot.
     const navigateFromDrawer = useNavigateFromDrawer(() => setOpen(false))
     const location = useLocation()
-    // Every keystroke re-filters, but cmdk keeps the list's old scroll offset. Without
-    // this, scrolling down and typing more left the auto-selected first result above the fold.
-    const listRef = useResetScrollOnSearch(text)
+    const listRef = useRef<HTMLDivElement>(null)
+    const [selected, setSelected] = useState('')
+
+    // cmdk picks its first row before sorting the rows a new query mounts, then scrolls to that pick.
+    // Once it settles, before paint: select the real first row and pin the list to the top.
+    useLayoutEffect(() => {
+        const frame = requestAnimationFrame(() => {
+            const first = listRef.current?.querySelector('[cmdk-item=""]:not([aria-disabled="true"])')
+            const value = first?.getAttribute('data-value')
+            if (value) setSelected(value)
+            listRef.current?.scrollTo({ top: 0 })
+        })
+        return () => cancelAnimationFrame(frame)
+    }, [text])
 
     // The current channel comes from the URL, parsed by hand — NOT useParams:
     // the palette mounts at the AppShell root, and useParams only sees params
@@ -159,6 +169,8 @@ const CommandPalette = ({ inDrawer = false }: { inDrawer?: boolean }) => {
         <Command
             label="Global Command Menu"
             filter={customFilter}
+            value={selected}
+            onValueChange={setSelected}
             className={cn(PALETTE_OVERRIDES, inDrawer && "flex flex-col flex-1 min-h-0 bg-transparent")}
         >
             <CommandInput

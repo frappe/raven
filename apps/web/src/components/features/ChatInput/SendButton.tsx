@@ -137,7 +137,9 @@ const SendButton = ({
                     variant="solid"
                     loading={loading}
                     isIconButton
-                    className="rounded-full"
+                    // No OS selection or callout on the long-press. Android still drops the editor's focus
+                    // (and its keyboard) when its own long-press fires, so the send options open without it there.
+                    className="rounded-full select-none [-webkit-touch-callout:none]"
                     aria-label={autoSilent ? _("Send message silently") : _("Send message")}
                 >
                     {!loading && (autoSilent ? <BellOffIcon /> : <SendHorizontalIcon />)}

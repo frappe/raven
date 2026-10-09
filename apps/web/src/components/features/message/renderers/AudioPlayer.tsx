@@ -2,6 +2,7 @@ import { useRef, useState } from "react"
 import { Pause, Play } from "lucide-react"
 import { Button } from "@components/ui/button"
 import { Slider } from "@components/ui/slider"
+import { useFileSrc } from "@hooks/useFileSrc"
 import _ from "@lib/translate"
 
 /** Seconds → "m:ss"; guards NaN/Infinity before metadata loads. */
@@ -57,7 +58,7 @@ export const AudioPlayer = ({ src }: { src?: string }) => {
 
     return (
         <div className="flex items-center gap-2">
-            <audio src={src} {...audioProps} />
+            <audio src={useFileSrc(src)} {...audioProps} />
             <Button
                 variant="subtle"
                 theme="gray"

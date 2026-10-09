@@ -21,4 +21,4 @@
 export const TAB_PANEL = "flex min-h-0 flex-col group-data-[orientation=horizontal]/tabs:py-0"
 
 export const TAB_SCROLLER =
-	"flex-1 min-h-0 overflow-y-auto scroll-fade pb-[calc(env(safe-area-inset-bottom)+1.5rem)]"
+	"flex-1 min-h-0 overflow-y-auto scroll-fade pb-[calc(var(--inset-bottom)+1.5rem)]"

@@ -2,6 +2,7 @@ import { memo } from 'react'
 import { Virtuoso } from 'react-virtuoso'
 import { MessageSquareMore } from 'lucide-react'
 import _ from '@lib/translate'
+import { FileImage } from '@components/common/FileImage'
 import { getMessageAuthorId } from '@utils/messageUtils'
 import { formatRelativeDate } from '@lib/date'
 import { useSqliteSearch, SearchResult } from '@hooks/useSqliteSearch'
@@ -40,7 +41,7 @@ const SearchFileResults = ({ searchValue, filters, onSelect, selectedID }: Searc
     )
     const { usersById, channelById, dmById, workspaceById } = useMessageRowLookups()
 
-    if (error) return <ErrorBanner error={error} />
+    if (error) return <div className="p-3"><ErrorBanner error={error} /></div>
     if (isLoading || !results) return <MessageListSkeleton />
     if (results.length === 0) return <SearchNoResults title={_('No files found')} />
 
@@ -150,7 +151,7 @@ const FileResultRowInner = ({ file, user, channel, dmChannel, peer, workspace, o
 
                     <div className="flex gap-2 items-center mt-2">
                         {isImage && file.internal_link ? (
-                            <img
+                            <FileImage
                                 src={file.internal_link}
                                 alt={plainTitle}
                                 className="w-8 h-8 object-cover rounded border border-outline-gray-2 shrink-0 bg-surface-gray-2"

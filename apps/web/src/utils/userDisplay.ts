@@ -1,4 +1,4 @@
-import Cookies from "js-cookie"
+import { sessionUser } from "@lib/sessionUser"
 import _ from "@lib/translate"
 
 /**
@@ -14,7 +14,7 @@ let currentUserID: string | undefined
 const getCurrentUserID = (): string => {
     // Retries while empty rather than caching a miss: a cached "" would make every row
     // "not me" for the rest of the session if this ever ran before the cookie was readable.
-    if (!currentUserID) currentUserID = Cookies.get("user_id") ?? ""
+    if (!currentUserID) currentUserID = sessionUser().name
     return currentUserID
 }
 

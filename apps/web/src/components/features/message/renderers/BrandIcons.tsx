@@ -2,7 +2,7 @@ import type { CSSProperties } from "react"
 import { cn } from "@lib/utils"
 
 /**
- * Brand glyphs served by the backend (raven/public/brand_icons). Most are
+ * Brand glyphs bundled with the app (src/assets/brand_icons). Most are
  * monochrome simple-icons paths, painted in the brand colour via CSS mask
  * (an <img> can't be tinted). `color: null` = full-colour logo, rendered
  * as a plain <img>. Black brand marks (X, GitHub, Wikipedia) are painted
@@ -12,7 +12,10 @@ import { cn } from "@lib/utils"
  * behind the mask so the cutouts read white in both themes instead of
  * showing the surface behind the glyph.
  */
-const BRAND_ICON_BASE = "/assets/raven/brand_icons/"
+// Bundled, not served by the site: the native app has no site under its origin, and a
+// cross-origin mask image fails CORS.
+const ICON_URLS = import.meta.glob<string>("/src/assets/brand_icons/*.svg", { eager: true, query: "?url", import: "default" })
+const iconUrl = (file: string) => ICON_URLS[`/src/assets/brand_icons/${file}`]
 export type BrandSpec = {
     file: string
     color: string | null
@@ -70,11 +73,11 @@ export const PROVIDER_BRAND: Record<string, BrandSpec> = {
  *  silhouette, and the background paints it in the brand colour. */
 const maskStyle = (brand: BrandSpec): CSSProperties => ({
     backgroundColor: brand.color ?? undefined,
-    maskImage: `url(${BRAND_ICON_BASE}${brand.file})`,
+    maskImage: `url("${iconUrl(brand.file)}")`,
     maskRepeat: "no-repeat",
     maskPosition: "center",
     maskSize: "contain",
-    WebkitMaskImage: `url(${BRAND_ICON_BASE}${brand.file})`,
+    WebkitMaskImage: `url("${iconUrl(brand.file)}")`,
     WebkitMaskRepeat: "no-repeat",
     WebkitMaskPosition: "center",
     WebkitMaskSize: "contain",
@@ -82,7 +85,7 @@ const maskStyle = (brand: BrandSpec): CSSProperties => ({
 
 export const BrandIcon = ({ brand, className }: { brand: BrandSpec; className?: string }) => {
     if (!brand.color) {
-        return <img src={`${BRAND_ICON_BASE}${brand.file}`} alt="" className={cn("size-12", className)} />
+        return <img src={iconUrl(brand.file)} alt="" className={cn("size-12", className)} />
     }
     if (brand.counterspace) {
         return (

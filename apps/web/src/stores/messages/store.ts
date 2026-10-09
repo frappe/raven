@@ -1,4 +1,4 @@
-import Cookies from "js-cookie"
+import { sessionUser } from "@lib/sessionUser"
 import type { Message } from "@raven/types/common/Message"
 import {
     applyInitialPage,
@@ -183,7 +183,7 @@ class ChannelMessagesStore {
             // anchored on the user's own message (most visibly in threads).
             // Bot messages are the exception: a bot can post with owner set to
             // the current user, and the user didn't write those — they ARE new.
-            const currentUser = Cookies.get("user_id")
+            const currentUser = sessionUser().name
             for (const id of state.order) {
                 const message = state.byId.get(id)
                 if (!message) continue

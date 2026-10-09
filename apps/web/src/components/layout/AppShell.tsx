@@ -1,6 +1,6 @@
-import { useEffect } from "react"
+import { lazy, Suspense, useEffect } from "react"
 import { MainPageSkeleton } from "@components/features/main-page/MainPageSkeleton"
-import Cookies from "js-cookie"
+import { isLoggedIn } from "@lib/sessionUser"
 import { Alert, AlertDescription, AlertTitle } from "@components/ui/alert"
 import { Button } from "@components/ui/button"
 import { useIsMobile } from "@hooks/use-mobile"
@@ -17,6 +17,8 @@ import { useMessageRoomSubscriptions } from "@stores/messages/useMessageRoomSubs
 import { useMessagesRealtime } from "@stores/messages/useMessagesRealtime"
 import { useLinkPreviewsRealtime } from "@stores/linkPreviews/useLinkPreview"
 import { useConnectionFreshness } from "@hooks/useConnectionFreshness"
+import { useOnlineStatus } from "@stores/connectionState"
+import { cn } from "@lib/utils"
 import { useActiveSocketConnection } from "@hooks/useActiveSocketConnection"
 import { useOutboxAutoRetry } from "@stores/messages/useOutboxAutoRetry"
 import { useChannelListRealtime } from "@hooks/useChannelListRealtime"
@@ -82,8 +84,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     // logged in, and App.tsx is redirecting them to login. Render nothing so
     // the "no access" alert can't flash at them on the way out (it's meant for
     // LOGGED-IN users who genuinely lack the Raven User role).
-    const userId = Cookies.get('user_id')
-    if (!userId || userId === 'Guest') {
+    if (!isLoggedIn()) {
         return null
     }
 
@@ -148,6 +149,9 @@ const BootUnavailableScreen = () => {
         </div>
     )
 }
+
+// Native only: the ternary keeps the chunk out of browser builds entirely.
+const NativeBridge = import.meta.env.VITE_NATIVE ? lazy(() => import("../../native/NativeBridge")) : () => null
 
 const AppListeners = ({ children }: { children: React.ReactNode }) => {
 
@@ -220,6 +224,7 @@ const AppListeners = ({ children }: { children: React.ReactNode }) => {
 
     return <>
         <DocumentTitle />
+        {import.meta.env.VITE_NATIVE && <Suspense fallback={null}><NativeBridge /></Suspense>}
         {children}
         <CommandMenu />
         <AttachmentPreviewModal />
@@ -233,9 +238,16 @@ const AppListeners = ({ children }: { children: React.ReactNode }) => {
 const AppShellLayout = ({ children }: { children: React.ReactNode }) => {
 
     const isMobile = useIsMobile()
+    const online = useOnlineStatus()
+    // The banner takes the top inset while it shows, so its colour fills the status bar.
+    const banner = !online && (
+        <div className="shrink-0 bg-surface-gray-3 py-1 text-center text-sm text-ink-gray-7 standalone:pt-[calc(var(--inset-top)+0.25rem)]">{_("You're offline")}</div>
+    )
+    const topInset = online ? "standalone:pt-[var(--inset-top)]" : ""
 
     if (isMobile) {
-        return <div className="flex h-dvh flex-col overflow-hidden">
+        return <div className={cn("flex h-dvh flex-col overflow-hidden", topInset)}>
+            {banner}
             {children}
         </div>
     }
@@ -243,7 +255,8 @@ const AppShellLayout = ({ children }: { children: React.ReactNode }) => {
     return <div className="flex h-dvh overflow-hidden bg-surface-elevation-1">
         <PrimarySidebar />
         <RavenSettingsDialog />
-        <main className="flex min-w-0 flex-1 flex-col">
+        <main className={cn("flex min-w-0 flex-1 flex-col", topInset)}>
+            {banner}
             {children}
         </main>
     </div>

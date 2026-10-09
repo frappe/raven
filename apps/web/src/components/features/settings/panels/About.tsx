@@ -8,6 +8,9 @@ import {
 } from "@components/ui/settings-dialog"
 import { Separator } from "@components/ui/separator"
 import _ from "@lib/translate"
+import { siteUrl } from "@lib/site"
+// Bundled, because the app is not served from the site that holds this file.
+import ravenLogo from "@raven/public/raven_logo.svg"
 
 const LINKS = [
     { label: _("GitHub"), href: "https://github.com/frappe/raven" },
@@ -39,7 +42,7 @@ export const About = () => {
             </SettingsPanelHeader>
             <SettingsPanelContent className="min-h-0 gap-6">
                 <div className="flex items-center gap-3">
-                    <img src="/assets/raven/raven_logo.svg" alt="Raven" className="h-10 w-10" />
+                    <img src={ravenLogo} alt="Raven" className="h-10 w-10" />
                     <div className="flex flex-col">
                         <span className="text-base font-semibold text-ink-gray-9">Raven</span>
                         {versions[0]?.app === "raven" && (
@@ -81,7 +84,8 @@ export const About = () => {
 
                 <Separator />
 
-                <img src="/assets/frappe/images/frappe-comp-logo.svg" alt="Frappe" className="h-5 w-auto self-start dark:invert" />
+                {/* The Frappe app's own artwork, which only the site has. */}
+                <img src={siteUrl("/assets/frappe/images/frappe-comp-logo.svg")} alt="Frappe" className="h-5 w-auto self-start dark:invert" />
             </SettingsPanelContent>
         </>
     )

@@ -1,3 +1,4 @@
+import { siteFetch, siteOrigin } from '@lib/site'
 /**
  * Function to return extension of a file
  * @param filename name of the file with extension
@@ -76,11 +77,16 @@ export const getFileType = (ext: string) => {
  * `origin` is a parameter (not read straight off `window`) so the pure logic is
  * testable in vitest's node environment.
  */
-export const getAbsoluteFileURL = (fileURL: string, origin: string = window.location.origin): string =>
+export const getAbsoluteFileURL = (fileURL: string, origin: string = siteOrigin()): string =>
 	new URL(fileURL.split('?')[0], origin).href
 
 /** Triggers a browser download of a (session-authenticated) file URL. */
 export const downloadFile = (url: string, fileName?: string) => {
+    // WebView has no download manager; hand the file to the OS share sheet instead.
+    if (import.meta.env.VITE_NATIVE) {
+        void import('../native/share').then(({ shareFileNative }) => shareFileNative(getAbsoluteFileURL(url), fileName || url.split("/").pop() || "file"))
+        return
+    }
     const anchor = document.createElement('a')
     anchor.href = url
     anchor.download = fileName || ''
@@ -108,7 +114,7 @@ export const downloadBlob = (blob: Blob, fileName: string) => {
 /** Fetches a (session-authenticated) file URL into a File for the Web Share API. */
 const fetchAsFile = async (url: string, fileName: string): Promise<File | null> => {
     try {
-        const response = await fetch(url, { credentials: 'include' })
+        const response = await siteFetch(url)
         if (!response.ok) return null
         const blob = await response.blob()
         return new File([blob], fileName || 'file', { type: blob.type })
@@ -147,6 +153,12 @@ const attemptShare = async (data: ShareData): Promise<boolean> => {
  */
 export const shareFile = async (fileUrl: string, fileName: string): Promise<'shared' | 'copied' | 'failed'> => {
     const url = getAbsoluteFileURL(fileUrl)
+
+    if (import.meta.env.VITE_NATIVE) {
+        const { shareFileNative } = await import('../native/share')
+        // A dismissed sheet is not an error — stay silent like a completed share.
+        return (await shareFileNative(url, fileName)) === 'failed' ? 'failed' : 'shared'
+    }
 
     const file = await fetchAsFile(url, fileName)
     if (file && navigator.canShare?.({ files: [file] })) {

@@ -1,3 +1,4 @@
+import { siteOrigin, siteUrl } from "@lib/site"
 import { Fragment, useContext, useMemo, useState } from "react"
 import parse from "html-react-parser"
 import dayjs from "dayjs"
@@ -171,7 +172,7 @@ const ServerHtml = ({ html, className }: { html: string; className?: string }) =
 
 /** Fallback route when the preview (and its hook-resolved link) isn't available. */
 const defaultDocRoute = (doctype: string, docname: string) =>
-    `${window.location.origin}/desk/${slug(doctype)}/${encodeURIComponent(docname)}`
+    `${siteOrigin()}/desk/${slug(doctype)}/${encodeURIComponent(docname)}`
 
 /** One cache entry per document, shared by the card AND the composer's staged
  *  chip — the chip pre-warms exactly what the sent card will read. */
@@ -325,7 +326,7 @@ const DocumentCard = ({
                 {preview.preview_image && (
                     // Explicit square box so the image can't shift the card as it loads.
                     <img
-                        src={preview.preview_image}
+                        src={siteUrl(preview.preview_image)}
                         alt=""
                         loading="lazy"
                         className="size-10 shrink-0 rounded-md bg-surface-gray-3 object-cover"
@@ -451,7 +452,7 @@ export const DocumentPreviewSummary = ({ doctype, docname }: { doctype: string; 
             <div className="flex items-start gap-2.5">
                 {preview.preview_image && (
                     <img
-                        src={preview.preview_image}
+                        src={siteUrl(preview.preview_image)}
                         alt=""
                         loading="lazy"
                         className="size-10 shrink-0 rounded-md bg-surface-gray-3 object-cover"

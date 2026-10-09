@@ -1,7 +1,8 @@
 import { useState } from "react"
 import { NavLink, Navigate } from "react-router"
 import { toast } from "sonner"
-import { Bookmark, Bell, CalendarClock, LogOut, Sun, Moon, SunMoon, ChevronDown, Edit, SlidersHorizontal, ChevronRight } from "lucide-react"
+import { ArrowLeftRight, Bookmark, Bell, CalendarClock, LogOut, Sun, Moon, SunMoon, ChevronDown, Edit, SlidersHorizontal, ChevronRight } from "lucide-react"
+import { siteUrl } from "@lib/site"
 import useCurrentRavenUser from "@raven/lib/hooks/useCurrentRavenUser"
 import { useTheme } from "@components/theme-provider"
 import { useLogout } from "@hooks/useLogout"
@@ -174,13 +175,17 @@ const Profile = () => {
 
                 </div>
                 <div className="px-1">
+                    {/* Native: back to the site picker with the session kept. */}
+                    {import.meta.env.VITE_NATIVE && (
+                        <ProfileRow icon={ArrowLeftRight} label={_("Switch site")} onClick={() => import("../../native/session").then((m) => m.switchSite())} className="mt-4 rounded-lg" />
+                    )}
                     {/* Log out */}
                     <ProfileRow icon={LogOut} label={_("Log out")} destructive onClick={() => setConfirmLogoutOpen(true)} className="mt-4 rounded-lg" />
                 </div>
 
                 <div className="px-4 pt-10 pb-16 text-center w-full flex items-center justify-center flex-col gap-2">
                     <span className="text-base text-ink-gray-4">Raven <span className="font-numeric">v{window?.frappe?.boot.versions.raven}</span></span>
-                    <img src="/assets/frappe/images/frappe-comp-logo.svg" alt="Frappe" className="h-5 w-auto dark:invert" />
+                    <img src={siteUrl("/assets/frappe/images/frappe-comp-logo.svg")} alt="Frappe" className="h-5 w-auto dark:invert" />
                 </div>
             </div>
 

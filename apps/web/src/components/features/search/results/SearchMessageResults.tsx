@@ -30,7 +30,7 @@ const SearchMessageResults = ({ searchValue, filters, onSelect, selectedID }: Se
 
     const { usersById, channelById, dmById, workspaceById } = useMessageRowLookups()
 
-    if (error) return <ErrorBanner error={error} />
+    if (error) return <div className="p-3"><ErrorBanner error={error} /></div>
     if (isLoading || !results) return <MessageListSkeleton />
     if (results.length === 0) return <SearchNoResults title={_('No messages found')} />
 

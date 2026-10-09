@@ -1,3 +1,4 @@
+import { fileSrc, sitePath } from "@hooks/useFileSrc"
 import { useMemo, useState } from "react"
 import { Element, Text, domToReact, htmlToDOM, type DOMNode, type HTMLReactParserOptions } from "html-react-parser"
 import { UserMention, ChannelMention } from "./MessageMention"
@@ -146,12 +147,13 @@ const options: HTMLReactParserOptions = {
         // Custom emoji: an inline <img data-type="customEmoji">. Render it sized like an
         // emoji (the author class is stripped above), src-sanitized to a safe scheme.
         if (node.name === "img" && node.attribs?.["data-type"] === "customEmoji") {
-            const src = (node.attribs.src ?? "").trim()
+            // Checked after unwrapping: an address the app saved carries the real one inside.
+            const src = sitePath((node.attribs.src ?? "").trim())
             if (!SAFE_IMG_SRC.test(src)) return <></>
             const alt = node.attribs.alt ?? ""
             // `emoji` class → sized by `.tiptap .emoji` (same rule as the composer),
             // which beats `.tiptap img` on specificity. Consistent inline emoji size.
-            return <img src={src} alt={alt} title={alt} loading="lazy" className="emoji" />
+            return <img src={fileSrc(src)} alt={alt} title={alt} loading="lazy" className="emoji" />
         }
 
         // Code blocks: <pre><code class="language-xxx">…</code></pre>. Returning

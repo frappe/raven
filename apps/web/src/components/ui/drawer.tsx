@@ -24,7 +24,9 @@ const useSheetOpen = ({ open: openProp, defaultOpen, onOpenChange }: OpenProps) 
 }
 
 function Drawer({ open, defaultOpen, onOpenChange, ...props }: React.ComponentProps<typeof DrawerPrimitive.Root>) {
-    return <DrawerPrimitive.Root data-slot="drawer" {...props} {...useSheetOpen({ open, defaultOpen, onOpenChange })} />
+    // vaul's Safari-toolbar fix (body position:fixed on open) shifts the whole app in a WebView.
+    // vaul only skips it for installed PWAs (display-mode:standalone); this skips it for the WebView too.
+    return <DrawerPrimitive.Root data-slot="drawer" noBodyStyles={!!import.meta.env.VITE_NATIVE} {...props} {...useSheetOpen({ open, defaultOpen, onOpenChange })} />
 }
 
 /**
@@ -84,7 +86,10 @@ function DrawerContent({ className, children, showHandle = true, keepKeyboard = 
                     // screen, so keep content clear of the iOS home indicator by
                     // default. Callers that want edge-to-edge content (e.g. the full
                     // emoji picker) pass p-0, which wins over this.
-                    "fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-xl border-t border-outline-gray-2 bg-surface-elevation-1 outline-none pb-[env(safe-area-inset-bottom)]",
+                    "fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-xl border-t border-outline-gray-2 bg-surface-elevation-1 outline-none pb-[var(--inset-bottom)]",
+                    // The native app never resizes the page for the keyboard: a sheet that keeps it up sits on top
+                    // of it. Only the native app sets --keyboard-height; a browser resizes the page itself.
+                    keepKeyboard && "bottom-[var(--keyboard-height,0px)]",
                     className
                 )}
                 onOpenAutoFocus={(event) => {
