@@ -17,7 +17,10 @@ beforeEach(() => {
     mocks.configured.mockReturnValue(false)
 })
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+})
 
 describe("first-login push registration", () => {
     it("checks readiness even when the initial boot has no push configuration", () => {
@@ -37,6 +40,13 @@ describe("first-login push registration", () => {
         expect(options.refreshInterval({ message })).toBe(0)
         mocks.call.mockReturnValue({ data: { message } })
         expect(ReadPushAvailability()).toBe(true)
+    })
+
+    it("stops checking after a minute while setup keeps failing", () => {
+        ReadPushAvailability()
+        const options = mocks.call.mock.calls[0][3]
+        vi.spyOn(Date, "now").mockReturnValue(Date.now() + 61_000)
+        expect(options.refreshInterval(undefined)).toBe(0)
     })
 
     it("does not check a browser without push support or a site without setup", () => {

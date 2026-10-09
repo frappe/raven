@@ -9,6 +9,9 @@ interface PushConfiguration {
 const isReady = (configuration?: PushConfiguration) =>
     Boolean(configuration?.firebase_client_config && configuration?.vapid_public_key)
 
+// Background setup usually finishes in seconds. A failed setup is retried on a later page load.
+const pollUntil = Date.now() + 60_000
+
 /** Discover background registration without requiring a first-login page reload. */
 export function useIsPushNotificationEnabled(): boolean {
     const pending = window.frappe?.boot?.raven_cloud_push_setup_pending
@@ -17,7 +20,8 @@ export function useIsPushNotificationEnabled(): boolean {
         undefined,
         isPushSupportedByBrowser() && (isRavenPushConfigured() || pending) ? undefined : null,
         {
-            refreshInterval: (response) => pending && !isReady(response?.message) ? 5000 : 0,
+            refreshInterval: (response) =>
+                pending && !isReady(response?.message) && Date.now() < pollUntil ? 5000 : 0,
             revalidateOnFocus: false,
             revalidateOnReconnect: false,
             onSuccess: ({ message }) => {
