@@ -38,13 +38,9 @@ def register_site_on_raven_cloud() -> None:
 	"""
 	Register the site on Raven Cloud
 	"""
-	frappe.only_for("System Manager")
-	register_site()
-
-
-def register_site() -> None:
 	from raven.utils import make_api_call
 
+	frappe.only_for("System Manager")
 	raven_settings = frappe.get_single("Raven Settings")
 
 	if raven_settings.push_notification_service == "Raven":

@@ -454,12 +454,10 @@ def make_api_call(url: str, api_key: str, api_secret: str, method: str, params: 
 	elif method == "POST":
 		response = requests.post(url, headers=auth_header, json=params, timeout=15)
 
-	# Raven Cloud refuses keys that were rotated. On Frappe Cloud, get the current ones.
 	if response.status_code in (401, 403):
-		from raven.frappe_cloud_push import is_on_frappe_cloud_push, queue_push_setup
+		from raven.frappe_cloud_push import retry_after_refusal
 
-		if is_on_frappe_cloud_push(frappe.get_single("Raven Settings")):
-			queue_push_setup(refresh_keys=True)
+		retry_after_refusal()
 
 	# return response.json only if the response is successful
 	if not response.ok:

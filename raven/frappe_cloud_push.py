@@ -1,5 +1,6 @@
 import frappe
 import requests
+from redis.exceptions import ConnectionError as RedisConnectionError
 
 from raven.raven_cloud_notifications import get_site_name
 
@@ -10,7 +11,7 @@ ATTEMPTED_CACHE_KEY = "raven_frappe_cloud_push_attempted"
 
 
 def is_on_frappe_cloud_push(settings) -> bool:
-	"""Frappe Cloud gave this site a relay URL, and the owner did not choose Frappe's own relay."""
+	"""Frappe Cloud gave this site a relay URL, and the owner did not choose another relay."""
 	server_url = (frappe.conf.get(SERVER_URL_CONFIG_KEY) or "").rstrip("/")
 	configured_url = (settings.push_notification_server_url or "").rstrip("/")
 	return (
@@ -20,9 +21,14 @@ def is_on_frappe_cloud_push(settings) -> bool:
 	)
 
 
+def has_recent_attempt() -> bool:
+	"""An attempt for the current hostname ran within the hour. A renamed site tries at once."""
+	return bool(frappe.cache.get_value(f"{ATTEMPTED_CACHE_KEY}:{get_site_name()}"))
+
+
 def is_push_setup_pending(settings) -> bool:
-	"""No keys yet, or registered under another hostname, and no attempt within the hour."""
-	if not is_on_frappe_cloud_push(settings) or frappe.cache.get_value(ATTEMPTED_CACHE_KEY):
+	"""No keys or push settings yet, or the site has a new hostname, and no recent attempt."""
+	if not is_on_frappe_cloud_push(settings) or has_recent_attempt():
 		return False
 	return (
 		not settings.push_notification_api_key
@@ -32,16 +38,22 @@ def is_push_setup_pending(settings) -> bool:
 	)
 
 
-def queue_push_setup(*args, refresh_keys: bool = False, after_commit: bool = False) -> None:
+def queue_push_setup(after_commit: bool = False) -> None:
 	"""Runs in the background, so installs, setup and page loads do not wait."""
-	frappe.enqueue(
-		"raven.frappe_cloud_push.setup_push",
-		refresh_keys=refresh_keys,
-		queue="short",
-		job_id="raven-frappe-cloud-push",
-		deduplicate=True,
-		enqueue_after_commit=after_commit,
-	)
+	if not frappe.conf.get(SERVER_URL_CONFIG_KEY):
+		return
+
+	try:
+		frappe.enqueue(
+			"raven.frappe_cloud_push.setup_push",
+			queue="short",
+			job_id="raven-frappe-cloud-push",
+			deduplicate=True,
+			enqueue_after_commit=after_commit,
+		)
+	except RedisConnectionError:
+		# A later page load retries, so a queue outage must not fail the page.
+		frappe.logger("raven").warning("Could not queue the Raven Cloud push setup", exc_info=True)
 
 
 def queue_initial_push_setup(*args) -> None:
@@ -49,57 +61,53 @@ def queue_initial_push_setup(*args) -> None:
 	queue_push_setup(after_commit=True)
 
 
-def setup_push(refresh_keys: bool = False) -> None:
-	"""Get the team's Raven Cloud keys, then register the site's current hostname.
-	`refresh_keys` replaces keys Raven Cloud refused."""
-	user = frappe.session.user
-	# This private background integration configures the site, independent of who loaded Raven.
-	# nosemgrep: frappe-setuser -- private, fixed-site system job; no caller-controlled resource or identity.
-	frappe.set_user("Administrator")
-	try:
-		_setup_push(refresh_keys)
-	finally:
-		# nosemgrep: frappe-setuser -- restore the original identity even when setup fails.
-		frappe.set_user(user)
+def retry_after_refusal() -> None:
+	"""Raven Cloud refused the keys, for example after a rotation. Get them again, at most once an hour."""
+	if is_on_frappe_cloud_push(frappe.get_single("Raven Settings")) and not has_recent_attempt():
+		queue_push_setup()
 
 
-def _setup_push(refresh_keys: bool) -> None:
+def setup_push() -> None:
+	"""Register the site's current hostname for its team. Save the team's keys and the push settings."""
 	settings = frappe.get_single("Raven Settings")
 	if not is_on_frappe_cloud_push(settings):
 		return
 
-	# Page loads retry a failed attempt, at most once an hour.
-	frappe.cache.set_value(ATTEMPTED_CACHE_KEY, 1, expires_in_sec=60 * 60)
-	if refresh_keys or not settings.push_notification_api_key:
-		server_url = frappe.conf.get(SERVER_URL_CONFIG_KEY).rstrip("/")
-		keys = get_keys_for_team(server_url)
-		settings.push_notification_service = "Raven"
-		settings.push_notification_server_url = server_url
-		settings.push_notification_api_key = keys["api_key"]
-		settings.push_notification_api_secret = keys["api_secret"]
-		settings.save()
+	site_name = get_site_name()
+	try:
+		register_site(settings, site_name)
+	finally:
+		# Written last, because saving a default clears the cache.
+		frappe.cache.set_value(f"{ATTEMPTED_CACHE_KEY}:{site_name}", 1, expires_in_sec=60 * 60)
 
-	registered_host = frappe.db.get_default(REGISTERED_HOST_KEY)
-	if (
-		registered_host == get_site_name()
-		and not refresh_keys
-		and settings.config
-		and settings.vapid_public_key
-	):
-		return
 
-	from raven.api.notification import register_site
-	from raven.raven_cloud_notifications import sync_users_tokens_to_raven_cloud
+def register_site(settings, site_name: str) -> None:
+	"""Save the team's keys and the push settings, and send the device tokens for a new hostname."""
+	server_url = frappe.conf.get(SERVER_URL_CONFIG_KEY).rstrip("/")
+	registration = register_with_raven_cloud(server_url, site_name)
+	settings.update(
+		{
+			"push_notification_service": "Raven",
+			"push_notification_server_url": server_url,
+			"push_notification_api_key": registration["api_key"],
+			"push_notification_api_secret": registration["api_secret"],
+			"config": registration["config"],
+			"vapid_public_key": registration["vapid_public_key"],
+		}
+	)
+	# A background job runs as whoever queued it, which may be any user of the site.
+	settings.save(ignore_permissions=True)
 
-	register_site()
-	if registered_host:
-		# Raven Cloud keeps tokens by hostname, so a renamed site sends them again.
+	if frappe.db.get_default(REGISTERED_HOST_KEY) != site_name:
+		from raven.raven_cloud_notifications import sync_users_tokens_to_raven_cloud
+
+		# Raven Cloud keeps device tokens by hostname, so a new hostname sends them again.
 		sync_users_tokens_to_raven_cloud()
-	frappe.db.set_default(REGISTERED_HOST_KEY, get_site_name())
+		frappe.db.set_default(REGISTERED_HOST_KEY, site_name)
 
 
-def get_keys_for_team(server_url: str) -> dict:
-	"""Exchange a Frappe Cloud team token for the team's keys at the relay."""
+def register_with_raven_cloud(server_url: str, site_name: str) -> dict:
+	"""Exchange a Frappe Cloud team token for the team's keys and the push settings."""
 	from frappe.integrations.frappe_providers.cloud_settings import PilotClient
 
 	client = PilotClient()
@@ -108,7 +116,7 @@ def get_keys_for_team(server_url: str) -> dict:
 	)
 	response = requests.post(
 		f"{server_url}/api/method/raven_cloud.api.frappe_cloud.exchange_frappe_cloud_token",
-		json={"token": identity["token"]},
+		json={"token": identity["token"], "site_name": site_name},
 		timeout=15,
 		allow_redirects=False,
 	)
