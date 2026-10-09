@@ -5,7 +5,7 @@ import requests
 from frappe.tests import IntegrationTestCase
 from redis.exceptions import ConnectionError as RedisConnectionError
 
-from raven.api.notification import get_push_notification_config
+from raven.api.notification import get_push_notification_config, register_site_on_raven_cloud
 from raven.frappe_cloud_push import (
 	ATTEMPTED_CACHE_KEY,
 	REGISTERED_HOST_KEY,
@@ -160,6 +160,17 @@ class TestSetupPush(IntegrationTestCase):
 	def test_a_queue_outage_does_not_fail_the_page(self):
 		with patch("raven.frappe_cloud_push.frappe.enqueue", side_effect=RedisConnectionError):
 			queue_push_setup()
+
+	def test_a_system_manager_retries_a_failed_setup_at_once(self):
+		self.register.side_effect = requests.ConnectionError("Unavailable")
+		with self.assertRaises(requests.ConnectionError):
+			setup_push()
+		self.register.side_effect = None
+
+		register_site_on_raven_cloud()
+
+		self.assertEqual(self.register.call_count, 2)
+		self.assertEqual(frappe.get_single("Raven Settings").push_notification_api_key, "team-key")
 
 	def test_the_browser_configuration_contains_no_relay_credentials(self):
 		frappe.db.set_single_value(

@@ -38,10 +38,16 @@ def register_site_on_raven_cloud() -> None:
 	"""
 	Register the site on Raven Cloud
 	"""
+	from raven.frappe_cloud_push import is_on_frappe_cloud_push, setup_push
 	from raven.utils import make_api_call
 
 	frappe.only_for("System Manager")
 	raven_settings = frappe.get_single("Raven Settings")
+
+	# On Frappe Cloud, register with a new team token, which also fixes missing or refused keys.
+	if is_on_frappe_cloud_push(raven_settings):
+		setup_push()
+		return
 
 	if raven_settings.push_notification_service == "Raven":
 
