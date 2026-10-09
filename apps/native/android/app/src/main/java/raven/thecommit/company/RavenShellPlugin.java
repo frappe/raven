@@ -137,8 +137,14 @@ public class RavenShellPlugin extends Plugin {
     private JSObject readItem(Intent intent, int index) {
         JSObject item = new JSObject();
         ClipData clip = intent.getClipData();
-        Uri uri = clip != null && index < clip.getItemCount() ? clip.getItemAt(index).getUri() : null;
-        if (uri == null && index == 0) uri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
+        Uri uri;
+        if (Intent.ACTION_SEND_MULTIPLE.equals(intent.getAction())) {
+            uri = clip != null && index < clip.getItemCount() ? clip.getItemAt(index).getUri() : null;
+        } else {
+            // A single share's content is EXTRA_STREAM. Its ClipData can be only the share sheet's
+            // preview image: a link shared from Reddit or SoundCloud carries their logo there.
+            uri = index == 0 ? intent.getParcelableExtra(Intent.EXTRA_STREAM) : null;
+        }
         if (!isForeignContent(uri)) uri = null;
         String type = uri != null ? getContext().getContentResolver().getType(uri) : null;
         if (type == null) type = intent.getType();
