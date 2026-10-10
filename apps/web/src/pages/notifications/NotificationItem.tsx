@@ -287,17 +287,25 @@ const NotificationRowLayout = ({
                 <div ref={rowRef} className={rowShellClasses(isRead, isActive)}>
                     {avatar}
                     <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                            <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-1.5">
+                        {/* items-baseline, not center: a long reactor list wraps the name
+                            to two lines, and a centered date floated mid-row. */}
+                        <div className="flex items-baseline gap-2">
+                            <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
                                 <span className={cn("text-p-sm text-ink-gray-8", !isRead ? "font-semibold" : "font-medium")}>
                                     {name}
                                 </span>
-                                {channelContext}
+                                {/* Mobile: the channel context gets its OWN line (basis-full)
+                                    instead of trailing wherever the name wrap left off. */}
+                                {channelContext && <div className="min-w-0 max-md:basis-full">{channelContext}</div>}
                             </div>
-                            <span className="shrink-0 text-p-xs text-ink-gray-5">
-                                {relativeDate}
+                            {/* One group with the date: the dot's box has no text baseline
+                                of its own, so it rides the date's — centered on that line. */}
+                            <span className="flex shrink-0 items-center gap-2">
+                                <span className="text-p-xs text-ink-gray-5">
+                                    {relativeDate}
+                                </span>
+                                {!isRead && <UnreadDot className="text-p-xs" />}
                             </span>
-                            {!isRead && <UnreadDot className="text-p-xs" />}
                         </div>
                         <div className="pt-1.5">
                             {children}
@@ -324,7 +332,10 @@ const NotificationBody = ({ notification }: { notification: NotificationObject }
         return <RichTextRenderer html={notification.text} />
     }
     const teaser = getMessageTeaser({ message_type: notification.message_type, content: notification.content })
-    return <span>{teaser || _("Message")}</span>
+    // Same reading tier as .tiptap: the rich branch overrides the quote
+    // container's xs/gray styling, so the plain fallback must too, or a
+    // "📷 Photo" teaser renders smaller and dimmer than text quotes.
+    return <span className="text-p-lg md:text-p-base text-ink-gray-8">{teaser || _("Message")}</span>
 }
 
 /** Single-string template with a `{0}` placeholder for the emoji slot — keeps
