@@ -21,6 +21,7 @@ import { DocumentLinkRenderer } from "./DocumentLinkRenderer"
 import { getAttachmentKind } from "@utils/attachmentPreview"
 import { escapeHtml } from "@utils/htmlUtils"
 import { parseRepliedMessageDetails } from "@utils/messageUtils"
+import { useCustomEmojiShortcodes } from "@lib/customEmojiShortcodes"
 import type { RepliedMessageDetails } from "./RepliedMessagePreview"
 import _ from "@lib/translate"
 import { Badge } from "@components/ui/badge"
@@ -52,7 +53,8 @@ export const MessageBody = ({ content, bubble = false }: { content?: string | nu
  * MessageContent's bubble mode) aligns the pieces left or right.
  */
 const BubbledBody = ({ html }: { html: string }) => {
-    const segments = useMemo(() => parseBodySegments(html), [html])
+    const shortcodes = useCustomEmojiShortcodes(html)
+    const segments = useMemo(() => parseBodySegments(html, shortcodes), [html, shortcodes])
     return (
         <>
             {segments.map((segment, index) => (
@@ -104,11 +106,12 @@ export const EditableMessageBody = ({ message, bubble = false }: { message: Mess
  */
 const EditedMessageBody = ({ text, bubble = false }: { text: string; bubble?: boolean }) => {
     const label = `(${_("edited")})`
+    const shortcodes = useCustomEmojiShortcodes(text)
     const injected = useMemo(() => {
         const trimmed = text.trim()
-        if (!trimmed.endsWith("</p>") || isJumbomojiHtml(trimmed)) return null
+        if (!trimmed.endsWith("</p>") || isJumbomojiHtml(trimmed, shortcodes)) return null
         return `${trimmed.slice(0, -"</p>".length)}<span data-edited>${escapeHtml(label)}</span></p>`
-    }, [text, label])
+    }, [text, label, shortcodes])
 
     if (injected) return <MessageBody content={injected} bubble={bubble} />
     return (
