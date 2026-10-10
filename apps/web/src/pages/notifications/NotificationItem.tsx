@@ -9,6 +9,7 @@ import { UserAvatar } from "@components/features/message/UserAvatar"
 import { ChannelIcon } from "@components/common/ChannelIcon/ChannelIcon"
 import { formatRelativeDate } from "@lib/date"
 import { formatNameList } from "@lib/nameList"
+import { getMessageTeaser } from "@utils/messageUtils"
 import _ from "@lib/translate"
 import RichTextRenderer from "@components/features/message/renderers/RichTextRenderer"
 import type { UserData } from "@db"
@@ -308,13 +309,22 @@ const NotificationRowLayout = ({
     )
 }
 
+/** True when the HTML would paint something: any text after stripping tags, or
+ * an embedded image/video (a custom-emoji-only message is all <img>). An image
+ * message with no caption arrives as an empty <p> — truthy, renders nothing. */
+export const hasRenderableContent = (html: string) =>
+    /<(img|video)\b/i.test(html) || html.replace(/<[^>]*>/g, "").trim().length > 0
+
 /** Body preview for a notification. Prefers the rich `text` (Tiptap HTML); when
- * empty (File/Poll/Image messages, or text-less custom types) falls back to the
- * plain-text `content` field maintained server-side. */
+ * that would render BLANK (media messages with no caption, text-less custom
+ * types) falls back to the same teaser the DM list shows — 📷 Photo, 📎 file
+ * name, 📊 poll question — built from `message_type` + plain `content`. */
 const NotificationBody = ({ notification }: { notification: NotificationObject }) => {
-    if (notification.text) return <RichTextRenderer html={notification.text} />
-    if (notification.content) return <span>{notification.content}</span>
-    return <span>{_("Message")}</span>
+    if (notification.text && hasRenderableContent(notification.text)) {
+        return <RichTextRenderer html={notification.text} />
+    }
+    const teaser = getMessageTeaser({ message_type: notification.message_type, content: notification.content })
+    return <span>{teaser || _("Message")}</span>
 }
 
 /** Single-string template with a `{0}` placeholder for the emoji slot — keeps
