@@ -846,10 +846,17 @@ class RavenMessage(Document):
 					)
 				else:
 					self.publish_unread_count_event(event_type="message_deleted")
+			from frappe.search.sqlite_search import SQLiteSearchIndexMissingError
+
 			from raven.api.search import RavenSearch
 
-			search = RavenSearch()
-			search.remove_doc(self.doctype, self.name)
+			try:
+				search = RavenSearch()
+				search.remove_doc(self.doctype, self.name)
+			except SQLiteSearchIndexMissingError:
+				# No search index built yet (fresh site, CI) — nothing to remove,
+				# and a missing index must not block deleting a message.
+				pass
 
 		# delete poll if the message is of type poll after deleting the message
 		if self.message_type == "Poll":

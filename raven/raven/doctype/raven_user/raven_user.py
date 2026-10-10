@@ -120,6 +120,8 @@ class RavenUser(Document):
 		Remove the Raven User from all channels
 		"""
 		frappe.db.delete("Raven Channel Member", {"user_id": self.user})
+		# Workspace memberships link this doc; left behind they block the delete.
+		frappe.db.delete("Raven Workspace Member", {"user": self.name})
 		# Raven Reminder.user links this doc by name (not the frappe user id)
 		frappe.db.delete("Raven Reminder", {"user": self.name})
 		# Scheduled messages are owned by the frappe user. Left behind, the sweep would
