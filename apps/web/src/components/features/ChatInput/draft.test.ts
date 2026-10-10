@@ -16,6 +16,10 @@ describe("getDraftTeaser", () => {
         expect(teaserOf("<p>a <strong>b</strong> &amp; c</p>")).toBe("a b & c")
     })
 
+    it("neutralizes literal backticks so only code markers remain", () => {
+        expect(teaserOf("<p>press ` then <code>a ` b</code></p>")).toBe("press ˋ then `a ˋ b`")
+    })
+
     it("decodes escaped quotes in an emoji's alt", () => {
         // The browser serializes alt=':say"hi:' as alt=":say&quot;hi:".
         const emoji = '<img src="/files/s.png" alt=":say&quot;hi:" data-type="customEmoji" class="emoji">'

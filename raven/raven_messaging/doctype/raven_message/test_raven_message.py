@@ -22,6 +22,12 @@ class TestRavenMessage(FrappeTestCase):
 		self.assertEqual(content_of("<p>run <code>:party:</code> now</p>"), "run `:party:` now")
 		self.assertEqual(content_of("<pre><code>x = 1</code></pre>"), "`x = 1`")
 
+	def test_literal_backticks_never_read_as_code_markers(self):
+		# A backtick in the message (inside code or out) becomes the lookalike
+		# modifier grave, so the preview's marker pairing stays exact.
+		self.assertEqual(content_of("<p>press ` now</p>"), "press ˋ now")
+		self.assertEqual(content_of("<p>run <code>x ` :party:</code></p>"), "run `x ˋ :party:`")
+
 	def test_custom_emoji_in_spoiler_is_hidden(self):
 		html = f'<p><span data-spoiler="true">{EMOJI.format("party")}</span></p>'
 		self.assertEqual(content_of(html), "▒▒▒▒▒▒")

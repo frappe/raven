@@ -4,7 +4,13 @@ import {
     type CustomEmojiShortcodes,
 } from "@lib/customEmojiShortcodes"
 
-/** A `code` span: the server keeps message code in backticks (RavenMessage.parse_html_content). */
+/**
+ * A `code` span. INVARIANT: every backtick in teaser text is a code marker —
+ * producers (RavenMessage.parse_html_content, getDraftTeaser, getMessageTeaser)
+ * swap literal backticks for the lookalike modifier grave (ˋ) before adding
+ * markers, so the pairing here is exact. An unpaired marker (e.g. cut by the
+ * teaser's length clamp) falls through as plain text.
+ */
 const CODE_SPAN = /(`[^`]+`)/
 
 /** Plain-text teaser: code spans shown as code, known custom emoji `:name:`s as the emoji. */

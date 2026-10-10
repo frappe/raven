@@ -4,7 +4,7 @@ import datetime
 import json
 
 import frappe
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Comment
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import get_datetime, get_system_timezone
@@ -143,16 +143,26 @@ class RavenMessage(Document):
 		for spoiler in soup.find_all(attrs={"data-spoiler": True}):
 			spoiler.string = "▒▒▒▒▒▒"
 
+		# Backtick is the preview's code MARKER (added just below). A literal backtick
+		# in the message would read as a marker too and break the client's pairing, so
+		# swap it for the lookalike modifier grave (U+02CB) first. Previews are lossy
+		# one-liners; the swap keeps them readable everywhere.
+		if "`" in self.text:
+			for text_node in soup.find_all(string=True):
+				if "`" in text_node and not isinstance(text_node, Comment):
+					text_node.replace_with(text_node.replace("`", "ˋ"))
+
 		# Code keeps its backticks, so previews show it as code (a `:name:` in it stays text).
 		if "<code" in self.text:
 			for code in soup.find_all("code"):
 				code.string = f"`{code.get_text()}`"
 
 		# A custom emoji has no unicode character, so the plain text carries its `:name:`
-		# (clients show a known `:name:` as the emoji).
+		# (clients show a known `:name:` as the emoji). Its name gets the same backtick
+		# swap — nothing after this point may add a non-marker backtick.
 		if "customEmoji" in self.text:
 			for emoji in soup.find_all("img", attrs={"data-type": "customEmoji"}):
-				emoji.replace_with(emoji.get("alt") or "")
+				emoji.replace_with((emoji.get("alt") or "").replace("`", "ˋ"))
 
 		text_content = soup.get_text(" ", strip=True)
 

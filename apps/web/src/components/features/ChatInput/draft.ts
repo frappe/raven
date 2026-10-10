@@ -51,6 +51,10 @@ export const getDraftTeaser = (channelID: string): string => {
     const html = loadDraft(channelID)
     if (!html) return ""
     return html
+        // Backtick marks code below; a literal one in the draft would break the
+        // pairing, so swap it for the lookalike modifier grave first — same rule
+        // as the server (RavenMessage.parse_html_content).
+        .replace(/`/g, "ˋ")
         // Same plain text as a sent message's teaser: a custom emoji as its `:name:`,
         // code in backticks (see RavenMessage.parse_html_content).
         .replace(/<img [^>]*data-type="customEmoji"[^>]*>/g, (img) => ` ${img.match(/alt="([^"]*)"/)?.[1] ?? ""} `)
