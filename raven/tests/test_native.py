@@ -2,10 +2,54 @@ from contextlib import contextmanager
 from unittest.mock import patch
 
 import frappe
+import frappe.boot
+import frappe.sessions
 from frappe.tests import IntegrationTestCase
 
-from raven.api.native import APP_HEADER, APP_ORIGINS, boot, set_cors
+from raven.api.native import APP_HEADER, APP_ORIGINS, app_boot, boot, set_cors
 from raven.api.raven_mobile import MIN_APP_VERSION, NATIVE_REDIRECT_URI, get_client_id
+
+# Every boot field the app reads (apps/web: window.frappe.boot). Add one here when the app starts reading it.
+APP_READS = (
+	"user.name",
+	"user.roles",
+	"user.defaults",
+	"user.can_read",
+	"user.can_write",
+	"user.can_create",
+	"user.can_delete",
+	"user.can_cancel",
+	"user.can_search",
+	"user.can_import",
+	"user.can_export",
+	"user_info",
+	"sitename",
+	"sysdefaults",
+	"lang",
+	"__messages",
+	"versions",
+	"time_zone",
+	"max_file_size",
+	"file_chunk_size",
+	"chat_style",
+	"raven_time_format",
+	"raven_hide_read_receipts",
+	"raven_quiet_hours_nudge",
+	"quiet_hours",
+	"link_preview_blocked_domains",
+	"frappe_meet_hosted_urls",
+	"push_notification_service",
+	"vapid_public_key",
+	"firebase_client_config",
+	"server_script_enabled",
+)
+
+
+def read(boot, path):
+	"""A dotted field of a boot, None when any part is missing."""
+	for key in path.split("."):
+		boot = (boot or {}).get(key)
+	return boot
 
 
 class TestNative(IntegrationTestCase):
@@ -71,14 +115,59 @@ class TestNative(IntegrationTestCase):
 			del frappe.local.request
 
 	def test_boot_carries_session_and_raven_fields(self):
+		frappe.cache.hdel("bootinfo", "Administrator")
 		with self._request():
 			data = boot()
 		self.assertEqual(data["user"]["name"], "Administrator")
+		self.assertIn("System Manager", data["user"]["roles"])
+		self.assertIn("Administrator", data["user_info"])
 		self.assertEqual(data["sitename"], frappe.local.site)
-		self.assertIn("__messages", data)
+		self.assertIsInstance(data["lang"], str)
+		self.assertIn("system", data["time_zone"])
+		self.assertIn("raven", data["versions"])
+		self.assertIn({"app_name": "raven", "app_title": "Raven"}, data["app_data"])
 		self.assertIn("chat_style", data)
 		self.assertIn("server_script_enabled", data)
+		self.assertFalse(data["read_only"])
 		self.assertNotIn("csrf_token", data)
+		# Built for the app alone: Desk's cache stays for Desk to fill.
+		self.assertIsNone(frappe.cache.hget("bootinfo", "Administrator"))
+		frappe.as_json(data)
+
+	def test_boot_reuses_desk_boot_when_cached(self):
+		try:
+			with self._request():
+				frappe.sessions.get()
+				data = boot()
+		finally:
+			frappe.cache.hdel("bootinfo", "Administrator")
+		self.assertEqual(data["from_cache"], 1)
+		# Raven's fields come from a hook Frappe runs on every boot, cached or not.
+		self.assertIn("chat_style", data)
+		self.assertFalse(data["read_only"])
+		self.assertIn("server_script_enabled", data)
+
+	def test_app_boot_matches_desk_boot_for_what_the_app_reads(self):
+		# Fails when Frappe changes or moves a field, naming the one app_boot must follow.
+		frappe.cache.hdel("bootinfo", "Administrator")
+		try:
+			with self._request():
+				desk = frappe.sessions.get()
+		finally:
+			frappe.cache.hdel("bootinfo", "Administrator")
+		app = app_boot()
+		for field in APP_READS:
+			with self.subTest(field=field):
+				self.assertEqual(frappe.as_json(read(app, field)), frappe.as_json(read(desk, field)))
+		titles = {entry["app_name"]: entry.get("app_title") for entry in desk.get("app_data") or []}
+		for entry in app["app_data"]:
+			if entry["app_name"] in titles:
+				self.assertEqual(entry["app_title"], titles[entry["app_name"]])
+
+	def test_app_boot_falls_back_to_desk_boot_without_a_helper(self):
+		with patch.dict(frappe.boot.__dict__), patch("frappe.sessions.get", return_value={"desk": 1}):
+			del frappe.boot.__dict__["set_time_zone"]
+			self.assertEqual(app_boot(), {"desk": 1})
 
 	def test_boot_rejects_guest(self):
 		frappe.set_user("Guest")

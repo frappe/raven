@@ -35,4 +35,5 @@ def send_due_messages():
 			notify_owner_updated(doc)
 			frappe.db.commit()  # nosemgrep
 		finally:
-			frappe.set_user("Administrator")  # nosemgrep: frappe-semgrep-rules.rules.security.frappe-setuser
+			# nosemgrep: frappe-semgrep-rules.rules.security.frappe-setuser
+			frappe.set_user("Administrator")
