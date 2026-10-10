@@ -201,26 +201,34 @@ class RavenMessage(Document):
 		"""
 		Extract all user mentions from the HTML content
 		"""
+		# On an edit, a mention that survives keeps its is_read and gets no new
+		# realtime ping — rebuilding the rows from scratch re-notified users who
+		# had already viewed the mention. A mention removed and added back later
+		# is a fresh row again.
+		before = self.get_doc_before_save()
+		previous = {mention.user: mention.is_read for mention in before.mentions} if before else {}
+
 		self.mentions = []
 		unique_mentions = set()
 		for d in soup.find_all("span", attrs={"data-type": "userMention"}):
 			mention_id = d.get("data-id")
 			if mention_id and mention_id not in unique_mentions:
-				self.append("mentions", {"user": mention_id})
+				self.append("mentions", {"user": mention_id, "is_read": previous.get(mention_id, 0)})
 
-				frappe.publish_realtime(
-					"raven_mention",
-					{
-						"channel_id": self.channel_id,
-						"user_id": mention_id,
-						# The mentioned user's client adds this to its unread-notification set
-						# (badge + mark-read-on-view). Set even on insert: Frappe names the doc
-						# (set_new_name) before the before_validate/validate hooks run.
-						"message_id": self.name,
-					},
-					user=mention_id,
-					after_commit=True,
-				)
+				if mention_id not in previous:
+					frappe.publish_realtime(
+						"raven_mention",
+						{
+							"channel_id": self.channel_id,
+							"user_id": mention_id,
+							# The mentioned user's client adds this to its unread-notification set
+							# (badge + mark-read-on-view). Set even on insert: Frappe names the doc
+							# (set_new_name) before the before_validate/validate hooks run.
+							"message_id": self.name,
+						},
+						user=mention_id,
+						after_commit=True,
+					)
 				unique_mentions.add(mention_id)
 
 	def remove_empty_trailing_paragraphs(self, soup):
@@ -846,10 +854,17 @@ class RavenMessage(Document):
 					)
 				else:
 					self.publish_unread_count_event(event_type="message_deleted")
+			from frappe.search.sqlite_search import SQLiteSearchIndexMissingError
+
 			from raven.api.search import RavenSearch
 
-			search = RavenSearch()
-			search.remove_doc(self.doctype, self.name)
+			try:
+				search = RavenSearch()
+				search.remove_doc(self.doctype, self.name)
+			except SQLiteSearchIndexMissingError:
+				# No search index built yet (fresh site, CI) — nothing to remove,
+				# and a missing index must not block deleting a message.
+				pass
 
 		# delete poll if the message is of type poll after deleting the message
 		if self.message_type == "Poll":

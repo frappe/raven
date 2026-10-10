@@ -47,7 +47,9 @@ export const BaseThreadMessage = ({
                         went inert). Desktop keeps hover cards: hover never conflicts
                         with click navigation. Same rule as MessageResultBlock. */}
                     <div className="[&_p]:my-0 max-md:[&_.mention]:pointer-events-none">
-                        <MessageContent message={thread as unknown as Message} showLinkPreview={false} showLinkedDocument={false} />
+                        {/* interactivePoll off: voting belongs in the thread, not its
+                            list row — a click on the poll opens the thread instead. */}
+                        <MessageContent message={thread as unknown as Message} showLinkPreview={false} showLinkedDocument={false} interactivePoll={false} />
                     </div>
                     {/* List rows stay compact: the doctype + id line, not the full card.
                         Darker ink than the default — this line is part of the row's
