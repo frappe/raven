@@ -42,6 +42,7 @@ import { slug } from "@lib/frappe"
 import { USER_DATE_FORMAT } from "@lib/date"
 import { DocumentPrintDialog } from "./DocumentPrintDialog"
 import _ from "@lib/translate"
+import { Separator } from "@components/ui/separator"
 
 // For best-effort parsing of server-formatted dates back into dayjs (tooltips).
 dayjs.extend(customParseFormat)
@@ -332,16 +333,15 @@ const DocumentCard = ({
                     />
                 )}
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    <div className="flex items-center gap-1.5">
-                        <Badge variant="subtle" theme="gray">
-                            {doctype}
-                        </Badge>
+                    <div className="flex items-center gap-1.5 text-p-xs text-ink-gray-5">
+                        <span>{doctype}</span>
+                        <Separator orientation="vertical" className="bg-outline-gray-2 data-[orientation=vertical]:h-3.5" />
                         {preview.id && (
                             <button
                                 type="button"
                                 onClick={copyId}
                                 title={_("Copy ID")}
-                                className="cursor-copy truncate text-p-xs text-ink-gray-5"
+                                className="cursor-copy truncate text-p-xs text-ink-gray-5 px-0"
                             >
                                 {preview.id}
                             </button>

@@ -95,18 +95,23 @@ export function getMessageTeaser(lastMessageDetails: unknown, currentUser?: stri
     return body
 }
 
+// In teaser text a backtick marks code (TeaserText renders the pair as a chip).
+// File names and poll questions are arbitrary strings, so a literal backtick in
+// them must become the lookalike modifier grave — same rule as the server.
+const withoutCodeMarkers = (text: string) => text.replace(/`/g, "ˋ")
+
 const teaserBody = (details: LastMessageDetails, maxLength: number): string => {
     switch (details.message_type) {
         case "Image":
             return `📷 ${_("Photo")}`
         case "File":
-            return `📎 ${details.content?.trim() || _("File")}`
+            return `📎 ${withoutCodeMarkers(details.content?.trim() || _("File"))}`
         case "Poll": {
             // A poll message's content is "question\n1. option\n…" (built that
             // way server-side for search) — the first line IS the question,
             // which says far more than a generic "Poll".
             const question = details.content?.split("\n")[0]?.trim()
-            return `📊 ${question || _("Poll")}`
+            return `📊 ${withoutCodeMarkers(question || _("Poll"))}`
         }
         default:
             return typeof details.content === "string" && details.content.trim()
