@@ -4,7 +4,10 @@
 import frappe
 from frappe.tests.utils import FrappeTestCase
 
+EXTRA_TEST_RECORD_DEPENDENCIES = ["Raven Workspace"]
+
 EMOJI = '<img data-type="customEmoji" src="/files/x.png" alt=":{0}:" class="emoji">'
+MENTION = '<span data-type="userMention" data-id="{0}">@{0}</span>'
 
 
 def content_of(html):
@@ -34,3 +37,35 @@ class TestRavenMessage(FrappeTestCase):
 
 	def test_gif_only_message(self):
 		self.assertEqual(content_of('<p><img src="https://media.tenor.com/a.gif"></p>'), "Sent a GIF")
+
+	def test_editing_keeps_read_state_of_unchanged_mentions(self):
+		channel = frappe.get_doc(
+			{
+				"doctype": "Raven Channel",
+				"channel_name": "mention-edit-test",
+				"type": "Public",
+				"workspace": "Public Workspace",
+			}
+		).insert()
+		self.addCleanup(frappe.delete_doc, "Raven Channel", channel.name, force=True)
+
+		message = frappe.get_doc(
+			{
+				"doctype": "Raven Message",
+				"channel_id": channel.name,
+				"message_type": "Text",
+				"text": f"<p>hi {MENTION.format('test@example.com')}</p>",
+			}
+		).insert()
+
+		# The user viewed the mention, then the message gets edited.
+		frappe.db.set_value("Raven Mention", message.mentions[0].name, "is_read", 1)
+		message.reload()
+		message.text = (
+			f"<p>hello {MENTION.format('test@example.com')} {MENTION.format('test1@example.com')}</p>"
+		)
+		message.save()
+
+		read_by_user = {mention.user: mention.is_read for mention in message.mentions}
+		self.assertEqual(read_by_user["test@example.com"], 1)
+		self.assertEqual(read_by_user["test1@example.com"], 0)
