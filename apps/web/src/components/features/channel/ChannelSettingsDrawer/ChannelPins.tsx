@@ -11,6 +11,7 @@ import { formatRelativeDate } from '@lib/date'
 import { Skeleton } from '@components/ui/skeleton'
 import { errorResponseToast } from '@components/ui/error-banner'
 import { getMessageTeaser } from '@utils/messageUtils'
+import { TeaserText } from '@components/common/TeaserText'
 import { channelDrawerAtom } from '@utils/channelAtoms'
 import { messageTargetAtom, makeMessageTarget } from '@utils/channelAtoms'
 import { parsePinnedIds } from '@stores/messages/selectors'
@@ -140,7 +141,7 @@ const ChannelPins = ({ channelID }: { channelID: string }) => {
                                     {/* Plain-text teaser (content is Tiptap HTML; media pins
                                         get an icon + label) — same helper as the sidebar */}
                                     <div className="text-p-base text-ink-gray-8 line-clamp-4">
-                                        {getMessageTeaser(message, undefined, 160)}
+                                        <TeaserText text={getMessageTeaser(message, undefined, 160)} />
                                     </div>
                                 </div>
                             )
