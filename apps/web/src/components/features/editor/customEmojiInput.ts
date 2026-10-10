@@ -56,7 +56,7 @@ export const customEmojiInputTransaction = (
     transactions?: readonly Transaction[],
 ): Transaction | null => {
     const shortcodes = getDefaultStore().get(customEmojiShortcodesAtom)
-    const swaps: { from: number; to: number; src: string; shortcode: string }[] = []
+    const swaps: { from: number; to: number; src: string; shortcode: string; marks: PMNode["marks"] }[] = []
     // Emojis that weren't there before: the swaps, plus ones the picker or popup inserted.
     const added = new Set<number>()
     const scanned = new Set<number>()
@@ -73,7 +73,7 @@ export const customEmojiInputTransaction = (
                 for (const part of splitCustomEmojiShortcodes(child.text ?? "", shortcodes) ?? []) {
                     if (typeof part === "string") at += part.length
                     else {
-                        swaps.push({ from: at, to: at + part.shortcode.length, ...part })
+                        swaps.push({ from: at, to: at + part.shortcode.length, marks: child.marks, ...part })
                         added.add(at)
                         at += part.shortcode.length
                     }
@@ -97,7 +97,8 @@ export const customEmojiInputTransaction = (
     const tr = state.tr
     const type = state.schema.nodes.customEmoji
     for (const { pos, swap } of edits) {
-        if (swap) tr.replaceWith(swap.from, swap.to, type.create({ src: swap.src, alt: swap.shortcode }))
+        // The emoji keeps the replaced text's marks, so a spoilered `:name:` stays hidden.
+        if (swap) tr.replaceWith(swap.from, swap.to, type.create({ src: swap.src, alt: swap.shortcode }, null, swap.marks))
         else tr.delete(pos, pos + 1)
     }
     return tr

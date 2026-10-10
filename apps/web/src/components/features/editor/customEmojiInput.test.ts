@@ -5,9 +5,10 @@ import { EditorState } from "@tiptap/pm/state"
 import { getDefaultStore } from "jotai"
 import { customEmojiCategoriesAtom } from "@lib/emojiMart"
 import { CustomEmoji } from "./customEmoji"
+import { Spoiler } from "./spoiler"
 import { customEmojiInputTransaction, isInCode } from "./customEmojiInput"
 
-const schema = getSchema([StarterKit, CustomEmoji])
+const schema = getSchema([StarterKit, CustomEmoji, Spoiler])
 const emoji = (name: string) => schema.nodes.customEmoji.create({ src: `/files/${name}.png`, alt: `:${name}:` })
 const text = (value: string, code = false) => schema.text(value, code ? [schema.marks.code.create()] : [])
 // Casts: @tiptap/core and @tiptap/pm/state resolve to different prosemirror-model copies.
@@ -59,6 +60,23 @@ describe("customEmojiInputTransaction", () => {
 
     it("leaves a backtick typed before an existing emoji", () => {
         expect(show(run(stateOf(text("hi "), emoji("party")), (tr) => tr.insertText("`", 4)))).toBe("hi `[party]")
+    })
+
+    it("keeps the replaced text's marks on the emoji", () => {
+        // An edited message or old draft can hold <span data-spoiler>:party: secret</span>.
+        // The swap must not pull the emoji out of the spoiler.
+        const spoilered = schema.text(":party: secret", [schema.marks.spoiler.create()])
+        const state = stateOf(spoilered)
+        // No transactions: the onCreate full-document pass.
+        const follow = customEmojiInputTransaction(state)
+        const next = follow ? state.apply(follow) : state
+        const marks: Record<string, string[]> = {}
+        next.doc.descendants((node) => {
+            if (node.type.name === "customEmoji") marks.emoji = node.marks.map((mark) => mark.type.name)
+            if (node.isText) marks.text = node.marks.map((mark) => mark.type.name)
+        })
+        expect(marks.emoji).toEqual(["spoiler"])
+        expect(marks.text).toEqual(["spoiler"])
     })
 
     it("leaves :name: in inline code as text", () => {

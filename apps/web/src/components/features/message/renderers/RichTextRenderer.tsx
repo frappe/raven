@@ -56,7 +56,10 @@ const Spoiler = ({ children }: { children: React.ReactNode }) => {
                 }
             }}
         >
-            {children}
+            {/* The wrapper is what hides (visibility, in rich-text.css): bare text
+                nodes can't be targeted by CSS, and hiding the outer span would
+                take its gray block along. */}
+            <span className="message-spoiler-content">{children}</span>
         </span>
     )
 }

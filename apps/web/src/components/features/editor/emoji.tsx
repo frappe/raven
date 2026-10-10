@@ -233,15 +233,19 @@ export const EmojiSuggestion = Extension.create<EmojiSuggestionOptions>({
                 command: ({ editor, range, props }) => {
                     const native = nativeOf(props)
                     const src = srcOf(props)
+                    // The typed `:query` may carry marks (spoiler, bold, link). The emoji
+                    // keeps them — a spoilered emoji must stay hidden. insertContentAt
+                    // drops marks unless the content names them.
+                    const marks = editor.state.doc.nodeAt(range.from)?.marks.map((mark) => mark.toJSON()) ?? []
                     if (native) {
-                        editor.chain().focus().insertContentAt(range, `${native} `).run()
+                        editor.chain().focus().insertContentAt(range, [{ type: "text", text: `${native} `, marks }]).run()
                     } else if (src) {
                         editor
                             .chain()
                             .focus()
                             .insertContentAt(range, [
-                                { type: "customEmoji", attrs: { src, alt: `:${props.id}:` } },
-                                { type: "text", text: " " },
+                                { type: "customEmoji", attrs: { src, alt: `:${props.id}:` }, marks },
+                                { type: "text", text: " ", marks },
                             ])
                             .run()
                     }
