@@ -246,6 +246,24 @@ const WorkspaceSwitcher = ({ workspaceID }: { workspaceID?: string }) => {
         navigate(`/${encodeURIComponent(workspace.name)}`)
     }
 
+    // ⌘⌥↑/↓ — previous/next workspace (Discord's server-switch chord; Slack's
+    // ⌘1-9 is owned by the browser). Extends the ⌥-arrow family: ⌥ channels,
+    // ⌥⇧ unread, ⌘⌥ workspaces. Same walk rules as channel nav: the user's
+    // pinned order, no wrap, and from the list edge when off a listed one.
+    const goToAdjacentWorkspace = (direction: 1 | -1) => {
+        if (myWorkspaces.length === 0) return
+        const index = myWorkspaces.findIndex((workspace) => workspace.name === workspaceID)
+        const target =
+            index === -1
+                ? myWorkspaces[direction === 1 ? 0 : myWorkspaces.length - 1]
+                : myWorkspaces[index + direction]
+        if (target && target.name !== workspaceID) switchWorkspace(target)
+    }
+
+    const hotkeyOptions = { enableOnFormTags: true, enableOnContentEditable: true, preventDefault: true }
+    useHotkeys("mod+alt+down", () => goToAdjacentWorkspace(1), hotkeyOptions, [myWorkspaces, workspaceID])
+    useHotkeys("mod+alt+up", () => goToAdjacentWorkspace(-1), hotkeyOptions, [myWorkspaces, workspaceID])
+
     const openWorkspacesDrawer = useSetAtom(workspacesDrawerAtom)
 
     // Mobile: the same trigger opens the workspaces DRAWER (strip + unreads —
