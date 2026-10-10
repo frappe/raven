@@ -102,7 +102,11 @@ const PushNotificationFields = () => {
             <DataField
                 name="push_notification_api_key"
                 label={_("Push Notification API Key")}
-                rules={{ maxLength: { value: 140, message: _("API Key cannot be more than 140 characters.") } }}
+                isRequired
+                rules={{
+                    required: _("Please add your Push Notification API Key"),
+                    maxLength: { value: 140, message: _("API Key cannot be more than 140 characters.") },
+                }}
                 inputProps={{ placeholder: _("Your API Key"), ...NO_AUTOFILL }}
             />
             <DataField
