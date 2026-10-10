@@ -15,4 +15,10 @@ describe("getDraftTeaser", () => {
     it("strips other markup", () => {
         expect(teaserOf("<p>a <strong>b</strong> &amp; c</p>")).toBe("a b & c")
     })
+
+    it("decodes escaped quotes in an emoji's alt", () => {
+        // The browser serializes alt=':say"hi:' as alt=":say&quot;hi:".
+        const emoji = '<img src="/files/s.png" alt=":say&quot;hi:" data-type="customEmoji" class="emoji">'
+        expect(teaserOf(`<p>${emoji}</p>`)).toBe(':say"hi:')
+    })
 })

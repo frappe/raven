@@ -60,6 +60,10 @@ export const getDraftTeaser = (channelID: string): string => {
         .replace(/&amp;/g, "&")
         .replace(/&lt;/g, "<")
         .replace(/&gt;/g, ">")
+        // The browser escapes quotes in attribute values, so an emoji alt like
+        // `:say&quot;hi:` must decode back or its shortcode never matches.
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
         .replace(/\s+/g, " ")
         .trim()
 }
