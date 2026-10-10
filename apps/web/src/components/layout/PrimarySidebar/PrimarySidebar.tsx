@@ -24,6 +24,7 @@ import { useFrappeUpdateDoc } from "frappe-react-sdk"
 import useCurrentRavenUser from "@raven/lib/hooks/useCurrentRavenUser"
 import ScheduledMessagesDialog from "@components/features/schedule-send/ScheduledMessagesDialog"
 import { scheduledMessagesDialogOpenAtom, useScheduledMessagesCount } from "@components/features/schedule-send/useScheduledMessages"
+import { CloudSettingsButton } from '@components/features/settings/CloudSettingsButton'
 
 /**
  * Dropping a drag makes the browser fire ONE click on whatever ends up under
@@ -77,6 +78,7 @@ const PrimarySidebar = () => {
                     </div>
                     <ScheduledMessagesButton />
                     <LaterLink />
+                    <CloudSettingsButton />
                     <NavUserMenu />
                 </div>
             </div>

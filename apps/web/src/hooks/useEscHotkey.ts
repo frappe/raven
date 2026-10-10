@@ -11,11 +11,9 @@ const overlayOpenNow = (): boolean => {
     const store = getDefaultStore()
     if (store.get(attachmentPreviewAtom) !== null) return true
     if (store.get(messageDialogAtom) !== null) return true
-    return (
-        document.querySelector(
-            '[data-state="open"]:is([role="dialog"],[role="alertdialog"],[role="menu"],[role="listbox"])',
-        ) !== null
-    )
+    const selector = '[data-state="open"]:is([role="dialog"],[role="alertdialog"],[role="menu"],[role="listbox"])'
+    return document.querySelector(selector) !== null ||
+        document.activeElement?.shadowRoot?.querySelector(selector) != null
 }
 
 /**
@@ -66,9 +64,8 @@ export function useEscHotkey(handler: () => void, options?: EscHotkeyOptions, de
         handler,
         {
             ...options,
-            // A function, so the overlay check runs at keypress time — always
-            // current, and preventDefault never fires while a modal is open.
-            enabled: () => (options?.enabled ?? true) && !escOwnedByOverlay(),
+            // Ignore before the hotkey library applies preventDefault.
+            ignoreEventWhen: () => escOwnedByOverlay(),
         },
         deps,
     )
