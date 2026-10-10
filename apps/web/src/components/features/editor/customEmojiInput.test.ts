@@ -46,8 +46,8 @@ getDefaultStore().set(customEmojiCategoriesAtom, [
 ])
 
 describe("customEmojiInputTransaction", () => {
-    it("swaps a typed shortcode and drops the unclosed backtick before it", () => {
-        expect(show(run(stateOf(text("run `:party")), (tr) => tr.insertText(":", 12)))).toBe("run [party]")
+    it("leaves a shortcode after an unclosed backtick, so inline code can close", () => {
+        expect(show(run(stateOf(text("run `:party")), (tr) => tr.insertText(":", 12)))).toBe("run `:party:")
     })
 
     it("keeps a closed pair of backticks", () => {

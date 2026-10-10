@@ -37,7 +37,8 @@ export const CustomEmoji = Node.create({
     renderText: ({ node }) => node.attrs.alt ?? "",
 
     // A known `:name:` is always the emoji: typed, pasted, or already in a draft or a
-    // message being edited.
+    // message being edited. Exception: after an unclosed backtick it stays text, so
+    // `:name:` can be typed as inline code.
     addProseMirrorPlugins() {
         return [
             new Plugin({

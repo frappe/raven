@@ -47,8 +47,11 @@ const changedRanges = (doc: PMNode, transactions?: readonly Transaction[]): [num
 }
 
 /**
- * Swaps each known `:name:` in the changed paragraphs for its emoji (code keeps it), and
- * drops the unclosed backtick before each emoji added, as that inline code could never close.
+ * Swaps each known `:name:` in the changed paragraphs for its emoji — except in code,
+ * and except after an unclosed backtick: the writer may be typing the shortcode as
+ * inline code, so the text stays for the code input rule to close. An emoji the picker
+ * or popup inserts still drops the unclosed backtick before it, as that inline code
+ * can no longer close across the emoji.
  * Without `transactions`, checks the whole document. Null when nothing changes.
  */
 export const customEmojiInputTransaction = (
@@ -73,8 +76,12 @@ export const customEmojiInputTransaction = (
                 for (const part of splitCustomEmojiShortcodes(child.text ?? "", shortcodes) ?? []) {
                     if (typeof part === "string") at += part.length
                     else {
-                        swaps.push({ from: at, to: at + part.shortcode.length, marks: child.marks, ...part })
-                        added.add(at)
+                        // After an unclosed backtick, keep the text: the writer may be
+                        // closing `:name:` into inline code.
+                        if (unclosedBacktick(state.doc, at) === null) {
+                            swaps.push({ from: at, to: at + part.shortcode.length, marks: child.marks, ...part })
+                            added.add(at)
+                        }
                         at += part.shortcode.length
                     }
                 }
