@@ -18,10 +18,12 @@ export const customEmojiShortcodesAtom = atom<CustomEmojiShortcodes | null>((get
         for (const emoji of category.emojis) srcByName.set(emoji.id, emoji.skins[0].src)
     }
     if (!srcByName.size) return null
-    // Longest first, so a name that contains another wins. Not right after a word char
-    // or colon, so times and URLs ("10:30:", "a:b:") stay text.
+    // Longest first, so a name that contains another wins. Not right after a word
+    // char, so times and URLs ("10:30:", "a:b:") stay text — those always have a
+    // word char before the colon. A colon before is allowed: it's the closing
+    // colon of an adjacent shortcode (":party::party:").
     const names = [...srcByName.keys()].sort((a, b) => b.length - a.length).map(escapeRegExp)
-    return { pattern: new RegExp(`(?<![A-Za-z0-9_:]):(${names.join("|")}):`, "g"), srcByName }
+    return { pattern: new RegExp(`(?<![A-Za-z0-9_]):(${names.join("|")}):`, "g"), srcByName }
 })
 
 const noShortcodesAtom = atom<CustomEmojiShortcodes | null>(null)

@@ -23,6 +23,11 @@ describe("splitCustomEmojiShortcodes", () => {
         ])
     })
 
+    it("matches adjacent shortcodes", () => {
+        // Pasted or bot-sent text arrives whole; both must convert.
+        expect(splitCustomEmojiShortcodes(":party::party:", shortcodes)).toEqual([emoji("party"), emoji("party")])
+    })
+
     it("leaves unknown names, times and words before a colon as text", () => {
         expect(splitCustomEmojiShortcodes(":nope: 10:30: a:party:", shortcodes)).toBeNull()
     })
