@@ -119,9 +119,19 @@ class RavenUser(Document):
 		"""
 		Remove the Raven User from all channels
 		"""
-		frappe.db.delete("Raven Channel Member", {"user_id": self.user})
+		# Delete all non-admin channel memberships.
+		frappe.db.delete("Raven Channel Member", {"user_id": self.user, "is_admin": 0})
+
+		# Admin channel memberships need to be deleted manually since admins will be transferred
+		channel_members = frappe.get_all(
+			"Raven Channel Member", filters={"user_id": self.user, "is_admin": 1}
+		)
+		for channel_member in channel_members:
+			frappe.delete_doc("Raven Channel Member", channel_member.name, ignore_permissions=True)
 		# Workspace memberships link this doc; left behind they block the delete.
-		frappe.db.delete("Raven Workspace Member", {"user": self.name})
+		workspace_members = frappe.get_all("Raven Workspace Member", filters={"user": self.name})
+		for workspace_member in workspace_members:
+			frappe.delete_doc("Raven Workspace Member", workspace_member.name, ignore_permissions=True)
 		# Raven Reminder.user links this doc by name (not the frappe user id)
 		frappe.db.delete("Raven Reminder", {"user": self.name})
 		# Scheduled messages are owned by the frappe user. Left behind, the sweep would
