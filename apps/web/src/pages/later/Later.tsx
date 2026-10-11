@@ -141,7 +141,7 @@ const Later = () => {
                         </div>
                     </div>
 
-                    <div className="flex-1 min-h-0 px-3 md:px-0 pb-2">
+                    <div className="flex-1 min-h-0 pb-2">
                         {tab === 'saved' ? (
                             <SavedMessagesList
                                 searchQuery={search}

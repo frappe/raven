@@ -10,19 +10,22 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@components/ui/dialog"
+import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from "@components/ui/drawer"
 import { Label } from "@components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@components/ui/select"
 import LinkFieldCombobox from "@components/common/LinkFieldComboBox/LinkFieldCombobox"
 import type { DoctypeMeta } from "@hooks/useDoctypeMeta"
+import { useIsMobile } from "@hooks/use-mobile"
 import _ from "@lib/translate"
 
 const STANDARD_FORMAT = "Standard"
 
 /**
  * Print a linked document from chat: live preview (the desk /printview page in
- * an iframe) with print format, letterhead, and language pickers — defaults
- * pre-set (meta's default format, the site's default letterhead, the user's
- * language). Changing a picker just swaps the iframe URL.
+ * an iframe — the exact page a print would use, so fidelity is guaranteed)
+ * with print format, letterhead, and language pickers — defaults pre-set
+ * (meta's default format, the site's default letterhead, the user's language).
+ * Changing a picker just swaps the iframe URL.
  */
 export const DocumentPrintDialog = ({
     doctype,
@@ -78,60 +81,100 @@ export const DocumentPrintDialog = ({
     const onDownloadPdf = () =>
         window.open(`/api/method/frappe.utils.print_format.download_pdf?${buildParams("language")}`, "_blank")
 
+    const isMobile = useIsMobile()
+
+    // One set of controls for both shells. Pickers stack full-width on mobile
+    // and sit in a row on desktop.
+    const pickers = (
+        <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
+            <div className="flex flex-col gap-1 md:min-w-40">
+                <Label htmlFor="print-format">{_("Print format")}</Label>
+                <Select
+                    value={format}
+                    onValueChange={(value) => {
+                        formatTouchedRef.current = true
+                        setFormat(value)
+                    }}
+                >
+                    <SelectTrigger id="print-format" className="md:min-w-40">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {formats.map((name) => (
+                            <SelectItem key={name} value={name}>
+                                {name}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+            <div className="flex flex-col gap-1 md:min-w-40">
+                <Label>{_("Letterhead")}</Label>
+                <LinkFieldCombobox
+                    doctype="Letter Head"
+                    value={letterhead}
+                    onChange={setLetterhead}
+                    placeholder={_("Default")}
+                />
+            </div>
+            <div className="flex flex-col gap-1 md:min-w-40">
+                <Label>{_("Language")}</Label>
+                <LinkFieldCombobox doctype="Language" value={language} onChange={setLanguage} />
+            </div>
+        </div>
+    )
+
+    // key: a picker change swaps the URL and remounts the iframe — simpler
+    // and more reliable than reaching into a cross-document navigation.
+    const preview = (
+        <iframe
+            key={previewUrl}
+            src={previewUrl}
+            title={_("Print preview")}
+            className="w-full min-h-0 flex-1 rounded-md border border-outline-gray-2 bg-white"
+        />
+    )
+
+    if (isMobile) {
+        // Bottom sheet, not a centred modal: the sheet gets a fixed height so
+        // the preview takes whatever the stacked pickers leave, and the two
+        // actions split one full-width row above the home indicator.
+        return (
+            <Drawer open={open} onOpenChange={onOpenChange}>
+                <DrawerContent>
+                    <div className="flex h-[88dvh] flex-col gap-3 px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-1">
+                        <DrawerTitle className="text-left">{_("Print {0}", [docname])}</DrawerTitle>
+                        {/* sr-only: the title already carries the document name on
+                            screen; screen readers get the full purpose. */}
+                        <DrawerDescription className="sr-only">
+                            {_("Preview this {0} with a print format, letterhead and language, and download it as a PDF.", [doctype])}
+                        </DrawerDescription>
+                        {pickers}
+                        {preview}
+                        {/* No Print on a phone — printing means sharing the PDF. */}
+                        <Button className="w-full" onClick={onDownloadPdf}>
+                            <DownloadIcon />
+                            {_("Download PDF")}
+                        </Button>
+                    </div>
+                </DrawerContent>
+            </Drawer>
+        )
+    }
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="h-[85dvh] gap-3 sm:max-w-4xl">
                 <DialogHeader>
                     <DialogTitle>{_("Print {0}", [docname])}</DialogTitle>
-                    <DialogDescription>{doctype}</DialogDescription>
+                    <DialogDescription className="sr-only">
+                        {_("Preview this {0} with a print format, letterhead and language, then print it or download it as a PDF.", [doctype])}
+                    </DialogDescription>
                 </DialogHeader>
 
                 <DialogBody className="flex flex-col gap-3">
-                    <div className="flex flex-wrap items-end gap-3">
-                        <div className="flex min-w-40 flex-col gap-1">
-                            <Label htmlFor="print-format">{_("Print format")}</Label>
-                            <Select
-                                value={format}
-                                onValueChange={(value) => {
-                                    formatTouchedRef.current = true
-                                    setFormat(value)
-                                }}
-                            >
-                                <SelectTrigger id="print-format" className="min-w-40">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {formats.map((name) => (
-                                        <SelectItem key={name} value={name}>
-                                            {name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="flex min-w-40 flex-col gap-1">
-                            <Label>{_("Letterhead")}</Label>
-                            <LinkFieldCombobox
-                                doctype="Letter Head"
-                                value={letterhead}
-                                onChange={setLetterhead}
-                                placeholder={_("Default")}
-                            />
-                        </div>
-                        <div className="flex min-w-40 flex-col gap-1">
-                            <Label>{_("Language")}</Label>
-                            <LinkFieldCombobox doctype="Language" value={language} onChange={setLanguage} />
-                        </div>
-                    </div>
-
-                    {/* key: a picker change swaps the URL and remounts the iframe — simpler
-                        and more reliable than reaching into a cross-document navigation. */}
-                    <iframe
-                        key={previewUrl}
-                        src={previewUrl}
-                        title={_("Print preview")}
-                        className="w-full min-h-0 flex-1 rounded-md border border-outline-gray-2 bg-white"
-                    />
+                    {pickers}
+                    {preview}
                 </DialogBody>
 
                 <DialogFooter>
