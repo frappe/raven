@@ -3,6 +3,12 @@ from urllib.parse import urlsplit
 import frappe
 from frappe.utils.safe_exec import is_safe_exec_enabled
 
+from raven.frappe_cloud_push import (
+	is_on_frappe_cloud_push,
+	is_push_setup_pending,
+	queue_push_setup,
+)
+
 
 def boot_session(bootinfo):
 
@@ -80,6 +86,13 @@ def boot_session(bootinfo):
 			"working_hours_start": str(raven_settings.working_hours_start),
 			"working_hours_end": str(raven_settings.working_hours_end),
 		}
+
+	# On Frappe Cloud, retries a failed push setup and registers a renamed site again.
+	if is_push_setup_pending(raven_settings):
+		queue_push_setup()
+	bootinfo.raven_cloud_push_setup_pending = is_on_frappe_cloud_push(raven_settings) and (
+		not raven_settings.config or not raven_settings.vapid_public_key
+	)
 
 	bootinfo.push_notification_service = (
 		raven_settings.push_notification_service

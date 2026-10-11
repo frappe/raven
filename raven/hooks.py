@@ -89,7 +89,9 @@ extend_bootinfo = "raven.boot.boot_session"
 # ------------
 
 # before_install = "raven.install.before_install"
-after_install = "raven.install.after_install"
+# On Frappe Cloud, set push up on install and at setup, so it works from the first message.
+after_install = ["raven.install.after_install", "raven.frappe_cloud_push.queue_initial_push_setup"]
+setup_wizard_success = "raven.frappe_cloud_push.queue_initial_push_setup"
 # after_sync = ""
 
 # Uninstallation
