@@ -253,7 +253,7 @@ export default function ChatStream({ channelID, pinnedMessagesString, initialMes
                         >
                             <div className="flex min-w-0 w-full flex-col md:px-3 pb-6">
                                 {isLoading ? (
-                                    <MessageListSkeleton />
+                                    <MessageListSkeleton followsChatStyle />
                                 ) : error ? (
                                     <StreamError error={error} onRetry={jumpToLatest} />
                                 ) : blocks.length === 0 ? (
