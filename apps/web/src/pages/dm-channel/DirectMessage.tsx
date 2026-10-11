@@ -12,8 +12,10 @@ import { Button } from "@components/ui/button"
 
 export default function DirectMessage() {
     const channelID = useCurrentChannelID()
-    const { dmChannel, isLoading } = useChannel(channelID)
-    const { checking, failed, retry } = useEnsureChannel(channelID, Boolean(dmChannel))
+    const { channel, dmChannel, isLoading } = useChannel(channelID)
+    // "Found" means the store has the id, whatever its type: a group channel's id
+    // on this route is wrong, but a server lookup can't make it a DM — skip it.
+    const { checking, failed, retry } = useEnsureChannel(channelID, Boolean(channel || dmChannel))
 
     const peerUser = useUser(dmChannel?.peer_user_id || "")
 
