@@ -23,14 +23,26 @@ export const ProfilePageSkeleton = () => (
                 <Skeleton className="size-24 rounded-full" />
                 <Skeleton className="h-7 w-40" />
             </div>
-            {/* Settings rows. */}
-            <div className="flex flex-col gap-1 px-1">
-                {Array.from({ length: 5 }).map((_ignored, index) => (
-                    <div key={index} className="flex h-12 items-center gap-3 px-3">
-                        <Skeleton className="size-5 rounded-md" />
-                        <Skeleton className="h-4 rounded-sm" style={{ width: `${30 + ((index * 13) % 25)}%` }} />
-                    </div>
-                ))}
+            {/* Settings rows — mirror ProfileRow's real metrics (card group, 48px
+                rows, dividers, rounded ends) so the swap to content doesn't jump.
+                Five rows: Appearance, Push notifications, Preferences, Later,
+                Edit profile. */}
+            <div className="px-1">
+                <div className="flex flex-col divide-y divide-outline-gray-1 overflow-hidden rounded-lg">
+                    {Array.from({ length: 5 }).map((_ignored, index) => (
+                        <div key={index} className="flex h-12 items-center gap-3 bg-surface-gray-1 px-3.5">
+                            <Skeleton className="size-5 rounded-md" />
+                            <Skeleton className="h-4 rounded-sm" style={{ width: `${30 + ((index * 13) % 25)}%` }} />
+                        </div>
+                    ))}
+                </div>
+            </div>
+            {/* Log out — its own card below the group, like the real page. */}
+            <div className="px-1">
+                <div className="mt-4 flex h-12 items-center gap-3 rounded-lg bg-surface-gray-1 px-3.5">
+                    <Skeleton className="size-5 rounded-md" />
+                    <Skeleton className="h-4 w-20 rounded-sm" />
+                </div>
             </div>
         </div>
         <AppMobileFooter />

@@ -27,7 +27,9 @@ if (!config) {
 }
 
 export default {
-    '^/(app|api|assets|files|private)': {
+    // printview: the document print preview iframe (DocumentPrintDialog) —
+    // without it the dev server answers with the SPA inside the iframe.
+    '^/(app|api|assets|files|private|printview)': {
         target: `http://127.0.0.1:${webserver_port}`,
         ws: true,
         changeOrigin: true,

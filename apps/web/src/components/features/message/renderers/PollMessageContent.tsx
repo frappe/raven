@@ -41,10 +41,12 @@ const parsePollContent = (content?: string | null) => {
  * then fetches the poll's live data — so a polls channel only fetches the polls the
  * user actually sees, not every windowed message.
  */
-export const PollMessageContent = ({ message }: { message: Message }) => {
+export const PollMessageContent = ({ message, interactive = true }: { message: Message; interactive?: boolean }) => {
     const { ref, hasBeenInView } = useHasBeenInView()
     return (
-        <div ref={ref}>
+        // inert, not pointer-events-none: a non-interactive poll (list rows)
+        // must block tab focus too, and clicks fall through to the row.
+        <div ref={ref} inert={!interactive}>
             {hasBeenInView ? <LoadedPoll message={message} /> : <PollSkeleton content={message.content} />}
         </div>
     )

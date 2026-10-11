@@ -1,9 +1,11 @@
+import { useState } from 'react'
 import { WorkspaceFields } from '@hooks/useWorkspaces'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@components/ui/dropdown-menu'
 import { Button } from '@components/ui/button'
 import { EllipsisVertical, Settings } from 'lucide-react'
 import LeaveWorkspaceButton from '@components/features/workspaces/LeaveWorkspaceButton'
 import JoinWorkspaceButton from '@components/features/workspaces/JoinWorkspaceButton'
+import { LeaveWorkspaceDialog } from '@components/features/workspaces/LeaveWorkspaceDialog'
 import _ from '@lib/translate'
 
 type Props = {
@@ -14,6 +16,7 @@ type Props = {
 }
 
 const WorkspaceActions = ({ workspace, onManage }: Props) => {
+    const [confirmLeave, setConfirmLeave] = useState(false)
     return (
         <div className='flex items-center gap-2 justify-center h-full'>
             <DropdownMenu>
@@ -29,9 +32,10 @@ const WorkspaceActions = ({ workspace, onManage }: Props) => {
                             {_("Manage")}
                         </DropdownMenuItem>
                     ) : null}
-                    {workspace.workspace_member_name ? <LeaveWorkspaceButton workspace={workspace} /> : <JoinWorkspaceButton workspace={workspace} />}
+                    {workspace.workspace_member_name ? <LeaveWorkspaceButton onSelect={() => setConfirmLeave(true)} /> : <JoinWorkspaceButton workspace={workspace} />}
                 </DropdownMenuContent>
             </DropdownMenu>
+            <LeaveWorkspaceDialog workspace={confirmLeave ? workspace : null} onClose={() => setConfirmLeave(false)} />
         </div>
 
     )

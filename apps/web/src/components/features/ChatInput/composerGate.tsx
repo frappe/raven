@@ -78,8 +78,9 @@ export const useComposerGate = (
 
 export type ComposerGate = ReturnType<typeof useComposerGate>
 
-/** Placeholder while we work out whether you can post — keeps the refresh from flashing. */
-const ComposerSkeleton = () => (
+/** Placeholder while we work out whether you can post — keeps the refresh from flashing.
+ * Exported for the page skeletons, so their composer matches this one when it swaps in. */
+export const ComposerSkeleton = () => (
     <div className="md:px-3 md:pb-3 w-full">
         <div className={cn("md:h-[98px] h-14 standalone:h-20",
             "w-full animate-pulse md:rounded-lg rounded-none md:border border-t border-outline-gray-2 bg-surface-gray-1")} />
