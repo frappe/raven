@@ -8,18 +8,20 @@ import { Badge } from "@components/ui/badge"
 import { ChannelIcon } from "@components/common/ChannelIcon/ChannelIcon"
 import { useChannels } from "@stores/channels/useChannelList"
 import { channelUnreadStore } from "@stores/unread/store"
-import { useWorkspaces, type WorkspaceFields } from "@hooks/useWorkspaces"
+import { useMyWorkspaces, useSaveWorkspaceOrder, useWorkspaces, type WorkspaceFields } from "@hooks/useWorkspaces"
 import { isJoinable } from "@hooks/useWorkspaceMembership"
 import { JoinWorkspaceSheet } from "@components/features/workspaces/JoinWorkspaceSheet"
 import { LeaveWorkspaceDialog } from "@components/features/workspaces/LeaveWorkspaceDialog"
 import { WorkspaceTile } from "./WorkspaceTile"
-import { WorkspaceTileSheet } from "./WorkspaceTileSheet"
+import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core"
+import { SortableContext, arrayMove, rectSortingStrategy } from "@dnd-kit/sortable"
+import { Button } from "@components/ui/button"
 import { Plus } from "lucide-react"
-import useCurrentRavenUser from "@raven/lib/hooks/useCurrentRavenUser"
 import { lastChannelAtom, lastWorkspaceAtom } from "@utils/lastVisitedAtoms"
 import { useNavigateFromDrawer } from "@hooks/useNavigateFromDrawer"
 import { useNoDragWhileScrolled } from "@hooks/useNoDragWhileScrolled"
 import type { ChannelListItem } from "@raven/types/common/ChannelListItem"
+import { cn } from "@lib/utils"
 import _ from "@lib/translate"
 
 /**
@@ -31,7 +33,8 @@ import _ from "@lib/translate"
  * (nested workspace-rows + channel-rows always read as mush):
  *
  *  - A GRID of workspace logos on top, four to a row — v2's rail summoned on
- *    demand. Tap switches workspace, a long-press shows its options; a dot marks
+ *    demand. Tap switches workspace; a long-press starts EDIT MODE (tiles
+ *    jiggle iOS-style: drag reorders them, a badge leaves one); a dot marks
  *    workspaces with unreads; the current one is ringed. A last tile lists the
  *    workspaces you can join. Works when everything is read.
  *  - A LIST of unread channels beneath, full-width rows in the sidebar idiom,
@@ -93,7 +96,6 @@ const DrawerBody = ({ onNavigate, onClose }: {
     const noDragProps = useNoDragWhileScrolled()
     const { workspaces } = useWorkspaces()
     const { channels } = useChannels()
-    const { myProfile } = useCurrentRavenUser()
     const currentWorkspace = useAtomValue(lastWorkspaceAtom)
 
     // Re-derive rows when any unread count changes while the drawer is open
@@ -102,14 +104,8 @@ const DrawerBody = ({ onNavigate, onClose }: {
     const [unreadVersion, bumpUnreadVersion] = useReducer((version: number) => version + 1, 0)
     useEffect(() => channelUnreadStore.subscribeGlobal(bumpUnreadVersion), [])
 
-    // Workspaces in the user's pinned order (same rule as the sidebar switcher):
-    // pinned rows first (in row order), the rest in server order.
-    const myWorkspaces = useMemo(() => {
-        const members = workspaces.filter((workspace) => workspace.workspace_member_name)
-        const position = new Map((myProfile?.pinned_workspaces ?? []).map((row, index) => [row.workspace, index]))
-        if (position.size === 0) return members
-        return [...members].sort((a, b) => (position.get(a.name) ?? Infinity) - (position.get(b.name) ?? Infinity))
-    }, [workspaces, myProfile?.pinned_workspaces])
+    // Workspaces in the user's pinned order, same as the rail and the switcher.
+    const myWorkspaces = useMyWorkspaces()
 
     // One flat list: workspace pinned order, then alphabetical within it.
     const unreadRows = useMemo<UnreadRow[]>(() => {
@@ -178,9 +174,22 @@ const DrawerBody = ({ onNavigate, onClose }: {
     const joinable = useMemo(() => workspaces.filter(isJoinable), [workspaces])
     const [joinOpen, setJoinOpen] = useState(false)
 
-    // A long-pressed tile shows its options; choosing Leave asks to confirm.
-    const [pressed, setPressed] = useState<WorkspaceFields | null>(null)
+    // Long-pressing any tile puts the grid in edit mode (jiggle, drag to
+    // reorder, badge to leave); Done — or closing the drawer — ends it.
+    const [editing, setEditing] = useState(false)
     const [leaving, setLeaving] = useState<WorkspaceFields | null>(null)
+
+    const saveWorkspaceOrder = useSaveWorkspaceOrder()
+    // Distance constraint keeps badge taps as taps — a drag starts after 4px.
+    const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
+    const onDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event
+        if (!over || active.id === over.id) return
+        const oldIndex = myWorkspaces.findIndex((workspace) => workspace.name === active.id)
+        const newIndex = myWorkspaces.findIndex((workspace) => workspace.name === over.id)
+        if (oldIndex < 0 || newIndex < 0) return
+        saveWorkspaceOrder(arrayMove(myWorkspaces, oldIndex, newIndex))
+    }
     const location = useLocation()
     const afterLeave = (left: WorkspaceFields) => {
         const next = myWorkspaces.find((workspace) => workspace.name !== left.name)
@@ -199,47 +208,71 @@ const DrawerBody = ({ onNavigate, onClose }: {
 
     return (
         <div className="flex min-h-0 flex-col pb-2">
+            {/* Edit mode's exit — iOS's Done, in the corner iOS puts it. The row
+                stays mounted and animates its height so the sheet GROWS into edit
+                mode instead of jumping a row taller; inert keeps the hidden
+                button out of the tab order. */}
+            <div
+                inert={!editing}
+                className={cn(
+                    "overflow-hidden transition-all duration-200",
+                    editing ? "max-h-12 opacity-100" : "max-h-0 opacity-0",
+                )}
+            >
+                <div className="flex items-center justify-between pb-1 pl-4 pr-3">
+                    <span className="text-p-sm text-ink-gray-5">{_("Drag to reorder")}</span>
+                    <Button variant="subtle" size="sm" onClick={() => setEditing(false)}>
+                        {_("Done")}
+                    </Button>
+                </div>
+            </div>
             {/* Zone 1 — the workspace grid. WRAPS instead of scrolling: every
                 workspace stays visible (a hidden one with unreads would defeat
                 the triage job) and each keeps a fixed position (spatial memory —
                 the whole point of a switcher). Fixed FOUR columns: tiles line up
                 in a stable grid and get room for their two-line names. */}
-            <div className="grid grid-cols-4 items-start gap-1 px-3 pb-3 pt-1">
-                {myWorkspaces.map((workspace) => (
-                    <WorkspaceTile
-                        key={workspace.name}
-                        workspace={workspace}
-                        isCurrent={workspace.name === currentWorkspace}
-                        hasUnread={unreadWorkspaceIDs.has(workspace.name)}
-                        onOpen={() => openWorkspace(workspace)}
-                        onLongPress={() => setPressed(workspace)}
-                    />
-                ))}
-                {joinable.length > 0 && (
-                    <button
-                        type="button"
-                        onClick={() => setJoinOpen(true)}
-                        aria-label={_("Join a workspace")}
-                        className="flex w-full flex-col items-center rounded-lg px-1 py-2 active:bg-surface-gray-2"
+            <DndContext sensors={sensors} onDragEnd={onDragEnd}>
+                <SortableContext items={myWorkspaces.map((workspace) => workspace.name)} strategy={rectSortingStrategy}>
+                    {/* While editing, a vertical tile drag must stay a tile drag —
+                        without the attribute vaul reads it as sheet-dismiss. */}
+                    <div
+                        data-vaul-no-drag={editing ? true : undefined}
+                        className="grid grid-cols-4 items-start gap-1 px-3 pb-3 pt-1"
                     >
-                        <span className="flex size-12 items-center justify-center rounded-lg border border-dashed border-outline-gray-3 text-ink-gray-6">
-                            <Plus className="size-5" />
-                        </span>
-                    </button>
-                )}
-            </div>
+                        {myWorkspaces.map((workspace, index) => (
+                            <WorkspaceTile
+                                key={workspace.name}
+                                workspace={workspace}
+                                index={index}
+                                isCurrent={workspace.name === currentWorkspace}
+                                hasUnread={unreadWorkspaceIDs.has(workspace.name)}
+                                editing={editing}
+                                onOpen={() => openWorkspace(workspace)}
+                                onEdit={() => setEditing(true)}
+                                onRemove={() => setLeaving(workspace)}
+                            />
+                        ))}
+                        {/* Hidden while editing: it is not sortable, and a join
+                            mid-reorder would reflow the grid under a drag. */}
+                        {!editing && joinable.length > 0 && (
+                            <button
+                                type="button"
+                                onClick={() => setJoinOpen(true)}
+                                aria-label={_("Join a workspace")}
+                                className="group flex w-full flex-col items-center px-1 py-2"
+                            >
+                                {/* The press tint sits on the square, not the cell: with no label
+                                    below, a full-width tint would read wider than the tile. */}
+                                <span className="flex size-12 items-center justify-center rounded-lg border border-dashed border-outline-gray-3 text-ink-gray-6 group-active:bg-surface-gray-2">
+                                    <Plus className="size-5" />
+                                </span>
+                            </button>
+                        )}
+                    </div>
+                </SortableContext>
+            </DndContext>
             <JoinWorkspaceSheet open={joinOpen} onOpenChange={setJoinOpen} workspaces={joinable} onJoined={openWorkspace} />
-            <WorkspaceTileSheet
-                workspace={pressed}
-                onClose={() => setPressed(null)}
-                onLeave={(workspace) => {
-                    setPressed(null)
-                    setLeaving(workspace)
-                }}
-            />
             <LeaveWorkspaceDialog workspace={leaving} onClose={() => setLeaving(null)} onLeft={afterLeave} />
-
-
 
             {/* Zone 2 — unread channels, or the caught-up state. */}
             {unreadRows.length > 0 && (

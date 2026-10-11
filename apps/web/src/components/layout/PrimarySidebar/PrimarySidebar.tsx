@@ -7,7 +7,7 @@ import { Separator } from "@components/ui/separator"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@components/ui/tooltip"
 import { useUnreadNotificationsCount } from "@hooks/useNotifications"
 import { useUnreadReminderCount } from "@components/features/reminders/useReminders"
-import { useWorkspaces, type WorkspaceFields } from "@hooks/useWorkspaces"
+import { useMyWorkspaces, useSaveWorkspaceOrder, useWorkspaces, type WorkspaceFields } from "@hooks/useWorkspaces"
 import { useDMUnread, useWorkspaceUnread } from "@stores/unread/useChannelUnread"
 import { useUnreadThreadsCount } from "@stores/threads/useUnreadThreads"
 import _ from "@lib/translate"
@@ -16,12 +16,9 @@ import { useAtom, useSetAtom } from "jotai"
 import { BellIcon, BookmarkIcon, CalendarClockIcon, MessageSquareTextIcon, MoreHorizontalIcon, SearchIcon, UsersIcon } from "lucide-react"
 import { NavLink } from "react-router"
 import { settingsDialogOpenTab } from "@components/features/settings/settingsDialogAtom"
-import { useMemo } from "react"
 import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core"
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { useFrappeUpdateDoc } from "frappe-react-sdk"
-import useCurrentRavenUser from "@raven/lib/hooks/useCurrentRavenUser"
 import ScheduledMessagesDialog from "@components/features/schedule-send/ScheduledMessagesDialog"
 import { scheduledMessagesDialogOpenAtom, useScheduledMessagesCount } from "@components/features/schedule-send/useScheduledMessages"
 
@@ -234,25 +231,12 @@ const LaterLink = () => {
 const WorkspaceList = () => {
 
     const { workspaces } = useWorkspaces()
-    const { myProfile, mutate: mutateProfile } = useCurrentRavenUser()
-    const { updateDoc } = useFrappeUpdateDoc()
+    const myWorkspaces = useMyWorkspaces()
+    const saveWorkspaceOrder = useSaveWorkspaceOrder()
 
     const hasMoreWorkspaces = workspaces.some((workspace) => !workspace.workspace_member_name)
 
     const setSettingsDialogOpenTab = useSetAtom(settingsDialogOpenTab)
-
-    // Per-user order from the Raven User's pinned_workspaces child table: rows
-    // come first (in row order), workspaces NOT in the table follow in their
-    // server order — so joining a new workspace never needs a migration, it
-    // just appends until the next drag writes the full order.
-    const myWorkspaces = useMemo(() => {
-        const members = workspaces.filter((workspace) => workspace.workspace_member_name)
-        const position = new Map((myProfile?.pinned_workspaces ?? []).map((row, index) => [row.workspace, index]))
-        if (position.size === 0) return members
-        return [...members].sort(
-            (a, b) => (position.get(a.name) ?? Infinity) - (position.get(b.name) ?? Infinity),
-        )
-    }, [workspaces, myProfile?.pinned_workspaces])
 
     // Distance constraint keeps plain clicks navigating — a drag only starts
     // after 8px of travel.
@@ -262,19 +246,14 @@ const WorkspaceList = () => {
         suppressNextClick()
 
         const { active, over } = event
-        if (!over || active.id === over.id || !myProfile) return
+        if (!over || active.id === over.id) return
         const oldIndex = myWorkspaces.findIndex((workspace) => workspace.name === active.id)
         const newIndex = myWorkspaces.findIndex((workspace) => workspace.name === over.id)
         if (oldIndex < 0 || newIndex < 0) return
 
         // Persist the FULL order — after the first drag every workspace is in
         // the table, and the "extras after" rule only matters for ones joined later.
-        const order = arrayMove(myWorkspaces, oldIndex, newIndex).map((workspace) => ({ workspace: workspace.name }))
-
-        // Optimistic: the sorted list reads from the profile, so patch it locally
-        // first; revert to server truth if the save fails.
-        mutateProfile({ message: { ...myProfile, pinned_workspaces: order } as typeof myProfile }, { revalidate: false })
-        updateDoc("Raven User", myProfile.name, { pinned_workspaces: order }).catch(() => mutateProfile())
+        saveWorkspaceOrder(arrayMove(myWorkspaces, oldIndex, newIndex))
     }
 
     // The one scrolling section of the rail. no-scrollbar because a bar inside

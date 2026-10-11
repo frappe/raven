@@ -44,7 +44,7 @@ export const JoinWorkspaceSheet = ({ open, onOpenChange, workspaces, onJoined }:
                             <div className="min-w-0 flex-1">
                                 <p className="truncate text-base-medium text-ink-gray-8">{workspace.workspace_name}</p>
                                 {workspace.description && (
-                                    <p className="line-clamp-2 text-sm text-ink-gray-5">{workspace.description}</p>
+                                    <p className="line-clamp-2 text-p-sm text-ink-gray-5">{workspace.description}</p>
                                 )}
                             </div>
                             <Button
