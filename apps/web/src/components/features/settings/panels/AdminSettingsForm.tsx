@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import { useRavenSettings } from "@hooks/fetchers/useRavenSettings"
 import { hasRole } from "@lib/permissions"
 import { Alert, AlertDescription } from "@components/ui/alert"
+import { getErrorMessageAsMarkdown } from "@components/ui/error-banner"
 import { Button } from "@components/ui/button"
 import { Form } from "@components/ui/form"
 import { Spinner } from "@components/ui/spinner"
@@ -71,13 +72,21 @@ export function AdminSettingsForm({
 
     const onSubmit = (data: RavenSettings) => {
         if (!ravenSettings) return
-        toast.promise(
-            // Merge over the current doc so we only change this panel's fields.
-            updateDoc("Raven Settings", ravenSettings.name, { ...ravenSettings, ...data }).then((res) =>
-                mutate(res, { revalidate: false }),
-            ),
-            { id: SAVE_TOAST_ID, loading: _("Saving…"), success: _("Settings updated"), error: _("Could not update settings") },
-        )
+        toast.loading(_("Saving…"), { id: SAVE_TOAST_ID })
+        // Merge over the current doc so we only change this panel's fields.
+        updateDoc("Raven Settings", ravenSettings.name, { ...ravenSettings, ...data })
+            .then((res) => {
+                mutate(res, { revalidate: false })
+                toast.success(_("Settings updated"), { id: SAVE_TOAST_ID })
+            })
+            .catch((error) => {
+                // The server's own message (a validation throw names the exact
+                // field), not just a generic failure line.
+                toast.error(_("Could not update settings"), {
+                    id: SAVE_TOAST_ID,
+                    description: getErrorMessageAsMarkdown(error),
+                })
+            })
     }
 
     return (

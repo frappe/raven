@@ -9,6 +9,7 @@ import { useChannelById } from "@stores/channels/useChannelList"
 import { usersStore } from "@stores/usersStore"
 import { useWorkspaces } from "@hooks/useWorkspaces"
 import { attachmentCountLabel, getMessageTeaser } from "@utils/messageUtils"
+import { TeaserText } from "@components/common/TeaserText"
 import { useMessageBatch } from "@hooks/useMessageBatch"
 import type { ChannelListItem, DMChannelListItem } from "@raven/types/common/ChannelListItem"
 import _ from "@lib/translate"
@@ -193,7 +194,10 @@ const MessageLinkCard = ({ messageID, to, label }: { messageID: string; to: stri
                     {context && <span>{isMobile ? "" : " · "} {context}</span>}
                 </div>
                 <div className="line-clamp-2 text-p-sm text-ink-gray-7">
-                    {label ? `${senderName}: ${teaser}` : teaser}
+                    {/* The sender's name stays outside TeaserText: only the teaser holds
+                        the preview text's `:name:` shortcodes and backticked code. */}
+                    {label && `${senderName}: `}
+                    <TeaserText text={teaser} />
                 </div>
             </div>
         </CardShell>

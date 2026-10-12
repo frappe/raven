@@ -4,6 +4,11 @@ import { UserMention, ChannelMention } from "./MessageMention"
 import { CodeBlock } from "./MessageCodeBlock"
 import { MessageLink } from "./LinkPreviewCard"
 import { MAYBE_PHONE_RE, splitPhoneRuns } from "@utils/phoneDetection"
+import {
+    splitCustomEmojiShortcodes,
+    useCustomEmojiShortcodes,
+    type CustomEmojiShortcodes,
+} from "@lib/customEmojiShortcodes"
 import { cn } from "@lib/utils"
 import _ from "@lib/translate"
 
@@ -51,7 +56,10 @@ const Spoiler = ({ children }: { children: React.ReactNode }) => {
                 }
             }}
         >
-            {children}
+            {/* The wrapper is what hides (visibility, in rich-text.css): bare text
+                nodes can't be targeted by CSS, and hiding the outer span would
+                take its gray block along. */}
+            <span className="message-spoiler-content">{children}</span>
         </span>
     )
 }
@@ -90,6 +98,43 @@ const insidePhoneExemptAncestor = (node: Text): boolean => {
         parent = (parent as { parent?: Element | null }).parent ?? null
     }
     return false
+}
+
+/* ------------------------ Custom emoji shortcodes ------------------------ */
+
+/**
+ * Swap each known `:name:` in the text for the same <img> a picked custom emoji is, so
+ * everything below (sizing, jumbomoji, bubbles) treats the two alike. Not inside code.
+ */
+const swapCustomEmojiShortcodes = (nodes: DOMNode[], shortcodes: CustomEmojiShortcodes | null) => {
+    if (!shortcodes) return
+    for (let i = nodes.length - 1; i >= 0; i--) {
+        const node = nodes[i]
+        if (node instanceof Element) {
+            if (node.name !== "pre" && node.name !== "code") {
+                swapCustomEmojiShortcodes(node.children as DOMNode[], shortcodes)
+            }
+            continue
+        }
+        if (!(node instanceof Text)) continue
+        const parts = splitCustomEmojiShortcodes(node.data, shortcodes)
+        if (!parts) continue
+        const swapped = parts.map((part) => {
+            const child =
+                typeof part === "string"
+                    ? new Text(part)
+                    : new Element("img", { "data-type": "customEmoji", src: part.src, alt: part.shortcode })
+            child.parent = node.parent
+            return child
+        })
+        nodes.splice(i, 1, ...swapped)
+    }
+}
+
+const parseHtml = (html: string, shortcodes: CustomEmojiShortcodes | null): DOMNode[] => {
+    const dom = htmlToDOM(html, { lowerCaseAttributeNames: false })
+    swapCustomEmojiShortcodes(dom, shortcodes)
+    return dom
 }
 
 const options: HTMLReactParserOptions = {
@@ -268,9 +313,8 @@ const isJumbomoji = (html: string, dom: DOMNode[]): boolean => {
  * would fail the emoji-only walk above and shrink the emojis. The length
  * gate skips the parse for anything that can't be jumbomoji anyway.
  */
-export const isJumbomojiHtml = (html: string): boolean =>
-    html.length <= JUMBOMOJI_HTML_MAX_LENGTH &&
-    isJumbomoji(html, htmlToDOM(html, { lowerCaseAttributeNames: false }))
+export const isJumbomojiHtml = (html: string, shortcodes: CustomEmojiShortcodes | null = null): boolean =>
+    html.length <= JUMBOMOJI_HTML_MAX_LENGTH && isJumbomoji(html, parseHtml(html, shortcodes))
 
 /* ---------------------------- Body segments ---------------------------- */
 
@@ -315,8 +359,8 @@ const isStandaloneBlock = (node: DOMNode): boolean => {
  * blocks break the run and come back as their own bare segment. An
  * emoji-only message is one bare jumbo segment.
  */
-export const parseBodySegments = (html: string): BodySegment[] => {
-    const dom = htmlToDOM(html, { lowerCaseAttributeNames: false })
+export const parseBodySegments = (html: string, shortcodes: CustomEmojiShortcodes | null = null): BodySegment[] => {
+    const dom = parseHtml(html, shortcodes)
     if (isJumbomoji(html, dom)) {
         return [{ standalone: true, jumbo: true, node: domToReact(dom, options) }]
     }
@@ -344,15 +388,16 @@ export const parseBodySegments = (html: string): BodySegment[] => {
 }
 
 export const RichTextRenderer = ({ html, jumbomoji = false }: { html: string; jumbomoji?: boolean }) => {
+    const shortcodes = useCustomEmojiShortcodes(html)
     const { tree, jumbo } = useMemo(() => {
         // Same two steps parse() runs internally, split so ONE parsed DOM feeds
         // both the React conversion and the jumbomoji check (no second parse).
-        const dom = htmlToDOM(html, { lowerCaseAttributeNames: false })
+        const dom = parseHtml(html, shortcodes)
         return {
             tree: domToReact(dom, options),
             jumbo: jumbomoji && isJumbomoji(html, dom),
         }
-    }, [html, jumbomoji])
+    }, [html, jumbomoji, shortcodes])
     return <div className={cn("tiptap", jumbo && "tiptap--jumbomoji")}>{tree}</div>
 }
 

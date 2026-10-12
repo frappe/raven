@@ -36,12 +36,14 @@ class TestInviteUser(IntegrationTestCase):
 
 	def tearDown(self):
 		frappe.set_user("Administrator")
-		for email in ("invitee@example.com",):
-			if frappe.db.exists("User", email):
-				frappe.delete_doc("User", email, force=True)
+		# Workspaces first: deleting them clears their member rows, so the
+		# invitee's Raven User has no links left when the User goes.
 		self.channel.delete()
 		self.workspace.delete()
 		self.other_workspace.delete()
+		for email in ("invitee@example.com",):
+			if frappe.db.exists("User", email):
+				frappe.delete_doc("User", email, force=True)
 
 	def _is_member(self, user, workspace):
 		return bool(frappe.db.exists("Raven Workspace Member", {"workspace": workspace, "user": user}))

@@ -5,7 +5,8 @@ from frappe.tests import IntegrationTestCase
 
 from raven.api.chat_stream import get_messages, get_newer_messages, get_older_messages
 
-CHANNEL_ID = "Public Workspace-test-channel"
+# Channel autoname slugs the workspace: "Public Workspace" + "Test Channel".
+CHANNEL_ID = "public-workspace-test-channel"
 
 EXTRA_TEST_RECORD_DEPENDENCIES = ["Raven Workspace"]
 

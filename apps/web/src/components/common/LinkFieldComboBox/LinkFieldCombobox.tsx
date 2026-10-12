@@ -339,8 +339,10 @@ const LinkFieldCombobox = ({
             disabled={disabled}
             aria-expanded={open}
             className={cn(FILTER_TRIGGER_STYLES, "w-full disabled:pointer-events-auto", showClear && "pr-7", readOnly && "text-ink-gray-5", buttonClassName)}>
-            <span className={cn("min-w-0 flex-1 truncate text-left", !value && "text-ink-gray-4")}>
-                {value || placeholder}
+            {/* linkTitle, like the form branch: a doctype with a title field shows
+                "English", not "en". Falls back to the raw value. */}
+            <span className={cn("min-w-0 flex-1 truncate text-left", !linkTitle && "text-ink-gray-4")}>
+                {linkTitle || placeholder}
             </span>
 
             {!showClear && <ChevronDownIcon className="size-4 shrink-0 text-ink-gray-4" />}

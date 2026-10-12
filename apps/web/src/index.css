@@ -99,6 +99,27 @@
   animation: typing-dot 1.2s ease-in-out infinite;
 }
 
+/* Workspace-grid edit mode: the iOS home-screen jiggle. ±2° keeps a 48px tile
+   reading as "loose", not wobbling. Reduced-motion users get still tiles — the
+   remove badges alone mark the mode. */
+@keyframes tile-jiggle {
+
+  0%,
+  100% {
+    transform: rotate(-2deg);
+  }
+
+  50% {
+    transform: rotate(2deg);
+  }
+}
+
+@utility animate-tile-jiggle {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: tile-jiggle 0.35s ease-in-out infinite;
+  }
+}
+
 /* AI-event text shimmer (shadcn-style): a highlight sweeping across muted text
    via background-clip. Built from ink tokens so it works in both themes. */
 @keyframes text-shimmer {

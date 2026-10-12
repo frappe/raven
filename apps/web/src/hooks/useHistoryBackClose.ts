@@ -1,5 +1,11 @@
 import { useEffect, useRef } from "react"
 
+let nextOverlayID = 0
+const openOverlays = (): number[] => window.history.state?.ravenOverlays ?? []
+
+/** True while an overlay's history entry is the current one: a back press would close it. */
+export const hasOpenOverlay = () => openOverlays().length > 0
+
 /**
  * Makes the back button/gesture close an overlay (lightbox, bottom sheet)
  * instead of navigating the page under it.
@@ -14,6 +20,10 @@ import { useEffect, useRef } from "react"
  * need two tries.
  *
  * The extra entry uses the same URL, so the router never shows a navigation.
+ *
+ * Overlays stack (a sheet opened from a sheet): each entry lists every overlay
+ * open beneath it, and one back press closes only the overlay whose entry it
+ * popped.
  */
 export const useHistoryBackClose = (open: boolean, onClose: () => void) => {
     const onCloseRef = useRef(onClose)
@@ -23,7 +33,10 @@ export const useHistoryBackClose = (open: boolean, onClose: () => void) => {
         if (!open) return
         let popped = false
         let pushed = false
+        const id = ++nextOverlayID
         const onPop = () => {
+            // Another overlay's entry was popped: ours is still in the history.
+            if (openOverlays().includes(id)) return
             popped = true
             onCloseRef.current()
         }
@@ -45,7 +58,7 @@ export const useHistoryBackClose = (open: boolean, onClose: () => void) => {
             // missing one, wrote idx: null, and from then on "is there in-app
             // history?" checks failed — mobile back buttons fell back to
             // their default routes instead of popping.
-            window.history.pushState({ ...window.history.state, ravenOverlay: true }, "")
+            window.history.pushState({ ...window.history.state, ravenOverlays: [...openOverlays(), id] }, "")
             window.addEventListener("popstate", onPop)
         }, 0)
         return () => {
@@ -61,7 +74,8 @@ export const useHistoryBackClose = (open: boolean, onClose: () => void) => {
             // Skipping leaves one extra entry behind — a single back press
             // later does nothing. That is much better than losing the page
             // the user just navigated to.
-            if (window.history.state?.ravenOverlay === true) window.history.back()
+            const overlays = openOverlays()
+            if (overlays[overlays.length - 1] === id) window.history.back()
         }
     }, [open])
 }

@@ -5,6 +5,7 @@ import { getDefaultStore } from "jotai"
 import { customEmojiCategoriesAtom } from "@lib/emojiMart"
 import { createSuggestionRender, findSuggestionMatchAfterNonWord } from "./createSuggestion"
 import { emojiPluginKey } from "./suggestion"
+import { isInCode } from "./customEmojiInput"
 
 const MAX_SUGGESTIONS = 8
 
@@ -226,19 +227,25 @@ export const EmojiSuggestion = Extension.create<EmojiSuggestionOptions>({
                 // Fire after brackets/quotes/dashes too (not just space), but never
                 // mid-word — keeps "https://" from opening the emoji popup.
                 findSuggestionMatch: findSuggestionMatchAfterNonWord,
+                // Code keeps `:` as typed, so no popup in inline code or a code block.
+                allow: ({ state, range }) => !isInCode(state, range.from),
                 items: ({ query }) => searchEmojis(query, this.options),
                 command: ({ editor, range, props }) => {
                     const native = nativeOf(props)
                     const src = srcOf(props)
+                    // The typed `:query` may carry marks (spoiler, bold, link). The emoji
+                    // keeps them — a spoilered emoji must stay hidden. insertContentAt
+                    // drops marks unless the content names them.
+                    const marks = editor.state.doc.nodeAt(range.from)?.marks.map((mark) => mark.toJSON()) ?? []
                     if (native) {
-                        editor.chain().focus().insertContentAt(range, `${native} `).run()
+                        editor.chain().focus().insertContentAt(range, [{ type: "text", text: `${native} `, marks }]).run()
                     } else if (src) {
                         editor
                             .chain()
                             .focus()
                             .insertContentAt(range, [
-                                { type: "customEmoji", attrs: { src, alt: `:${props.id}:` } },
-                                { type: "text", text: " " },
+                                { type: "customEmoji", attrs: { src, alt: `:${props.id}:` }, marks },
+                                { type: "text", text: " ", marks },
                             ])
                             .run()
                     }

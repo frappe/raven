@@ -72,6 +72,9 @@ const firstLink = (links?: string) => links?.split("\n").map((l) => l.trim()).fi
  * icon, removed on the iframe's onLoad (which fires cross-origin too). The
  * background stays: embeds with transparent pages (e.g. Spotify) float their
  * card on it.
+ *
+ * Rounded at 12px, the radius of the cards embeds draw: a smaller clip leaves a
+ * sliver of the iframe's backdrop at each corner, white when its scheme is light.
  */
 const EmbedFrame = ({
     src,
@@ -97,7 +100,7 @@ const EmbedFrame = ({
     return (
         <div
             data-media-root=""
-            className={cn("relative w-full my-2 overflow-hidden rounded-md bg-surface-gray-2", wide ? "max-w-md lg:max-w-lg" : "max-w-md")}
+            className={cn("relative w-full my-2 overflow-hidden rounded-lg bg-surface-gray-2", wide ? "max-w-md lg:max-w-lg" : "max-w-md")}
         >
             {!loaded && (
                 <span className="absolute inset-0 flex items-center justify-center">

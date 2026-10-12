@@ -26,7 +26,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@components/ui/avatar"
 import { ChannelIcon } from "@components/common/ChannelIcon/ChannelIcon"
 import { CustomizeSidebarButton } from "@components/features/channel/CustomizeSidebar/CustomizeSidebarButton"
 import { MobileSearchButton } from "@components/features/header/QuickSearch/SearchButton"
-import { useWorkspaces, type WorkspaceFields } from "@hooks/useWorkspaces"
+import { useMyWorkspaces, useWorkspaces, type WorkspaceFields } from "@hooks/useWorkspaces"
 import { workspacesDrawerAtom } from "@components/features/header/HomeWorkspacesDrawer"
 import { lastChannelAtom, lastWorkspaceAtom } from "@utils/lastVisitedAtoms"
 import { useChannels } from "@stores/channels/useChannelList"
@@ -216,20 +216,7 @@ const EmptyChannels = () => {
  */
 const WorkspaceSwitcher = ({ workspaceID }: { workspaceID?: string }) => {
     const { workspaces } = useWorkspaces()
-    const { myProfile } = useCurrentRavenUser()
-
-    // Per-user order from the Raven User's pinned_workspaces child table: rows
-    // come first (in row order), workspaces NOT in the table follow in their
-    // server order — so joining a new workspace never needs a migration, it
-    // just appends until the next drag writes the full order.
-    const myWorkspaces = useMemo(() => {
-        const members = workspaces.filter((workspace) => workspace.workspace_member_name)
-        const position = new Map((myProfile?.pinned_workspaces ?? []).map((row, index) => [row.workspace, index]))
-        if (position.size === 0) return members
-        return [...members].sort(
-            (a, b) => (position.get(a.name) ?? Infinity) - (position.get(b.name) ?? Infinity),
-        )
-    }, [workspaces, myProfile?.pinned_workspaces])
+    const myWorkspaces = useMyWorkspaces()
 
     const navigate = useNavigate()
     const setLastWorkspace = useSetAtom(lastWorkspaceAtom)
@@ -245,6 +232,24 @@ const WorkspaceSwitcher = ({ workspaceID }: { workspaceID?: string }) => {
         setLastChannel("")
         navigate(`/${encodeURIComponent(workspace.name)}`)
     }
+
+    // ⌘⌥↑/↓ — previous/next workspace (Discord's server-switch chord; Slack's
+    // ⌘1-9 is owned by the browser). Extends the ⌥-arrow family: ⌥ channels,
+    // ⌥⇧ unread, ⌘⌥ workspaces. Same walk rules as channel nav: the user's
+    // pinned order, no wrap, and from the list edge when off a listed one.
+    const goToAdjacentWorkspace = (direction: 1 | -1) => {
+        if (myWorkspaces.length === 0) return
+        const index = myWorkspaces.findIndex((workspace) => workspace.name === workspaceID)
+        const target =
+            index === -1
+                ? myWorkspaces[direction === 1 ? 0 : myWorkspaces.length - 1]
+                : myWorkspaces[index + direction]
+        if (target && target.name !== workspaceID) switchWorkspace(target)
+    }
+
+    const hotkeyOptions = { enableOnFormTags: true, enableOnContentEditable: true, preventDefault: true }
+    useHotkeys("mod+alt+down", () => goToAdjacentWorkspace(1), hotkeyOptions, [myWorkspaces, workspaceID])
+    useHotkeys("mod+alt+up", () => goToAdjacentWorkspace(-1), hotkeyOptions, [myWorkspaces, workspaceID])
 
     const openWorkspacesDrawer = useSetAtom(workspacesDrawerAtom)
 

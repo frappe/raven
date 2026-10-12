@@ -4,7 +4,7 @@ import datetime
 import json
 
 import frappe
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Comment
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import get_datetime, get_system_timezone
@@ -143,20 +143,34 @@ class RavenMessage(Document):
 		for spoiler in soup.find_all(attrs={"data-spoiler": True}):
 			spoiler.string = "▒▒▒▒▒▒"
 
+		# Backtick is the preview's code MARKER (added just below). A literal backtick
+		# in the message would read as a marker too and break the client's pairing, so
+		# swap it for the lookalike modifier grave (U+02CB) first. Previews are lossy
+		# one-liners; the swap keeps them readable everywhere.
+		if "`" in self.text:
+			for text_node in soup.find_all(string=True):
+				if "`" in text_node and not isinstance(text_node, Comment):
+					text_node.replace_with(text_node.replace("`", "ˋ"))
+
+		# Code keeps its backticks, so previews show it as code (a `:name:` in it stays text).
+		if "<code" in self.text:
+			for code in soup.find_all("code"):
+				code.string = f"`{code.get_text()}`"
+
+		# A custom emoji has no unicode character, so the plain text carries its `:name:`
+		# (clients show a known `:name:` as the emoji). Its name gets the same backtick
+		# swap — nothing after this point may add a non-marker backtick.
+		if "customEmoji" in self.text:
+			for emoji in soup.find_all("img", attrs={"data-type": "customEmoji"}):
+				emoji.replace_with((emoji.get("alt") or "").replace("`", "ˋ"))
+
 		text_content = soup.get_text(" ", strip=True)
 
-		if not text_content:
-			# No text — derive a preview from inline media (GIF / custom emoji), so the
-			# DM list + notifications aren't blank for an emoji-only or GIF-only message.
-			imgs = soup.find_all("img")
-			if any("media.tenor.com" in (img.get("src") or "") for img in imgs):
-				text_content = "Sent a GIF"
-			else:
-				shortcodes = [
-					img.get("alt") for img in imgs if img.get("data-type") == "customEmoji" and img.get("alt")
-				]
-				if shortcodes:
-					text_content = " ".join(shortcodes)
+		# A GIF-only message has no text; give the DM list + notifications a preview.
+		if not text_content and any(
+			"media.tenor.com" in (img.get("src") or "") for img in soup.find_all("img")
+		):
+			text_content = "Sent a GIF"
 
 		self.content = text_content
 
@@ -187,26 +201,34 @@ class RavenMessage(Document):
 		"""
 		Extract all user mentions from the HTML content
 		"""
+		# On an edit, a mention that survives keeps its is_read and gets no new
+		# realtime ping — rebuilding the rows from scratch re-notified users who
+		# had already viewed the mention. A mention removed and added back later
+		# is a fresh row again.
+		before = self.get_doc_before_save()
+		previous = {mention.user: mention.is_read for mention in before.mentions} if before else {}
+
 		self.mentions = []
 		unique_mentions = set()
 		for d in soup.find_all("span", attrs={"data-type": "userMention"}):
 			mention_id = d.get("data-id")
 			if mention_id and mention_id not in unique_mentions:
-				self.append("mentions", {"user": mention_id})
+				self.append("mentions", {"user": mention_id, "is_read": previous.get(mention_id, 0)})
 
-				frappe.publish_realtime(
-					"raven_mention",
-					{
-						"channel_id": self.channel_id,
-						"user_id": mention_id,
-						# The mentioned user's client adds this to its unread-notification set
-						# (badge + mark-read-on-view). Set even on insert: Frappe names the doc
-						# (set_new_name) before the before_validate/validate hooks run.
-						"message_id": self.name,
-					},
-					user=mention_id,
-					after_commit=True,
-				)
+				if mention_id not in previous:
+					frappe.publish_realtime(
+						"raven_mention",
+						{
+							"channel_id": self.channel_id,
+							"user_id": mention_id,
+							# The mentioned user's client adds this to its unread-notification set
+							# (badge + mark-read-on-view). Set even on insert: Frappe names the doc
+							# (set_new_name) before the before_validate/validate hooks run.
+							"message_id": self.name,
+						},
+						user=mention_id,
+						after_commit=True,
+					)
 				unique_mentions.add(mention_id)
 
 	def remove_empty_trailing_paragraphs(self, soup):
@@ -832,10 +854,17 @@ class RavenMessage(Document):
 					)
 				else:
 					self.publish_unread_count_event(event_type="message_deleted")
+			from frappe.search.sqlite_search import SQLiteSearchIndexMissingError
+
 			from raven.api.search import RavenSearch
 
-			search = RavenSearch()
-			search.remove_doc(self.doctype, self.name)
+			try:
+				search = RavenSearch()
+				search.remove_doc(self.doctype, self.name)
+			except SQLiteSearchIndexMissingError:
+				# No search index built yet (fresh site, CI) — nothing to remove,
+				# and a missing index must not block deleting a message.
+				pass
 
 		# delete poll if the message is of type poll after deleting the message
 		if self.message_type == "Poll":

@@ -65,7 +65,13 @@ class RavenSettings(Document):
 				if not frappe.db.exists("Company", row.company):
 					frappe.throw(f"Company {row.company} does not exist.")
 
-		if self.push_notification_service == "Raven":
+		# "Raven" is the field's DEFAULT, so an unconfigured site must still be able
+		# to save settings. Only a partially filled config is an error.
+		if self.push_notification_service == "Raven" and (
+			self.push_notification_server_url
+			or self.push_notification_api_key
+			or self.push_notification_api_secret
+		):
 			if not self.push_notification_server_url:
 				frappe.throw(_("Please enter the Push Notification Server URL"))
 			if not self.push_notification_api_key:

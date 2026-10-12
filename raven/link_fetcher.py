@@ -372,6 +372,28 @@ def fetch_open_graph(url: str) -> dict:
 	return parse_open_graph(response.body, response.url)
 
 
+# Titles that mean the page is a "soft 404": the server answered HTTP 200 but
+# served its error page (frappe.io does this for unpublished blog posts, meta
+# tags and all). Exact matches only — an article ABOUT 404 pages must still
+# get its preview.
+NOT_FOUND_TITLES = {
+	"404",
+	"error 404",
+	"404 error",
+	"not found",
+	"page not found",
+	"404 not found",
+	"404 - page not found",
+	"404 | page not found",
+	"page missing or moved",
+	"this page could not be found",
+}
+
+
+def looks_like_not_found(title: str) -> bool:
+	return title.strip().lower() in NOT_FOUND_TITLES
+
+
 def parse_open_graph(html: bytes | str, base_url: str) -> dict:
 	"""Pull OG / twitter-card / plain meta tags out of a page."""
 	soup = BeautifulSoup(html, "html.parser")
@@ -387,6 +409,12 @@ def parse_open_graph(html: bytes | str, base_url: str) -> dict:
 	title = meta("og:title", "twitter:title")
 	if not title and soup.title and soup.title.string:
 		title = soup.title.string.strip()
+
+	# A LinkFetchError, not a preview: previewing an error page as if it were
+	# the article misleads everyone in the channel. Retryable on purpose — an
+	# unpublished post may be published later under the same URL.
+	if looks_like_not_found(title):
+		raise LinkFetchError("Page reports itself as not found (HTTP 200 with a 404 title)")
 
 	# Plain name="image" is the same informal fallback the description
 	# chain already uses — some blogs (frappe.io custom pages included)

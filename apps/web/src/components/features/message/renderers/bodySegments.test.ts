@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest"
 import { parseBodySegments } from "./RichTextRenderer"
+import { shortcodesFor } from "@lib/customEmojiShortcodes.fixtures"
 
 // Shapes only — flags and counts. The React nodes themselves are covered by
 // rendering in the app.
-const shape = (html: string) =>
-    parseBodySegments(html).map((segment) => ({ standalone: segment.standalone, jumbo: segment.jumbo }))
+const shape = (html: string, shortcodes = null as ReturnType<typeof shortcodesFor>) =>
+    parseBodySegments(html, shortcodes).map((segment) => ({ standalone: segment.standalone, jumbo: segment.jumbo }))
 
 describe("parseBodySegments", () => {
     it("keeps plain paragraphs as one bubbled segment", () => {
@@ -48,5 +49,16 @@ describe("parseBodySegments", () => {
 
     it("does not treat an emoji message with text as jumbo", () => {
         expect(shape("<p>nice \u{1F600}</p>")).toEqual([{ standalone: false, jumbo: false }])
+    })
+
+    it("treats a known :name: typed as text like the emoji", () => {
+        expect(shape("<p>:party:</p>", shortcodesFor("party"))).toEqual([{ standalone: true, jumbo: true }])
+        expect(shape("<p>:party:</p>")).toEqual([{ standalone: false, jumbo: false }])
+    })
+
+    it("keeps :name: inside code as text", () => {
+        expect(shape("<p><code>:party:</code></p>", shortcodesFor("party"))).toEqual([
+            { standalone: false, jumbo: false },
+        ])
     })
 })

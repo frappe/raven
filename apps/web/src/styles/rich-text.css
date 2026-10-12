@@ -170,16 +170,19 @@
   @apply rounded-sm bg-surface-gray-3 px-0.5 text-ink-gray-7;
 }
 
-/* Spoiler — in a RENDERED message the text hides behind a solid block until the
-   reader clicks/reveals it. Hide descendants too (a link/mention inside a spoiler
-   would otherwise show its own colour); :where() keeps that override at low
-   specificity so the revealed state still wins. */
+/* Spoiler — in a RENDERED message the content hides behind a solid block until
+   the reader clicks/reveals it. */
 .tiptap .message-spoiler {
-  @apply cursor-pointer select-none rounded-sm bg-surface-gray-4 px-0.5 text-transparent transition-colors;
+  @apply cursor-pointer select-none rounded-sm bg-surface-gray-4 px-0.5 transition-colors;
 }
 
-.tiptap .message-spoiler:not(.message-spoiler--revealed) :where(a, code, strong, em, s, span, img) {
-  color: transparent;
+/* visibility, not color: transparent — transparent text leaks images and native
+   emoji glyphs (color fonts ignore `color`), leaves a hidden link clickable, and
+   keeps the text readable to screen readers. visibility hides all of it, keeps
+   every box (the block's shape doesn't change on reveal), and sends clicks to
+   the outer span's reveal handler. */
+.tiptap .message-spoiler:not(.message-spoiler--revealed) .message-spoiler-content {
+  visibility: hidden;
 }
 
 .tiptap .message-spoiler:hover {

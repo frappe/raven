@@ -1,7 +1,7 @@
 import type { ReactNode } from "react"
 import { useAtomValue } from "jotai"
 import {
-    ArrowDownIcon, ArrowLeftIcon, ArrowRightIcon, ArrowUpIcon, BellOffIcon, BoldIcon, CodeIcon, CornerDownLeftIcon,
+    ArrowDownIcon, ArrowLeftIcon, ArrowRightIcon, ArrowUpIcon, BellOffIcon, BoldIcon, Building2Icon, CodeIcon, CornerDownLeftIcon,
     EyeOffIcon, HighlighterIcon, ImageIcon, ItalicIcon, LinkIcon, ListIcon, ListOrderedIcon, MailCheckIcon,
     PencilIcon, PlusIcon, QuoteIcon, SaveIcon, SearchIcon, SendIcon, SettingsIcon, SquareCodeIcon, StrikethroughIcon,
     TerminalIcon, UnderlineIcon, UndoIcon, RedoIcon, WrapTextIcon, XIcon,
@@ -83,6 +83,16 @@ export const KeyboardShortcuts = () => {
                     keys: <KbdGroup><Alt /><Shift /><Key><ArrowUpIcon /></Key></KbdGroup>,
                     icon: <MailCheckIcon />, label: _("Previous unread"),
                     description: _("Jump to the previous item with unread messages."),
+                },
+                {
+                    keys: <KbdGroup><Mod /><Alt /><Key><ArrowDownIcon /></Key></KbdGroup>,
+                    icon: <Building2Icon />, label: _("Next workspace"),
+                    description: _("Switch to the next workspace, in your workspace order."),
+                },
+                {
+                    keys: <KbdGroup><Mod /><Alt /><Key><ArrowUpIcon /></Key></KbdGroup>,
+                    icon: <Building2Icon />, label: _("Previous workspace"),
+                    description: _("Switch to the previous workspace."),
                 },
             ],
         },
