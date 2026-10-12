@@ -186,9 +186,13 @@ unreproducible bugs — and the small mechanisms that now prevent them:
   quiet re-fetch after a gap replaces the message window — but if you'd scrolled
   150 messages back, a smaller replacement would delete what you're reading and
   yank the view. So the re-fetch asks for the window's size plus headroom (new
-  arrivals push the window down), refuses windows too deep to re-cover in one
-  request (they reload on next open instead), and stands down entirely while a
-  jump-to-message navigation owns the window.
+  arrivals push the window down). Windows too deep to re-cover in one request,
+  and windows a jump-to-message navigation owns, are never replaced — they only
+  *catch up*: one "anything newer than X?" fetch appends what arrived during the
+  gap, capped to what the window can still hold (the merge trims the oldest
+  rows past the cap, and in a deep window those are the rows being read). They
+  stay marked stale, since a catch-up can't see edits or deletes on rows already
+  loaded, and reload fully on the next open.
 - **Your unsent messages surviving a refresh mid-reload.** When the latest page
   is re-fetched, any optimistic (not-yet-confirmed) messages you sent are
   re-inserted into the fresh window — the server doesn't know about them yet, so

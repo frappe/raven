@@ -3,7 +3,7 @@ import { channelUnreadStore } from "@stores/unread/store"
 import { linkPreviewStore } from "@stores/linkPreviews/store"
 import { channelStore } from "@stores/channels/store"
 import { getConnectionEpoch, isWindowStale, markWindowFresh } from "@stores/connectionFreshness"
-import { isOptimistic, MessagesPage } from "./types"
+import { isOptimistic, MAX_WINDOW_SIZE, MessagesPage } from "./types"
 
 const PAGE_SIZE = 30
 
@@ -293,13 +293,20 @@ const catchUpWindow = async (client: FrappeCallClient, channelID: string) => {
         if (message && !isOptimistic(message)) newest = message.name
     }
     if (!newest) return
+    // Never ask for more than the window can hold: the merge trims the OLDEST rows past
+    // the cap, and in a deep window those are the rows being read — losing them yanks
+    // the scroll, the very thing this path exists to avoid. A full window skips the
+    // catch-up (the next open reloads it); when more arrived than fits, the page's
+    // has_new_messages detaches the window and "jump to present" takes over.
+    const headroom = MAX_WINDOW_SIZE - state.order.length
+    if (headroom <= 0) return
     inFlight.add(key)
     const token = windowIntent.get(channelID)
     try {
         const response = await client.get<PageResponse>("raven.api.chat_stream.get_newer_messages", {
             channel_id: channelID,
             from_message: newest,
-            limit: MAX_QUIET_RECONCILE_WINDOW + PAGE_SIZE,
+            limit: Math.min(MAX_QUIET_RECONCILE_WINDOW + PAGE_SIZE, headroom),
             update_last_visit: false,
         })
         // A load replaced the window while this ran, and its page already has these.
