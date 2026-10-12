@@ -164,6 +164,47 @@ export const applyNewerPage = (
 }
 
 /**
+ * Re-apply the server's copy of the window's own span, fetched from its oldest message
+ * up, after a connection break. Changed messages are replaced, unchanged ones keep
+ * their object. A message inside the span that the server did not send back was
+ * deleted, so it is removed. Messages past the span (sends still in flight) are kept.
+ * Returns the same state when nothing changed.
+ */
+export const applyWindowRefresh = (
+    state: ChannelMessagesState,
+    page: MessagesPage,
+): ChannelMessagesState => {
+    if (page.messages.length === 0) return state
+    const byId = new Map(state.byId)
+    let changed = false
+    for (const message of page.messages) {
+        const existing = byId.get(message.name)
+        if (existing && isStale(existing, message)) continue
+        byId.set(message.name, message)
+        changed = true
+    }
+    const fetched = new Set(page.messages.map((message) => message.name))
+    const spanEnd = page.messages.reduce((a, b) => (compareMessages(a, b) >= 0 ? a : b))
+    for (const [id, existing] of state.byId) {
+        if (fetched.has(id) || isOptimistic(existing)) continue
+        if (compareMessages(existing, spanEnd) <= 0) {
+            byId.delete(id)
+            changed = true
+        }
+    }
+    const hasNewerMessages = page.has_new_messages ?? false
+    if (!changed && hasNewerMessages === state.hasNewerMessages) return state
+    const { order, trimmed } = enforceWindowCap(byId, sortIds(byId), "oldest")
+    return {
+        ...state,
+        byId,
+        order,
+        hasNewerMessages,
+        hasOlderMessages: trimmed ? true : state.hasOlderMessages,
+    }
+}
+
+/**
  * Insert or update a single message (socket `message_created`, optimistic send ack).
  * New messages are ignored while the window is detached from the live edge —
  * they exist beyond the window and arrive via `applyNewerPage` when the user returns.

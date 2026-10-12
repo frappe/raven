@@ -185,14 +185,15 @@ unreproducible bugs — and the small mechanisms that now prevent them:
 - **Refreshing a channel without eating the user's scroll position.** The
   quiet re-fetch after a gap replaces the message window — but if you'd scrolled
   150 messages back, a smaller replacement would delete what you're reading and
-  yank the view. So the re-fetch asks for the window's size plus headroom (new
-  arrivals push the window down). Windows too deep to re-cover in one request,
-  and windows a jump-to-message navigation owns, are never replaced — they only
-  *catch up*: one "anything newer than X?" fetch appends what arrived during the
-  gap, capped to what the window can still hold (the merge trims the oldest
-  rows past the cap, and in a deep window those are the rows being read). They
-  stay marked stale, since a catch-up can't see edits or deletes on rows already
-  loaded, and reload fully on the next open.
+  yank the view. So the re-fetch is anchored on the window's *oldest* message,
+  not the live edge: "give me my span again, from this message up, plus a page
+  of room for what arrived, never more than the window holds." The messages
+  being read are always in the response, so nothing is dropped and the scroll
+  never moves, at any depth — and because every loaded message comes back in
+  its current state, reactions, edits, thread flags and deletes (a message that
+  didn't come back) all land too. Unchanged messages keep their objects, so only
+  the rows that changed re-render. If more arrived than fit, the window is
+  marked as behind the live edge and "jump to present" takes over.
 - **Your unsent messages surviving a refresh mid-reload.** When the latest page
   is re-fetched, any optimistic (not-yet-confirmed) messages you sent are
   re-inserted into the fresh window — the server doesn't know about them yet, so

@@ -347,10 +347,18 @@ def fetch_older_messages(
 
 @frappe.whitelist()
 def get_newer_messages(
-	channel_id: str, from_message: str, limit: int = 20, update_last_visit: bool = True
+	channel_id: str,
+	from_message: str,
+	limit: int = 20,
+	update_last_visit: bool = True,
+	include_from_message: bool = False,
 ):
 	"""
-	API to get older messages for a channel, ordered by creation date (newest first)
+	API to get newer messages for a channel, ordered by creation date (newest first)
+
+	`include_from_message`: also return `from_message` itself. The client uses this to
+	refresh the window it already holds after a connection break, from its oldest
+	message up, so edits, reactions and deletes on loaded messages come back too.
 
 	`update_last_visit` (DEPRECATED, v2-compat): see get_messages. v3 passes False and
 	advances last_visit itself, avoiding a GET-time write that can collide with a
@@ -365,7 +373,7 @@ def get_newer_messages(
 	from_timestamp = frappe.get_cached_value("Raven Message", from_message, "creation")
 
 	response = fetch_newer_messages(
-		channel_id, from_message, from_timestamp, limit, include_from_message=False
+		channel_id, from_message, from_timestamp, limit, include_from_message=include_from_message
 	)
 
 	if update_last_visit and response.get("has_new_messages") == False:

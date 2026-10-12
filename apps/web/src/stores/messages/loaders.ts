@@ -190,30 +190,38 @@ export const recomputeUnreadAnchor = (channelID: string) => {
     channelMessagesStore.refreshUnreadAnchor(channelID, watermark)
 }
 
-/** The deepest window a quiet reconcile will replace. Replacing a deeper one with a
- *  smaller refetch would delete the older messages the user scrolled back to and yank
- *  their scroll — so deeper stale windows only catch up on new messages here
- *  (catchUpWindow), and useChannelMessages reloads them fresh on the next open.
- *  (70 + one page of headroom = 100.) */
+/** A stale window deeper than this is reloaded fresh on the next OPEN instead of
+ *  refreshed in place (useChannelMessages): re-entry lands at the bottom anyway, so
+ *  the scrolled-back depth serves nobody. The on-screen refresh below has no depth
+ *  limit, because it refreshes the window's own span and nothing on screen moves. */
 export const MAX_QUIET_RECONCILE_WINDOW = 70
 
+const initialLoadInFlight = (channelID: string) =>
+    [...inFlightInitial.keys()].some((key) => key.startsWith(`${channelID}:initial:`))
+
 /**
- * Quietly refetches a channel whose messages might be out of date because the
+ * Quietly refreshes a channel whose messages might be out of date because the
  * realtime connection broke after they were loaded (see stores/connectionFreshness).
- * Refetching the whole window catches everything a gap can lose: new messages, but
- * also reactions, edits, deletes and pins on messages we already have — changes
- * that "fetch anything newer than X" can never see.
+ *
+ * The window's own span is fetched again, from its oldest message up, capped at the
+ * window limit. That catches everything a gap can lose: new messages, but also
+ * reactions, edits, deletes, pins and thread flags on messages already loaded, which
+ * "fetch anything newer than X" can never see. Starting from the OLDEST message
+ * rather than the live edge is what makes this safe at any depth: the messages being
+ * read are always in the response, so none are dropped and the scroll never moves.
+ * If more messages arrived than fit, the window is marked as behind the live edge
+ * and the "jump to present" button takes over.
  *
  * "Quietly" = no loading spinner: the messages already on screen stay put, and
- * after the refetch only the ones that actually changed re-render.
+ * after the refresh only the ones that actually changed re-render.
  *
- * Does nothing when the channel is provably up to date — which is why calling it
+ * Does nothing when the channel is provably up to date, which is why calling it
  * on every open costs nothing as long as the connection never broke.
  */
-export const reconcileStaleWindow = async (client: FrappeCallClient, channelID: string) => {
+export const reconcileStaleWindow = async (client: FrappeCallClient, channelID: string): Promise<void> => {
     const state = channelMessagesStore.getState(channelID)
     // Reconnect self-heal for a FAILED window: while the stream sits mounted on
-    // the error card, nothing else retries — this runs on every connection
+    // the error card, nothing else retries. This runs on every connection
     // epoch bump (online, socket reconnect, unfreeze), so do a fresh full load.
     // loadInitialMessages carries its own guards (navigation claim, in-flight
     // dedupe), so a plain call here is safe.
@@ -227,98 +235,58 @@ export const reconcileStaleWindow = async (client: FrappeCallClient, channelID: 
     //    re-entry (useChannelMessages), so it heals itself
     if (state.status !== "ready" || state.hasNewerMessages) return
     if (!isWindowStale(channelID)) return
-    // A load in flight (a jump to a message, or the first page) stamps the window itself,
-    // and replacing the window under it would throw its page away.
+    // A load in flight (a jump to a message, or the first page) stamps the window
+    // itself, and refreshing under it would mix two windows.
     if (initialLoadInFlight(channelID)) return
-    // Replacing would yank the scroll of a deep window, or drop the page a jump landed on
-    // (targetClaims) once enough arrived: take only what arrived after it instead.
-    if (state.order.length > MAX_QUIET_RECONCILE_WINDOW || targetClaims.has(channelID)) {
-        return catchUpWindow(client, channelID)
-    }
 
     const key = `${channelID}:reconcile`
     if (inFlight.has(key)) return
+    // The span starts at the oldest message the server knows about. A message that
+    // is still being sent has no server row yet.
+    const oldest = state.order
+        .map((id) => state.byId.get(id))
+        .find((message) => message && !isOptimistic(message))
+    if (!oldest) return
     inFlight.add(key)
 
+    // Read the connection-break counter BEFORE fetching. See markWindowFresh.
     const epochAtStart = getConnectionEpoch()
     const token = (windowIntent.get(channelID) ?? 0) + 1
     windowIntent.set(channelID, token)
-    try {
-        const response = await client.get<PageResponse>("raven.api.chat_stream.get_messages", {
-            channel_id: channelID,
-            // Window size + one page of headroom: without it, messages that arrived
-            // during the gap would push the same number of older (possibly being-read)
-            // messages out of the refetched span. ≤ 100 thanks to the depth guard.
-            limit: state.order.length + PAGE_SIZE,
-            update_last_visit: false,
-            // Always fetch the bottom of the chat — never re-anchor an already-open
-            // window to the unread position.
-            anchor_to_unread: false,
-        })
-        // The user started their own fetch while ours was running — theirs wins.
-        if (windowIntent.get(channelID) !== token) return
-        seedPreviews(response.message)
-        channelMessagesStore.setInitialPage(channelID, response.message)
-        channelUnreadStore.setServerWatermark(channelID, response.message.last_visit)
-        // Replacing the window cleared the "New messages" divider — put it back the
-        // same way a warm re-entry does: on the first message past the last read one.
-        recomputeUnreadAnchor(channelID)
-        markWindowFresh(channelID, epochAtStart)
-    } catch {
-        // Best effort: the channel just stays marked stale; the next open (or the
-        // next break) retries.
-    } finally {
-        inFlight.delete(key)
-    }
-}
-
-const initialLoadInFlight = (channelID: string) =>
-    [...inFlightInitial.keys()].some((key) => key.startsWith(`${channelID}:initial:`))
-
-/**
- * Brings a window the quiet replace must not touch up to date with what arrived during
- * the gap: the messages after its newest one. The channel on screen refreshes only here
- * (tapping a notification for it doesn't reopen it), so it can't wait for the next open.
- * It stays marked stale, since edits and deletes on rows it already has can't be seen
- * this way; the next open reloads it.
- */
-const catchUpWindow = async (client: FrappeCallClient, channelID: string) => {
-    const key = `${channelID}:catchup`
-    if (inFlight.has(key)) return
-    const state = channelMessagesStore.getState(channelID)
-    // Unconfirmed sends have no server row to count from.
-    let newest: string | undefined
-    for (let i = state.order.length - 1; i >= 0 && !newest; i--) {
-        const message = state.byId.get(state.order[i])
-        if (message && !isOptimistic(message)) newest = message.name
-    }
-    if (!newest) return
-    // Never ask for more than the window can hold: the merge trims the OLDEST rows past
-    // the cap, and in a deep window those are the rows being read — losing them yanks
-    // the scroll, the very thing this path exists to avoid. A full window skips the
-    // catch-up (the next open reloads it); when more arrived than fits, the page's
-    // has_new_messages detaches the window and "jump to present" takes over.
-    const headroom = MAX_WINDOW_SIZE - state.order.length
-    if (headroom <= 0) return
-    inFlight.add(key)
-    const token = windowIntent.get(channelID)
+    let oldestWasDeleted = false
     try {
         const response = await client.get<PageResponse>("raven.api.chat_stream.get_newer_messages", {
             channel_id: channelID,
-            from_message: newest,
-            limit: Math.min(MAX_QUIET_RECONCILE_WINDOW + PAGE_SIZE, headroom),
+            from_message: oldest.name,
+            include_from_message: true,
+            // The window plus one page of room for what arrived, never more than the
+            // window can hold.
+            limit: Math.min(state.order.length + PAGE_SIZE, MAX_WINDOW_SIZE),
             update_last_visit: false,
         })
-        // A load replaced the window while this ran, and its page already has these.
+        // The user started their own fetch while ours was running. Theirs wins.
         if (windowIntent.get(channelID) !== token) return
-        seedPreviews(response.message)
-        channelMessagesStore.setNewerPage(channelID, response.message)
-        recomputeUnreadAnchor(channelID)
+        // The span always includes its first message, so an empty response means
+        // the server no longer has it: it was deleted during the gap. Drop it and
+        // try again from the next one, leaving the window stale until that lands.
+        if (response.message.messages.length === 0) {
+            channelMessagesStore.messageDeleted(channelID, oldest.name)
+            oldestWasDeleted = true
+        } else {
+            seedPreviews(response.message)
+            channelMessagesStore.refreshWindow(channelID, response.message)
+            // Put the "New messages" divider back the way a warm re-entry does: on
+            // the first message past the last read one.
+            recomputeUnreadAnchor(channelID)
+            markWindowFresh(channelID, epochAtStart)
+        }
     } catch {
-        // Best effort: the window stays stale, so the next break or open retries.
+        // Best effort: the window stays marked stale, so the next connection break
+        // or the next open retries.
     } finally {
         inFlight.delete(key)
     }
+    if (oldestWasDeleted) return reconcileStaleWindow(client, channelID)
 }
 
 /** Discards the detached window and refetches the live edge. */

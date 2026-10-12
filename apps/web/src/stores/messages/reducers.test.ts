@@ -3,6 +3,7 @@ import type { Message } from "@raven/types/common/Message"
 import {
     applyInitialPage,
     applyNewerPage,
+    applyWindowRefresh,
     applyOlderPage,
     patchMessage,
     removeMessage,
@@ -177,5 +178,42 @@ describe("pagination pages", () => {
         expect(next.order.length).toBe(MAX_WINDOW_SIZE)
         expect(next.hasNewerMessages).toBe(true)
         expect(next.order[0]).toBe("old0")
+    })
+})
+
+describe("applyWindowRefresh", () => {
+    it("replaces changed messages and keeps unchanged objects", () => {
+        const state = readyState([msg("a", 1), msg("b", 2), msg("c", 3)])
+        const edited = msg("b", 2, { text: "edited", modified: "2026-06-10 11:00:00.000000" })
+        const next = applyWindowRefresh(state, { messages: [msg("c", 3), edited, msg("a", 1)] })
+        expect(next.byId.get("a")).toBe(state.byId.get("a"))
+        expect(next.byId.get("c")).toBe(state.byId.get("c"))
+        expect(next.byId.get("b")?.text).toBe("edited")
+        expect(next.order).toEqual(["a", "b", "c"])
+    })
+
+    it("removes a message inside the span the server did not send back", () => {
+        const state = readyState([msg("a", 1), msg("b", 2), msg("c", 3)])
+        const next = applyWindowRefresh(state, { messages: [msg("c", 3), msg("a", 1)] })
+        expect(next.order).toEqual(["a", "c"])
+    })
+
+    it("appends what arrived and keeps sends still in flight", () => {
+        const optimistic = { ...msg("tmp", 10), _status: "sending" } as unknown as Message
+        const state = readyState([msg("a", 1), msg("b", 2), optimistic])
+        const next = applyWindowRefresh(state, { messages: [msg("d", 4), msg("b", 2), msg("a", 1)] })
+        expect(next.order).toEqual(["a", "b", "d", "tmp"])
+    })
+
+    it("marks the window behind the live edge when more arrived than fit", () => {
+        const state = readyState([msg("a", 1)])
+        const next = applyWindowRefresh(state, { messages: [msg("a", 1)], has_new_messages: true })
+        expect(next.hasNewerMessages).toBe(true)
+    })
+
+    it("returns the same state when nothing changed", () => {
+        const state = readyState([msg("a", 1), msg("b", 2)])
+        expect(applyWindowRefresh(state, { messages: [msg("b", 2), msg("a", 1)] })).toBe(state)
+        expect(applyWindowRefresh(state, { messages: [] })).toBe(state)
     })
 })

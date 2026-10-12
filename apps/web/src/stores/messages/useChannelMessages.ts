@@ -54,10 +54,9 @@ export const useChannelMessages = (
             channelMessagesStore.reset(channelID)
             loadInitialMessages(client, channelID, initialBaseMessage ?? undefined)
         } else if (isWindowStale(channelID) && current.order.length > MAX_QUIET_RECONCILE_WINDOW) {
-            // Stale AND too deep for the quiet reconcile to replace safely — treat it
-            // like a detached window: discard and load fresh. (Re-entry lands at the
-            // bottom anyway, so the scrolled-back depth serves nobody. Without this,
-            // a deep stale window would stay stale forever.)
+            // Stale AND deep: treat it like a detached window, discard and load fresh.
+            // Re-entry lands at the bottom anyway, so the scrolled-back depth serves
+            // nobody, and a small fresh window beats refreshing 300 rows in place.
             channelMessagesStore.reset(channelID)
             loadInitialMessages(client, channelID, initialBaseMessage ?? undefined)
         } else {

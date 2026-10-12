@@ -3,6 +3,7 @@ import type { Message } from "@raven/types/common/Message"
 import {
     applyInitialPage,
     applyNewerPage,
+    applyWindowRefresh,
     applyOlderPage,
     markError,
     markLoading,
@@ -121,6 +122,11 @@ class ChannelMessagesStore {
 
     setNewerPage(channelID: string, page: MessagesPage) {
         this.update(channelID, applyNewerPage(this.getState(channelID), page))
+    }
+
+    /** Re-applies the server's copy of the window's own span after a connection break. */
+    refreshWindow(channelID: string, page: MessagesPage) {
+        this.update(channelID, applyWindowRefresh(this.getState(channelID), page))
     }
 
     /** Marks a pagination direction in flight; returns false when it should not start. */

@@ -272,3 +272,21 @@ class TestChatStream(IntegrationTestCase):
 		# Loop over and check indexes of all messages
 		for i, message in enumerate(response["messages"]):
 			self.assertEqual(message.text, f"Test Message {99-i}")
+
+	def test_get_newer_messages_including_from_message(self):
+		"""
+		With `include_from_message`, the base message itself is returned too. The client
+		refreshes its loaded window this way, starting from the window's oldest message.
+		"""
+		base_message_id = frappe.db.get_value(
+			"Raven Message", {"text": "Test Message 50", "channel_id": CHANNEL_ID}, "name"
+		)
+
+		response = get_newer_messages(CHANNEL_ID, base_message_id, limit=50, include_from_message=True)
+
+		# Messages 50 to 99: the base message plus the 49 newer ones
+		self.assertEqual(len(response["messages"]), 50)
+		self.assertEqual(response["has_new_messages"], False)
+		self.assertEqual(response["messages"][-1].name, base_message_id)
+		for i, message in enumerate(response["messages"]):
+			self.assertEqual(message.text, f"Test Message {99-i}")
