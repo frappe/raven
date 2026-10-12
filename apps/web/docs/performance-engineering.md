@@ -186,8 +186,9 @@ unreproducible bugs — and the small mechanisms that now prevent them:
   quiet re-fetch after a gap replaces the message window — but if you'd scrolled
   150 messages back, a smaller replacement would delete what you're reading and
   yank the view. So the re-fetch is anchored on the window's *oldest* message,
-  not the live edge: "give me my span again, from this message up, plus a page
-  of room for what arrived, never more than the window holds." The messages
+  not the live edge: "give me my span again, from this message up, as much as
+  the window holds." The server returns only what exists, so a quiet gap costs
+  the window's size, and a busy one brings every arrival that fits. The messages
   being read are always in the response, so nothing is dropped and the scroll
   never moves, at any depth — and because every loaded message comes back in
   its current state, reactions, edits, thread flags and deletes (a message that

@@ -204,7 +204,7 @@ const initialLoadInFlight = (channelID: string) =>
  * realtime connection broke after they were loaded (see stores/connectionFreshness).
  *
  * The window's own span is fetched again, from its oldest message up, capped at the
- * window limit. That catches everything a gap can lose: new messages, but also
+ * window limit (300). That catches everything a gap can lose: new messages, but also
  * reactions, edits, deletes, pins and thread flags on messages already loaded, which
  * "fetch anything newer than X" can never see. Starting from the OLDEST message
  * rather than the live edge is what makes this safe at any depth: the messages being
@@ -229,10 +229,11 @@ export const reconcileStaleWindow = async (client: FrappeCallClient, channelID: 
         loadInitialMessages(client, channelID)
         return
     }
-    // Only a loaded, at-the-bottom window can be quietly out of date:
+    // Only a loaded window still joined to the live edge can be quietly out of date:
     //  - a channel not loaded yet gets a full (stamping) fetch anyway
-    //  - a window scrolled back into history is thrown away and refetched on
-    //    re-entry (useChannelMessages), so it heals itself
+    //  - a window detached from the live edge (the user paged into history past
+    //    the cap, or jumped there) is thrown away and refetched on re-entry
+    //    (useChannelMessages), so it heals itself
     if (state.status !== "ready" || state.hasNewerMessages) return
     if (!isWindowStale(channelID)) return
     // A load in flight (a jump to a message, or the first page) stamps the window
@@ -247,6 +248,12 @@ export const reconcileStaleWindow = async (client: FrappeCallClient, channelID: 
         .map((id) => state.byId.get(id))
         .find((message) => message && !isOptimistic(message))
     if (!oldest) return
+    // Sends still in flight are kept on top of what the server returns, so they
+    // count against the room the window has.
+    const inFlightSends = state.order.filter((id) => {
+        const message = state.byId.get(id)
+        return message && isOptimistic(message)
+    }).length
     inFlight.add(key)
 
     // Read the connection-break counter BEFORE fetching. See markWindowFresh.
@@ -259,13 +266,21 @@ export const reconcileStaleWindow = async (client: FrappeCallClient, channelID: 
             channel_id: channelID,
             from_message: oldest.name,
             include_from_message: true,
-            // The window plus one page of room for what arrived, never more than the
-            // window can hold.
-            limit: Math.min(state.order.length + PAGE_SIZE, MAX_WINDOW_SIZE),
+            // As much as the window can hold, not "the window plus a page": a reader
+            // at the live edge should get everything that arrived, and a page of room
+            // would detach them after 30 messages. The server returns only what
+            // exists, so a quiet night costs the window's size, not the limit.
+            limit: Math.max(1, MAX_WINDOW_SIZE - inFlightSends),
             update_last_visit: false,
         })
         // The user started their own fetch while ours was running. Theirs wins.
         if (windowIntent.get(channelID) !== token) return
+        // Older history loaded while the request ran (or the window came off the live
+        // edge): the window no longer has the shape this response answers for, and
+        // merging the two could drop the rows just scrolled to. Discard the response;
+        // the window stays stale and the next check retries.
+        const current = channelMessagesStore.getState(channelID)
+        if (current.order[0] !== state.order[0] || current.hasNewerMessages) return
         // The span always includes its first message, so an empty response means
         // the server no longer has it: it was deleted during the gap. Drop it and
         // try again from the next one, leaving the window stale until that lands.
@@ -274,9 +289,13 @@ export const reconcileStaleWindow = async (client: FrappeCallClient, channelID: 
             oldestWasDeleted = true
         } else {
             seedPreviews(response.message)
-            channelMessagesStore.refreshWindow(channelID, response.message)
-            // Put the "New messages" divider back the way a warm re-entry does: on
-            // the first message past the last read one.
+            // `state` is from before the request: its rows are the ones the response
+            // answers for. Anything added since came over the socket and is kept.
+            channelMessagesStore.refreshWindow(channelID, response.message, state.order)
+            // Another device may have read the channel during the gap: take the
+            // server's read watermark before placing the "New messages" divider on
+            // the first message past the last read one, as a warm re-entry does.
+            channelUnreadStore.setServerWatermark(channelID, response.message.last_visit)
             recomputeUnreadAnchor(channelID)
             markWindowFresh(channelID, epochAtStart)
         }

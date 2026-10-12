@@ -290,3 +290,15 @@ class TestChatStream(IntegrationTestCase):
 		self.assertEqual(response["messages"][-1].name, base_message_id)
 		for i, message in enumerate(response["messages"]):
 			self.assertEqual(message.text, f"Test Message {99-i}")
+		# The member's read watermark rides along, for the client's "New messages" divider
+		self.assertIn("last_visit", response)
+
+	def test_get_newer_messages_from_a_deleted_message(self):
+		"""
+		A base message the server no longer has yields an empty page, not an error: the
+		client reads an empty page as "that message is gone" and moves its anchor on.
+		"""
+		response = get_newer_messages(CHANNEL_ID, "no-such-message", include_from_message=True)
+
+		self.assertEqual(response["messages"], [])
+		self.assertEqual(response["has_new_messages"], False)

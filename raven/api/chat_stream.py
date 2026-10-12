@@ -372,8 +372,23 @@ def get_newer_messages(
 	# Fetch older messages for the channel
 	from_timestamp = frappe.get_cached_value("Raven Message", from_message, "creation")
 
-	response = fetch_newer_messages(
-		channel_id, from_message, from_timestamp, limit, include_from_message=include_from_message
+	# A message the server no longer has (deleted since the client loaded it) yields an
+	# empty page rather than an error. The client relies on this: with include_from_message
+	# a non-empty page always holds from_message, so an empty one means it is gone.
+	if from_timestamp is None:
+		response = {"messages": [], "has_new_messages": False, "previews": {}}
+	else:
+		response = fetch_newer_messages(
+			channel_id, from_message, from_timestamp, limit, include_from_message=include_from_message
+		)
+
+	# The member's current read watermark, as get_messages returns it: a window refreshed
+	# after a connection break re-baselines its "New messages" divider from this, since
+	# another device may have read the channel meanwhile. Read before the legacy write below.
+	response["last_visit"] = frappe.db.get_value(
+		"Raven Channel Member",
+		{"channel_id": channel_id, "user_id": frappe.session.user},
+		"last_visit",
 	)
 
 	if update_last_visit and response.get("has_new_messages") == False:

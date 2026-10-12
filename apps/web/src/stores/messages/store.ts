@@ -125,8 +125,8 @@ class ChannelMessagesStore {
     }
 
     /** Re-applies the server's copy of the window's own span after a connection break. */
-    refreshWindow(channelID: string, page: MessagesPage) {
-        this.update(channelID, applyWindowRefresh(this.getState(channelID), page))
+    refreshWindow(channelID: string, page: MessagesPage, requested: readonly string[]) {
+        this.update(channelID, applyWindowRefresh(this.getState(channelID), page, requested))
     }
 
     /** Marks a pagination direction in flight; returns false when it should not start. */
