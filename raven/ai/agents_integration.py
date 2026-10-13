@@ -385,14 +385,16 @@ class RavenAgentManager:
 		# Dynamic instructions if needed
 		instructions = self.bot_doc.instruction
 		if self.bot_doc.dynamic_instructions:
-			# Replace Jinja variables
-			from jinja2 import Template
-
-			template = Template(instructions)
-			instructions = template.render(
-				user=frappe.session.user,
-				company=frappe.defaults.get_user_default("company"),
-				# Add other contextual variables
+			# Replace Jinja variables.
+			# Use Frappe's sandboxed renderer, not a raw Jinja template.
+			# Bot instructions are set by Raven Admins only. The renderer is sandboxed.
+			# nosemgrep: frappe-ssti
+			instructions = frappe.render_template(
+				instructions,
+				{
+					"user": frappe.session.user,
+					"company": frappe.defaults.get_user_default("company"),
+				},
 			)
 
 		# Enhance instructions with tool information if tools are available

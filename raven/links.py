@@ -351,6 +351,7 @@ def process_message_links(message_id: str):
 		if fill_preview(preview):
 			fetched.append(preview)
 		# Keep whatever happened, even if a later URL crashes the job.
+		# nosemgrep: frappe-manual-commit
 		frappe.db.commit()
 
 	if fetched:

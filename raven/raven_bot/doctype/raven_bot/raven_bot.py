@@ -172,7 +172,7 @@ class RavenBot(Document):
 			frappe.throw(
 				_(
 					"Connection to OpenAI API failed. Please check your Organization ID and API Key for any extra spaces. Error: {0}"
-				).format(e)
+				).format(str(e))
 			)
 		except Exception as e:
 			if "model_not_found" in str(e):

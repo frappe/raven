@@ -11,6 +11,8 @@ def get_instruction_preview(instruction: str):
 	"""
 	frappe.has_permission(doctype="Raven Bot", ptype="write", throw=True)
 
+	# Only users who can edit Raven Bots reach this line. The renderer is sandboxed.
+	# nosemgrep: frappe-ssti
 	instructions = frappe.render_template(instruction, get_variables_for_instructions())
 	return instructions
 

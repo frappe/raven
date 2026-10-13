@@ -125,6 +125,8 @@ class RavenDocumentNotification(Document):
 		channels, users = self.get_recipients(context)
 
 		is_html = self.is_html_message()
+		# Notification templates are set by Raven Admins only. The renderer is sandboxed.
+		# nosemgrep: frappe-ssti
 		message = frappe.render_template(self.get_message_template(), context)
 		# HTML is sent as is, after rendering so document values cannot inject markup either.
 		# Markdown (older records) is converted by the bot.
@@ -162,6 +164,8 @@ class RavenDocumentNotification(Document):
 			if recipient.variable_type == "Static":
 				return recipient.value
 			elif recipient.variable_type == "Jinja":
+				# Recipient templates are set by Raven Admins only. The renderer is sandboxed.
+				# nosemgrep: frappe-ssti
 				return frappe.render_template(recipient.value, context)
 			elif recipient.variable_type == "DocField":
 				return context.get("doc", {}).get(recipient.value)
