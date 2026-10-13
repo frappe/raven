@@ -1,87 +1,53 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { getDefaultStore } from "jotai"
 
-const mocks = vi.hoisted(() => ({
-    available: vi.fn(),
-    open: vi.fn(),
-    close: vi.fn(),
-    setAvailable: vi.fn(),
-    setOpening: vi.fn(),
-    effects: [] as (() => (() => void))[],
-}))
-
+const sdk = vi.hoisted(() => ({ open: vi.fn(), close: vi.fn() }))
 vi.mock("@frappe-dev/cloud-sdk", () => ({
-    isCloudSettingsAvailable: mocks.available,
-    openCloudSettings: mocks.open,
-    closeCloudSettings: mocks.close,
-}))
-vi.mock("react", () => ({
-    useEffect: (effect: () => (() => void)) => mocks.effects.push(effect),
-    useState: vi.fn(),
+    openCloudSettings: sdk.open,
+    closeCloudSettings: sdk.close,
 }))
 
-import { useState } from "react"
-import { useCloudSettings } from "./useCloudSettings"
+import { cloudSettingsOpenAtom, isCloudSettingsAvailable, openBillingDialog } from "./useCloudSettings"
 
-const RenderCloudSettingsHook = () => {
-    vi.mocked(useState)
-        .mockReturnValueOnce([false, mocks.setAvailable])
-        .mockReturnValueOnce([false, mocks.setOpening])
-    return useCloudSettings()
-}
+const store = getDefaultStore()
 
 beforeEach(() => {
     vi.resetAllMocks()
-    mocks.effects.length = 0
-    mocks.available.mockResolvedValue(true)
-    vi.stubGlobal("window", new EventTarget())
+    sdk.open.mockResolvedValue(undefined)
+    store.set(cloudSettingsOpenAtom, false)
+    vi.stubGlobal("window", { frappe: { boot: { cloud_settings: { enabled: true } } } })
 })
+
 afterEach(() => vi.unstubAllGlobals())
 
-describe("Cloud Settings integration", () => {
-    it("discovers availability and checks it again when the window regains focus", async () => {
-        RenderCloudSettingsHook()
-        const cleanup = mocks.effects[0]()
-        await vi.waitFor(() => expect(mocks.setAvailable).toHaveBeenCalledWith(true))
-
-        mocks.available.mockResolvedValue(false)
-        window.dispatchEvent(new Event("focus"))
-        await vi.waitFor(() => expect(mocks.setAvailable).toHaveBeenLastCalledWith(false))
-        cleanup()
+describe("isCloudSettingsAvailable", () => {
+    it("reads the boot flag Frappe sets on a pilot-managed site", () => {
+        expect(isCloudSettingsAvailable()).toBe(true)
+        window.frappe.boot.cloud_settings.enabled = false
+        expect(isCloudSettingsAvailable()).toBe(false)
     })
 
-    it("keeps the entry hidden when discovery fails", async () => {
-        mocks.available.mockRejectedValue(new Error("Unavailable"))
-        RenderCloudSettingsHook()
-        const cleanup = mocks.effects[0]()
-        await vi.waitFor(() => expect(mocks.setAvailable).toHaveBeenCalledWith(false))
-        cleanup()
+    it("is false on a Frappe version that has no cloud_settings in boot", () => {
+        delete window.frappe.boot.cloud_settings
+        expect(isCloudSettingsAvailable()).toBe(false)
+    })
+})
+
+describe("openBillingDialog", () => {
+    it("opens on the billing panel and holds the Esc gate until the dialog closes", async () => {
+        await openBillingDialog()
+        expect(sdk.open).toHaveBeenCalledOnce()
+        const options = sdk.open.mock.calls[0][0]
+        expect(options).toMatchObject({ panels: ["billing", "domains", "advanced"], tab: "billing" })
+        expect(store.get(cloudSettingsOpenAtom)).toBe(true)
+        options.onClose()
+        expect(store.get(cloudSettingsOpenAtom)).toBe(false)
     })
 
-    it("does not update an unmounted Rail and closes its dialog", async () => {
-        RenderCloudSettingsHook()
-        const cleanup = mocks.effects[0]()
-        cleanup()
-        await Promise.resolve()
-        expect(mocks.setAvailable).not.toHaveBeenCalled()
-        expect(mocks.close).toHaveBeenCalledOnce()
-        window.dispatchEvent(new Event("focus"))
-        expect(mocks.available).toHaveBeenCalledOnce()
-    })
-
-    it("opens billing with the supported panels and clears the loading state", async () => {
-        const hook = RenderCloudSettingsHook()
-        await hook.open()
-        expect(mocks.open).toHaveBeenCalledWith({
-            panels: ["billing", "domains", "advanced"], tab: "billing",
-        })
-        expect(mocks.setOpening.mock.calls).toEqual([[true], [false]])
-    })
-
-    it("allows the caller to show an opening error and clears the loading state", async () => {
-        const error = new Error("Network failure")
-        mocks.open.mockRejectedValue(error)
-        const hook = RenderCloudSettingsHook()
-        await expect(hook.open()).rejects.toThrow(error)
-        expect(mocks.setOpening).toHaveBeenLastCalledWith(false)
+    it("releases the Esc gate and rethrows when the dialog fails to open", async () => {
+        const error = new Error("Could not reach Cloud Settings")
+        sdk.open.mockRejectedValue(error)
+        await expect(openBillingDialog()).rejects.toThrow(error)
+        expect(store.get(cloudSettingsOpenAtom)).toBe(false)
     })
 })

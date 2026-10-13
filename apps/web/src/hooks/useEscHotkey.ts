@@ -2,6 +2,7 @@ import { useHotkeys } from "react-hotkeys-hook"
 import { getDefaultStore } from "jotai"
 import { attachmentPreviewAtom } from "@utils/attachmentPreview"
 import { messageDialogAtom } from "@utils/channelAtoms"
+import { cloudSettingsOpenAtom } from "@hooks/useCloudSettings"
 
 /** Live check: is any Esc-owning overlay open right now? Radix-style layers
  *  (dialogs, alert dialogs, bottom sheets, menus, open selects) plus the
@@ -11,9 +12,13 @@ const overlayOpenNow = (): boolean => {
     const store = getDefaultStore()
     if (store.get(attachmentPreviewAtom) !== null) return true
     if (store.get(messageDialogAtom) !== null) return true
-    const selector = '[data-state="open"]:is([role="dialog"],[role="alertdialog"],[role="menu"],[role="listbox"])'
-    return document.querySelector(selector) !== null ||
-        document.activeElement?.shadowRoot?.querySelector(selector) != null
+    // The Cloud Settings dialog lives in a shadow root the DOM query below cannot see.
+    if (store.get(cloudSettingsOpenAtom)) return true
+    return (
+        document.querySelector(
+            '[data-state="open"]:is([role="dialog"],[role="alertdialog"],[role="menu"],[role="listbox"])',
+        ) !== null
+    )
 }
 
 /**
@@ -64,8 +69,9 @@ export function useEscHotkey(handler: () => void, options?: EscHotkeyOptions, de
         handler,
         {
             ...options,
-            // Ignore before the hotkey library applies preventDefault.
-            ignoreEventWhen: () => escOwnedByOverlay(),
+            // A function, so the overlay check runs at keypress time — always
+            // current, and preventDefault never fires while a modal is open.
+            enabled: () => (options?.enabled ?? true) && !escOwnedByOverlay(),
         },
         deps,
     )
