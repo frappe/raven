@@ -13,8 +13,5 @@ raven/public/node_modules
 raven/www/raven.html
 *.env
 
-apps/mobile/ios
-apps/mobile/android
-apps/mobile/.expo
 
 apps/web/.env.local

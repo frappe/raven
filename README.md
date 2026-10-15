@@ -49,7 +49,7 @@ It's built using [Frappe Framework](https://frappeframework.com) and offers deep
 
 ### Tech Stack
 
-##### Common across web and mobile
+##### Core
 
 - [Frappe Framework](https://frappeframework.com) - an open-source full stack development framework. It uses Python, MariaDB/Postgres, socket.io and Redis
 - [React](https://react.dev)
@@ -63,14 +63,6 @@ It's built using [Frappe Framework](https://frappeframework.com) and offers deep
 - [TipTap](https://www.tiptap.dev) - Rich Text Editor
 - [React Icons](https://react-icons.github.io/react-icons/) - icon library
 - [emoji-mart](https://github.com/missive/emoji-mart) - Emoji Picker library
-
-##### Mobile
-- [React Native](https://reactnative.dev)
-- [Expo](https://expo.dev) - for all plugins/utilities and deployment
-- [NativeWind](https://www.nativewind.dev) - using TailwindCSS but on React Native
-- [React Native Reanimated](https://docs.swmansion.com/react-native-reanimated/) - Animations for React Native
-- [React Native Gesture Handler](https://docs.swmansion.com/react-native-gesture-handler) - to handle touch and gestures on React Native
-- [Zeego](https://zeego.dev) - Dropdown menus for React Native
 
 
 
@@ -210,32 +202,6 @@ VITE_BASE_NAME='' # This needs to be set as empty
 VITE_SOCKET_PORT=9000 # This is the port on which socket.io is running. It's usually the main Frappe server port (8000) but in the 9000 series
 VITE_SITE_NAME='raven.test' # This is the same of the site
 ```
-
-
-##### Mobile App
-
-Raven's **mobile app** is a React Native based app built using Expo. It requires an [Expo Development Build](https://docs.expo.dev/develop/development-builds/introduction/) and will not run on Expo Go.
-
-To get started, you need to install the [Expo CLI](https://docs.expo.dev/develop/tools/#expo-cli)
-
-```bash
-npm install -g eas-cli
-```
-
-You also need to have Xcode and/or Android Studio installed locally depending on your platform of choice.
-
-The mobile app is located under the `apps/mobile` directory.
-To start the development server and run it on a simulator, you can run 
-```bash
-yarn run ios
-```
-
-or 
-```
-yarn run android
-```
-
-This *should* start the emulators with the app running. For more info, please refer to the [Expo documentation](https://docs.expo.dev/get-started/introduction/)
 
 
 ## Forum and Support
