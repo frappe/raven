@@ -159,6 +159,11 @@ class TestRavenScheduledMessage(IntegrationTestCase):
 	def test_failed_dispatch_marks_failed_and_continues(self):
 		from raven.scheduler.send_scheduled_messages import send_due_messages
 
+		# The sweep commits after each row it sends and rolls back after each row that
+		# fails. The first row must send: its commit also saves this test's fixtures,
+		# which the failed row's rollback would otherwise discard.
+		first = self._schedule()
+		first.db_set("scheduled_time", add_to_date(now_datetime(), minutes=-3))
 		bad = self._schedule()
 		bad.db_set("scheduled_time", add_to_date(now_datetime(), minutes=-2))
 		good = self._schedule()
@@ -179,14 +184,17 @@ class TestRavenScheduledMessage(IntegrationTestCase):
 				"workspace": self.workspace.name,
 			}
 		).insert()
+		first.db_set("channel_id", other_channel.name)
 		good.db_set("channel_id", other_channel.name)
 		frappe.set_user("Administrator")
 		frappe.delete_doc("Raven Channel Member", member_name)
 
 		send_due_messages()
 
+		first.reload()
 		bad.reload()
 		good.reload()
+		self.assertEqual(first.status, "Sent")
 		self.assertEqual(bad.status, "Failed")
 		self.assertTrue(bad.error)
 		self.assertEqual(good.status, "Sent")
