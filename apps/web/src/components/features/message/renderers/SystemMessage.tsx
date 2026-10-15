@@ -27,7 +27,7 @@ interface SystemMessageProps {
 type SystemMessageData =
     | { event: "members_added"; added_by: string; members: string[] }
     | { event: "user_joined"; user: string }
-    | { event: "user_left"; user: string }
+    | { event: "user_left"; user: string; new_admin?: string }
     | { event: "member_removed"; removed_by: string; user: string; new_admin?: string }
     | { event: "admin_status_changed"; user: string; is_admin: boolean }
     | { event: "channel_created"; user: string; channel_name?: string }
@@ -137,6 +137,12 @@ const SystemMessage: React.FC<SystemMessageProps> = ({ message, time, data }) =>
             case "user_joined":
                 return _("{0} joined.", [resolveName(structured.user)])
             case "user_left":
+                if (structured.new_admin) {
+                    return _("{0} left and {1} is the new admin of this channel.", [
+                        resolveName(structured.user),
+                        resolveName(structured.new_admin),
+                    ])
+                }
                 return _("{0} left.", [resolveName(structured.user)])
             case "member_removed":
                 if (structured.new_admin) {

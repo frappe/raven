@@ -119,20 +119,26 @@ class RavenChannelMember(Document):
 			# Add a system message to the channel mentioning the new admin.
 			# (As everywhere: `json` is the structured event clients translate;
 			# `text` is the plain-English fallback for older clients.)
+			# A member who removed themselves "left"; nobody removed them.
+			# (compare IDs, not display names: two users can share a full name)
+			if self.user_id == frappe.session.user:
+				text = f"{member_name} left and {first_member_name} is the new admin of this channel."
+				event = {"event": "user_left", "user": self.user_id, "new_admin": first_member.user_id}
+			else:
+				text = f"{member_name} was removed by {current_user_name} and {first_member_name} is the new admin of this channel."
+				event = {
+					"event": "member_removed",
+					"removed_by": frappe.session.user,
+					"user": self.user_id,
+					"new_admin": first_member.user_id,
+				}
 			frappe.get_doc(
 				{
 					"doctype": "Raven Message",
 					"channel_id": self.channel_id,
 					"message_type": "System",
-					"text": f"{member_name} was removed by {current_user_name} and {first_member_name} is the new admin of this channel.",
-					"json": frappe.as_json(
-						{
-							"event": "member_removed",
-							"removed_by": frappe.session.user,
-							"user": self.user_id,
-							"new_admin": first_member.user_id,
-						}
-					),
+					"text": text,
+					"json": frappe.as_json(event),
 				}
 			).insert(ignore_permissions=True)
 		else:
