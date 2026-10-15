@@ -230,12 +230,13 @@ class TestRavenScheduledMessage(IntegrationTestCase):
 	def test_get_scheduled_messages_only_own(self):
 		from raven.api.scheduled_message import get_scheduled_messages
 
-		self._schedule()
-		rows = get_scheduled_messages()
-		self.assertEqual(len(rows), 1)
+		# Look for this row rather than counting: the sweep test commits its rows,
+		# and a Failed one it leaves behind is rightly listed for its owner.
+		doc = self._schedule()
+		self.assertIn(doc.name, [row.name for row in get_scheduled_messages()])
 
 		frappe.set_user("test1@example.com")
-		self.assertEqual(len(get_scheduled_messages()), 0)
+		self.assertEqual(get_scheduled_messages(), [])
 
 	def test_next_working_day_weekend_fallback(self):
 		from raven.api.scheduled_message import next_working_day
