@@ -1,5 +1,5 @@
 import { useCallback, useDeferredValue, useMemo, useState, useSyncExternalStore } from "react"
-import { useFrappeUpdateDoc } from "frappe-react-sdk"
+import { useFrappePostCall } from "frappe-react-sdk"
 import { toast } from "sonner"
 import { CircleCheckIcon, CircleOffIcon, EllipsisVertical, KeyRoundIcon, SearchIcon, UsersIcon } from "lucide-react"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@components/ui/empty"
@@ -49,12 +49,14 @@ export const Users = () => {
     const openDisable = useCallback((user: UserData) => { setDisableUser(user); setDisableOpen(true) }, [])
 
     // Enabling needs no confirmation. The row refreshes from the realtime event.
-    const { updateDoc } = useFrappeUpdateDoc()
+    // A Raven User is disabled by a disabled account OR a removed Raven User
+    // role, so the endpoint restores both, not just the account flag.
+    const { call: enableUser } = useFrappePostCall("raven.api.raven_users.enable_user")
     const enable = useCallback((user: UserData) => {
-        updateDoc("User", user.name, { enabled: 1 })
+        enableUser({ user: user.name })
             .then(() => toast.success(_("{0} has been enabled", [user.full_name || user.name])))
             .catch((error) => errorResponseToast(_("Could not enable user"), error))
-    }, [updateDoc])
+    }, [enableUser])
 
     const columns = useMemo<ColumnDef<UserData>[]>(() => {
         if (!canManageAccess) return userColumns

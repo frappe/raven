@@ -120,6 +120,30 @@ def get_all_users_on_leave():
 
 
 @frappe.whitelist(methods=["POST"])
+def enable_user(user: str):
+	"""Give a user their Raven access back.
+
+	A Raven User is disabled when the site account is disabled, or when the
+	Raven User role was taken away. This restores both, in one save that
+	runs the normal permission checks (writing a User needs System Manager).
+	"""
+	user_doc = frappe.get_doc("User", user)
+	if has_role_profile(user_doc):
+		frappe.throw(
+			_("{0} gets their roles from a role profile. Add the Raven User role there.").format(user)
+		)
+	user_doc.enabled = 1
+	if "Raven User" not in [role.role for role in user_doc.roles]:
+		user_doc.append("roles", {"role": "Raven User"})
+	user_doc.save()
+
+
+def has_role_profile(user_doc) -> bool:
+	"""Roles from a role profile are reapplied on every save, so one added by hand is lost."""
+	return bool(user_doc.role_profile_name or user_doc.get("role_profiles"))
+
+
+@frappe.whitelist(methods=["POST"])
 def add_users_to_raven(users: list[str] | str):
 
 	if isinstance(users, str):
