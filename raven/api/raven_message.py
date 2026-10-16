@@ -7,7 +7,7 @@ from frappe.utils import cint
 from raven.api.chat_stream import message_columns
 from raven.api.raven_channel import create_direct_message_channel, get_peer_user_id_from_dm_users
 from raven.api.search import channel_access_condition
-from raven.utils import get_channel_member
+from raven.utils import desk_has_raven_icon, get_channel_member
 
 
 @frappe.whitelist(methods=["POST"])
@@ -729,16 +729,18 @@ def get_timeline_message_content(doctype: str, docname: str | int):
 	)
 	data = query.run(as_dict=True)
 
+	icon = "raven" if desk_has_raven_icon() else "share"
 	timeline_contents = []
 	for log in data:
 
 		if log.is_direct_message:
 			peer_user_id = get_peer_user_id_from_dm_users(log)
 			if peer_user_id:
-				log["peer_user"] = frappe.db.get_value("User", peer_user_id, "full_name")
+				# Raven User covers bots too. A bot has no User row.
+				log["peer_user"] = frappe.get_cached_value("Raven User", peer_user_id, "full_name")
 		timeline_contents.append(
 			{
-				"icon": "share",
+				"icon": icon,
 				"is_card": True,
 				"creation": log.creation,
 				"template": "send_message",

@@ -336,6 +336,16 @@ def is_channel_member(channel_id: str, user: str = None) -> bool:
 	return user in get_channel_members(channel_id)
 
 
+def desk_has_raven_icon() -> bool:
+	"""Frappe 16.50 and later load the Raven icon sprite from hooks into the desk.
+
+	Older versions resolve the sprite path differently and never load it, so
+	the "raven" icon name would render blank there.
+	"""
+	major, minor = (int(part) for part in frappe.__version__.split(".")[:2])
+	return (major, minor) >= (16, 50)
+
+
 def get_raven_user(user_id: str) -> str:
 	"""
 	Get the Raven User ID of a user

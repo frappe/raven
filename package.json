@@ -12,8 +12,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "cd apps/web && yarn dev",
     "build": "cd apps/web && yarn build",
-    "postinstall": "yarn install-desk && yarn install-web",
-    "install-desk": "cd raven && yarn install",
+    "postinstall": "yarn install-web",
     "install-web": "cd apps/web && yarn install"
   },
   "keywords": [],

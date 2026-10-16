@@ -140,8 +140,8 @@ def get_channels(hide_archived: bool | str = False):
 		peer_user_id = get_peer_user_id_from_dm_users(channel)
 		channel["peer_user_id"] = peer_user_id
 		if peer_user_id:
-			user_full_name = frappe.get_cached_value("User", peer_user_id, "full_name")
-			channel["full_name"] = user_full_name
+			# Raven User covers bots too. A bot has no User row.
+			channel["full_name"] = frappe.get_cached_value("Raven User", peer_user_id, "full_name")
 	return channels
 
 

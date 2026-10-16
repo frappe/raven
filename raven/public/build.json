@@ -1,6 +1,0 @@
-{
-  "js/raven.min.js": [
-    "public/js/timeline_button.js",
-    "public/js/templates/send_message.html"
-  ]
-}

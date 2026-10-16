@@ -8,7 +8,6 @@
  "engine": "InnoDB",
  "field_order": [
   "auto_add_system_users",
-  "show_raven_on_desk",
   "use_website_favicon",
   "blocked_links",
   "quiet_hours_section",
@@ -58,13 +57,6 @@
    "fieldname": "auto_add_system_users",
    "fieldtype": "Check",
    "label": "Automatically add system users to Raven",
-   "permlevel": 1
-  },
-  {
-   "default": "1",
-   "fieldname": "show_raven_on_desk",
-   "fieldtype": "Check",
-   "label": "Show Raven on Desk",
    "permlevel": 1
   },
   {
@@ -343,7 +335,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-10-16 13:00:00.000000",
+ "modified": "2026-10-16 18:00:00.000000",
  "modified_by": "Administrator",
  "module": "Raven",
  "name": "Raven Settings",

@@ -17,8 +17,6 @@ def boot_session(bootinfo):
 	# Scheduled messages run as Server Scripts. The settings panel warns when those are off.
 	bootinfo.server_script_enabled = is_safe_exec_enabled()
 
-	bootinfo.show_raven_chat_on_desk = raven_settings.show_raven_on_desk
-
 	if raven_settings.frappe_meet_hosted_urls:
 		bootinfo.frappe_meet_hosted_urls = raven_settings.frappe_meet_hosted_urls
 

@@ -1,335 +1,178 @@
-// Timeline button for Frappe
-$(document).on('app_ready', function () {
+// "Send a Raven" button on every form timeline the user can read.
+
+frappe.provide("frappe.raven");
+
+/**
+ * The first icon name the page's sprite actually has. Raven's own icons
+ * come from hooks.py, lucide names from Frappe v16, and the last candidates
+ * cover Frappe v15, whose sprite uses different names.
+ */
+frappe.raven.icon_name = (...candidates) =>
+  candidates.find((name) => name && document.getElementById(`icon-${name}`));
+
+/** The icon markup for the first available name, or nothing at all. */
+frappe.raven.icon = (name, fallback, size = "sm") => {
+  const known = frappe.raven.icon_name(name, fallback);
+  return known ? frappe.utils.icon(known, size) : "";
+};
+
+$(document).on("app_ready", function () {
   $.each(frappe.boot.user.can_read, function (i, doctype) {
-    let buttonAdded = false; // Track if the button has been added
-
     frappe.ui.form.on(doctype, {
-      refresh: function (frm) {
-        if (!frm.is_new()) {
-          if (frm.footer?.frm?.timeline && !buttonAdded) {
-            let send_message_modal = (channels) => {
-              if (channels && channels.message && channels.message.length > 0) {
-                let channel_id = [];
-                let dm_list = [];
-                let channel_list = [];
-
-                channels.message.forEach((channel) => {
-                  if (channel.is_direct_message) {
-                    if (channel.full_name) {
-                      dm_list.push(channel.full_name);
-                      channel_id.push({
-                        value: channel.name,
-                        name: channel.full_name,
-                      });
-                    }
-                  } else {
-                    channel_list.push(channel.channel_name);
-                    channel_id.push({
-                      value: channel.name,
-                      name: channel.channel_name,
-                    });
-                  }
-                });
-
-                let setup_attach = () => {
-                  const fields = dialog.fields_dict;
-                  const attach = $(fields.select_attachments.wrapper);
-
-                  if (!frm.attachments) {
-                    frm.attachments = [];
-                  }
-
-                  let args = {
-                    folder: 'Home/Attachments',
-                    on_success: (attachment) => {
-                      frm.attachments.push(attachment);
-                      render_attachment_rows();
-                    },
-                  };
-
-                  if (frm) {
-                    args = {
-                      doctype: frm.doctype,
-                      docname: frm.docname,
-                      folder: 'Home/Attachments',
-                      on_success: (attachment) => {
-                        frm.attachments.attachment_uploaded(attachment);
-                        render_attachment_rows();
-                      },
-                    };
-                  }
-
-                  $(`
-                    <label class="control-label">
-                      ${__('Select Attachments')}
-                    </label>
-                    <div class='attach-list'></div>
-                    <p class='add-more-attachments'>
-                      <button class='btn btn-xs btn-default'>
-                        ${frappe.utils.icon('small-add', 'xs')}&nbsp;
-                        ${__('Add Attachment')}
-                      </button>
-                    </p>
-                  `).appendTo(attach.empty());
-
-                  attach
-                    .find('.add-more-attachments button')
-                    .on('click', () => new frappe.ui.FileUploader(args));
-                  render_attachment_rows();
-                };
-
-                let render_attachment_rows = (attachment) => {
-                  const select_attachments =
-                    dialog.fields_dict.select_attachments;
-                  const attachment_rows = $(select_attachments.wrapper).find(
-                    '.attach-list'
-                  );
-
-                  // Clear existing attachments
-                  attachment_rows.empty();
-
-                  if (attachment) {
-                    attachment_rows.append(
-                      get_attachment_row(attachment, true)
-                    );
-                  } else {
-                    let files = [];
-                    // Add attachments from form
-                    // check if attachment already exists in files array
-
-                    if (frm.attachments && frm.attachments.length) {
-                      // files = files.concat(frm.attachments);
-                      files = files.concat(
-                        frm.attachments.filter((attachment, index, array) => {
-                          return !array
-                            .slice(0, index)
-                            .some(
-                              (obj) => obj.file_name === attachment.file_name
-                            );
-                        })
-                      );
-                    }
-                    if (frm) {
-                      files = files.concat(frm.get_files());
-
-                      files = files.filter((attachment, index, array) => {
-                        return !array
-                          .slice(0, index)
-                          .some(
-                            (obj) => obj.file_name === attachment.file_name
-                          );
-                      });
-                    }
-
-                    if (files.length) {
-                      $.each(files, (i, f) => {
-                        if (!f.file_name) return;
-                        if (
-                          !attachment_rows.find(`[data-file-name="${f.name}"]`)
-                            .length
-                        ) {
-                          f.file_url = frappe.urllib.get_full_url(f.file_url);
-                          attachment_rows.append(get_attachment_row(f));
-                        }
-                      });
-                    }
-                  }
-                };
-
-                let get_attachment_row = (attachment, checked) => {
-                  const radioGroupName = 'attachmentRadioGroup';
-
-                  return $(`
-                    <p class="flex">
-                      <label class="attachment-radio">
-                        <input type="radio" name="${radioGroupName}"
-                               data-file-name="${attachment.name}" ${checked ? 'checked' : ''
-                    }>
-                        </input>
-                        <span class="ellipsis">${attachment.file_name}</span>
-                      </label>
-                      &nbsp;
-                      <a href="${attachment.file_url
-                    }" target="_blank" class="btn-linkF">
-                        ${frappe.utils.icon('link-url')}
-                      </a>
-                    </p>`);
-                };
-
-                let get_attachments = () => {
-                  const selected_attachment = $(dialog.wrapper)
-                    .find('[data-file-name]:checked')
-                    .attr('data-file-name');
-                  return selected_attachment ? selected_attachment : '';
-                };
-
-                let dialog;
-                if (!dialog) {
-                  dialog = new frappe.ui.Dialog({
-                    title: __('Send a Raven'),
-                    fields: [
-                      {
-                        fieldname: 'type',
-                        label: 'Type',
-                        fieldtype: 'Select',
-                        options: ['DM', 'Channel'],
-                        default: 'Channel',
-                        onchange: function () {
-                          let field = dialog.get_field('channel');
-                          if (this.value === 'DM') {
-                            field.df.options = dm_list;
-                          } else {
-                            field.df.options = channel_list;
-                          }
-                          field.refresh();
-                        },
-                      },
-                      {
-                        fieldname: 'channel',
-                        label: 'Channel/DM',
-                        fieldtype: 'Select',
-                        options: channel_list,
-                        reqd: 1,
-                      },
-                      {
-                        fieldname: 'message',
-                        label: 'Message',
-                        fieldtype: 'Long Text',
-                        // reqd: 1,
-                      },
-                      { fieldtype: 'Section Break' },
-                      {
-                        label: __('Select Attachments'),
-                        fieldtype: 'HTML',
-                        fieldname: 'select_attachments',
-                      },
-                    ],
-                    primary_action_label: __('Send'),
-                    primary_action(values) {
-                      let attachments = get_attachments();
-                      send_message(values, channel_id, attachments);
-                      dialog.hide();
-                    },
-                    secondary_action_label: __('Discard'),
-                    secondary_action() {
-                      dialog.hide();
-                    },
-                    minimizable: true,
-                  });
-                }
-                setup_attach();
-                dialog.show();
-              } else {
-                frappe.msgprint({
-                  title: __('Send a Raven'),
-                  indicator: 'blue',
-                  message: __('No channels found'),
-                });
-              }
-            };
-
-            let get_channels = () => {
-              return frappe.call({
-                method: 'raven.api.raven_channel.get_channels',
-                args: {
-                  hide_archived: true,
-                },
-                callback: function (r) {
-                  if (r && r.message) {
-                    return r.message;
-                  }
-                },
-              });
-            };
-
-            let send_message = (values, channel_id, attachments) => {
-              // let channel = values.channel;
-              let channel = channel_id.find(
-                (channel) => channel.name == values.channel
-              ).value;
-              // get message from values.message and clean it up, remove html tags
-              // let message = values.message.replace(/<[^>]*>?/gm, '');
-              let message = values.message;
-
-              let get_type = (url) => {
-                if (url) {
-                  let fileExt = [
-                    'jpg',
-                    'JPG',
-                    'jpeg',
-                    'JPEG',
-                    'png',
-                    'PNG',
-                    'gif',
-                    'GIF',
-                  ];
-                  let ext = url.split('.').pop();
-                  if (fileExt.includes(ext)) {
-                    return 'Image';
-                  } else {
-                    return 'File';
-                  }
-                }
-                return 'Text';
-              };
-
-              frappe.db
-                .get_value('File', { name: attachments }, 'file_url')
-                .then((res) => {
-                  return frappe.db.insert({
-                    doctype: 'Raven Message',
-                    channel_id: channel,
-                    text: message,
-                    json: {
-                      "content": [
-                        {
-                          "content": [
-                            {
-                              "text": message,
-                              "type": "text"
-                            }
-                          ],
-                          "type": "paragraph"
-                        }
-                      ],
-                      "type": "doc"
-                    },
-                    message_type: get_type(res?.message?.file_url),
-                    file: res?.message?.file_url || '',
-                    link_doctype: frm.doctype,
-                    link_document: frm.docname,
-                  });
-                })
-                .then(() => {
-                  frm.reload_doc();
-                  frappe.show_alert({
-                    message: __('Message sent'),
-                    indicator: 'green',
-                  });
-                  frappe.utils.play_sound('email');
-                })
-                .catch((err) => {
-                  frappe.throw(__('Error sending message'));
-                });
-            };
-
-            let send_raven = () => {
-              get_channels().then((channels) => send_message_modal(channels));
-            };
-
-            var timeline = frm.footer.frm.timeline;
-            // check the button is not already added by checking the class name 'send-raven-button'
-
-            timeline.add_action_button(
-              __('Send a Raven'),
-              send_raven,
-              'share',
-              'btn-secondary send-raven-button'
-            );
-            buttonAdded = true;
-          }
-        }
+      refresh(frm) {
+        const timeline = frm.footer?.frm?.timeline;
+        if (frm.is_new() || !timeline) return;
+        if (timeline.timeline_actions_wrapper.find(".send-raven-button").length) return;
+        add_send_button(timeline, frm);
       },
     });
   });
 });
+
+/**
+ * The timeline helper draws every button icon at 12px. That suits a line
+ * icon, but the Raven logo is a filled square and reads too small, so it is
+ * drawn here at 16px instead. The fallbacks are line icons and keep 12px.
+ */
+const add_send_button = (timeline, frm) => {
+  const label = __("Send a Raven");
+  const open = () => open_send_dialog(frm);
+  const classes = "btn-secondary send-raven-button";
+  if (!frappe.raven.icon_name("raven")) {
+    timeline.add_action_button(label, open, frappe.raven.icon_name("send", "share"), classes);
+    return;
+  }
+  const button = timeline.add_action_button(label, open, "raven", classes);
+  button.find("svg.icon").removeClass("icon-xs").addClass("icon-sm");
+};
+
+const open_send_dialog = (frm) => {
+  frappe
+    .xcall("raven.api.raven_channel.get_channels", { hide_archived: true })
+    .then((channels) => {
+      if (!channels?.length) {
+        frappe.msgprint({ title: __("Send a Raven"), indicator: "blue", message: __("No channels found") });
+        return;
+      }
+      show_send_dialog(frm, channels);
+    });
+};
+
+/** One list for channels and DMs. The description tells them apart. */
+const channel_options = (channels) =>
+  channels.map((channel) => ({
+    value: channel.name,
+    label: channel.is_direct_message ? channel.full_name || channel.peer_user_id : channel.channel_name,
+    description: channel.is_direct_message ? __("Direct Message") : channel.workspace,
+  }));
+
+const show_send_dialog = (frm, channels) => {
+  const dialog = new frappe.ui.Dialog({
+    title: __("Send a Raven"),
+    fields: [
+      {
+        fieldname: "channel",
+        label: __("Channel or Person"),
+        fieldtype: "Autocomplete",
+        options: channel_options(channels),
+        reqd: 1,
+      },
+      { fieldname: "message", label: __("Message"), fieldtype: "Long Text" },
+      { fieldtype: "Section Break" },
+      { fieldname: "select_attachments", label: __("Select Attachments"), fieldtype: "HTML" },
+    ],
+    primary_action_label: __("Send"),
+    primary_action(values) {
+      send_message(frm, values.channel, values.message, selected_attachment(dialog));
+      dialog.hide();
+    },
+    secondary_action_label: __("Discard"),
+    secondary_action: () => dialog.hide(),
+    minimizable: true,
+  });
+  setup_attachments(frm, dialog);
+  dialog.show();
+};
+
+const setup_attachments = (frm, dialog) => {
+  const wrapper = $(dialog.fields_dict.select_attachments.wrapper).empty();
+  $(`
+    <label class="control-label">${__("Select Attachments")}</label>
+    <div class="attach-list"></div>
+    <p class="add-more-attachments">
+      <button class="btn btn-xs btn-default">
+        ${frappe.raven.icon("plus", "small-add", "xs")}&nbsp;${__("Add Attachment")}
+      </button>
+    </p>
+  `).appendTo(wrapper);
+
+  const uploader_args = {
+    doctype: frm.doctype,
+    docname: frm.docname,
+    folder: "Home/Attachments",
+    on_success: (attachment) => {
+      frm.attachments.attachment_uploaded(attachment);
+      render_attachment_rows(frm, wrapper);
+    },
+  };
+  wrapper.find(".add-more-attachments button").on("click", () => new frappe.ui.FileUploader(uploader_args));
+  render_attachment_rows(frm, wrapper);
+};
+
+const render_attachment_rows = (frm, wrapper) => {
+  const rows = wrapper.find(".attach-list").empty();
+  frm.get_files().forEach((file) => {
+    if (!file.file_name) return;
+    rows.append(`
+      <p class="flex">
+        <label class="attachment-radio">
+          <input type="radio" name="raven-attachment" data-file-name="${file.name}">
+          <span class="ellipsis">${frappe.utils.escape_html(file.file_name)}</span>
+        </label>
+        &nbsp;
+        <a href="${frappe.urllib.get_full_url(file.file_url)}" target="_blank">
+          ${frappe.raven.icon("link", "link-url", "xs")}
+        </a>
+      </p>
+    `);
+  });
+};
+
+const selected_attachment = (dialog) =>
+  $(dialog.wrapper).find("[data-file-name]:checked").attr("data-file-name") || "";
+
+const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif"];
+
+const message_type_for = (file_url) => {
+  if (!file_url) return "Text";
+  return IMAGE_EXTENSIONS.includes(file_url.split(".").pop().toLowerCase()) ? "Image" : "File";
+};
+
+const send_message = (frm, channel, message, attachment) => {
+  const file_url = attachment
+    ? frappe.db.get_value("File", attachment, "file_url").then((r) => r.message?.file_url || "")
+    : Promise.resolve("");
+
+  file_url
+    .then((url) =>
+      frappe.db.insert({
+        doctype: "Raven Message",
+        channel_id: channel,
+        text: message,
+        json: {
+          type: "doc",
+          content: [{ type: "paragraph", content: [{ type: "text", text: message }] }],
+        },
+        message_type: message_type_for(url),
+        file: url,
+        link_doctype: frm.doctype,
+        link_document: frm.docname,
+      }),
+    )
+    .then(() => {
+      frm.reload_doc();
+      frappe.show_alert({ message: __("Message sent"), indicator: "green" });
+      frappe.utils.play_sound("email");
+    })
+    .catch(() => frappe.throw(__("Error sending message")));
+};

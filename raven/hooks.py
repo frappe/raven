@@ -14,10 +14,9 @@ app_logo_url = "/assets/raven/raven_logo.svg"
 # ------------------
 
 # include js, css files in header of desk.html
-app_include_css = "raven.bundle.css"
-# app_include_css = "/assets/raven/css/raven.css"
-# app_include_js = "/assets/raven/js/raven.js"                 ]
 app_include_js = "raven.bundle.js"
+# Raven's own desk icons, e.g. frappe.utils.icon("raven").
+app_include_icons = ["/assets/raven/icons/raven.svg"]
 
 add_to_apps_screen = [
 	{
