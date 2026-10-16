@@ -297,6 +297,9 @@ class RavenChannel(Document):
 
 		if self.is_direct_message == 0:
 			self.channel_name = self.channel_name.strip().lower().replace(" ", "-")
+			# The unique index on these two columns only ignores NULL. An empty
+			# string would make every second channel or thread a duplicate.
+			self.dm_user_1 = self.dm_user_2 = None
 
 		if not self.is_direct_message and not self.workspace and not self.is_dm_thread:
 			workspaces = frappe.get_all("Raven Workspace")
