@@ -79,9 +79,13 @@ export const MessageRow = ({
 // Width cap for a Left-Right message's content — the row stays full width,
 // the content inside stops short of the other edge: 85% on mobile (the gap
 // is what makes the side alignment readable on a narrow screen), 75% on
-// desktop. Dropped while the inline editor is open, so editing gets the
-// whole row back.
-const contentCapClass = "max-w-[85%] md:max-w-[75%] has-[[data-raven-editor]]:max-w-full"
+// desktop. Desktop also keeps a fixed 300px gutter free on the far side.
+// That is where the hover toolbar sits (up to 276px wide, plus its inset),
+// so in a narrow stream the bubble shrinks instead of the toolbar covering
+// it. Mobile has no hover toolbar, so no gutter there. Dropped while the
+// inline editor is open, so editing gets the whole row back.
+const contentCapClass =
+    "max-w-[85%] md:max-w-[min(75%,calc(100%-300px))] has-[[data-raven-editor]]:max-w-full"
 
 // The text bubble, iMessage-like: tight padding, round corners, gray fill.
 // The bubble has no hover style of its own — the row's wash is the hover

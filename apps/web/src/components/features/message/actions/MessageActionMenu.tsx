@@ -28,6 +28,9 @@ import { ChevronLeft, ChevronRight, Reply, SmilePlus } from "lucide-react"
 import type { Message } from "@raven/types/common/Message"
 import { DoubleTapReactionAtom, QuickEmojisAtom } from "@utils/preferences"
 
+/** Left-Right mode: gap between the hover toolbar and the row's top and side edges. */
+const LEFT_RIGHT_TOOLBAR_INSET = 8
+
 /** Two taps on the same message within this window open the quick-action toolbar. */
 const DOUBLE_TAP_MS = 300
 
@@ -166,28 +169,36 @@ export const MessageActionMenu = ({
             element
         // The row says how it's aligned (data-message-row, set by MessageRow) —
         // no class sniffing. Rows are full width in every mode, and the toolbar
-        // sits 24px above the row in the corner OPPOSITE the message's side, so
-        // its overlap always lands on empty row space:
+        // sits in the corner OPPOSITE the message's side:
         //  - "own" content hugs the right → toolbar top-LEFT.
         //  - everyone else's hugs the left → toolbar top-RIGHT, which is the
         //    same corner Simple mode has always used.
-        // The lower half overlaps the row, so the pointer reaches the toolbar
-        // without leaving the row — it can't flicker away en route.
+        // Simple mode floats it 24px above the row. The lower half overlaps the
+        // row, so the pointer reaches the toolbar without leaving the row.
+        // Left-Right mode keeps it inside the row, with the same small margin
+        // from the row's top and side edges. Rising above the row put it over
+        // the previous row's thread pill, which sits in that same corner when
+        // the two rows come from opposite sides. The row keeps a 300px gutter
+        // free on that side (see MessageRow), so the toolbar never covers the
+        // bubble either. The floors keep it off the stream's own edges.
         const rect = row.getBoundingClientRect()
-        const top = Math.max(rect.top - wrapperRect.top - 24, 2)
         const mode = row.getAttribute("data-message-row")
+        const isSimple = mode === "simple"
+        const inset = isSimple ? 16 : LEFT_RIGHT_TOOLBAR_INSET
+        const rise = isSimple ? 24 : -LEFT_RIGHT_TOOLBAR_INSET
+        const top = Math.max(rect.top - wrapperRect.top - rise, inset)
         if (mode === "own") {
             setHovered({
                 message,
                 top,
-                left: Math.max(rect.left - wrapperRect.left + 16, 16),
+                left: Math.max(rect.left - wrapperRect.left + inset, inset),
             })
             return
         }
         setHovered({
             message,
             top,
-            right: Math.max(wrapperRect.right - rect.right + 16, 16),
+            right: Math.max(wrapperRect.right - rect.right + inset, inset),
         })
     }
 
