@@ -48,6 +48,7 @@ class RavenChannel(Document):
 	# end: auto-generated types
 
 	def on_trash(self):
+		self.remove_from_document_notifications()
 
 		# TODO: Delete all threads and polls inside this channel
 		# delete all members when channel is deleted
@@ -190,6 +191,29 @@ class RavenChannel(Document):
 							),
 						}
 					).insert(ignore_permissions=True)
+
+	def remove_from_document_notifications(self):
+		"""Drop this channel from every notification that has it as a fixed recipient.
+		Left in place, the notification would fail on every send and could not be
+		saved. A notification with no recipients left is disabled."""
+		notifications = frappe.get_all(
+			"Raven Document Notification Recipients",
+			filters={"channel_type": "Channel", "variable_type": "Static", "value": self.name},
+			pluck="parent",
+			distinct=True,
+		)
+		for name in notifications:
+			notification = frappe.get_doc("Raven Document Notification", name)
+			notification.recipients = [
+				recipient
+				for recipient in notification.recipients
+				if not (recipient.channel_type == "Channel" and recipient.value == self.name)
+			]
+			if not notification.recipients:
+				# Recipients is a required table. Enabling it again asks for one.
+				notification.enabled = 0
+				notification.flags.ignore_mandatory = True
+			notification.save(ignore_permissions=True)
 
 	def validate(self):
 		# If the user trying to modify the channel is not the owner or channel member, then don't allow

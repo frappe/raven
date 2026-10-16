@@ -85,6 +85,11 @@ class RavenDocumentNotification(Document):
 			frappe.throw(_("Notification for an event on {0} is not allowed.").format(self.document_type))
 
 	def validate_recipients(self):
+		# A disabled notification never resolves its recipients, so a channel or
+		# user that is gone must not block turning it off. Enabling it again
+		# runs the full check.
+		if not self.enabled:
+			return
 		for recipient in self.recipients:
 			if recipient.channel_type == "User":
 				if recipient.variable_type == "Static":

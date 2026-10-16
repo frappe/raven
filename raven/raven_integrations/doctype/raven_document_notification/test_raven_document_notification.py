@@ -16,7 +16,7 @@ from raven.raven_integrations.doctype.raven_document_notification.raven_document
 # On IntegrationTestCase, the doctype test records and all
 # link-field test record depdendencies are recursively loaded
 # Use these module variables to add/remove to/from that list
-EXTRA_TEST_RECORD_DEPENDENCIES = []  # eg. ["User"]
+EXTRA_TEST_RECORD_DEPENDENCIES = ["Raven Workspace"]
 IGNORE_TEST_RECORD_DEPENDENCIES = []  # eg. ["User"]
 
 
@@ -56,6 +56,32 @@ class IntegrationTestRavenDocumentNotification(IntegrationTestCase):
 					{"channel_type": "Channel", "variable_type": "Jinja", "value": "{{ doc.name }}"}
 				],
 			}
+		)
+
+	def test_a_notification_whose_channel_is_gone_can_be_disabled(self):
+		channel = frappe.get_doc(
+			{
+				"doctype": "Raven Channel",
+				"channel_name": frappe.generate_hash("gone", 8),
+				"type": "Public",
+				"workspace": "Public Workspace",
+			}
+		).insert()
+		notification = self.notification_on("ToDo")
+		notification.recipients[0].variable_type = "Static"
+		notification.recipients[0].value = channel.name
+		notification.insert()
+		# A channel deleted before the delete guard existed. Bypass the guard.
+		frappe.db.delete("Raven Channel", {"name": channel.name})
+
+		notification.reload()
+		with self.assertRaises(frappe.ValidationError):
+			notification.save()
+
+		notification.enabled = 0
+		notification.save()
+		self.assertEqual(
+			frappe.db.get_value("Raven Document Notification", notification.name, "enabled"), 0
 		)
 
 	def test_cannot_notify_on_raven_message(self):
