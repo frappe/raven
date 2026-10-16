@@ -35,6 +35,10 @@ interface DataFieldProps extends FormElementProps {
 export const DataField = ({ name, rules, label, isRequired, formDescription, inputProps, hideLabel, disabled, readOnly }: DataFieldProps) => {
 
     const { control } = useFormContext()
+    // 140 is Frappe's Data field length. A password input backs a Password
+    // field, which is stored in the auth table with no length, so capping it
+    // silently cut long keys (OpenAI project keys are over 160 characters).
+    const maxLength = inputProps?.type === "password" ? undefined : 140
     return <FormField
         control={control}
         disabled={disabled}
@@ -44,7 +48,7 @@ export const DataField = ({ name, rules, label, isRequired, formDescription, inp
             <FormItem className='flex flex-col'>
                 <FormLabel className={hideLabel ? 'sr-only' : ''}>{label}{isRequired && <FormRequiredIndicator />}</FormLabel>
                 <FormControl>
-                    <Input {...field} maxLength={140} aria-readonly={readOnly} readOnly={readOnly} {...inputProps} />
+                    <Input {...field} maxLength={maxLength} aria-readonly={readOnly} readOnly={readOnly} {...inputProps} />
                 </FormControl>
                 {formDescription && <FormDescription>{formDescription}</FormDescription>}
                 <FormMessage />
