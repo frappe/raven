@@ -4,6 +4,21 @@ import { RavenChannel } from '@raven/types/RavenChannelManagement/RavenChannel'
 import { ChannelIcon } from '@components/common/ChannelIcon/ChannelIcon'
 import _ from '@lib/translate'
 
+/**
+ * Validation rules for a channel name, shared by the create and edit forms.
+ * Letters and digits from any script, so names in Cyrillic, Arabic or CJK
+ * work. Hyphens anywhere but first, which is where spaces end up.
+ */
+export const channelNameRules = () => ({
+    required: _('Please add a channel name'),
+    maxLength: { value: 50, message: _('Channel name cannot be more than 50 characters.') },
+    minLength: { value: 3, message: _('Channel name cannot be less than 3 characters.') },
+    pattern: {
+        value: /^[\p{L}\p{N}][\p{L}\p{N}-]*$/u,
+        message: _('Channel name can only contain letters, numbers and hyphens.'),
+    },
+})
+
 interface ChannelNameInputProps extends Omit<React.ComponentProps<typeof Input>, 'value' | 'onChange'> {
     value: string
     onChange: (value: string) => void

@@ -43,7 +43,7 @@ import {
   ChannelListItem,
 } from "@raven/types/common/ChannelListItem";
 import { RavenChannel } from "@raven/types/RavenChannelManagement/RavenChannel";
-import { ChannelNameInput } from "../CreateChannel/ChannelNameInput";
+import { ChannelNameInput, channelNameRules } from "../CreateChannel/ChannelNameInput";
 import { ChannelDescriptionInput } from "../CreateChannel/ChannelDescriptionInput";
 
 /** Lets the submit button live OUTSIDE the <form> (action bar / dialog footer). */
@@ -151,23 +151,7 @@ export const EditChannelDescriptionButton = ({
         <FormField
           control={form.control}
           name="channel_name"
-          rules={{
-            required: _("Please add a channel name"),
-            maxLength: {
-              value: 50,
-              message: _("Channel name cannot be more than 50 characters."),
-            },
-            minLength: {
-              value: 3,
-              message: _("Channel name cannot be less than 3 characters."),
-            },
-            pattern: {
-              value: /^[a-zA-Z0-9][a-zA-Z0-9-]*$/,
-              message: _(
-                "Channel name can only contain letters, numbers and hyphens.",
-              ),
-            },
-          }}
+          rules={channelNameRules()}
           render={({ field }) => (
             <FormItem>
               <FormLabel>{_("Channel Name")}</FormLabel>

@@ -15,7 +15,7 @@ import {
     FormRequiredIndicator,
 } from '@components/ui/form'
 import { SmallTextField } from '@components/ui/form-elements'
-import { ChannelNameInput } from './ChannelNameInput'
+import { ChannelNameInput, channelNameRules } from './ChannelNameInput'
 import { ChannelTypeSelector } from './ChannelTypeSelector'
 import { AddMembersStep } from './AddMembersStep'
 import { Stepper } from './Stepper'
@@ -233,24 +233,7 @@ export const CreateChannelForm = ({ onClose: onCloseCallback, selectedWorkspace 
                             <FormField
                                 control={control}
                                 name="channel_name"
-                                rules={{
-                                    required: _('Please add a channel name'),
-                                    maxLength: {
-                                        value: 50,
-                                        message:
-                                            _('Channel name cannot be more than 50 characters.'),
-                                    },
-                                    minLength: {
-                                        value: 3,
-                                        message:
-                                            _('Channel name cannot be less than 3 characters.'),
-                                    },
-                                    pattern: {
-                                        value: /^[a-zA-Z0-9][a-zA-Z0-9-]*$/,
-                                        message:
-                                            _('Channel name can only contain letters, numbers and hyphens.'),
-                                    },
-                                }}
+                                rules={channelNameRules()}
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>
