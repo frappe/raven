@@ -1,7 +1,10 @@
 # Copyright (c) 2026, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
 
+from unittest.mock import patch
+
 import frappe
+from frappe.core.doctype.user.user import User
 from frappe.tests import IntegrationTestCase, UnitTestCase
 
 # On IntegrationTestCase, the doctype test records and all
@@ -28,6 +31,37 @@ class TestRavenUser(IntegrationTestCase):
 
 	def tearDown(self):
 		frappe.db.rollback()
+
+	def _user_with_raven(self):
+		"""A fresh User with the Raven User role. The hook creates its Raven User."""
+		user = frappe.get_doc(
+			{
+				"doctype": "User",
+				"email": f"{frappe.generate_hash('raven', 8)}@example.com",
+				"first_name": "Deleted",
+				"send_welcome_email": 0,
+				"roles": [{"role": "Raven User"}],
+			}
+		).insert()
+		self.assertTrue(frappe.db.exists("Raven User", user.name))
+		return user
+
+	def test_deleting_a_user_does_not_save_the_user_again(self):
+		# A save mid-delete runs every app's on_update hooks on the dying User,
+		# which let other apps recreate their records and fail the deletion.
+		user = self._user_with_raven()
+		with patch.object(User, "save") as save:
+			user.delete()
+		save.assert_not_called()
+		self.assertFalse(frappe.db.exists("Raven User", user.name))
+		self.assertFalse(frappe.db.exists("User", user.name))
+
+	def test_deleting_a_raven_user_removes_the_role_without_a_user_save(self):
+		user = self._user_with_raven()
+		with patch.object(User, "save") as save:
+			frappe.delete_doc("Raven User", user.name)
+		save.assert_not_called()
+		self.assertNotIn("Raven User", frappe.get_roles(user.name))
 
 	def test_user_name(self):
 		user = frappe.get_doc("Raven User", "test@example.com")
