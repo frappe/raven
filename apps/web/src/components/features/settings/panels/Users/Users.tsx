@@ -1,5 +1,7 @@
 import { useCallback, useDeferredValue, useMemo, useState, useSyncExternalStore } from "react"
-import { EllipsisVertical, KeyRoundIcon, SearchIcon, UsersIcon } from "lucide-react"
+import { useFrappeUpdateDoc } from "frappe-react-sdk"
+import { toast } from "sonner"
+import { CircleCheckIcon, CircleOffIcon, EllipsisVertical, KeyRoundIcon, SearchIcon, UsersIcon } from "lucide-react"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@components/ui/empty"
 import {
     SettingsPanelContent,
@@ -11,33 +13,60 @@ import { ListView, type ListViewColumnMeta } from "@components/ui/list-view"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Badge } from "@components/ui/badge"
 import { Button } from "@components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@components/ui/dropdown-menu"
+import {
+    DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@components/ui/dropdown-menu"
 import { Input } from "@components/ui/input"
 import { UserAvatar } from "@components/features/message/UserAvatar"
 import { usersStore } from "@stores/usersStore"
+import { useUserCookieData } from "@hooks/useUserCookieData"
+import { errorResponseToast } from "@components/ui/error-banner"
 import { hasRole } from "@lib/permissions"
 import { isRavenSettingsAdmin } from "../AdminSettingsForm"
 import _ from "@lib/translate"
 import type { UserData } from "@db"
 import AddUserDialog from "./AddUserDialog"
 import ManageAccessDialog from "./ManageAccessDialog"
+import DisableUserDialog from "./DisableUserDialog"
 
 /** Workspace → Users: everyone with access to Raven (bots excluded). */
 export const Users = () => {
     const usersMap = useSyncExternalStore(usersStore.subscribe, usersStore.getSnapshot)
-    // Inviting creates a Frappe User, which needs System Manager. Managing access only needs a Raven admin.
-    const canInvite = hasRole("System Manager")
+    const { name: currentUser } = useUserCookieData()
+    // Inviting, enabling and disabling write the Frappe User, which needs System Manager.
+    // Managing access only needs a Raven admin.
+    const canEditAccounts = hasRole("System Manager")
     const canManageAccess = isRavenSettingsAdmin()
 
-    // One dialog for the whole list. The user stays set while it closes so the exit animation has content.
+    // One dialog per action for the whole list. The user stays set while it closes so the
+    // exit animation has content.
     const [accessUser, setAccessUser] = useState<UserData | null>(null)
     const [accessOpen, setAccessOpen] = useState(false)
     const openAccess = useCallback((user: UserData) => { setAccessUser(user); setAccessOpen(true) }, [])
 
-    const columns = useMemo<ColumnDef<UserData>[]>(
-        () => (canManageAccess ? [...userColumns, actionsColumn(openAccess)] : userColumns),
-        [canManageAccess, openAccess],
-    )
+    const [disableUser, setDisableUser] = useState<UserData | null>(null)
+    const [disableOpen, setDisableOpen] = useState(false)
+    const openDisable = useCallback((user: UserData) => { setDisableUser(user); setDisableOpen(true) }, [])
+
+    // Enabling needs no confirmation. The row refreshes from the realtime event.
+    const { updateDoc } = useFrappeUpdateDoc()
+    const enable = useCallback((user: UserData) => {
+        updateDoc("User", user.name, { enabled: 1 })
+            .then(() => toast.success(_("{0} has been enabled", [user.full_name || user.name])))
+            .catch((error) => errorResponseToast(_("Could not enable user"), error))
+    }, [updateDoc])
+
+    const columns = useMemo<ColumnDef<UserData>[]>(() => {
+        if (!canManageAccess) return userColumns
+        const actions: RowActions = {
+            onManageAccess: openAccess,
+            // You can't disable yourself: that would log you out mid-click.
+            onEnable: canEditAccounts ? enable : undefined,
+            onDisable: canEditAccounts ? openDisable : undefined,
+            currentUser,
+        }
+        return [...userColumns, actionsColumn(actions)]
+    }, [canManageAccess, canEditAccounts, openAccess, enable, openDisable, currentUser])
     const [search, setSearch] = useState("")
     // Filtering is in memory. Deferring keeps typing smooth on big user lists.
     const query = useDeferredValue(search.trim().toLowerCase())
@@ -60,7 +89,7 @@ export const Users = () => {
 
     return (
         <>
-            <SettingsPanelHeader actions={canInvite ? <AddUserDialog /> : null}>
+            <SettingsPanelHeader actions={canEditAccounts ? <AddUserDialog /> : null}>
                 <SettingsPanelTitle>{_("Users")}</SettingsPanelTitle>
                 <SettingsPanelDescription>{_("Manage users added to Raven.")}</SettingsPanelDescription>
             </SettingsPanelHeader>
@@ -103,6 +132,7 @@ export const Users = () => {
                 />
             </SettingsPanelContent>
             {accessUser && <ManageAccessDialog user={accessUser} open={accessOpen} onOpenChange={setAccessOpen} />}
+            {disableUser && <DisableUserDialog user={disableUser} open={disableOpen} onOpenChange={setDisableOpen} />}
         </>
     )
 }
@@ -117,7 +147,7 @@ const userColumns: ColumnDef<UserData>[] = [
             <div className="flex items-center gap-2 min-w-0">
                 <UserAvatar user={row.original} size="sm" showStatusIndicator={false} />
                 <span className="font-medium truncate">{row.original.full_name}</span>
-                {!row.original.enabled && <Badge variant="outline">{_("Disabled")}</Badge>}
+                {!row.original.enabled && <Badge variant="subtle" theme="gray">{_("Disabled")}</Badge>}
             </div>
         ),
     },
@@ -147,8 +177,38 @@ const userColumns: ColumnDef<UserData>[] = [
     },
 ]
 
+type RowActions = {
+    onManageAccess: (user: UserData) => void
+    /** Account actions are only given to System Managers. */
+    onEnable?: (user: UserData) => void
+    onDisable?: (user: UserData) => void
+    currentUser: string
+}
+
+/** Enable or Disable item for one row, below a separator. Nothing on your own row. */
+const AccountMenuItem = ({ user, actions }: { user: UserData; actions: RowActions }) => {
+    const { onEnable, onDisable, currentUser } = actions
+    if (!onEnable || !onDisable || user.name === currentUser) return null
+    return (
+        <>
+            <DropdownMenuSeparator />
+            {user.enabled ? (
+                <DropdownMenuItem variant="destructive" onClick={() => onDisable(user)}>
+                    <CircleOffIcon />
+                    {_("Disable")}
+                </DropdownMenuItem>
+            ) : (
+                <DropdownMenuItem onClick={() => onEnable(user)}>
+                    <CircleCheckIcon />
+                    {_("Enable")}
+                </DropdownMenuItem>
+            )}
+        </>
+    )
+}
+
 /** Kebab menu on a user row. Only admins see this column. */
-const actionsColumn = (onManageAccess: (user: UserData) => void): ColumnDef<UserData> => ({
+const actionsColumn = (actions: RowActions): ColumnDef<UserData> => ({
     id: "actions",
     header: "",
     meta: { gridWidth: "48px" } satisfies ListViewColumnMeta,
@@ -160,10 +220,11 @@ const actionsColumn = (onManageAccess: (user: UserData) => void): ColumnDef<User
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onManageAccess(row.original)}>
+                <DropdownMenuItem onClick={() => actions.onManageAccess(row.original)}>
                     <KeyRoundIcon />
                     {_("Manage access")}
                 </DropdownMenuItem>
+                <AccountMenuItem user={row.original} actions={actions} />
             </DropdownMenuContent>
         </DropdownMenu>
     ),

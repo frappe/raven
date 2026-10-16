@@ -566,8 +566,13 @@ class RavenBot(Document):
 		markdown: If True, the text will be converted to HTML.
 		file: The file to send to the user.
 
-		Returns the message ID of the message sent
+		Returns the message ID of the message sent, or None if the user is disabled
 		"""
+		# A disabled user will never read the message. Skip quietly, no error log.
+		# A user who is not on Raven at all still raises below, as before.
+		enabled = frappe.db.get_value("Raven User", {"user": user_id}, "enabled")
+		if enabled is not None and not enabled:
+			return None
 
 		channel_id = self.create_direct_message_channel(user_id)
 
