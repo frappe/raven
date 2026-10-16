@@ -9,7 +9,11 @@ from frappe.model.document import Document
 from frappe.utils import nowdate
 from frappe.utils.jinja import validate_template
 
-FORBIDDEN_DOCUMENT_TYPES = frozenset("Raven Message")
+# Doctypes a notification may not be configured on. A notification sends a
+# Raven Message, so one on Raven Message would trigger itself without end.
+# A set literal is needed here: frozenset("...") over a plain string makes a
+# set of characters, which blocked nothing.
+FORBIDDEN_DOCUMENT_TYPES = frozenset({"Raven Message"})
 
 
 class RavenDocumentNotification(Document):
@@ -199,6 +203,12 @@ def run_document_notification(doc, method):
 	if doc.doctype in doctypes_to_be_ignored:
 		return
 
+	# An error logged while sending a notification must not fire one. A
+	# notification on Error Log would otherwise fire for its own failure, and
+	# loop until the disk is full.
+	if doc.doctype == "Error Log" and frappe.flags.raven_sending_notification:
+		return
+
 	if (
 		frappe.flags.in_import
 		or frappe.flags.in_patch
@@ -276,6 +286,8 @@ def evaluate_condition(context, condition, notification_name):
 	except Exception as e:
 		title = str(e)
 		message = frappe.get_traceback(with_context=True)
+		# The throw below ends the request, so the flag needs no reset.
+		frappe.flags.raven_sending_notification = True
 		frappe.log_error(
 			title=title,
 			message=message,
@@ -288,12 +300,24 @@ def evaluate_condition(context, condition, notification_name):
 
 def send_raven_notifications(doc, notifications_to_send, link_doctype, link_document):
 	"""
-	Background job to send notifications to Raven
+	Background job to send notifications to Raven.
+
+	A failed notification is logged here and does not stop the others. It is
+	not re-raised: the worker would log it again, and that log would fire a
+	notification on Error Log. The flag lives as long as this job.
 	"""
+	frappe.flags.raven_sending_notification = True
 	context = get_context(doc)
 	for notification in notifications_to_send:
-		notification_doc = frappe.get_doc("Raven Document Notification", notification.name)
-		notification_doc.send_notification(context, link_doctype, link_document)
+		try:
+			notification_doc = frappe.get_doc("Raven Document Notification", notification.name)
+			notification_doc.send_notification(context, link_doctype, link_document)
+		except Exception:
+			frappe.log_error(
+				title=f"Raven Document Notification {notification.name} failed",
+				reference_doctype="Raven Document Notification",
+				reference_name=notification.name,
+			)
 
 
 def get_context(doc):
