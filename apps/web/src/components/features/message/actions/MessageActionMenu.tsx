@@ -178,9 +178,10 @@ export const MessageActionMenu = ({
         // Left-Right mode keeps it inside the row, with the same small margin
         // from the row's top and side edges. Rising above the row put it over
         // the previous row's thread pill, which sits in that same corner when
-        // the two rows come from opposite sides. The row keeps a 300px gutter
-        // free on that side (see MessageRow), so the toolbar never covers the
-        // bubble either. The floors keep it off the stream's own edges.
+        // the two rows come from opposite sides. In a pane 768px or wider the
+        // row keeps a 300px gutter free on that side (see MessageRow), so the
+        // toolbar never covers the bubble either. The floors keep it off the
+        // stream's own edges.
         const rect = row.getBoundingClientRect()
         const mode = row.getAttribute("data-message-row")
         const isSimple = mode === "simple"

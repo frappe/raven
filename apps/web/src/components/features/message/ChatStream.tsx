@@ -240,7 +240,10 @@ export default function ChatStream({ channelID, pinnedMessagesString, initialMes
     return (
         <ScrollViewportContext.Provider value={viewport}>
             <DateTrackerContext.Provider value={tracker}>
-                <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+                {/* A named container, so rows can size to the pane they are in
+                    rather than the viewport: a thread pane halves the chat width
+                    on the same screen. */}
+                <div className="@container/stream relative flex min-h-0 min-w-0 flex-1 flex-col">
                     <FloatingDatePill />
                     <MessageActionMenu channelID={channelID} canInteract={canInteract}>
                         <div
