@@ -855,10 +855,10 @@
   resolved "https://registry.yarnpkg.com/@capacitor-firebase/messaging/-/messaging-8.4.0.tgz#cf2e444400e4b3d399b131e364964d5762c35031"
   integrity sha512-wpVaiM6GGBp++4KSiJ2Bw4AZKmO09pbTnJ6PNNg6UMkYehbokvisG83D/7P4u7Lt+5HcrlSwCtXKwWCfIGb2qQ==
 
-"@capacitor/android@8.5.0":
-  version "8.5.0"
-  resolved "https://registry.yarnpkg.com/@capacitor/android/-/android-8.5.0.tgz#1fa7c7eb00b6600df1f346b6548869670e6cd0d3"
-  integrity sha512-Rb3prJeQiTp0pQhSSOReJuG9VgibOGMG4ECs+UhMwr6TCCHZ3NCZO811bDA0HxD0xrT/gCrJAsY5yfEATu84JQ==
+"@capacitor/android@8.5.1":
+  version "8.5.1"
+  resolved "https://registry.yarnpkg.com/@capacitor/android/-/android-8.5.1.tgz#577a8cea742341a0494e93366d1059d96ec90025"
+  integrity sha512-o8fUIPDSEASeXHHrDz26WU7OlyiRb+QqtI9KFdnLS1jUL77o5iGrvegibaZX8rWpiCyDJ6jlUhhhHlfeq3ou9A==
 
 "@capacitor/app@8.1.1":
   version "8.1.1"
