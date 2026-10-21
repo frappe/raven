@@ -14,6 +14,8 @@ export const pending = (key: string) => ({
 
 /** Route to open after the reload a push tap to another site or a share on the picker causes. */
 export const pendingPath = pending("pendingPath")
+/** A browser link to a site that wasn't saved: the picker offers the site, and the page opens once it's signed in. */
+export const pendingLink = pending("pendingLink")
 /** A warning to toast once the app is up (version mismatch, update prompt). */
 export const pendingNotice = pending("pendingNotice")
 /** Site whose session died: the picker signs it in again on mount. */

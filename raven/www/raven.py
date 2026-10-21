@@ -1,5 +1,6 @@
 import json
 import re
+from urllib.parse import quote
 
 import frappe
 import frappe.sessions
@@ -51,7 +52,8 @@ def get_context(context):
 	context["mask_icon"] = favicon or "/assets/raven/raven_logo.svg"
 	context["favicon_svg"] = favicon or "/assets/raven/raven_logo.svg"
 	context["favicon_ico"] = favicon or "/assets/raven/favicon.ico"
-	context["sitename"] = boot.get("sitename")
+	# Safari's Smart App Banner hands this page to the app, or offers the App Store without it.
+	context["app_argument"] = get_app_argument()
 
 	if frappe.session.user != "Guest":
 		capture("active_site", "raven")
@@ -69,6 +71,18 @@ def get_context(context):
 		boot["push_relay_server_url"] = None
 
 	return context
+
+
+def get_app_argument() -> str:
+	"""
+	This page's address for the Smart App Banner. The query stays: a message link's ?message_id= is in it.
+	Escaped as a whole: the address is the visitor's, and the template doesn't escape it.
+	"""
+	if not frappe.request:
+		return ""
+	query = frappe.request.query_string.decode(errors="replace")
+	page = quote(frappe.request.path, safe="/") + (f"?{query}" if query else "")
+	return frappe.utils.escape_html(frappe.utils.get_url(page))
 
 
 @frappe.whitelist(methods=["POST"], allow_guest=True)

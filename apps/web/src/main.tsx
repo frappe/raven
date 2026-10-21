@@ -10,7 +10,12 @@ scan({
 });
 
 
-import { initPushNotifications, isStandalone } from "@lib/push";
+import { initPushNotifications } from "@lib/push";
+import { isStandalone } from "@utils/platform";
+import { openInApp, wantsApp } from "@utils/openInApp";
+
+// A link opened in a phone browser goes to the Raven app once someone chose it; the page loads on behind it.
+if (wantsApp()) openInApp()
 
 if (import.meta.env.DEV) {
   fetch('/api/method/raven.www.raven.get_context_for_dev', {

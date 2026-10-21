@@ -40,6 +40,7 @@ import { SessionBroadcast } from "./SessionBroadcast"
 import RavenSettingsDialog from "@components/features/settings/SettingsDialog"
 import { SetupGate } from "@components/features/setup/SetupGate"
 import { MessageActionDialogs } from "@components/features/message/actions/MessageActionDialogs"
+import { OpenInAppBar } from "./OpenInAppBar"
 
 /**
  * The AppShell is used to wrap the entire application and provide all the utilities
@@ -173,6 +174,7 @@ const AppShellLayout = ({ children }: { children: React.ReactNode }) => {
 
     if (isMobile) {
         return <div className={cn("flex h-dvh flex-col overflow-hidden", topInset)}>
+            <OpenInAppBar />
             {banner}
             {children}
         </div>

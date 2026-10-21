@@ -9,3 +9,14 @@ export const isAndroid = typeof navigator !== "undefined" && /android/i.test(nav
 export const isIOS = typeof navigator !== "undefined" &&
     (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
         (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1))
+
+/**
+ * Running as an INSTALLED app (home screen / desktop PWA) rather than a browser
+ * tab. Installation is a personal-device signal — offline persistence of user
+ * data (rendered shell, boot cache) is gated on it, so shared-machine browser
+ * sessions leave nothing extra at rest.
+ */
+export const isStandalone = (): boolean =>
+    window.matchMedia("(display-mode: standalone)").matches ||
+    // iOS home-screen apps report through navigator.standalone instead
+    (navigator as { standalone?: boolean }).standalone === true
