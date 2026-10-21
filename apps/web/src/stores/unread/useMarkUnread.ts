@@ -3,6 +3,7 @@ import { FrappeConfig, FrappeContext, useSWRConfig } from "frappe-react-sdk"
 import { toast } from "sonner"
 import { errorResponseToast } from "@components/ui/error-banner"
 import _ from "@lib/translate"
+import { channelUnreadStore } from "./store"
 
 /**
  * Mark a channel unread — from a specific message (the anchor and everything
@@ -34,6 +35,8 @@ export const useMarkUnread = () => {
                     // else) and no-oped — don't claim success for it.
                     if (response?.message == null) return
                     toast.success(_("Marked as unread"))
+                    // Held before the refetch: without the socket event, it would read the open channel again.
+                    channelUnreadStore.holdRead(channelID)
                     mutate("unread_channel_counts")
                 })
                 .catch((error) => errorResponseToast(_("Could not mark as unread"), error))

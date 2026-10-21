@@ -23,6 +23,7 @@ import { useMarkUnread } from "@stores/unread/useMarkUnread"
 import useCurrentRavenUser from "@raven/lib/hooks/useCurrentRavenUser"
 import { assignChannelToGroup } from "@raven/lib/utils/channelGroups"
 import type { RavenUser } from "@raven/types/Raven/RavenUser"
+import { siteBaseName, siteOrigin } from "@lib/site"
 import { cn } from "@lib/utils"
 import _ from "@lib/translate"
 
@@ -105,11 +106,14 @@ const useChannelRowActions = ({ channelID, isDM, workspaceID }: Pick<ChannelRowA
           ]
 
     // Channel rows only — a link to someone else's DM is useless to the recipient.
+    // The site's address, not the page's: in the app the page is the app's own origin.
     const copyLink = () => {
-        const base = import.meta.env.VITE_BASE_NAME ? `/${import.meta.env.VITE_BASE_NAME}` : ""
+        const base = siteBaseName() ? `/${siteBaseName()}` : ""
         const path = `/${encodeURIComponent(workspaceID ?? "")}/${encodeURIComponent(channelID)}`
-        navigator.clipboard.writeText(`${window.location.origin}${base}${path}`)
-        toast.success(_("Link copied"))
+        navigator.clipboard
+            .writeText(`${siteOrigin()}${base}${path}`)
+            .then(() => toast.success(_("Link copied")))
+            .catch(() => toast.error(_("Could not copy link")))
     }
 
     // TODO(unify-mute): "Mute" here flips `allow_notifications` (push) through the

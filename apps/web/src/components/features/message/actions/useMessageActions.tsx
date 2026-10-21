@@ -381,8 +381,8 @@ export const useMessageActions = (
             },
         )
         // Mark unread from THIS message: the anchor and everything after it become
-        // unread (Slack semantics — allowed on your own messages too; they never
-        // count toward the badge, so anchoring on one only affects what follows).
+        // unread. Not on your own or System messages: unread counts leave both out,
+        // so marking the latest one would show the channel as read.
         // Channels + DMs only: both the channel-unread store and the sidebar badge
         // are channel-keyed, so inside a thread this would visibly do nothing —
         // same parentChannel gate as Create thread. Not gated on canInteract:
@@ -390,7 +390,8 @@ export const useMessageActions = (
         // a member row (or being an Open channel, where the backend auto-creates
         // the watermark): unread state lives on Raven Channel Member.last_visit,
         // and for non-member Public/Private channels the server silently no-ops.
-        if (parentChannel && (parentChannel.member_id || parentChannel.type === "Open")) {
+        const countsAsUnread = message.owner !== currentUser && message.message_type !== "System"
+        if (countsAsUnread && parentChannel && (parentChannel.member_id || parentChannel.type === "Open")) {
             organize.push({
                 id: "mark-unread",
                 label: _("Mark as unread"),

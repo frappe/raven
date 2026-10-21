@@ -35,6 +35,7 @@ const isAfter = (a: string, b: string | null): boolean => b === null || a > b
  *     (an out-of-order or duplicate signal can't re-raise a read count)
  *   - the active live-edge channel is exempt from increments entirely — the
  *     channel you're reading is read, and its watermark flush owns its count.
+ *     A channel marked unread is held: it counts as unread even while open.
  */
 class ChannelUnreadStore {
     private states = new Map<string, ChannelUnreadState>()
@@ -45,6 +46,8 @@ class ChannelUnreadStore {
     private activeReadChannelID: string | null = null
     /** Per-channel server last_visit at load — the read tracker's post baseline (see setServerWatermark). */
     private serverWatermarks = new Map<string, string>()
+    /** Channels marked unread: the open one stays unread until re-entered or sent to. */
+    private heldReads = new Set<string>()
 
     /** Reference-stable per channel: unchanged state returns the same object (and unknown → EMPTY). */
     getState(channelID: string): ChannelUnreadState {
@@ -103,7 +106,7 @@ class ChannelUnreadStore {
      * message is at/below our watermark (stale / already counted).
      */
     increment(channelID: string, messageTimestamp?: string) {
-        if (channelID === this.activeReadChannelID) return
+        if (this.isBeingRead(channelID)) return
         const state = this.getState(channelID)
         if (messageTimestamp && !isAfter(messageTimestamp, state.lastSeen)) return
         this.update(channelID, { count: state.count + 1, lastSeen: state.lastSeen })
@@ -141,6 +144,22 @@ class ChannelUnreadStore {
         // a fresh get_messages response would otherwise overwrite it — which a
         // warm re-entry never triggers.
         this.serverWatermarks.set(channelID, watermark)
+        this.holdRead(channelID)
+    }
+
+    /** Keeps the channel unread while open, until releaseRead. */
+    holdRead(channelID: string) {
+        this.heldReads.add(channelID)
+    }
+
+    /** Whether the read tracker must leave this channel unread (see markUnread). */
+    isReadHeld(channelID: string): boolean {
+        return this.heldReads.has(channelID)
+    }
+
+    /** Lets the channel be read again: called on entering it and on sending to it. */
+    releaseRead(channelID: string) {
+        this.heldReads.delete(channelID)
     }
 
     /** Register the channel open at the live edge (or null). It won't accumulate increments. */
@@ -163,11 +182,15 @@ class ChannelUnreadStore {
 
     /** ----- Internals ----- */
 
+    private isBeingRead(channelID: string): boolean {
+        return channelID === this.activeReadChannelID && !this.heldReads.has(channelID)
+    }
+
     private setCount(channelID: string, count: number) {
         const state = this.getState(channelID)
         // The channel being actively read is authoritative-zero locally — a
         // reconcile computed just before our read committed must not re-raise it.
-        const target = channelID === this.activeReadChannelID ? 0 : count
+        const target = this.isBeingRead(channelID) ? 0 : count
         if (state.count === target) return
         this.update(channelID, { count: target, lastSeen: state.lastSeen })
     }

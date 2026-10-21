@@ -94,6 +94,8 @@ export const useUnreadRealtime = () => {
             }
 
             if (event.event_type && event.event_type === "new_message" && event.last_message_timestamp) {
+                // A send from another device reads the channel here too.
+                channelUnreadStore.releaseRead(event.channel_id)
                 channelUnreadStore.markRead(event.channel_id, event.last_message_timestamp, true)
             }
         } else {
