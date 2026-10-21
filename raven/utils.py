@@ -190,20 +190,17 @@ def set_channel_unread(channel_id: str, message_id: str = None, user: str = None
 
 	from raven.api.raven_message import get_unread_count_for_channel
 
-	unread_count = get_unread_count_for_channel(channel_id)
-
+	result = {
+		"unread_count": get_unread_count_for_channel(channel_id),
+		"last_visit": str(new_watermark),
+	}
 	frappe.publish_realtime(
 		"raven:unread_channel_count_updated",
-		{
-			"channel_id": channel_id,
-			"sent_by": user,
-			"last_visit": str(new_watermark),
-			"event_type": "mark_unread",
-			"unread_count": unread_count,
-		},
+		{"channel_id": channel_id, "sent_by": user, "event_type": "mark_unread", **result},
 		user=user,
 	)
-	return unread_count
+	# Returned too: a client that misses the event still gets the new read position.
+	return result
 
 
 # Workspace Members

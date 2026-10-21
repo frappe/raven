@@ -271,7 +271,10 @@ export const ChannelRowActions = ({
                             // above/below from the row's height, right from the row's
                             // 8px padding − the 5px overhang.
                             "hidden size-6 shrink-0 cursor-pointer -my-1 -mr-[5px]",
-                            "focus-visible:flex data-[state=open]:flex md:group-hover/row:flex",
+                            // Shown while the row or this button has keyboard focus, so Tab can reach it.
+                            // Not on the focus a mouse click leaves on the row.
+                            "group-[:focus-within:not(:focus:not(:focus-visible))]/row:flex",
+                            "data-[state=open]:flex md:group-hover/row:flex",
                         )}
                         // Inside a NavLink: opening the menu must not navigate.
                         onClick={(event) => {

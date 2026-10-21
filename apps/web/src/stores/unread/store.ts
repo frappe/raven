@@ -135,6 +135,9 @@ class ChannelUnreadStore {
      * directly. Mirrors set_channel_unread's guard bypass on the backend.
      */
     markUnread(channelID: string, watermark: string, count: number) {
+        // The POST response and the realtime event carry the same mark: the second
+        // must not undo a message counted in between.
+        if (this.getState(channelID).lastSeen === watermark) return
         this.update(channelID, { count, lastSeen: watermark })
         // Roll the PRISTINE server baseline back too — the server's last_visit
         // just moved backward, and the read tracker seeds its "don't re-post"
@@ -144,11 +147,6 @@ class ChannelUnreadStore {
         // a fresh get_messages response would otherwise overwrite it — which a
         // warm re-entry never triggers.
         this.serverWatermarks.set(channelID, watermark)
-        this.holdRead(channelID)
-    }
-
-    /** Keeps the channel unread while open, until releaseRead. */
-    holdRead(channelID: string) {
         this.heldReads.add(channelID)
     }
 

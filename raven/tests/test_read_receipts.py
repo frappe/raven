@@ -208,8 +208,13 @@ class TestReadReceipts(IntegrationTestCase):
 		frappe.set_user("test1@example.com")
 		result = mark_channel_as_unread(self.channel.name, message_id=m2.name)
 
-		self.assertEqual(result, 1)
+		self.assertEqual(result["unread_count"], 1)
 		self.assertEqual(get_unread_count_for_channel(self.channel.name), 1)
+		# The new read position, so the client can apply it without the socket event.
+		self.assertEqual(
+			result["last_visit"],
+			str(frappe.utils.get_datetime(m2.creation) - timedelta(microseconds=1)),
+		)
 
 	def test_mark_channel_as_unread_requires_permission(self):
 		from raven.api.raven_channel_member import mark_channel_as_unread
@@ -234,9 +239,9 @@ class TestReadReceipts(IntegrationTestCase):
 
 		# test1 marks unread from m2 -> m2 + third are unread (2), authored by `test`
 		frappe.set_user("test1@example.com")
-		count = mark_channel_as_unread(self.channel.name, message_id=m2.name)
+		result = mark_channel_as_unread(self.channel.name, message_id=m2.name)
 
-		self.assertEqual(count, 2)
+		self.assertEqual(result["unread_count"], 2)
 
 	def test_set_channel_unread_noop_for_non_open_non_member(self):
 		"""
