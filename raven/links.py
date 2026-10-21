@@ -1,4 +1,4 @@
-# Copyright (c) 2026, The Commit Company (Algocode Technologies Pvt. Ltd.) and contributors
+# Copyright (c) 2026, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
 """
@@ -284,7 +284,7 @@ def get_site_host() -> str:
 	# Not frappe.utils.get_host_name(): that keeps the port (a dev bench
 	# returns "site:8000"). urlsplit's .hostname strips the port and
 	# lowercases in one step, matching how link hosts are parsed above.
-	return (urlsplit(frappe.utils.get_url()).hostname or "").lower()
+	return (urlsplit(frappe.utils.get_url(allow_header_override=False)).hostname or "").lower()
 
 
 def get_frappe_meet_hosts() -> set[str]:
@@ -351,6 +351,7 @@ def process_message_links(message_id: str):
 		if fill_preview(preview):
 			fetched.append(preview)
 		# Keep whatever happened, even if a later URL crashes the job.
+		# nosemgrep: frappe-manual-commit
 		frappe.db.commit()
 
 	if fetched:

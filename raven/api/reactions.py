@@ -131,3 +131,32 @@ def calculate_message_reaction(message_id, channel_id: str = None, do_not_publis
 		docname=channel_id,  # Adding this to automatically add the room for the event via Frappe
 		after_commit=False,
 	)
+
+
+@frappe.whitelist(methods=["GET"])
+def most_used_reactions(limit: int = 6):
+	"""
+	The current user's most-used reactions over the past 3 months — feeds the
+	quick-emoji suggestions in preferences. Removed reactions don't count
+	(un-reacting deletes the row), which is the better "your emojis" signal.
+	"""
+	from frappe.query_builder import Order
+	from frappe.query_builder.functions import Count
+
+	reaction = frappe.qb.DocType("Raven Message Reaction")
+	return (
+		frappe.qb.from_(reaction)
+		.select(
+			reaction.reaction,
+			reaction.is_custom,
+			reaction.reaction_escaped,
+			Count(reaction.name).as_("uses"),
+		)
+		.where(reaction.owner == frappe.session.user)
+		.where(reaction.creation > frappe.utils.add_to_date(frappe.utils.now_datetime(), months=-3))
+		.groupby(reaction.reaction, reaction.is_custom, reaction.reaction_escaped)
+		.orderby(Count(reaction.name), order=Order.desc)
+		# Clamp to 1..6 — a zero or negative limit would reach SQL as-is and
+		# either return nothing or error.
+		.limit(max(min(frappe.utils.cint(limit), 6), 1))
+	).run(as_dict=True)

@@ -36,6 +36,8 @@ interface UserFilterProps {
     triggerClassName?: string
     /** Root wrapper — width/shrink control so the filter can flex down in a shared row. */
     className?: string
+    /** Open the list in modal mode. Required inside a modal dialog, whose scroll lock would otherwise freeze the list. */
+    modal?: boolean
 }
 
 /**
@@ -100,6 +102,7 @@ export function UserFilter({
     placeholder,
     triggerClassName,
     className,
+    modal,
 }: UserFilterProps) {
     const selectedUser = users.find((user) => user.name === value)
     const isAllSelected = !value || value === ALL
@@ -108,6 +111,7 @@ export function UserFilter({
         <FilterCombobox
             className={className}
             triggerClassName={triggerClassName}
+            modal={modal}
             emptyLabel={_("No users found.")}
             // Only while an author is picked — see ChannelFilter.
             onClear={selectedUser && !isAllSelected ? () => onValueChange(ALL) : undefined}

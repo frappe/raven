@@ -1,13 +1,25 @@
 from urllib.parse import urlsplit
 
 import frappe
+from frappe.utils.safe_exec import is_safe_exec_enabled
+
+from raven.api.setup import is_setup_admin
+from raven.frappe_cloud_push import (
+	is_on_frappe_cloud_push,
+	is_push_setup_pending,
+	queue_push_setup,
+)
 
 
 def boot_session(bootinfo):
 
 	raven_settings = frappe.get_single("Raven Settings")
 
-	bootinfo.show_raven_chat_on_desk = raven_settings.show_raven_on_desk
+	# Scheduled messages run as Server Scripts. The settings panel warns when those are off.
+	bootinfo.server_script_enabled = is_safe_exec_enabled()
+
+	# Opens the first-admin setup flow in the web app.
+	bootinfo.raven_setup_pending = 1 if not raven_settings.setup_completed and is_setup_admin() else 0
 
 	if raven_settings.frappe_meet_hosted_urls:
 		bootinfo.frappe_meet_hosted_urls = raven_settings.frappe_meet_hosted_urls
@@ -36,29 +48,31 @@ def boot_session(bootinfo):
 		and frappe.session.user != "Guest"
 		and frappe.db.exists("Raven User", frappe.session.user)
 	):
-		chat_style, time_format, hide_read_receipts, quiet_hours_nudge = frappe.db.get_value(
+		chat_style, time_format, hide_read_receipts, quiet_hours_nudge, onboarded = frappe.db.get_value(
 			"Raven User",
 			frappe.session.user,
-			["chat_style", "time_format", "hide_read_receipts", "quiet_hours_nudge"],
+			["chat_style", "time_format", "hide_read_receipts", "quiet_hours_nudge", "onboarded"],
 		)
 	else:
 		chat_style = "Simple"
 		time_format = "12-hour"
 		hide_read_receipts = 0
 		quiet_hours_nudge = "Nudge"
+		# No Raven User: nothing to set up in the web app.
+		onboarded = 1
 
 	if document_link_override and len(document_link_override) > 0:
 		bootinfo.raven_document_link_override = True
 
+	# Only a key the site set for itself: Raven ships no Tenor key of its own.
 	if tenor_api_key:
 		bootinfo.tenor_api_key = tenor_api_key
-	else:
-		bootinfo.tenor_api_key = "AIzaSyAWkuhLwbMxOlvn_o5fxBke1grUZ7F3ma4"  # should we remove this?
 
 	bootinfo.chat_style = chat_style if chat_style else "Simple"
 	bootinfo.raven_time_format = time_format if time_format else "12-hour"
 	bootinfo.raven_hide_read_receipts = 1 if hide_read_receipts else 0
 	bootinfo.raven_quiet_hours_nudge = quiet_hours_nudge if quiet_hours_nudge else "Nudge"
+	bootinfo.raven_onboarded = 1 if onboarded else 0
 
 	# Quiet hours: outside these working hours the composer nudges toward (or
 	# defaults to, per the user's preference above) silent sends. Only shipped
@@ -76,6 +90,13 @@ def boot_session(bootinfo):
 			"working_hours_start": str(raven_settings.working_hours_start),
 			"working_hours_end": str(raven_settings.working_hours_end),
 		}
+
+	# On Frappe Cloud, retries a failed push setup and registers a renamed site again.
+	if is_push_setup_pending(raven_settings):
+		queue_push_setup()
+	bootinfo.raven_cloud_push_setup_pending = is_on_frappe_cloud_push(raven_settings) and (
+		not raven_settings.config or not raven_settings.vapid_public_key
+	)
 
 	bootinfo.push_notification_service = (
 		raven_settings.push_notification_service

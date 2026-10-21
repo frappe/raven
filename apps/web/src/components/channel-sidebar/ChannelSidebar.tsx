@@ -1,11 +1,13 @@
+import { siteKey, siteUrl } from "@lib/site"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useSetAtom } from "jotai"
 import { NavLink, useMatch, useNavigate, useParams } from "react-router-dom"
 import { useHotkeys } from "react-hotkeys-hook"
-import { BellOff, Check, ChevronDown, ChevronRight, Hash, PencilLine, Star } from "lucide-react"
+import { BellOff, Check, ChevronDown, ChevronRight, Hash, PencilLine, PlusIcon, Star } from "lucide-react"
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso"
-import { useLocalStorage } from "usehooks-ts"
+import { useLocalStorage, useMediaQuery } from "usehooks-ts"
 import { useChannelUnread, useGroupUnreadCount, useWorkspaceUnread } from "@stores/unread/useChannelUnread"
+import { channelUnreadStore } from "@stores/unread/store"
 import { Badge } from "@components/ui/badge"
 import { Button } from "@components/ui/button"
 import { Skeleton } from "@components/ui/skeleton"
@@ -25,8 +27,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@components/ui/avatar"
 import { ChannelIcon } from "@components/common/ChannelIcon/ChannelIcon"
 import { ChannelRowActions } from "@components/common/ChannelRowActions"
 import { CustomizeSidebarButton } from "@components/features/channel/CustomizeSidebar/CustomizeSidebarButton"
+import { CreateChannelDialog } from "@components/features/channel/CreateChannel/CreateChannelButton"
 import { MobileSearchButton } from "@components/features/header/QuickSearch/SearchButton"
-import { useWorkspaces, type WorkspaceFields } from "@hooks/useWorkspaces"
+import { useMyWorkspaces, useWorkspaces, type WorkspaceFields } from "@hooks/useWorkspaces"
 import { workspacesDrawerAtom } from "@components/features/header/HomeWorkspacesDrawer"
 import { lastChannelAtom, lastWorkspaceAtom } from "@utils/lastVisitedAtoms"
 import { useChannels } from "@stores/channels/useChannelList"
@@ -40,7 +43,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip"
 import type { ChannelListItem } from "@raven/types/common/ChannelListItem"
 import { useIsMobile } from "@hooks/use-mobile"
 import { useLongPress } from "@hooks/useLongPress"
-import { hapticTick } from "@utils/haptics"
 
 interface GroupsState {
     [key: string]: boolean
@@ -66,7 +68,7 @@ export function ChannelSidebar() {
         workspaceID,
     )
 
-    const [groupsState, setGroupsState] = useLocalStorage<GroupsState>("channel-sidebar-groups-state", {})
+    const [groupsState, setGroupsState] = useLocalStorage<GroupsState>(siteKey("channel-sidebar-groups-state"), {})
     const [scrollerRef, setScrollerRef] = useState<HTMLElement | null>(null)
 
     const navigate = useNavigate()
@@ -89,35 +91,50 @@ export function ChannelSidebar() {
         [groupedChannels, ungroupedChannels],
     )
 
-    /** Cmd/Ctrl+Down = next channel, Cmd/Ctrl+Up = previous — clamped at the ends. */
-    const goToAdjacentChannel = (direction: 1 | -1) => {
+    /** Option+Down = next channel, Option+Up = previous. With Shift, the
+     *  nearest channel with UNREAD messages in that direction (the current
+     *  channel is skipped — it's being read). No candidate = no-op. */
+    const goToAdjacentChannel = (direction: 1 | -1, unreadOnly = false) => {
         if (flatChannels.length === 0) return
         const currentIndex = flatChannels.findIndex((channel) => channel.name === currentChannelID)
-        const nextIndex =
-            currentIndex === -1
-                ? direction === 1
-                    ? 0
-                    : flatChannels.length - 1
-                : Math.min(flatChannels.length - 1, Math.max(0, currentIndex + direction))
-        if (nextIndex === currentIndex) return
-        const target = flatChannels[nextIndex]
-        navigate(`/${encodeURIComponent(workspaceID ?? "")}/${encodeURIComponent(target.name)}`)
-        // Only the ungrouped list is virtualized — keep its active row in view
-        const ungroupedIndex = ungroupedChannels.indexOf(target)
-        if (ungroupedIndex !== -1) virtuosoRef.current?.scrollIntoView({ index: ungroupedIndex })
+        // Walk outward from the neighbor (or in from the list's edge when the
+        // current route isn't in this list), taking the first that qualifies.
+        let index = currentIndex === -1 ? (direction === 1 ? 0 : flatChannels.length - 1) : currentIndex + direction
+        while (index >= 0 && index < flatChannels.length) {
+            const target = flatChannels[index]
+            // Imperative store read — a keypress needs a snapshot, not a subscription.
+            if (!unreadOnly || channelUnreadStore.getState(target.name).count > 0) {
+                navigate(`/${encodeURIComponent(workspaceID ?? "")}/${encodeURIComponent(target.name)}`)
+                // Only the ungrouped list is virtualized — keep its active row in view
+                const ungroupedIndex = ungroupedChannels.indexOf(target)
+                if (ungroupedIndex !== -1) virtuosoRef.current?.scrollIntoView({ index: ungroupedIndex })
+                return
+            }
+            index += direction
+        }
     }
 
+    // Alt/Option, NOT mod (the Slack/Discord convention): Cmd+Up/Down is core
+    // macOS text editing (jump to start/end of the draft) and the composer is
+    // always focused, so a mod binding stole it mid-typing. Option+arrows'
+    // native meaning (paragraph jump) is obscure enough to own unconditionally.
     const hotkeyOptions = { enableOnFormTags: true, enableOnContentEditable: true, preventDefault: true }
-    useHotkeys("mod+down", () => goToAdjacentChannel(1), hotkeyOptions, [flatChannels, currentChannelID])
-    useHotkeys("mod+up", () => goToAdjacentChannel(-1), hotkeyOptions, [flatChannels, currentChannelID])
+    useHotkeys("alt+down", () => goToAdjacentChannel(1), hotkeyOptions, [flatChannels, currentChannelID])
+    useHotkeys("alt+up", () => goToAdjacentChannel(-1), hotkeyOptions, [flatChannels, currentChannelID])
+    useHotkeys("alt+shift+down", () => goToAdjacentChannel(1, true), hotkeyOptions, [flatChannels, currentChannelID])
+    useHotkeys("alt+shift+up", () => goToAdjacentChannel(-1, true), hotkeyOptions, [flatChannels, currentChannelID])
 
     const loading = isLoading || !myProfile
     const isEmpty = groupedChannels.length === 0 && ungroupedChannels.length === 0
+    // Hosted here, not in the empty state: creating the first channel fills the list, which would
+    // unmount the empty state and the dialog with it before its add-members step.
+    const [createOpen, setCreateOpen] = useState(false)
 
     return (
         // Mobile: the sidebar is a full page, so it sits on the page surface;
         // the panel tint only makes sense beside content (desktop)
         <nav className="flex h-full w-full flex-col bg-surface-base md:bg-surface-sidebar">
+            <CreateChannelDialog open={createOpen} onOpenChange={setCreateOpen} />
             {/* Border on mobile (full-page list needs the separator); none on
                 desktop (the content island carries its own bordered header) */}
             <div className="flex h-11 md:h-auto shrink-0 items-center justify-between gap-1 border-b md:border-b-transparent px-1 md:py-2">
@@ -133,7 +150,7 @@ export function ChannelSidebar() {
             {loading ? (
                 <ChannelSidebarSkeleton />
             ) : isEmpty ? (
-                <EmptyChannels />
+                <EmptyChannels onCreate={() => setCreateOpen(true)} />
             ) : (
                 // Mobile: the in-flow AppMobileFooter below reserves the tab-bar + home-
                 // indicator space, so the list only needs a small breathing pad of its own.
@@ -174,9 +191,9 @@ export function ChannelSidebar() {
     )
 }
 
-const ChannelSidebarSkeleton = () => (
+export const ChannelSidebarSkeleton = ({ count = 18 }: { count?: number }) => (
     <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-hidden px-2 py-2">
-        {Array.from({ length: 18 }).map((_, index) => (
+        {Array.from({ length: count }).map((_, index) => (
             <div key={index} className="flex h-7 items-center gap-2 px-2">
                 <Skeleton className="h-4 w-4 rounded-sm" />
                 <Skeleton className="h-4 rounded-sm" style={{ width: `${45 + ((index * 17) % 40)}%` }} />
@@ -185,18 +202,26 @@ const ChannelSidebarSkeleton = () => (
     </div>
 )
 
-const EmptyChannels = () => {
-
+/** A workspace with no channels: sized for the narrow column and held near the top, with the one thing to do. */
+const EmptyChannels = ({ onCreate }: { onCreate: () => void }) => {
     return (
-        <Empty>
-            <EmptyMedia>
-                <Hash />
-            </EmptyMedia>
-            <EmptyHeader>
-                <EmptyTitle>{_("No channels yet")}</EmptyTitle>
-                <EmptyDescription>{_("Create one from the menu above.")}</EmptyDescription>
-            </EmptyHeader>
-        </Empty>
+        <>
+            <Empty className="min-h-0 flex-none justify-start gap-2 px-4 pt-12 pb-6">
+                <EmptyMedia className="size-6 [&_svg:not([class*='size-'])]:size-6">
+                    <Hash />
+                </EmptyMedia>
+                <EmptyHeader>
+                    <EmptyTitle className="text-base-medium">{_("No channels yet")}</EmptyTitle>
+                    <EmptyDescription className="text-p-sm">{_("Channels are where your team talks.")}</EmptyDescription>
+                </EmptyHeader>
+                <EmptyContent className="mt-1">
+                    <Button variant="outline" size="sm" onClick={onCreate}>
+                        <PlusIcon />
+                        {_("Create a channel")}
+                    </Button>
+                </EmptyContent>
+            </Empty>
+        </>
     )
 }
 
@@ -207,20 +232,7 @@ const EmptyChannels = () => {
  */
 const WorkspaceSwitcher = ({ workspaceID }: { workspaceID?: string }) => {
     const { workspaces } = useWorkspaces()
-    const { myProfile } = useCurrentRavenUser()
-
-    // Per-user order from the Raven User's pinned_workspaces child table: rows
-    // come first (in row order), workspaces NOT in the table follow in their
-    // server order — so joining a new workspace never needs a migration, it
-    // just appends until the next drag writes the full order.
-    const myWorkspaces = useMemo(() => {
-        const members = workspaces.filter((workspace) => workspace.workspace_member_name)
-        const position = new Map((myProfile?.pinned_workspaces ?? []).map((row, index) => [row.workspace, index]))
-        if (position.size === 0) return members
-        return [...members].sort(
-            (a, b) => (position.get(a.name) ?? Infinity) - (position.get(b.name) ?? Infinity),
-        )
-    }, [workspaces, myProfile?.pinned_workspaces])
+    const myWorkspaces = useMyWorkspaces()
 
     const navigate = useNavigate()
     const setLastWorkspace = useSetAtom(lastWorkspaceAtom)
@@ -236,6 +248,24 @@ const WorkspaceSwitcher = ({ workspaceID }: { workspaceID?: string }) => {
         setLastChannel("")
         navigate(`/${encodeURIComponent(workspace.name)}`)
     }
+
+    // ⌘⌥↑/↓ — previous/next workspace (Discord's server-switch chord; Slack's
+    // ⌘1-9 is owned by the browser). Extends the ⌥-arrow family: ⌥ channels,
+    // ⌥⇧ unread, ⌘⌥ workspaces. Same walk rules as channel nav: the user's
+    // pinned order, no wrap, and from the list edge when off a listed one.
+    const goToAdjacentWorkspace = (direction: 1 | -1) => {
+        if (myWorkspaces.length === 0) return
+        const index = myWorkspaces.findIndex((workspace) => workspace.name === workspaceID)
+        const target =
+            index === -1
+                ? myWorkspaces[direction === 1 ? 0 : myWorkspaces.length - 1]
+                : myWorkspaces[index + direction]
+        if (target && target.name !== workspaceID) switchWorkspace(target)
+    }
+
+    const hotkeyOptions = { enableOnFormTags: true, enableOnContentEditable: true, preventDefault: true }
+    useHotkeys("mod+alt+down", () => goToAdjacentWorkspace(1), hotkeyOptions, [myWorkspaces, workspaceID])
+    useHotkeys("mod+alt+up", () => goToAdjacentWorkspace(-1), hotkeyOptions, [myWorkspaces, workspaceID])
 
     const openWorkspacesDrawer = useSetAtom(workspacesDrawerAtom)
 
@@ -308,7 +338,7 @@ const WorkspaceSwitcherItem = ({
  *  Exported for the mobile catch-up drawer (long-press Home). */
 export const WorkspaceLogo = ({ workspace, className }: { workspace: WorkspaceFields, className?: string }) => (
     <Avatar className={cn("size-4.5 shrink-0 rounded-sm", className)}>
-        <AvatarImage src={workspace.logo} alt={workspace.workspace_name} />
+        <AvatarImage src={workspace.logo && siteUrl(workspace.logo)} alt={workspace.workspace_name} />
         <AvatarFallback className="rounded-none bg-surface-gray-3 text-2xs text-ink-gray-5">
             {workspace.workspace_name.charAt(0)}
         </AvatarFallback>
@@ -410,54 +440,59 @@ export const ChannelGroupLabel = ({ groupName, isHighlighted = false }: { groupN
     )
 }
 
+/** A channel row's look, shared with setup's preview so it lands exactly on this one. */
+export const channelRowClassName = ({ isActive, unread }: { isActive: boolean; unread: boolean }) =>
+    cn(
+        "flex min-w-0 select-none items-center gap-1.5 overflow-hidden rounded text-base px-3 md:px-2 text-ink-gray-6 dark:text-ink-gray-7 py-2 md:py-1.5",
+        // `transition` (not transition-colors) so box-shadow animates IN SYNC
+        // with the background — Virtuoso recycles rows on workspace switch, and
+        // transition-colors left the shadow popping while the bg cross-faded.
+        "outline-none ring-outline-gray-2 transition focus-visible:ring-2",
+        "hover:bg-surface-gray-3 active:bg-surface-gray-3",
+        unread && "text-ink-gray-7 dark:text-ink-gray-8",
+        isActive && "bg-surface-elevation-3 shadow-sm text-ink-gray-8 dark:text-ink-gray-9 hover:bg-surface-elevation-3 active:bg-surface-elevation-3",
+    )
+
+/** leading-snug: the type scale's 1.15 line-height is too tight to contain descenders (g/y/p)
+ *  once `truncate` clips overflow — Safari cuts them on some DPIs. */
+export const channelRowLabelClassName = (unread: boolean) =>
+    cn("min-w-0 flex-1 truncate text-lg md:text-sm leading-snug", unread ? "font-semibold" : "font-normal")
+
 const ChannelRow = ({ channel, workspaceID }: { channel: ChannelListItem; workspaceID?: string }) => {
     const { count: unread } = useChannelUnread(channel.name)
     const prefetchHandlers = usePrefetchChannel(channel.name, unread > 0)
     // Channel rows have no preview line — an unsent draft shows as a pencil.
     const draft = useChannelDraft(channel.name)
 
-    const isMobile = useIsMobile()
+    // Touch screens open the sheet by long-press, tablets in the wide layout included: they have no hover for the kebab.
+    const touch = useMediaQuery("(pointer: coarse)")
     const [sheetOpen, setSheetOpen] = useState(false)
     const [menuOpen, setMenuOpen] = useState(false)
-    const longPress = useLongPress(() => {
-        hapticTick()
-        setSheetOpen(true)
-    }, isMobile)
+    const { handlers: longPress, consumeLongPress } = useLongPress(() => setSheetOpen(true))
 
     return (
         <NavLink
             {...prefetchHandlers}
-            {...longPress}
+            {...(touch ? longPress : {})}
+            // Both hooks need the leave: a spread would keep only one.
+            onPointerLeave={() => {
+                prefetchHandlers.onPointerLeave()
+                if (touch) longPress.onPointerLeave()
+            }}
+            // The press that opened the sheet must not also open the channel.
+            onClick={(event) => { if (consumeLongPress()) event.preventDefault() }}
             to={`/${encodeURIComponent(workspaceID ?? "")}/${encodeURIComponent(channel.name)}`}
             className={({ isActive }) =>
                 cn(
-                    "group/row flex min-w-0 select-none items-center gap-1.5 overflow-hidden rounded text-base px-3 md:px-2 text-ink-gray-6 dark:text-ink-gray-7 py-2 md:py-1.5",
-                    // `transition` (not transition-colors) so box-shadow animates IN SYNC
-                    // with the background — Virtuoso recycles rows on workspace switch, and
-                    // transition-colors left the shadow popping while the bg cross-faded.
-                    "outline-none ring-outline-gray-2 transition focus-visible:ring-2",
-                    "hover:bg-surface-gray-3 active:bg-surface-gray-3",
-                    unread > 0 && !channel.muted && "text-ink-gray-7 dark:text-ink-gray-8",
-                    // Menu/sheet open pins the HOVER look (not the route-active raised
-                    // look): the pointer may leave the row while its menu is up, and
-                    // the highlight should hold until the menu closes.
-                    (menuOpen || sheetOpen) && "bg-surface-gray-3",
-                    isActive && "bg-surface-elevation-3 shadow-sm text-ink-gray-8 dark:text-ink-gray-9 hover:bg-surface-elevation-3 active:bg-surface-elevation-3",
+                    channelRowClassName({ isActive, unread: unread > 0 && !channel.muted }),
+                    "group/row",
+                    // An open menu or sheet holds the hover look while the pointer is elsewhere.
+                    (menuOpen || sheetOpen) && !isActive && "bg-surface-gray-3",
                 )
             }
         >
             <ChannelIcon type={channel.type || "Public"} className="h-4 w-4 shrink-0" />
-            <span
-                className={cn(
-                    // leading-snug: the type scale's 1.15 line-height is too tight to contain
-                    // descenders (g/y/p) once `truncate` clips overflow — Safari cuts them on
-                    // some DPIs. A looser single-line height fixes it.
-                    "min-w-0 flex-1 truncate text-lg md:text-sm leading-snug",
-                    unread > 0 && !channel.muted ? "font-semibold" : "font-normal",
-                )}
-            >
-                {channel.channel_name}
-            </span>
+            <span className={channelRowLabelClassName(unread > 0 && !channel.muted)}>{channel.channel_name}</span>
             {draft && (
                 <Tooltip>
                     <TooltipTrigger asChild>

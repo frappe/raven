@@ -21,6 +21,9 @@
       "@assets/*": [
         "./src/assets/*"
       ],
+      "@raven/public/*": [
+        "../../raven/public/*"
+      ],
       "@components/*": [
         "./src/components/*"
       ],

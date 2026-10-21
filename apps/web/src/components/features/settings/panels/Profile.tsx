@@ -1,4 +1,6 @@
 import { useForm } from "react-hook-form"
+import { SAVE_TOAST_ID } from "@lib/toast"
+import useSaveHotkey from "@hooks/useSaveHotkey"
 import { FrappeError, useFrappeUpdateDoc } from "frappe-react-sdk"
 import { toast } from "sonner"
 import useCurrentRavenUser from "@raven/lib/hooks/useCurrentRavenUser"
@@ -73,7 +75,7 @@ const ProfileForm = ({ myProfile }: { myProfile: RavenUser }) => {
             contact_number: values.contact_number,
         })
             .then(() => {
-                toast.success(_("Profile updated"))
+                toast.success(_("Profile updated"), { id: SAVE_TOAST_ID })
                 mutate()
                 // The saved values become the new PRISTINE state (Save disables
                 // again) — via keepValues, which only swaps the defaults under
@@ -84,9 +86,14 @@ const ProfileForm = ({ myProfile }: { myProfile: RavenUser }) => {
                 // there is nothing to rewire.
                 form.reset(values, { keepValues: true })
             }).catch((e) => {
-                errorResponseToast(_("Could not update profile"), e as FrappeError)
+                errorResponseToast(_("Could not update profile"), e as FrappeError, { id: SAVE_TOAST_ID })
             })
     }
+
+    // Same gate as the Save button: nothing to save, or a save in flight, is a no-op.
+    useSaveHotkey(() => {
+        if (form.formState.isDirty && !form.formState.isSubmitting) form.handleSubmit(onSubmit)()
+    })
 
     return (
         <>
@@ -95,9 +102,9 @@ const ProfileForm = ({ myProfile }: { myProfile: RavenUser }) => {
                     <Button
                         type="submit"
                         form={FORM_ID}
-                        size="md"
+                        size="sm"
                         loading={form.formState.isSubmitting}
-                        loadingText={_("Saving...")}
+                        loadingText={_("Saving")}
                         disabled={!form.formState.isDirty}
                     >
                         {_("Save")}

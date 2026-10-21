@@ -1,7 +1,7 @@
 import { MessageContent } from "@components/features/message/renderers/MessageContent"
+import { DocumentLinkInline } from "@components/features/message/renderers/DocumentLinkRenderer"
 import { UserAvatar } from "@components/features/message/UserAvatar"
 import { ThreadChannelDetails } from "@components/features/threads/ThreadsList"
-import { Badge } from "@components/ui/badge"
 import { GroupedAvatars } from "@components/ui/grouped-avatars"
 import { UserData } from "@db"
 import { cn } from "@lib/utils"
@@ -47,8 +47,20 @@ export const BaseThreadMessage = ({
                         went inert). Desktop keeps hover cards: hover never conflicts
                         with click navigation. Same rule as MessageResultBlock. */}
                     <div className="[&_p]:my-0 max-md:[&_.mention]:pointer-events-none">
-                        <MessageContent message={thread as unknown as Message} showLinkPreview={false} />
+                        {/* interactivePoll off: voting belongs in the thread, not its
+                            list row — a click on the poll opens the thread instead. */}
+                        <MessageContent message={thread as unknown as Message} showLinkPreview={false} showLinkedDocument={false} interactivePoll={false} />
                     </div>
+                    {/* List rows stay compact: the doctype + id line, not the full card.
+                        Darker ink than the default — this line is part of the row's
+                        CONTENT here, not a footnote under a full card. */}
+                    {thread.link_doctype && thread.link_document && (
+                        <DocumentLinkInline
+                            doctype={thread.link_doctype}
+                            docname={thread.link_document}
+                            className="mt-1 text-ink-gray-7"
+                        />
+                    )}
                 </div>
             </div>
 
@@ -62,9 +74,6 @@ export const BaseThreadMessage = ({
                         {_(`${count} ${count === 1 ? 'Reply' : 'Replies'}`)}
                     </span>
                 ) : null}
-                {isUnread && (
-                    <Badge variant="solid" className="w-1 h-1 p-0 min-w-0 rounded-full mt-0.5" aria-label={_("Unread")} />
-                )}
             </div>
         </div>
     )

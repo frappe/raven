@@ -1,8 +1,10 @@
 import frappe
 from frappe.tests import IntegrationTestCase
 
-from raven.api.raven_channel import create_direct_message_channel
+from raven.api.raven_channel import create_channel, create_direct_message_channel
 from raven.api.threads import create_thread
+from raven.api.workspaces import join_workspace
+from raven.utils import get_channel_member, get_workspace_member
 
 EXTRA_TEST_RECORD_DEPENDENCIES = ["User", "Raven User"]
 
@@ -320,6 +322,42 @@ class TestPermissions(IntegrationTestCase):
 			3, frappe.db.count("Raven Workspace Member", {"workspace": test_workspace.name})
 		)
 
+	def test_member_create_for_missing_workspace_is_refused_not_crashed(self):
+		frappe.set_user("test1@example.com")
+		member = frappe.get_doc(
+			{
+				"doctype": "Raven Workspace Member",
+				"user": "test1@example.com",
+				"workspace": "does-not-exist",
+			}
+		)
+		self.assertFalse(member.has_permission("create"))
+
+	def test_cannot_join_a_public_workspace_as_admin(self):
+		frappe.set_user("test@example.com")
+		test_workspace = self.create_test_workspace(workspace_type="Public")
+		test_workspace.insert()
+
+		# The creator of a workspace is its admin
+		creator = get_workspace_member(test_workspace.name, "test@example.com")
+		self.assertTrue(creator.get("is_admin"))
+
+		# The audit's case: test1 joins with is_admin set
+		frappe.set_user("test1@example.com")
+		with self.assertRaises(frappe.PermissionError):
+			frappe.get_doc(
+				{
+					"doctype": "Raven Workspace Member",
+					"user": "test1@example.com",
+					"workspace": test_workspace.name,
+					"is_admin": 1,
+				}
+			).insert()
+
+		# Joining as a regular member still works
+		member = join_workspace(test_workspace.name)
+		self.assertFalse(member.is_admin)
+
 	def test_workspace_member_update_permissions(self):
 		"""
 		Workspace members can be updated by admins only since it contains the "is_admin" field
@@ -463,7 +501,8 @@ class TestPermissions(IntegrationTestCase):
 		test_channel = self.create_test_channel(workspace_name=test_workspace.name)
 		test_channel.insert()
 
-		self.assertEqual(test_channel.name, f"{test_workspace.name}-test-channel")
+		# Channel autoname slugs the workspace name.
+		self.assertEqual(test_channel.name, "test-workspace-test-channel")
 
 		test_channel.delete()
 
@@ -493,7 +532,8 @@ class TestPermissions(IntegrationTestCase):
 		# Test1 should now be able to create a channel in the workspace
 		test_channel.insert()
 
-		self.assertEqual(test_channel.name, f"{test_workspace.name}-test-channel")
+		# Channel autoname slugs the workspace name.
+		self.assertEqual(test_channel.name, "test-workspace-test-channel")
 
 		test_channel.delete()
 
@@ -508,7 +548,8 @@ class TestPermissions(IntegrationTestCase):
 		# Test1 should now be able to create a channel in the workspace
 		test_channel.insert()
 
-		self.assertEqual(test_channel.name, f"{test_workspace.name}-test-channel")
+		# Channel autoname slugs the workspace name.
+		self.assertEqual(test_channel.name, "test-workspace-test-channel")
 
 		test_channel.delete()
 
@@ -583,6 +624,47 @@ class TestPermissions(IntegrationTestCase):
 		frappe.set_user("test1@example.com")
 		with self.assertRaises(frappe.PermissionError):
 			create_thread(message_id=test_message.name)
+
+	def test_channel_create_needs_workspace_membership(self):
+		"""
+		Even when any member may create channels, an outsider may not.
+		"""
+		frappe.set_user("test@example.com")
+		test_workspace = self.create_test_workspace(
+			workspace_type="Private", only_admins_can_create_channels=False
+		)
+		test_workspace.insert()
+		frappe.clear_cache()
+
+		# test3 is a Raven User, but not a member of the workspace
+		frappe.set_user("test3@example.com")
+		with self.assertRaises(frappe.PermissionError):
+			create_channel(
+				channel_name="outsider-channel",
+				channel_description="",
+				type="Public",
+				workspace=test_workspace.name,
+			)
+
+		# test1 joins the workspace and can now create a channel
+		frappe.set_user("test@example.com")
+		frappe.get_doc(
+			{
+				"doctype": "Raven Workspace Member",
+				"user": "test1@example.com",
+				"workspace": test_workspace.name,
+			}
+		).insert(ignore_permissions=True)
+		frappe.clear_cache()
+
+		frappe.set_user("test1@example.com")
+		channel = create_channel(
+			channel_name="member-channel",
+			channel_description="",
+			type="Public",
+			workspace=test_workspace.name,
+		)
+		self.assertEqual(channel.workspace, test_workspace.name)
 
 	def test_channel_delete_permissions(self):
 		"""
@@ -855,6 +937,47 @@ class TestPermissions(IntegrationTestCase):
 		# Test3 should not be able to read the thread since they are not a member of the channel
 		frappe.set_user("test3@example.com")
 		self.assertFalse(frappe.has_permission("Raven Channel", doc=test_message.name))
+
+	def test_only_channel_admins_can_add_admins(self):
+		frappe.set_user("test@example.com")
+		test_workspace = self.create_test_workspace(workspace_type="Public")
+		test_workspace.insert()
+		for member in ("test1@example.com", "test3@example.com"):
+			frappe.get_doc(
+				{"doctype": "Raven Workspace Member", "user": member, "workspace": test_workspace.name}
+			).insert(ignore_permissions=True)
+		# The creator of a channel is its admin
+		channel = self.create_test_channel(workspace_name=test_workspace.name, channel_type="Public")
+		channel.insert()
+		frappe.clear_cache()
+		self.assertTrue(get_channel_member(channel.name, "test@example.com").get("is_admin"))
+
+		def new_member(user_id, is_admin):
+			return frappe.get_doc(
+				{
+					"doctype": "Raven Channel Member",
+					"channel_id": channel.name,
+					"user_id": user_id,
+					"is_admin": is_admin,
+				}
+			)
+
+		# The audit's case: test1 joins the channel as its admin
+		frappe.set_user("test1@example.com")
+		with self.assertRaises(frappe.PermissionError):
+			new_member("test1@example.com", is_admin=1).insert()
+
+		# Joining as a regular member still works
+		new_member("test1@example.com", is_admin=0).insert()
+		frappe.clear_cache()
+
+		# A regular member cannot add someone else as an admin
+		with self.assertRaises(frappe.PermissionError):
+			new_member("test3@example.com", is_admin=1).insert()
+
+		# The channel admin can
+		frappe.set_user("test@example.com")
+		new_member("test3@example.com", is_admin=1).insert()
 
 	def test_channel_member_permissions(self):
 		"""

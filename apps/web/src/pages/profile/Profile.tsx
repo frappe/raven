@@ -1,15 +1,18 @@
 import { useState } from "react"
 import { NavLink, Navigate } from "react-router"
 import { toast } from "sonner"
-import { Bookmark, Bell, LogOut, Sun, Moon, SunMoon, ChevronDown, Edit, SlidersHorizontal, ChevronRight } from "lucide-react"
+import { ArrowLeftRight, Bookmark, Bell, CalendarClock, LogOut, Sun, Moon, SunMoon, ChevronDown, Edit, SlidersHorizontal, ChevronRight } from "lucide-react"
+import { siteUrl } from "@lib/site"
 import useCurrentRavenUser from "@raven/lib/hooks/useCurrentRavenUser"
 import { useTheme } from "@components/theme-provider"
 import { useLogout } from "@hooks/useLogout"
 import { useIsMobile } from "@hooks/use-mobile"
 import { useIsPushNotificationEnabled } from "@hooks/fetchers/useIsPushNotificationEnabled"
 import { ProfileRow } from "@components/features/profile/ProfileRow"
+import { useUnreadReminderCount } from "@components/features/reminders/useReminders"
 import { EditProfileDrawer } from "@components/features/profile/EditProfileDrawer"
 import { PreferencesDrawer } from "@components/features/profile/PreferencesDrawer"
+import { useScheduledMessagesCount } from "@components/features/schedule-send/useScheduledMessages"
 import { ProfileImageMenu } from "@components/features/profile/ProfileImageMenu"
 import { PageHeader } from "@components/layout/PageHeader"
 import AppMobileFooter from "@components/features/header/AppMobileFooter"
@@ -24,6 +27,7 @@ import { enablePush, disablePush, isPushEnabled } from "@lib/push"
 import { FrappeError } from "frappe-react-sdk"
 import _ from "@lib/translate"
 import { Separator } from "@components/ui/separator"
+import { Badge } from "@components/ui/badge"
 
 const Profile = () => {
     const { myProfile } = useCurrentRavenUser()
@@ -31,8 +35,10 @@ const Profile = () => {
     const { logout, isLoggingOut } = useLogout()
     const isMobile = useIsMobile()
     const isPushAvailable = useIsPushNotificationEnabled()
+    const unreadReminders = useUnreadReminderCount()
     const [editOpen, setEditOpen] = useState(false)
     const [prefsOpen, setPrefsOpen] = useState(false)
+    const scheduledCount = useScheduledMessagesCount()
     const [confirmLogoutOpen, setConfirmLogoutOpen] = useState(false)
 
     // Source of truth for "enabled on this device" is the stored FCM token (lib/push).
@@ -69,7 +75,7 @@ const Profile = () => {
                         <div className="flex flex-col w-full items-center gap-4 px-4 py-4 text-left">
                             {/* Tapping the avatar opens the Upload / Remove photo menu */}
                             <ProfileImageMenu />
-                            <div className="flex min-w-0 flex-1 flex-col gap-2">
+                            <div className="flex w-full min-w-0 flex-1 flex-col gap-2">
                                 <span className="truncate text-4xl-semibold text-center text-ink-gray-9">{myProfile.full_name}</span>
                                 {myProfile.availability_status && (
                                     <span className="flex items-center justify-center gap-1.5 text-base md:text-sm text-ink-gray-5">
@@ -77,9 +83,9 @@ const Profile = () => {
                                         <span className="truncate">{myProfile.availability_status}</span>
                                     </span>
                                 )}
-                                <div>
-                                    {myProfile?.custom_status && <span className="truncate text-center text-lg md:text-sm text-ink-gray-6">{myProfile.custom_status}</span>}
-                                </div>
+                                {myProfile.custom_status && (
+                                    <p className="text-center text-lg md:text-sm text-ink-gray-6 break-words line-clamp-2">{myProfile.custom_status}</p>
+                                )}
                             </div>
 
                         </div>
@@ -125,10 +131,42 @@ const Profile = () => {
                         in the settings dialog's Preferences panel) */}
                     <ProfileRow icon={SlidersHorizontal} label={_("Preferences")} onClick={() => setPrefsOpen(true)} trailing={<ChevronRight className="size-4" />} />
 
-                    {/* Saved messages */}
-                    <NavLink to="/saved-messages">
-                        <ProfileRow icon={Bookmark} label={_("Saved messages")} chevron />
+                    {/* Later: reminders + saved messages. Unread pill mirrors the
+                        desktop sidebar badge (schedule-send's mobile pattern). */}
+                    <NavLink to="/later">
+                        <ProfileRow
+                            icon={Bookmark}
+                            label={_("Later")}
+                            trailing={
+                                <span className="flex items-center gap-2">
+                                    {unreadReminders > 0 && (
+                                        <span className="h-4 min-w-4 px-1 flex items-center justify-center rounded-full bg-surface-red-6 text-ink-base dark:text-ink-red-1 text-[10px] leading-none">
+                                            {unreadReminders > 9 ? "9+" : unreadReminders}
+                                        </span>
+                                    )}
+                                    <ChevronRight className="size-4" />
+                                </span>
+                            }
+                        />
                     </NavLink>
+
+                    {/* Scheduled messages — hidden when none, like the desktop icon */}
+                    {scheduledCount > 0 && (
+                        <NavLink to="/scheduled-messages">
+                            <ProfileRow
+                                icon={CalendarClock}
+                                label={_("Scheduled messages")}
+                                trailing={
+                                    <span className="flex items-center gap-2">
+                                        <Badge>
+                                            {scheduledCount}
+                                        </Badge>
+                                        <ChevronRight className="size-4" />
+                                    </span>
+                                }
+                            />
+                        </NavLink>
+                    )}
 
                     <ProfileRow icon={Edit} label={_("Edit profile")} onClick={() => setEditOpen(true)} className="rounded-b-lg" />
 
@@ -137,13 +175,17 @@ const Profile = () => {
 
                 </div>
                 <div className="px-1">
+                    {/* Native: back to the site picker with the session kept. */}
+                    {import.meta.env.VITE_NATIVE && (
+                        <ProfileRow icon={ArrowLeftRight} label={_("Switch site")} onClick={() => import("../../native/session").then((m) => m.switchSite())} className="mt-4 rounded-lg" />
+                    )}
                     {/* Log out */}
                     <ProfileRow icon={LogOut} label={_("Log out")} destructive onClick={() => setConfirmLogoutOpen(true)} className="mt-4 rounded-lg" />
                 </div>
 
                 <div className="px-4 pt-10 pb-16 text-center w-full flex items-center justify-center flex-col gap-2">
                     <span className="text-base text-ink-gray-4">Raven <span className="font-numeric">v{window?.frappe?.boot.versions.raven}</span></span>
-                    <img src="/assets/frappe/images/frappe-comp-logo.svg" alt="Frappe" className="h-5 w-auto dark:invert" />
+                    <img src={siteUrl("/assets/frappe/images/frappe-comp-logo.svg")} alt="Frappe" className="h-5 w-auto dark:invert" />
                 </div>
             </div>
 

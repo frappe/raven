@@ -5,7 +5,8 @@ from frappe.tests import IntegrationTestCase
 
 from raven.api.chat_stream import get_messages, get_newer_messages, get_older_messages
 
-CHANNEL_ID = "Public Workspace-test-channel"
+# Channel autoname slugs the workspace: "Public Workspace" + "Test Channel".
+CHANNEL_ID = "public-workspace-test-channel"
 
 EXTRA_TEST_RECORD_DEPENDENCIES = ["Raven Workspace"]
 
@@ -271,3 +272,33 @@ class TestChatStream(IntegrationTestCase):
 		# Loop over and check indexes of all messages
 		for i, message in enumerate(response["messages"]):
 			self.assertEqual(message.text, f"Test Message {99-i}")
+
+	def test_get_newer_messages_including_from_message(self):
+		"""
+		With `include_from_message`, the base message itself is returned too. The client
+		refreshes its loaded window this way, starting from the window's oldest message.
+		"""
+		base_message_id = frappe.db.get_value(
+			"Raven Message", {"text": "Test Message 50", "channel_id": CHANNEL_ID}, "name"
+		)
+
+		response = get_newer_messages(CHANNEL_ID, base_message_id, limit=50, include_from_message=True)
+
+		# Messages 50 to 99: the base message plus the 49 newer ones
+		self.assertEqual(len(response["messages"]), 50)
+		self.assertEqual(response["has_new_messages"], False)
+		self.assertEqual(response["messages"][-1].name, base_message_id)
+		for i, message in enumerate(response["messages"]):
+			self.assertEqual(message.text, f"Test Message {99-i}")
+		# The member's read watermark rides along, for the client's "New messages" divider
+		self.assertIn("last_visit", response)
+
+	def test_get_newer_messages_from_a_deleted_message(self):
+		"""
+		A base message the server no longer has yields an empty page, not an error: the
+		client reads an empty page as "that message is gone" and moves its anchor on.
+		"""
+		response = get_newer_messages(CHANNEL_ID, "no-such-message", include_from_message=True)
+
+		self.assertEqual(response["messages"], [])
+		self.assertEqual(response["has_new_messages"], False)

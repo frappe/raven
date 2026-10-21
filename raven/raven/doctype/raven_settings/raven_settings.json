@@ -8,7 +8,6 @@
  "engine": "InnoDB",
  "field_order": [
   "auto_add_system_users",
-  "show_raven_on_desk",
   "use_website_favicon",
   "blocked_links",
   "quiet_hours_section",
@@ -50,7 +49,8 @@
   "config",
   "vapid_public_key",
   "frappe_integrations_tab",
-  "frappe_meet_hosted_urls"
+  "frappe_meet_hosted_urls",
+  "setup_completed"
  ],
  "fields": [
   {
@@ -58,13 +58,6 @@
    "fieldname": "auto_add_system_users",
    "fieldtype": "Check",
    "label": "Automatically add system users to Raven",
-   "permlevel": 1
-  },
-  {
-   "default": "1",
-   "fieldname": "show_raven_on_desk",
-   "fieldtype": "Check",
-   "label": "Show Raven on Desk",
    "permlevel": 1
   },
   {
@@ -137,21 +130,24 @@
    "fieldname": "openai_organisation_id",
    "fieldtype": "Data",
    "label": "OpenAI Organisation ID",
-   "mandatory_depends_on": "eval:doc.enable_openai_services;"
+   "mandatory_depends_on": "eval:doc.enable_openai_services;",
+   "permlevel": 1
   },
   {
    "depends_on": "eval:doc.enable_openai_services;",
    "fieldname": "openai_api_key",
    "fieldtype": "Password",
    "label": "OpenAI API Key",
-   "mandatory_depends_on": "eval:doc.enable_openai_services;"
+   "mandatory_depends_on": "eval:doc.enable_openai_services;",
+   "permlevel": 1
   },
   {
    "depends_on": "eval:doc.enable_openai_services;",
    "description": "If not set, the integration will use the default project",
    "fieldname": "openai_project_id",
    "fieldtype": "Data",
-   "label": "OpenAI Project ID"
+   "label": "OpenAI Project ID",
+   "permlevel": 1
   },
   {
    "fieldname": "column_break_occp",
@@ -169,20 +165,23 @@
    "fieldname": "local_llm_provider",
    "fieldtype": "Select",
    "label": "Local LLM Provider",
-   "options": "LM Studio\nOllama\nLocalAI\nOpenAI Compatible"
+   "options": "LM Studio\nOllama\nLocalAI\nOpenAI Compatible",
+   "permlevel": 1
   },
   {
    "depends_on": "eval:doc.enable_local_llm",
    "fieldname": "local_llm_api_url",
    "fieldtype": "Data",
    "label": "Local LLM API URL",
+   "permlevel": 1,
    "placeholder": "http://localhost:11434/v1"
   },
   {
    "depends_on": "eval:doc.enable_local_llm && doc.local_llm_provider == \"OpenAI Compatible\"",
    "fieldname": "openai_compatible_api_key",
    "fieldtype": "Password",
-   "label": "OpenAI Compatible API Key"
+   "label": "OpenAI Compatible API Key",
+   "permlevel": 1
   },
   {
    "fieldname": "raven_mobile_tab",
@@ -209,7 +208,7 @@
    "label": "Push Notifications"
   },
   {
-   "default": "Frappe Cloud",
+   "default": "Raven",
    "fieldname": "push_notification_service",
    "fieldtype": "Select",
    "label": "Push Notification Service",
@@ -221,21 +220,24 @@
    "fieldtype": "Data",
    "label": "Push Notification Server URL",
    "length": 300,
-   "mandatory_depends_on": "eval: doc.push_notification_service == \"Raven\";"
+   "mandatory_depends_on": "eval: doc.push_notification_service == \"Raven\";",
+   "permlevel": 1
   },
   {
    "depends_on": "eval: doc.push_notification_service == \"Raven\";",
    "fieldname": "push_notification_api_key",
    "fieldtype": "Data",
    "label": "Push Notification API Key",
-   "mandatory_depends_on": "eval: doc.push_notification_service == \"Raven\";"
+   "mandatory_depends_on": "eval: doc.push_notification_service == \"Raven\";",
+   "permlevel": 1
   },
   {
    "depends_on": "eval: doc.push_notification_service == \"Raven\";",
    "fieldname": "push_notification_api_secret",
    "fieldtype": "Password",
    "label": "Push Notification API Secret",
-   "mandatory_depends_on": "eval: doc.push_notification_service == \"Raven\";"
+   "mandatory_depends_on": "eval: doc.push_notification_service == \"Raven\";",
+   "permlevel": 1
   },
   {
    "fieldname": "config",
@@ -312,7 +314,7 @@
    "label": "Quiet Hours"
   },
   {
-   "default": "1",
+   "default": "0",
    "fieldname": "enable_quiet_hours",
    "fieldtype": "Check",
    "label": "Enable Quiet Hours"
@@ -328,13 +330,20 @@
    "fieldname": "working_hours_end",
    "fieldtype": "Time",
    "label": "Working Hours End"
+  },
+  {
+   "description": "Set once the first admin finishes or skips the setup flow",
+   "fieldname": "setup_completed",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Setup Completed"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-08-18 00:05:15.495259",
+ "modified": "2026-10-20 14:12:54.000000",
  "modified_by": "Administrator",
  "module": "Raven",
  "name": "Raven Settings",

@@ -1,9 +1,14 @@
-import { useState, useMemo, useEffect } from 'react'
+import { siteUrl } from '@lib/site'
+import { useState, useMemo } from 'react'
 import { ListView, type ListViewColumnMeta, type SortingState } from '@components/ui/list-view'
 import type { ColumnDef } from '@tanstack/react-table'
 import { TablePagination } from '@components/ui/table-pagination'
-import { useFetchCustomEmojis, useFetchCustomEmojisCount } from '@hooks/fetchers/useFetchCustomEmojis'
+import { useFetchCustomEmojis } from '@hooks/fetchers/useFetchCustomEmojis'
+import usePaginatedList, { type ListQuery } from '@hooks/usePaginatedList'
+import useCreateHotkey from '@hooks/useCreateHotkey'
 import { useSWRConfig } from 'frappe-react-sdk'
+import { useDebounceValue } from 'usehooks-ts'
+import { Input } from '@components/ui/input'
 import {
     SettingsPanelContent,
     SettingsPanelDescription,
@@ -16,7 +21,7 @@ import { Spinner } from '@components/ui/spinner'
 import { RavenCustomEmoji } from '@raven/types/RavenMessaging/RavenCustomEmoji'
 import { getDateObject } from '@lib/date'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@components/ui/empty'
-import { SmilePlus } from 'lucide-react'
+import { SearchIcon, SmilePlus } from 'lucide-react'
 import _ from '@lib/translate'
 import AddCustomEmojiDialog from './AddEmojiDialog'
 import DeleteEmojiDialog from './DeleteEmojiDialog'
@@ -50,9 +55,20 @@ export const Emojis = () => {
     const { mutate: globalMutate } = useSWRConfig()
 
     const [sorting, setSorting] = useState<SortingState>([])
-    const [pageIndex, setPageIndex] = useState(0)
-    const [pageSize, setPageSize] = useState(20)
     const [open, setOpen] = useState(false)
+    useCreateHotkey(() => setOpen(true))
+
+    // Search runs on the server since the list is paginated there. Debounced so typing
+    // does not fire a request per keystroke.
+    const [search, setSearch] = useState("")
+    const [debouncedSearch] = useDebounceValue(search.trim(), 300)
+    // Match on the name or the keywords. The same query feeds the list and its count.
+    const query = useMemo<ListQuery<RavenCustomEmoji> | undefined>(() => {
+        if (!debouncedSearch) return undefined
+        const like = `%${debouncedSearch}%`
+        return { orFilters: [["emoji_name", "like", like], ["keywords", "like", like]] }
+    }, [debouncedSearch])
+    const pagination = usePaginatedList("custom-emojis-settings", "Raven Custom Emoji", true, query)
 
     // The server fetch takes a single {field, order}; ListView holds TanStack sorting.
     const fetchSort = useMemo(() => {
@@ -60,26 +76,17 @@ export const Emojis = () => {
         return active ? { field: active.id, order: active.desc ? ('desc' as const) : ('asc' as const) } : undefined
     }, [sorting])
 
-    // Fetch data with current page settings
+    // Fetch data with current page settings (SDK auto-key: sort + page are both in the params)
     const { data, isLoading, error, mutate } = useFetchCustomEmojis(
         fetchSort,
-        { pageIndex, pageSize, totalCount: 0 }
+        { pageIndex: pagination.pageIndex, pageSize: pagination.pageSize, totalCount: 0 },
+        query,
     )
-    const { count, mutate: mutateCount } = useFetchCustomEmojisCount()
-
-    // Deleting the last row of the last page leaves pageIndex past the end —
-    // the list then showed "No emojis found" with a phantom "Page 3 of 2".
-    // Clamp back onto the last real page whenever the count shrinks.
-    useEffect(() => {
-        if (count === undefined) return
-        const lastPage = Math.max(0, Math.ceil(count / pageSize) - 1)
-        if (pageIndex > lastPage) setPageIndex(lastPage)
-    }, [count, pageSize, pageIndex])
 
     const onAddEmoji = (refresh: boolean = false) => {
         if (refresh) {
             mutate()
-            mutateCount()
+            pagination.mutateCount()
             globalMutate('custom-emojis')
         }
         setOpen(false)
@@ -87,7 +94,7 @@ export const Emojis = () => {
 
     const onDeleteEmoji = () => {
         mutate()
-        mutateCount()
+        pagination.mutateCount()
         globalMutate('custom-emojis')
     }
 
@@ -104,7 +111,7 @@ export const Emojis = () => {
             cell: ({ row }) => (
                 <div className='flex items-center gap-2 min-w-0'>
                     <img
-                        src={row.original.image}
+                        src={siteUrl(row.original.image)}
                         alt={row.original.emoji_name}
                         className='w-8 h-8 rounded-md object-contain object-center shrink-0'
                     />
@@ -178,13 +185,30 @@ export const Emojis = () => {
                     .
                 </SettingsPanelDescription>
             </SettingsPanelHeader>
-            <SettingsPanelContent className="min-h-0">
+            <SettingsPanelContent className="min-h-0 gap-4">
                 {error && <ErrorBanner error={error} />}
-                {!isLoading && count === 0 ? (
+                {/* No emojis at all (not just no matches): show the getting-started state. */}
+                {!debouncedSearch && !isLoading && (data?.length ?? 0) === 0 && pagination.totalCount === 0 ? (
                     <CustomEmojiEmptyState setOpen={setOpen} />
                 ) : (
                     <>
-                        {isLoading ? (
+                        <div className="relative">
+                            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-gray-4" aria-hidden="true" />
+                            <Input
+                                inputSize="sm"
+                                type="search"
+                                className="pl-9"
+                                placeholder={_("Search emojis")}
+                                aria-label={_("Search emojis")}
+                                value={search}
+                                onChange={(e) => {
+                                    setSearch(e.target.value)
+                                    // A new search re-orders the whole set. Start from the first page.
+                                    pagination.onPageChange(0)
+                                }}
+                            />
+                        </div>
+                        {!data ? (
                             <div className="flex flex-1 items-center justify-center">
                                 <Spinner />
                             </div>
@@ -200,7 +224,7 @@ export const Emojis = () => {
                                 onSortingChange={(updater) => {
                                     // New sort re-orders the whole set — jump back to the first page.
                                     setSorting(updater)
-                                    setPageIndex(0)
+                                    pagination.onPageChange(0)
                                 }}
                                 rowHeight={44}
                                 emptyState={
@@ -217,14 +241,11 @@ export const Emojis = () => {
                             />
                         )}
                         <TablePagination
-                            pageIndex={pageIndex}
-                            pageSize={pageSize}
-                            totalCount={count}
-                            onPageChange={setPageIndex}
-                            onPageSizeChange={(size) => {
-                                setPageSize(size)
-                                setPageIndex(0)
-                            }}
+                            pageIndex={pagination.pageIndex}
+                            pageSize={pagination.pageSize}
+                            totalCount={pagination.totalCount}
+                            onPageChange={pagination.onPageChange}
+                            onPageSizeChange={pagination.onPageSizeChange}
                         />
                     </>
                 )}

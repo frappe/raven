@@ -13,7 +13,8 @@ import { useNavigateFromDrawer } from '@hooks/useNavigateFromDrawer';
 import { useIsMobile } from '@hooks/use-mobile';
 import { useSetAtom } from 'jotai';
 import { channelDrawerAtom } from '@utils/channelAtoms';
-import { Virtuoso } from 'react-virtuoso';
+import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
+import { useResetScrollOnSearch } from '@hooks/useResetScrollOnSearch';
 import { useContext } from 'react';
 import { FrappeConfig, FrappeContext, useFrappeDeleteDoc, useFrappeUpdateDoc } from 'frappe-react-sdk';
 import { toast } from 'sonner';
@@ -70,7 +71,7 @@ const ChannelMembersList = ({ members, channel, allowSettingChange }: { members:
                 // touches back to the scroller, but only WHILE it's scrolled, so a
                 // pull-down from the top still dismisses the sheet.
                 <div {...noDragProps} className="flex-1 min-h-0 px-2">
-                    <MembersList filteredMembers={filteredMembers} channelID={channel.name} allowSettingChange={allowSettingChange} />
+                    <MembersList filteredMembers={filteredMembers} searchQuery={searchQuery} channelID={channel.name} allowSettingChange={allowSettingChange} />
                 </div>
             )}
         </div>
@@ -84,11 +85,13 @@ const ChannelMembersList = ({ members, channel, allowSettingChange }: { members:
  *  scroll. On desktop env() is 0 and this is the old h-2. Module-level so
  *  Virtuoso's component type stays stable. */
 const MembersListFooter = () => (
-    <div className="h-[calc(env(safe-area-inset-bottom)+0.5rem)]" aria-hidden="true" />
+    <div className="h-[calc(var(--inset-bottom)+0.5rem)]" aria-hidden="true" />
 )
 const membersListComponents = { Footer: MembersListFooter }
 
-const MembersList = ({ filteredMembers, channelID, allowSettingChange }: { filteredMembers: ChannelMemberData[], channelID: string, allowSettingChange: boolean }) => {
+const MembersList = ({ filteredMembers, searchQuery, channelID, allowSettingChange }: { filteredMembers: ChannelMemberData[], searchQuery: string, channelID: string, allowSettingChange: boolean }) => {
+    // Virtuoso keeps its scroll offset when the filtered list changes. Start each search at the top.
+    const listRef = useResetScrollOnSearch<VirtuosoHandle>(searchQuery)
     const { call } = useContext(FrappeContext) as FrappeConfig
     const { deleteDoc } = useFrappeDeleteDoc()
     const { updateDoc } = useFrappeUpdateDoc()
@@ -135,6 +138,7 @@ const MembersList = ({ filteredMembers, channelID, allowSettingChange }: { filte
 
     return (
         <Virtuoso
+            ref={listRef}
             style={{ height: '100%', width: '100%' }}
             // scroll-fade lands on Virtuoso's own scroller element, softening the
             // edge where rows scroll past instead of a hard cut.

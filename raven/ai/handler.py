@@ -388,6 +388,8 @@ def get_instructions(bot):
 
 	vars = get_variables_for_instructions()
 
+	# Bot instructions are set by Raven Admins only. The renderer is sandboxed.
+	# nosemgrep: frappe-ssti
 	instructions = frappe.render_template(bot.instruction, vars)
 	return instructions
 

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { Virtuoso } from 'react-virtuoso'
 import { useFrappeGetCall, useFrappeEventListener } from 'frappe-react-sdk'
 
@@ -7,12 +7,14 @@ import { useMessageRowLookups } from '@hooks/useMessageRowLookups'
 import { useUserCookieData } from '@hooks/useUserCookieData'
 import { MessageListSkeleton } from '@components/features/dm-channel/DirectMessagePageSkeleton'
 import { MessageResultBlock, RESULT_ROW_ACTIVE_CLASS } from '@components/common/MessageResultBlock/MessageResultBlock'
+import { pollPreviewHtml } from '@components/common/MessageResultBlock/pollPreviewHtml'
 import { searchResultToSelection } from '@components/common/MessageResultBlock/searchResultToSelection'
 import type { SelectedNotification } from '@pages/notifications/NotificationChat'
 import ErrorBanner from '@components/ui/error-banner'
 import { Bookmark } from 'lucide-react'
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from '@components/ui/empty'
 import _ from '@lib/translate'
+import { getMessageAuthorId } from '@utils/messageUtils'
 
 interface SavedMessagesListProps {
     searchQuery: string
@@ -30,6 +32,8 @@ type SavedMessageRow = {
     creation: string
     is_thread: 0 | 1
     text?: string
+    /** Plain text. For a poll this is the question and its options, one per line. */
+    content?: string
     channel_id: string
     file?: string
     message_type?: BaseMessage['message_type']
@@ -67,20 +71,48 @@ function savedRowToMessage(r: SavedMessageRow): Message {
     if (messageType === 'File' || messageType === 'Image') {
         return { ...base, message_type: messageType, text: r.text ?? '', file: r.file ?? '' }
     }
+    // A poll renders as a static question + options block (see pollPreviewHtml).
+    if (messageType === 'Poll') {
+        // poll_id is required by the type but unused here: the block never fetches the live poll.
+        return { ...base, message_type: 'Poll', text: pollPreviewHtml(r.content), poll_id: '' }
+    }
     return { ...base, message_type: 'Text', text: r.text ?? '' }
 }
 
 type SavedMessagesResponse = { message: SavedMessageRow[] }
 
+/** Server page size; scrolling to the end grows the window by another page. */
+const PAGE_SIZE = 50
+
 const SavedMessagesList = ({ searchQuery, channel, onSelect, selectedID }: SavedMessagesListProps) => {
     const channelParam = channel && channel !== '*all' ? channel : undefined
     const { name: currentUser } = useUserCookieData()
 
+    // Search + channel filter run SERVER-side (the list is paginated — a client
+    // filter would only see loaded pages). Debounce typing before hitting the API.
+    const [debouncedSearch, setDebouncedSearch] = useState(searchQuery)
+    useEffect(() => {
+        const timer = window.setTimeout(() => setDebouncedSearch(searchQuery), 300)
+        return () => window.clearTimeout(timer)
+    }, [searchQuery])
+
+    const [pages, setPages] = useState(1)
+    // New filter = new list — restart the window.
+    useEffect(() => setPages(1), [debouncedSearch, channelParam])
+
+    const limit = pages * PAGE_SIZE
     const { data, error, isLoading, mutate } = useFrappeGetCall<SavedMessagesResponse>(
         'raven.api.raven_message.get_saved_messages',
+        {
+            limit,
+            start: 0,
+            search: debouncedSearch.trim() || undefined,
+            channel_id: channelParam,
+        },
         undefined,
-        undefined,
-        { revalidateOnFocus: true },
+        // keepPreviousData: page growth / filter changes swap data in place
+        // instead of flashing the skeleton.
+        { revalidateOnFocus: true, keepPreviousData: true },
     )
 
     // Live reflection of save/unsave done anywhere (the event is user-scoped). Saving is
@@ -100,20 +132,14 @@ const SavedMessagesList = ({ searchQuery, channel, onSelect, selectedID }: Saved
 
     const { usersById, channelById, dmById, workspaceById } = useMessageRowLookups()
 
-    const results = useMemo(() => {
-        const rows = data?.message ?? []
-        const query = searchQuery.trim().toLowerCase()
-        return rows
-            // Match the real channel — thread replies carry a thread-channel id.
-            .filter(r => !channelParam || (r.parent_channel_id ?? r.channel_id) === channelParam)
-            .filter(r => !query || (r.text ?? '').toLowerCase().includes(query))
-            .sort((a, b) => new Date(b.creation).getTime() - new Date(a.creation).getTime())
-    }, [data?.message, channelParam, searchQuery])
+    // Server returns the filtered window newest-first; a full page means more may exist.
+    const results = data?.message ?? []
+    const hasMore = results.length === limit
 
-    if (error) return <ErrorBanner error={error} />
+    if (error) return <div className="p-3"><ErrorBanner error={error} /></div>
     if (isLoading) return <MessageListSkeleton />
     if (results.length === 0) {
-        // Absolute overlay centers over the whole pane (SavedMessages left pane is `relative`),
+        // Absolute overlay centers over the whole pane (the Later left pane is `relative`),
         // matching the notifications / threads / search empty states.
         return (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
@@ -133,6 +159,7 @@ const SavedMessagesList = ({ searchQuery, channel, onSelect, selectedID }: Saved
             data={results}
             style={{ height: '100%' }}
             initialItemCount={Math.min(results.length, 10)}
+            endReached={() => hasMore && setPages((p) => p + 1)}
             computeItemKey={(idx, r) => r?.name ?? idx}
             itemContent={(_idx, r) => {
                 // Results can shrink between renders (search/channel filters apply per
@@ -149,7 +176,7 @@ const SavedMessagesList = ({ searchQuery, channel, onSelect, selectedID }: Saved
                 return (
                     <MessageResultBlock
                         message={savedRowToMessage(r)}
-                        user={usersById.get(r.owner)}
+                        user={usersById.get(getMessageAuthorId(r, r.owner))}
                         channel={channelData}
                         dmChannel={dmChannel}
                         peer={peer}

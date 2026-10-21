@@ -1,4 +1,4 @@
-# Copyright (c) 2026, The Commit Company (Algocode Technologies Pvt. Ltd.) and Contributors
+# Copyright (c) 2026, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
 
 # import frappe

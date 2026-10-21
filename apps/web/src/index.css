@@ -25,18 +25,31 @@
 
 /* Newsreader (variable: weight 200-800 + optical sizing) — the serif from
    Frappe's own site. Only the Frappe link-preview card uses it, and
-   browsers fetch a font lazily on first use, so nobody else pays for it. */
+   browsers fetch a font lazily on first use, so nobody else pays for it.
+   Bundled with the app (src/fonts), so the web and native builds share one copy. */
 @font-face {
   font-family: Newsreader;
   font-style: normal;
   font-weight: 200 800;
   font-display: swap;
-  src: url("/assets/raven/fonts/NewsreaderVariable.woff2") format("woff2");
+  src: url("./fonts/newsreader/NewsreaderVariable.woff2") format("woff2");
 }
 
 @custom-variant dark (&:is(.dark *));
 
-@custom-variant standalone (@media (display-mode: standalone));
+@custom-variant standalone {
+  @media (display-mode: standalone) { @slot }
+  :root.native & { @slot }
+}
+
+/* Insets the page pads itself with. Browsers and iOS read the safe area; Android native
+   overrides these inline from the system bars (MainActivity), so the page can draw under them. */
+:root {
+  --inset-top: env(safe-area-inset-top, 0px);
+  --inset-bottom: env(safe-area-inset-bottom, 0px);
+  --inset-left: env(safe-area-inset-left, 0px);
+  --inset-right: env(safe-area-inset-right, 0px);
+}
 
 /* Reading/content tier for names + list-row labels: larger on mobile (15px) than
    desktop (13px), built ONLY from existing Espresso tokens (no --text-* overrides).
@@ -77,6 +90,136 @@
   }
 }
 
+/* Setup page motion. Off under reduced motion: the page switches instantly. */
+/* Animations that end on the resting look fill backwards, not both. Safari keeps an element
+   composited for as long as an animation holds its last frame, and leaves blurred-in text
+   soft until something repaints (WebKit bug 257023). Only the ones that end hidden hold. */
+/* Steps blur out, leave a short gap, then blur back in sharp. */
+@utility animate-setup-step-in {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: setup-blur-in 250ms ease-out 100ms backwards;
+  }
+}
+
+@utility animate-setup-step-out {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: setup-blur-out 200ms ease-in both;
+  }
+}
+
+@utility animate-setup-blur-in {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: setup-blur-in 300ms ease-out backwards;
+  }
+}
+
+
+@utility animate-setup-open {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: setup-open 400ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+}
+
+@utility animate-setup-open-late {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: setup-open 400ms cubic-bezier(0.16, 1, 0.3, 1) 80ms backwards;
+  }
+}
+
+@utility animate-setup-item-in {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: setup-item-in 250ms ease-out backwards;
+  }
+}
+
+@utility animate-setup-fade-out {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: setup-fade-out 250ms ease-out both;
+  }
+}
+
+/* Finish: the check draws itself, once its circle has popped in. */
+@utility animate-setup-check {
+  @media (prefers-reduced-motion: no-preference) {
+    stroke-dasharray: 32;
+    animation: setup-check 400ms cubic-bezier(0.33, 1, 0.68, 1) 150ms backwards;
+  }
+}
+
+/* Finish: the preview grows into the app. Pairs with a transition-[…] property list; finale.ts times the phases to it. */
+@utility transition-setup-expand {
+  transition-duration: 600ms;
+  transition-timing-function: cubic-bezier(0.33, 1, 0.68, 1);
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+/* HR step: two app logos come together from either side once the step has faded in, the × growing between them. */
+@utility animate-setup-join-left {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: setup-join-left 900ms cubic-bezier(0.33, 1, 0.68, 1) 350ms backwards;
+  }
+}
+
+@utility animate-setup-join-right {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: setup-join-right 900ms cubic-bezier(0.33, 1, 0.68, 1) 350ms backwards;
+  }
+}
+
+@utility animate-setup-join-mark {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: setup-join-mark 900ms cubic-bezier(0.33, 1, 0.68, 1) 350ms backwards;
+  }
+}
+
+/* The sharp end is `none`, not `blur(0)`, so no filter is left on the element afterwards. */
+@keyframes setup-blur-in {
+  from { opacity: 0; filter: blur(6px); }
+  to { opacity: 1; filter: none; }
+}
+
+@keyframes setup-blur-out {
+  from { opacity: 1; filter: none; }
+  to { opacity: 0; filter: blur(6px); }
+}
+
+
+@keyframes setup-open {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes setup-item-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes setup-fade-out {
+  to { opacity: 0; }
+}
+
+@keyframes setup-check {
+  from { stroke-dashoffset: -32; }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes setup-join-left {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes setup-join-right {
+  from { opacity: 0; transform: translateX(10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes setup-join-mark {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1); }
+}
+
 /* Typing-indicator dots: a gentle lift + fade wave, staggered per dot via
    [animation-delay:…]. Tailwind's animate-bounce throws the dot half its own
    height — far too loud next to 12px text. */
@@ -97,6 +240,27 @@
 
 @utility animate-typing-dot {
   animation: typing-dot 1.2s ease-in-out infinite;
+}
+
+/* Workspace-grid edit mode: the iOS home-screen jiggle. ±2° keeps a 48px tile
+   reading as "loose", not wobbling. Reduced-motion users get still tiles — the
+   remove badges alone mark the mode. */
+@keyframes tile-jiggle {
+
+  0%,
+  100% {
+    transform: rotate(-2deg);
+  }
+
+  50% {
+    transform: rotate(2deg);
+  }
+}
+
+@utility animate-tile-jiggle {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: tile-jiggle 0.35s ease-in-out infinite;
+  }
 }
 
 /* AI-event text shimmer (shadcn-style): a highlight sweeping across muted text

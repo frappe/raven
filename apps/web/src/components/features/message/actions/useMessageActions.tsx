@@ -1,9 +1,12 @@
+import { siteBaseName, siteOrigin } from "@lib/site"
 import { useContext, useMemo } from "react"
+import dayjs, { type Dayjs } from "dayjs"
 import { getDefaultStore, useAtomValue, useSetAtom } from "jotai"
 import { FrappeConfig, FrappeContext, useFrappeGetCall, type FrappeError } from "frappe-react-sdk"
 import { useNavigateFromDrawer } from "@hooks/useNavigateFromDrawer"
 import { toast } from "sonner"
 import {
+    AlarmClock,
     Bookmark,
     BookmarkMinus,
     Copy,
@@ -36,10 +39,11 @@ import { useMarkUnread } from "@stores/unread/useMarkUnread"
 import _ from "@lib/translate"
 import type { Message } from "@raven/types/common/Message"
 import { useUserCookieData } from "@hooks/useUserCookieData"
-import { hideReadReceiptsAtom } from "@utils/preferences"
+import { hideReadReceiptsAtom, timeFormatAtom } from "@utils/preferences"
 import { errorResponseToast } from "@components/ui/error-banner"
 import type { PollData } from "../renderers/PollMessageContent"
 import { useEnabledMessageActions } from "@hooks/useEnabledMessageActions"
+import { formatDateTimeLabel, getReminderPresets, toServerDatetime } from "@lib/timeUtils"
 
 export type { MessageAction }
 
@@ -150,12 +154,17 @@ export const useMessageActions = (
     // "Read by" action disappears entirely. Boot-seeded atom, not the
     // profile SWR cache — this hook is on the hot menu path.
     const hideReadReceipts = useAtomValue(hideReadReceiptsAtom)
+    // Reminder preset labels and the confirmation toast follow the user's clock format.
+    const timeFormat = useAtomValue(timeFormatAtom)
 
     return useMemo(() => {
         if (!message) return { groups: [], isOwner: false }
 
         const isOwner = currentUser === message.owner && !message.is_bot_message
         const hasReactions = Object.keys(JSON.parse(message.message_reactions || "{}")).length > 0
+        // Optimistic sends have no server row yet — every action that hits the
+        // server by message id is gated on this (Reply/Copy are client-only).
+        const onServer = !isOptimistic(message)
 
         // Respond: reply + thread creation — members only (see canInteract above)
         const respond: MessageAction[] = []
@@ -183,7 +192,7 @@ export const useMessageActions = (
         // channel_id means "inside a thread". The thread's id IS the message id; a
         // batch threads off its newest member.
         const parentChannel = channelStore.getChannel(message.channel_id)
-        if (!message.is_thread && parentChannel && canInteract) {
+        if (!message.is_thread && parentChannel && canInteract && onServer) {
             respond.push({
                 id: "create-thread",
                 label: _("Create thread"),
@@ -232,9 +241,8 @@ export const useMessageActions = (
         // whose permission the server checks on insert. So someone reading a message in
         // the search or notification pane can still forward it.
         // Polls can't be copied without either sharing or orphaning their poll doc; a
-        // System notice (joins/leaves) means nothing anywhere else; and an optimistic
-        // message has no server copy to forward yet.
-        if (message.message_type !== "Poll" && message.message_type !== "System" && !isOptimistic(message)) {
+        // System notice (joins/leaves) means nothing anywhere else.
+        if (message.message_type !== "Poll" && message.message_type !== "System" && onServer) {
             clipboard.push({
                 id: "forward",
                 label: _("Forward"),
@@ -268,7 +276,7 @@ export const useMessageActions = (
         // one to share it with. Thread replies keep the action: their channel_id
         // is the thread, which the channel store never holds, so we can't tell
         // if the thread lives in a DM.
-        if (parentChannel?.is_direct_message !== 1) {
+        if (parentChannel?.is_direct_message !== 1 && onServer) {
             clipboard.push({
                 id: "copy-link",
                 label: _("Copy message link"),
@@ -279,8 +287,8 @@ export const useMessageActions = (
                     // Pathname-based links broke inside threads (?message_id belongs to
                     // the channel's stream) and in the notification/search panes (no
                     // channel in the URL at all).
-                    const base = import.meta.env.VITE_BASE_NAME ? `/${import.meta.env.VITE_BASE_NAME}` : ""
-                    const url = `${window.location.origin}${base}/message/${encodeURIComponent(message.name)}`
+                    const base = siteBaseName() ? `/${siteBaseName()}` : ""
+                    const url = `${siteOrigin()}${base}/message/${encodeURIComponent(message.name)}`
                     navigator.clipboard
                         .writeText(url)
                         .then(() => toast.success(_("Link copied")))
@@ -300,7 +308,7 @@ export const useMessageActions = (
         // running an action only needs read access to the message (the server
         // enforces exactly that).
         const customActions: MessageAction[] = []
-        if (enabledActions.length > 0) {
+        if (enabledActions.length > 0 && onServer) {
             customActions.push({
                 id: "custom-actions",
                 label: _("Actions"),
@@ -329,7 +337,7 @@ export const useMessageActions = (
         // and CHANNELS only: pins live on the channel doc and render in the channel's
         // pinned bar, which threads don't have — so no Pin on thread messages
         // (parentChannel is undefined there; threads never enter the channel store).
-        if (canInteract && parentChannel) {
+        if (canInteract && parentChannel && onServer) {
             organize.push({
                 id: "pin",
                 label: isPinned ? _("Unpin") : _("Pin"),
@@ -352,7 +360,7 @@ export const useMessageActions = (
                 },
             })
         }
-        organize.push(
+        if (onServer) organize.push(
             {
                 id: "save",
                 label: isSaved ? _("Unsave") : _("Save"),
@@ -390,6 +398,40 @@ export const useMessageActions = (
                 onSelect: () => markUnread(message.channel_id, message.name),
             })
         }
+        // Remind me: presets create one-tap; "Custom…" opens the dialog. Read access
+        // only (server re-checks at delivery) — System notices aren't worth remembering.
+        if (onServer && message.message_type !== "System") {
+            const setPresetReminder = (time: Dayjs) => {
+                // Stale pick (menu sat open past the slot) falls through to the dialog.
+                if (!time.isAfter(dayjs())) {
+                    setDialog({ type: "reminder", message })
+                    return
+                }
+                call.post("raven.api.reminders.create_reminder", {
+                    message_id: message.name,
+                    remind_at: toServerDatetime(time),
+                })
+                    .then(() => toast.success(_("Reminder set for {0}", [formatDateTimeLabel(time, timeFormat)])))
+                    .catch((e) => errorResponseToast(_("Could not set the reminder"), e))
+            }
+            organize.push({
+                id: "remind",
+                label: _("Remind me"),
+                icon: AlarmClock,
+                children: [
+                    ...getReminderPresets(timeFormat).map((preset) => ({
+                        id: `remind-${preset.id}`,
+                        label: preset.label,
+                        onSelect: () => setPresetReminder(preset.time),
+                    })),
+                    {
+                        id: "remind-custom",
+                        label: _("Custom date & time…"),
+                        onSelect: () => setDialog({ type: "reminder", message }),
+                    },
+                ],
+            })
+        }
         if (hasReactions) {
             organize.push({
                 id: "reactions",
@@ -412,7 +454,7 @@ export const useMessageActions = (
         const pollForbidsReceipts = isPoll && (!pollData || Boolean(pollData.message.poll.is_anonymous))
         // Also hidden in your self-DM: the only possible reader is you.
         const isSelfDM = parentChannel?.is_self_message === 1
-        if (!hideReadReceipts && !pollForbidsReceipts && !isSelfDM) {
+        if (!hideReadReceipts && !pollForbidsReceipts && !isSelfDM && onServer) {
             organize.push({
                 id: "read-receipts",
                 label: _("Read by"),
@@ -424,7 +466,7 @@ export const useMessageActions = (
 
         // Owner-only, destructive last
         const owner: MessageAction[] = []
-        if (isOwner) {
+        if (isOwner && onServer) {
             // Edit is inline (not a dialog): flag this message as the channel's edit
             // target and the body renderer swaps in the editor. Hidden when there's
             // no editable text (poll / caption-less file). A batch edits its caption.
@@ -469,5 +511,5 @@ export const useMessageActions = (
         }
 
         return { groups: [respond, pollActions, clipboard, fileActions, customActions, organize, owner].filter((group) => group.length > 0), isOwner }
-    }, [message, currentUser, setDialog, navigateFromDrawer, call, pinnedString, canInteract, isPoll, pollData, mutatePoll, includeFileActions, enabledActions, hideReadReceipts])
+    }, [message, currentUser, setDialog, navigateFromDrawer, call, pinnedString, canInteract, isPoll, pollData, mutatePoll, includeFileActions, enabledActions, hideReadReceipts, timeFormat])
 }

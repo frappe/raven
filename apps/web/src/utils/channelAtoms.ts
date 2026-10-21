@@ -59,6 +59,17 @@ export const messagePressTargetAtom = atom<string | null>(null)
  */
 export const replyToMessageAtom = atomFamily((_channelID: string) => atom<Message | null>(null))
 
+/** A system document staged to go out with the next send (link_doctype/link_document). */
+export type LinkedDocument = { doctype: string; docname: string }
+
+/**
+ * The document attached to the composer's draft, per channel. Set by the
+ * attach-document dialog; the composer shows a preview chip and sends it as
+ * link_doctype/link_document (riding the message like a file attachment), then
+ * clears this on send or remove. One document per message — picking again replaces.
+ */
+export const linkedDocumentAtom = atomFamily((_channelID: string) => atom<LinkedDocument | null>(null))
+
 /**
  * The message currently being edited inline, per channel (its id, or null). The
  * message body renderer swaps `RichTextRenderer` for an inline editor when its id
@@ -67,7 +78,7 @@ export const replyToMessageAtom = atomFamily((_channelID: string) => atom<Messag
  */
 export const editingMessageAtom = atomFamily((_channelID: string) => atom<string | null>(null))
 
-export type MessageDialogType = "delete" | "forward" | "reactions" | "read-receipts" | "attach-document"
+export type MessageDialogType = "delete" | "forward" | "reactions" | "read-receipts" | "attach-document" | "reminder"
 
 export type MessageDialog =
     | { type: MessageDialogType; message: Message }

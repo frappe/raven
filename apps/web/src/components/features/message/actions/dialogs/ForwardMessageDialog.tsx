@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useState, type KeyboardEvent, type MouseEvent } from "react"
+import { useResetScrollOnSearch } from "@hooks/useResetScrollOnSearch"
 import { useNavigate } from "react-router-dom"
 import { useFrappePostCall } from "frappe-react-sdk"
 import { toast } from "sonner"
@@ -59,10 +60,13 @@ const recipientValue = (recipient: Recipient): string =>
 const RecipientList = ({
     selected,
     onSelect,
+    onConfirm,
     sourceChannelID,
 }: {
     selected: Recipient | null
     onSelect: (recipient: Recipient) => void
+    /** Enter on the row that is already picked. Runs the Forward. */
+    onConfirm: () => void
     /** The channel the message lives in — hidden from the list: forwarding a message
      *  to where it already is helps nobody. For a DM source, the PERSON is hidden
      *  (their row is that DM's stand-in here). */
@@ -74,14 +78,17 @@ const RecipientList = ({
     const { workspaces } = useWorkspaces()
     const isMobile = useIsMobile()
     const [search, setSearch] = useState("")
-    const virtuosoRef = useRef<VirtuosoHandle>(null)
+    // A new search re-ranks the whole list, but Virtuoso keeps the old scroll offset.
+    // Jump back to the top whenever the query changes.
+    const virtuosoRef = useResetScrollOnSearch<VirtuosoHandle>(search)
+    // The row the arrow keys are on. -1 is none: browsing opens with nothing highlighted
+    // so no row looks pre-chosen, and a search highlights its top match (like cmdk).
+    const [highlighted, setHighlighted] = useState(-1)
 
-    // A new search re-ranks the whole list, but Virtuoso keeps the old scroll offset —
-    // so after scrolling deep and typing, the BEST match sat above the fold. Jump back
-    // to the top whenever the query changes (same fix as the command palette).
-    useEffect(() => {
-        virtuosoRef.current?.scrollTo({ top: 0 })
-    }, [search])
+    const onSearchChange = (value: string) => {
+        setSearch(value)
+        setHighlighted(value.trim() ? 0 : -1)
+    }
 
     // Only channels that can actually RECEIVE a post — archived is blocked client-side
     // only, so an unfiltered list would let a forward succeed into a channel the product
@@ -182,6 +189,41 @@ const RecipientList = ({
     }, [search, channels, people, workspaceNames, ambiguousNames])
 
     const selectedValue = selected ? recipientValue(selected) : null
+    // Rows can shrink under the highlight (a narrower search). Treat a stale index as none.
+    const activeRow = rows[highlighted]
+    const activeIndex = activeRow?.kind === "recipient" ? highlighted : -1
+
+    /** Move the highlight to the next recipient row in `direction`, skipping headings. */
+    const moveHighlight = (direction: 1 | -1) => {
+        let index = activeIndex
+        do {
+            index += direction
+        } while (index >= 0 && index < rows.length && rows[index].kind !== "recipient")
+        if (index < 0 || index >= rows.length) return
+        setHighlighted(index)
+        // Keep the group heading in view when stepping up onto the first row of a group.
+        const above = rows[index - 1]
+        virtuosoRef.current?.scrollIntoView({ index: above?.kind === "heading" ? index - 1 : index })
+    }
+
+    const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+        if (event.nativeEvent.isComposing) return
+        if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+            event.preventDefault()
+            moveHighlight(event.key === "ArrowDown" ? 1 : -1)
+            return
+        }
+        if (event.key === "Enter" && activeRow?.kind === "recipient") {
+            event.preventDefault()
+            // First Enter picks the row. A second Enter on the picked row forwards.
+            if (selectedValue === recipientValue(activeRow.recipient)) onConfirm()
+            else onSelect(activeRow.recipient)
+        }
+    }
+
+    // Clicking a row must not steal focus from the search box, or the arrow keys stop
+    // working after a mouse pick. On mobile the tap should still dismiss the keyboard.
+    const keepInputFocus = isMobile ? undefined : (event: MouseEvent) => event.preventDefault()
 
     return (
         <div className="flex min-h-0 flex-col gap-3">
@@ -194,7 +236,8 @@ const RecipientList = ({
                 </InputGroupAddon>
                 <Input
                     value={search}
-                    onChange={(event) => setSearch(event.target.value)}
+                    onChange={(event) => onSearchChange(event.target.value)}
+                    onKeyDown={onKeyDown}
                     placeholder={_("Search channels and people")}
                     autoFocus={!isMobile}
                 />
@@ -212,14 +255,19 @@ const RecipientList = ({
                 computeItemKey={(_index, row) =>
                     row.kind === "heading" ? `heading:${row.label}` : recipientValue(row.recipient)
                 }
-                itemContent={(_index, row) =>
+                itemContent={(index, row) =>
                     row.kind === "heading" ? (
                         <p className="flex items-end px-2 py-1 text-sm-medium text-ink-gray-4">{row.label}</p>
                     ) : (
                         <RecipientRow
                             row={row}
                             selected={selectedValue === recipientValue(row.recipient)}
+                            highlighted={index === activeIndex}
                             onSelect={onSelect}
+                            // Pointer move, not enter: keyboard scrolling slides rows under a
+                            // still mouse, and that must not yank the highlight off the keyboard's row.
+                            onPointerMove={() => { if (index !== activeIndex) setHighlighted(index) }}
+                            onMouseDown={keepInputFocus}
                         />
                     )
                 }
@@ -238,23 +286,34 @@ const RecipientList = ({
 const RecipientRow = ({
     row,
     selected,
+    highlighted,
     onSelect,
+    onPointerMove,
+    onMouseDown,
 }: {
     row: Extract<Row, { kind: "recipient" }>
     selected: boolean
+    highlighted: boolean
     onSelect: (recipient: Recipient) => void
+    onPointerMove: () => void
+    onMouseDown?: (event: MouseEvent) => void
 }) => {
     const { recipient, secondary } = row
     return (
         // The filter comboboxes' row geometry (taller on mobile for touch), with the
         // trailing check marking the selection the Forward button will act on.
+        // tabIndex -1: the search box owns focus and the arrow keys, same as cmdk rows.
+        // The highlight follows the pointer too, so there is no separate hover colour.
         <button
             type="button"
+            tabIndex={-1}
             onClick={() => onSelect(recipient)}
+            onPointerMove={onPointerMove}
+            onMouseDown={onMouseDown}
             aria-pressed={selected}
             className={cn(
                 "flex w-full cursor-pointer items-center gap-2 rounded px-2 text-lg py-2 md:text-base",
-                selected ? "bg-surface-gray-2" : "hover:bg-surface-gray-1",
+                selected ? (highlighted ? "bg-surface-gray-3" : "bg-surface-gray-2") : highlighted && "bg-surface-gray-1",
             )}
         >
             {recipient.kind === "channel" ? (
@@ -363,7 +422,12 @@ export const ForwardMessageDialog = ({
                 }
             />
 
-            <RecipientList selected={recipient} onSelect={setRecipient} sourceChannelID={message?.channel_id} />
+            <RecipientList
+                selected={recipient}
+                onSelect={setRecipient}
+                onConfirm={onForward}
+                sourceChannelID={message?.channel_id}
+            />
 
             {/* Mobile: stacked, primary on TOP — the thumb finds Forward first and
                 Cancel can't be fat-fingered on the way to it. DOM keeps Cancel first

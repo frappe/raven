@@ -78,6 +78,8 @@ def get_action_defaults(action_id: str, message_id: str):
 
 		if field.default_value_type == "Jinja":
 
+			# Message actions are set by Raven Admins only. The renderer is sandboxed.
+			# nosemgrep: frappe-ssti
 			val = frappe.render_template(
 				field.default_value, {"message": {"message_url": message_url, **message.as_dict()}}
 			)

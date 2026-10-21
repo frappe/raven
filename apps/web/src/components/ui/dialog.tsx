@@ -59,7 +59,7 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "bg-surface-elevation-1 shadow-xl rounded-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 p-6 duration-200 outline-none sm:max-w-lg max-h-[90vh] overflow-y-auto",
+          "bg-surface-elevation-1 shadow-xl rounded-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 flex flex-col w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 p-6 duration-200 outline-none sm:max-w-lg max-h-[90vh] overflow-y-auto",
           className
         )}
         {...props}
@@ -88,6 +88,23 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="dialog-header"
       className={cn("flex flex-col gap-2 sm:text-start", className)}
+      {...props}
+    />
+  )
+}
+
+/**
+ * The scrolling middle of a dialog. Put it between DialogHeader and DialogFooter and
+ * those two stay fixed while only this part scrolls. It reaches out to the dialog's
+ * edges so the scrollbar sits flush, and pads back in so content stays aligned.
+ * If it lives inside a <form>, give the form "flex min-h-0 flex-1 flex-col" so the
+ * available height passes through.
+ */
+function DialogBody({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="dialog-body"
+      className={cn("min-h-0 flex-1 overflow-y-auto -mx-6 px-6 -my-1 py-1", className)}
       {...props}
     />
   )
@@ -151,6 +168,7 @@ export {
   DialogClose,
   DialogContent,
   DialogDescription,
+  DialogBody,
   DialogFooter,
   DialogHeader,
   DialogOverlay,

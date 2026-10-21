@@ -1,6 +1,6 @@
+import { fileSrc } from "@hooks/useFileSrc"
 import { Fragment, useEffect, useRef, useState } from "react"
 import { useAtom, useAtomValue, useSetAtom } from "jotai"
-import { useHistoryBackClose } from "@hooks/useHistoryBackClose"
 import {
     ContextMenu,
     ContextMenuContent,
@@ -28,6 +28,9 @@ import { focusComposer } from "@components/features/ChatInput/composerFocus"
 import { ChevronLeft, ChevronRight, Reply, SmilePlus } from "lucide-react"
 import type { Message } from "@raven/types/common/Message"
 import { DoubleTapReactionAtom, QuickEmojisAtom } from "@utils/preferences"
+
+/** Left-Right mode: gap between the hover toolbar and the row's top and side edges. */
+const LEFT_RIGHT_TOOLBAR_INSET = 8
 
 /** Two taps on the same message within this window open the quick-action toolbar. */
 const DOUBLE_TAP_MS = 300
@@ -109,8 +112,9 @@ export const MessageActionMenu = ({
     const lastTapRef = useRef({ messageID: "", time: 0 })
     const menuOpenedAtRef = useRef(0)
     const wrapperRef = useRef<HTMLDivElement>(null)
-    /** Hovered message + its toolbar position; null hides the toolbar. */
-    const [hovered, setHovered] = useState<{ message: Message; top: number } | null>(null)
+    /** Hovered message + its toolbar position (top; one of left/right anchors
+     *  it); null hides the toolbar. */
+    const [hovered, setHovered] = useState<{ message: Message; top: number; left?: number; right?: number } | null>(null)
     /** While the toolbar's ellipsis menu is open, hover-clearing is suspended. */
     const toolbarMenuOpenRef = useRef(false)
 
@@ -157,8 +161,47 @@ export const MessageActionMenu = ({
 
     const showToolbarFor = (message: Message, element: HTMLElement) => {
         if (!wrapperRef.current) return
-        const top = element.getBoundingClientRect().top - wrapperRef.current.getBoundingClientRect().top - 14
-        setHovered({ message, top: Math.max(top, 2) })
+        const wrapperRect = wrapperRef.current.getBoundingClientRect()
+        // Resolve the ROW SHELL — `element` can be an inner node (image tile)
+        // or an outer wrapper (batch root).
+        const row =
+            (element.closest("[data-message-row]") as HTMLElement | null) ??
+            (element.querySelector("[data-message-row]") as HTMLElement | null) ??
+            element
+        // The row says how it's aligned (data-message-row, set by MessageRow) —
+        // no class sniffing. Rows are full width in every mode, and the toolbar
+        // sits in the corner OPPOSITE the message's side:
+        //  - "own" content hugs the right → toolbar top-LEFT.
+        //  - everyone else's hugs the left → toolbar top-RIGHT, which is the
+        //    same corner Simple mode has always used.
+        // Simple mode floats it 24px above the row. The lower half overlaps the
+        // row, so the pointer reaches the toolbar without leaving the row.
+        // Left-Right mode keeps it inside the row, with the same small margin
+        // from the row's top and side edges. Rising above the row put it over
+        // the previous row's thread pill, which sits in that same corner when
+        // the two rows come from opposite sides. In a pane 768px or wider the
+        // row keeps a 300px gutter free on that side (see MessageRow), so the
+        // toolbar never covers the bubble either. The floors keep it off the
+        // stream's own edges.
+        const rect = row.getBoundingClientRect()
+        const mode = row.getAttribute("data-message-row")
+        const isSimple = mode === "simple"
+        const inset = isSimple ? 16 : LEFT_RIGHT_TOOLBAR_INSET
+        const rise = isSimple ? 24 : -LEFT_RIGHT_TOOLBAR_INSET
+        const top = Math.max(rect.top - wrapperRect.top - rise, inset)
+        if (mode === "own") {
+            setHovered({
+                message,
+                top,
+                left: Math.max(rect.left - wrapperRect.left + inset, inset),
+            })
+            return
+        }
+        setHovered({
+            message,
+            top,
+            right: Math.max(wrapperRect.right - rect.right + inset, inset),
+        })
     }
 
     /** Desktop: tracks which message the pointer is over and positions the floating toolbar. */
@@ -516,10 +559,9 @@ export const MessageActionMenu = ({
         }
     }
 
-    /** The mobile sheet shows the action list, the full emoji picker, or the pushed
-     *  custom-actions sub-view. `submenu` actions (read receipts) don't push a view
-     *  here — they run onSelect, which opens their own bottom sheet. */
-    const [sheetView, setSheetView] = useState<"actions" | "picker" | "custom">("actions")
+    /** Sheet views: action list, emoji picker, or a pushed sub-view for any
+     *  `children`-bearing action — the string form is that parent action's id. */
+    const [sheetView, setSheetView] = useState<"actions" | "picker" | (string & {})>("actions")
     // Closing ONLY dismisses the sheet — the view it was showing stays until the next open.
     // Resetting on the way out (directly, or off vaul's onAnimationEnd, which fires before
     // the sheet has finished sliding down) swaps the panel back to the action list
@@ -533,9 +575,6 @@ export const MessageActionMenu = ({
         setSheetView("actions")
     }, [target?.name])
 
-    // The open sheet owns the system back gesture (atom-driven overlay above
-    // the routes — back would otherwise navigate the page underneath it).
-    useHistoryBackClose(isMobile && !!target && target.channel_id === channelID, closeSheet)
 
     const quickEmojis = useAtomValue(QuickEmojisAtom)
 
@@ -578,6 +617,8 @@ export const MessageActionMenu = ({
                         <MessageHoverToolbar
                             message={hovered.message}
                             top={hovered.top}
+                            left={hovered.left}
+                            right={hovered.right}
                             canInteract={canInteract}
                             onMenuOpenChange={onToolbarMenuOpenChange}
                         />
@@ -678,27 +719,30 @@ export const MessageActionMenu = ({
                             >
                                 <ReactionPickerPanel perLine={10} message={menuMessage} onClose={closeSheet} />
                             </div>
-                        ) : sheetView === "custom" && menuMessage ? (
-                            <div className="flex flex-col gap-1 p-3 pb-6">
-                                <div className="flex items-center gap-1 px-1 pb-2">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        isIconButton
-                                        aria-label={_("Back")}
-                                        onClick={() => setSheetView("actions")}
-                                    >
-                                        <ChevronLeft />
-                                    </Button>
-                                    <span className="text-base font-medium text-ink-gray-8">{_("Actions")}</span>
-                                </div>
-                                {actionGroups
-                                    .flat()
-                                    .find((action) => action.id === "custom-actions")
-                                    ?.children?.map((child) => (
-                                        <SheetActionRow key={child.id} action={child} onDone={closeSheet} />
-                                    ))}
-                            </div>
+                        ) : sheetView !== "actions" && menuMessage ? (
+                            // Pushed sub-view: the tapped parent action's children.
+                            (() => {
+                                const parent = actionGroups.flat().find((action) => action.id === sheetView)
+                                return (
+                                    <div className="flex flex-col gap-1 p-3 pb-6">
+                                        <div className="flex items-center gap-1 px-1 pb-2">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                isIconButton
+                                                aria-label={_("Back")}
+                                                onClick={() => setSheetView("actions")}
+                                            >
+                                                <ChevronLeft />
+                                            </Button>
+                                            <span className="text-base font-medium text-ink-gray-8">{parent?.label ?? _("Actions")}</span>
+                                        </div>
+                                        {parent?.children?.map((child) => (
+                                            <SheetActionRow key={child.id} action={child} onDone={closeSheet} />
+                                        ))}
+                                    </div>
+                                )
+                            })()
                         ) : (
                             <div className="flex flex-col gap-1 p-3 pb-6">
                                 {/* Quick reactions — one tap reacts and dismisses; the smiley
@@ -720,7 +764,7 @@ export const MessageActionMenu = ({
                                         >
                                             {emoji.src ? (
                                                 <img
-                                                    src={emoji.src}
+                                                    src={fileSrc(emoji.src)}
                                                     alt={emoji.id}
                                                     loading="lazy"
                                                     className="h-6 w-6 object-contain"
@@ -756,7 +800,7 @@ export const MessageActionMenu = ({
                                                     variant="ghost"
                                                     size="lg"
                                                     className="w-full justify-start gap-3 active:bg-surface-gray-2"
-                                                    onClick={() => setSheetView("custom")}
+                                                    onClick={() => setSheetView(action.id)}
                                                 >
                                                     {action.icon && <action.icon />}
                                                     {action.label}

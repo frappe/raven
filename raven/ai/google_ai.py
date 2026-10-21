@@ -237,6 +237,10 @@ def create_document_processor(processor_type_key: str):
 	Returns:
 	        dict: A dictionary containing the processor details.
 	"""
+	# Creating a processor is billable. Only users who can change Raven
+	# Settings (System Manager, Raven Admin) may do it.
+	frappe.has_permission("Raven Settings", ptype="write", throw=True)
+
 	if processor_type_key not in PROCESSOR_TYPES_CONFIG:
 		frappe.throw(f"Invalid processor type: {processor_type_key}")
 
@@ -289,6 +293,9 @@ def delete_document_processor(processor_id: str):
 	Delete a document processor.
 	processor_id: The ID of the processor to delete.
 	"""
+	# Deleting is permanent and also clears the processor from every bot
+	# that used it. Same gate as create.
+	frappe.has_permission("Raven Settings", ptype="write", throw=True)
 
 	raven_settings = frappe.get_single("Raven Settings")
 	if not raven_settings.enable_google_apis:

@@ -29,9 +29,18 @@ import { convertFenceLineToCodeBlock } from "./codeBlockFence"
  * caller's latest handler (which closes over fresh state) without rebuilding the editor.
  */
 interface UseRavenEditorOptions {
+    /**
+     * "chat" (default): Enter sends, @ and # mentions work, Up edits the last message.
+     * "document": a plain rich-text editor for forms. Enter makes a new paragraph, no
+     * mentions, nothing to submit. Used by RichTextFormField.
+     */
+    mode?: "chat" | "document"
+    /** Called with the editor's HTML on every change ("" when empty). For form bindings. */
+    onUpdate?: (html: string) => void
     /** Invoked on Enter (without Shift). Shift+Enter inserts a newline.
-     *  Mod+Shift+Enter passes `{ sendSilently: true }` — send without notifications. */
-    submitRef: MutableRefObject<(opts?: { sendSilently?: boolean }) => void>
+     *  Mod+Shift+Enter passes `{ sendSilently: true }` — send without notifications.
+     *  Not needed in "document" mode. */
+    submitRef?: MutableRefObject<(opts?: { sendSilently?: boolean }) => void>
     /** Invoked on Mod+Shift+U — the caller reveals the formatting toolbar + opens the link popover. */
     linkRef?: MutableRefObject<() => void>
     /** Invoked when files are pasted/dropped into the editor (omit to disable, e.g. inline edit). */
@@ -68,7 +77,7 @@ export const EDITOR_MIN_H = "min-h-14 md:min-h-16"
 
 const EDITOR_CLASS = `tiptap ${EDITOR_MIN_H} max-h-[40vh] overflow-y-auto px-3 py-2.5 focus:outline-none`
 
-export const useRavenEditor = ({ submitRef, linkRef, filesRef, cancelReplyRef, editLastRef, content, autofocus = false, placeholder }: UseRavenEditorOptions): Editor | null => {
+export const useRavenEditor = ({ mode = "chat", onUpdate, submitRef, linkRef, filesRef, cancelReplyRef, editLastRef, content, autofocus = false, placeholder }: UseRavenEditorOptions): Editor | null => {
     // Emoji `:` autocomplete is desktop-only — mobile keyboards have their own emoji,
     // and a popup on every ":" is noise. Captured at mount (a breakpoint flip
     // mid-session won't reconfigure the live editor, which is fine).
@@ -112,11 +121,11 @@ export const useRavenEditor = ({ submitRef, linkRef, filesRef, cancelReplyRef, e
         }),
         Highlight,
         TableKit,
-        UserMention,
-        ChannelMention,
         CustomEmoji,
         Spoiler,
     ]
+    // Mentions are a chat thing: a form-edited document has nobody to notify.
+    if (mode === "chat") extensions.push(UserMention, ChannelMention)
     if (placeholder) extensions.push(Placeholder.configure({ placeholder }))
     if (filesRef) {
         // Paste files into the editor → hand them to the caller's upload path (same as
@@ -140,6 +149,7 @@ export const useRavenEditor = ({ submitRef, linkRef, filesRef, cancelReplyRef, e
     const editor = useEditor({
         extensions,
         content,
+        onUpdate: onUpdate ? ({ editor }) => onUpdate(editor.isEmpty ? "" : editor.getHTML()) : undefined,
         // Never steal focus on mobile — it pops the on-screen keyboard the moment a
         // channel opens. Desktop honours the caller's request, focusing at the END so a
         // restored draft (or an edited message) puts the cursor after the text, not before it.
@@ -224,11 +234,21 @@ export const useRavenEditor = ({ submitRef, linkRef, filesRef, cancelReplyRef, e
 
                     const ed = editorRef.current
 
+                    // Document mode: Enter never submits. Only the ``` fence shortcut is
+                    // kept; everything else is the editor's own Enter behaviour.
+                    if (mode === "document") {
+                        if (!event.metaKey && !event.ctrlKey && !event.shiftKey && ed && convertFenceLineToCodeBlock(ed)) {
+                            event.preventDefault()
+                            return true
+                        }
+                        return false
+                    }
+
                     // Mod+Shift+Enter: send silently (no notifications). Must be
                     // checked before the Shift+Enter newline branch below.
                     if ((event.metaKey || event.ctrlKey) && event.shiftKey) {
                         event.preventDefault()
-                        submitRef.current({ sendSilently: true })
+                        submitRef?.current({ sendSilently: true })
                         return true
                     }
 
@@ -271,7 +291,7 @@ export const useRavenEditor = ({ submitRef, linkRef, filesRef, cancelReplyRef, e
                     // including code blocks and lists.
                     if (event.metaKey || event.ctrlKey) {
                         event.preventDefault()
-                        submitRef.current()
+                        submitRef?.current()
                         return true
                     }
 
@@ -281,7 +301,7 @@ export const useRavenEditor = ({ submitRef, linkRef, filesRef, cancelReplyRef, e
                     if (enterBehaviourRef.current === "send-message") {
                         if (ed?.isActive("codeBlock") || ed?.isActive("listItem")) return false
                         event.preventDefault()
-                        submitRef.current()
+                        submitRef?.current()
                         return true
                     }
                     return false

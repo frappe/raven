@@ -39,7 +39,7 @@ const ErrorPage = () => {
                         <>
                             {_("This one leads to a better Raven - help us climb by reporting the error on")}{" "}
                             <a
-                                href="https://github.com/The-Commit-Company/raven/issues"
+                                href="https://github.com/frappe/raven/issues"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="underline underline-offset-2"
@@ -64,7 +64,7 @@ const ErrorPage = () => {
                     {!isStaleBuild && (
                         // "/" resolves to the last workspace + channel (IndexRedirect),
                         // and navigating away from an errored route clears the boundary.
-                        <Button variant="outline" onClick={() => navigate("/")}>
+                        <Button variant="subtle" onClick={() => navigate("/")}>
                             {_("Back to channels")}
                         </Button>
                     )}

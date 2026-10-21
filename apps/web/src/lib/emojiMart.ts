@@ -17,7 +17,8 @@ export interface EmojiMartCustomCategory {
 export const customEmojiCategoriesAtom = atom<EmojiMartCustomCategory[]>([])
 
 const loadAppleData = async () => {
-    const response = await fetch("/assets/raven/emojis/emojis.json")
+    // Native bundles the file: the site serves /assets without CORS headers.
+    const response = await fetch(import.meta.env.VITE_NATIVE ? "/emojis.json" : "/assets/raven/emojis/emojis.json")
     return response.json()
 }
 

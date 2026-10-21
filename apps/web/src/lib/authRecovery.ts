@@ -1,4 +1,4 @@
-import Cookies from "js-cookie"
+import { sessionUser } from "@lib/sessionUser"
 
 /**
  * Runtime recovery from a DEAD SESSION. The boot-time login check in App.tsx
@@ -23,5 +23,5 @@ export const redirectToLogin = () => {
 
 /** Global SWR onError: side-effect only — SWR's own retry behavior is untouched. */
 export const redirectToLoginIfSessionDied = () => {
-    if (Cookies.get("user_id") === "Guest") redirectToLogin()
+    if (sessionUser().name === "Guest") redirectToLogin()
 }

@@ -15,6 +15,7 @@ import { ChannelIcon } from '@components/common/ChannelIcon/ChannelIcon'
 import { UserAvatar } from '@components/features/message/UserAvatar'
 import { SearchFilters as SearchFiltersType } from './types'
 import { useClearSearchFilters } from './useClearSearchFilters'
+import { useResetScrollOnSearch } from '@hooks/useResetScrollOnSearch'
 import { ChannelListItem, DMChannelListItem } from '@raven/types/common/ChannelListItem'
 import { useUsers } from '@hooks/useUsers'
 import { useChannelMembers } from '@hooks/useChannelMembers'
@@ -256,6 +257,8 @@ const DrillIn = ({
     // a drag or overlay dismiss.
     const closeRef = useRef<HTMLButtonElement>(null)
     const [search, setSearch] = useState('')
+    // cmdk re-filters on every keystroke but keeps the old scroll offset. Start each search at the top.
+    const listRef = useResetScrollOnSearch(search)
     // Seeded to a value no row matches, so nothing looks pre-chosen on
     // open — same trick as FilterCombobox.
     const [highlighted, setHighlighted] = useState('__no-selection__')
@@ -362,7 +365,7 @@ const DrillIn = ({
                         no-op), and routed through [cmdk-group] so they beat the
                         base heading utilities on specificity instead of tying
                         and leaving the winner to Tailwind's generated order. */}
-                    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-4 [&_[cmdk-item]]:h-10 [&_[cmdk-group]_[cmdk-group-heading]]:text-sm [&_[cmdk-group]_[cmdk-group-heading]]:font-medium [&_[cmdk-group]_[cmdk-group-heading]]:text-ink-gray-4 [&_[cmdk-group]_[cmdk-group-heading]]:flex [&_[cmdk-group]_[cmdk-group-heading]]:h-9 [&_[cmdk-group]_[cmdk-group-heading]]:items-center [&_[cmdk-group]_[cmdk-group-heading]]:py-0">
+                    <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-4 [&_[cmdk-item]]:h-10 [&_[cmdk-group]_[cmdk-group-heading]]:text-sm [&_[cmdk-group]_[cmdk-group-heading]]:font-medium [&_[cmdk-group]_[cmdk-group-heading]]:text-ink-gray-4 [&_[cmdk-group]_[cmdk-group-heading]]:flex [&_[cmdk-group]_[cmdk-group-heading]]:h-9 [&_[cmdk-group]_[cmdk-group-heading]]:items-center [&_[cmdk-group]_[cmdk-group-heading]]:py-0">
                         <CommandList className="max-h-none overflow-visible">
                             <CommandEmpty>{emptyLabel}</CommandEmpty>
                             {children(search, () => closeRef.current?.click())}

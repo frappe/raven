@@ -1,5 +1,6 @@
+import { siteUrl } from "@lib/site"
 import { useState } from "react"
-import { useController, useFormContext } from "react-hook-form"
+import { useController, useFormContext, useWatch } from "react-hook-form"
 import { useFrappeFileUpload } from "frappe-react-sdk"
 import { ImagePlus, Trash2 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@components/ui/avatar"
@@ -12,7 +13,6 @@ import {
 } from "@components/ui/dropdown-menu"
 import { FileDropzone } from "@components/ui/file-dropzone"
 import ErrorBanner from "@components/ui/error-banner"
-import { Spinner } from "@components/ui/spinner"
 import _ from "@lib/translate"
 import type { WorkspaceFormData } from "./WorkspaceDetailView"
 
@@ -26,17 +26,22 @@ import type { WorkspaceFormData } from "./WorkspaceDetailView"
  * `pointerdown`, which still fires — and the menu content is portalled outside the
  * fieldset, so its items would be fully live.
  */
-const WorkspaceLogoField = ({ disabled = false }: { disabled?: boolean }) => {
-    const { control, watch } = useFormContext<WorkspaceFormData>()
-    const name = watch("name")
+const WorkspaceLogoField = ({ disabled = false, menuAlign = "center" }: {
+    disabled?: boolean
+    /** Line the Upload / Remove menu up with the logo: centred under it, or from its left edge */
+    menuAlign?: "center" | "start"
+}) => {
+    const { control } = useFormContext<WorkspaceFormData>()
+    // `name` is empty until the workspace is saved (setup creates it with this form).
+    const [name, workspaceName] = useWatch({ control, name: ["name", "workspace_name"] })
     const { field: { value, onChange } } = useController({ control, name: "logo" })
     const [uploadOpen, setUploadOpen] = useState(false)
 
     const avatar = (
         <Avatar className="h-24 w-24 rounded-xl">
-            {value && <AvatarImage src={value} alt={_("Workspace Logo")} className="object-cover" />}
+            {value && <AvatarImage src={siteUrl(value)} alt={_("Workspace Logo")} className="object-cover" />}
             <AvatarFallback className="rounded-xl text-2xl">
-                {name?.charAt(0)?.toUpperCase()}
+                {(workspaceName || name)?.charAt(0)?.toUpperCase()}
             </AvatarFallback>
         </Avatar>
     )
@@ -56,7 +61,7 @@ const WorkspaceLogoField = ({ disabled = false }: { disabled?: boolean }) => {
                             {avatar}
                         </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="center" className="w-44">
+                    <DropdownMenuContent align={menuAlign} className="w-44">
                         <DropdownMenuItem onClick={() => setUploadOpen(true)}>
                             <ImagePlus />
                             {_("Upload logo")}
@@ -135,8 +140,7 @@ const UploadLogoDialog = ({
                     accept={{ "image/*": [".jpeg", ".jpg", ".png", ".svg", ".webp"] }}
                 />
                 <DialogFooter>
-                    <Button size="md" type="button" onClick={onUpload} disabled={files.length === 0 || loading}>
-                        {loading && <Spinner />}
+                    <Button size="md" type="button" onClick={onUpload} disabled={files.length === 0} loading={loading} loadingText={_("Uploading")}>
                         {_("Upload")}
                     </Button>
                 </DialogFooter>

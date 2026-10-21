@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { Minus, Plus } from "lucide-react"
 import { Button } from "@components/ui/button"
 import { cn } from "@lib/utils"
+import { useFileSrc } from "@hooks/useFileSrc"
 import { hapticTick } from "@utils/haptics"
 import _ from "@lib/translate"
 // Same numbers as the non-image media's wrapper — one uniform dismiss feel.
@@ -427,7 +428,7 @@ export const ZoomableImage = ({
             }}
         >
             <img
-                src={src}
+                src={useFileSrc(src)}
                 alt={alt}
                 draggable={false}
                 className={cn(

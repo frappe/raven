@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Canvas behind the WebView; matches the web app's surface-base. -->
+    <color name="shell_background">#ffffff</color>
+    <!-- Adaptive icon background, same as the PWA maskable icon. -->
+    <color name="ic_launcher_background">#171717</color>
+    <!-- The splash is black in both themes. -->
+    <color name="splash_background">#000000</color>
+    <color name="splash_foreground">#ffffff</color>
+</resources>

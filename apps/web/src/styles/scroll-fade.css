@@ -52,30 +52,33 @@
   --_scroll-fade-size-b: var(--scroll-fade-b-size,
       var(--scroll-fade-size, min(12%, calc(var(--spacing) * 10))));
   /* Eased (smoothstep) alpha ramp, sampled finely so it reads as a smooth curve, NOT fading all
-     the way to transparent: the edge floors at 0.25 (content dims, never vanishes — softer, and
-     images don't disappear), ramping up to a full 1 for the message body. The opaque end MUST be
-     1 or every message would be permanently dimmed. Stops collapse to the edge when the size
-     animates to 0 (reveal preserved: no dimming of the true first/last message at rest). Tune the
-     floor — higher (≈0.4) = subtler dim, lower (≈0.1) = stronger fade. */
+     the way to transparent: the edge floors at --scroll-fade-floor (content dims, never vanishes
+     — softer, and images don't disappear), ramping up to a full 1 for the message body. The
+     opaque end MUST be 1 or every message would be permanently dimmed. Stops collapse to the edge
+     when the size animates to 0 (reveal preserved: no dimming of the true first/last message at
+     rest). Tune the floor PER SURFACE by setting --scroll-fade-floor — higher (≈0.5) = subtler
+     dim, lower (≈0.1) = stronger fade. The in-between stops are smoothstep samples from the
+     floor to 1, so the curve keeps its shape at any floor. */
+  --_scroll-fade-floor: var(--scroll-fade-floor, 0.25);
   --scroll-fade-block: linear-gradient(to bottom,
-      rgba(0, 0, 0, 0.25) 0,
-      rgba(0, 0, 0, 0.282) calc(var(--scroll-fade-t, 0px) * 0.125),
-      rgba(0, 0, 0, 0.367) calc(var(--scroll-fade-t, 0px) * 0.25),
-      rgba(0, 0, 0, 0.487) calc(var(--scroll-fade-t, 0px) * 0.375),
-      rgba(0, 0, 0, 0.625) calc(var(--scroll-fade-t, 0px) * 0.5),
-      rgba(0, 0, 0, 0.763) calc(var(--scroll-fade-t, 0px) * 0.625),
-      rgba(0, 0, 0, 0.883) calc(var(--scroll-fade-t, 0px) * 0.75),
-      rgba(0, 0, 0, 0.968) calc(var(--scroll-fade-t, 0px) * 0.875),
-      rgba(0, 0, 0, 1) var(--scroll-fade-t, 0px),
-      rgba(0, 0, 0, 1) calc(100% - var(--scroll-fade-b, 0px)),
-      rgba(0, 0, 0, 0.968) calc(100% - var(--scroll-fade-b, 0px) * 0.875),
-      rgba(0, 0, 0, 0.883) calc(100% - var(--scroll-fade-b, 0px) * 0.75),
-      rgba(0, 0, 0, 0.763) calc(100% - var(--scroll-fade-b, 0px) * 0.625),
-      rgba(0, 0, 0, 0.625) calc(100% - var(--scroll-fade-b, 0px) * 0.5),
-      rgba(0, 0, 0, 0.487) calc(100% - var(--scroll-fade-b, 0px) * 0.375),
-      rgba(0, 0, 0, 0.367) calc(100% - var(--scroll-fade-b, 0px) * 0.25),
-      rgba(0, 0, 0, 0.282) calc(100% - var(--scroll-fade-b, 0px) * 0.125),
-      rgba(0, 0, 0, 0.25) 100%);
+      rgb(0 0 0 / var(--_scroll-fade-floor)) 0,
+      rgb(0 0 0 / calc(var(--_scroll-fade-floor) + (1 - var(--_scroll-fade-floor)) * 0.043)) calc(var(--scroll-fade-t, 0px) * 0.125),
+      rgb(0 0 0 / calc(var(--_scroll-fade-floor) + (1 - var(--_scroll-fade-floor)) * 0.156)) calc(var(--scroll-fade-t, 0px) * 0.25),
+      rgb(0 0 0 / calc(var(--_scroll-fade-floor) + (1 - var(--_scroll-fade-floor)) * 0.316)) calc(var(--scroll-fade-t, 0px) * 0.375),
+      rgb(0 0 0 / calc(var(--_scroll-fade-floor) + (1 - var(--_scroll-fade-floor)) * 0.5)) calc(var(--scroll-fade-t, 0px) * 0.5),
+      rgb(0 0 0 / calc(var(--_scroll-fade-floor) + (1 - var(--_scroll-fade-floor)) * 0.684)) calc(var(--scroll-fade-t, 0px) * 0.625),
+      rgb(0 0 0 / calc(var(--_scroll-fade-floor) + (1 - var(--_scroll-fade-floor)) * 0.844)) calc(var(--scroll-fade-t, 0px) * 0.75),
+      rgb(0 0 0 / calc(var(--_scroll-fade-floor) + (1 - var(--_scroll-fade-floor)) * 0.957)) calc(var(--scroll-fade-t, 0px) * 0.875),
+      rgb(0 0 0 / 1) var(--scroll-fade-t, 0px),
+      rgb(0 0 0 / 1) calc(100% - var(--scroll-fade-b, 0px)),
+      rgb(0 0 0 / calc(var(--_scroll-fade-floor) + (1 - var(--_scroll-fade-floor)) * 0.957)) calc(100% - var(--scroll-fade-b, 0px) * 0.875),
+      rgb(0 0 0 / calc(var(--_scroll-fade-floor) + (1 - var(--_scroll-fade-floor)) * 0.844)) calc(100% - var(--scroll-fade-b, 0px) * 0.75),
+      rgb(0 0 0 / calc(var(--_scroll-fade-floor) + (1 - var(--_scroll-fade-floor)) * 0.684)) calc(100% - var(--scroll-fade-b, 0px) * 0.625),
+      rgb(0 0 0 / calc(var(--_scroll-fade-floor) + (1 - var(--_scroll-fade-floor)) * 0.5)) calc(100% - var(--scroll-fade-b, 0px) * 0.5),
+      rgb(0 0 0 / calc(var(--_scroll-fade-floor) + (1 - var(--_scroll-fade-floor)) * 0.316)) calc(100% - var(--scroll-fade-b, 0px) * 0.375),
+      rgb(0 0 0 / calc(var(--_scroll-fade-floor) + (1 - var(--_scroll-fade-floor)) * 0.156)) calc(100% - var(--scroll-fade-b, 0px) * 0.25),
+      rgb(0 0 0 / calc(var(--_scroll-fade-floor) + (1 - var(--_scroll-fade-floor)) * 0.043)) calc(100% - var(--scroll-fade-b, 0px) * 0.125),
+      rgb(0 0 0 / var(--_scroll-fade-floor)) 100%);
   -webkit-mask-image: var(--scroll-fade-mask, var(--scroll-fade-block));
   mask-image: var(--scroll-fade-mask, var(--scroll-fade-block));
   -webkit-mask-composite: source-in;
@@ -136,25 +139,26 @@
       var(--scroll-fade-size, min(12%, calc(var(--spacing) * 10))));
   --_scroll-fade-size-r: var(--scroll-fade-r-size,
       var(--scroll-fade-size, min(12%, calc(var(--spacing) * 10))));
+  --_scroll-fade-floor: var(--scroll-fade-floor, 0.25);
   --scroll-fade-inline: linear-gradient(to right,
-      rgba(0, 0, 0, 0.25) 0,
-      rgba(0, 0, 0, 0.282) calc(var(--scroll-fade-l, 0px) * 0.125),
-      rgba(0, 0, 0, 0.367) calc(var(--scroll-fade-l, 0px) * 0.25),
-      rgba(0, 0, 0, 0.487) calc(var(--scroll-fade-l, 0px) * 0.375),
-      rgba(0, 0, 0, 0.625) calc(var(--scroll-fade-l, 0px) * 0.5),
-      rgba(0, 0, 0, 0.763) calc(var(--scroll-fade-l, 0px) * 0.625),
-      rgba(0, 0, 0, 0.883) calc(var(--scroll-fade-l, 0px) * 0.75),
-      rgba(0, 0, 0, 0.968) calc(var(--scroll-fade-l, 0px) * 0.875),
-      rgba(0, 0, 0, 1) var(--scroll-fade-l, 0px),
-      rgba(0, 0, 0, 1) calc(100% - var(--scroll-fade-r, 0px)),
-      rgba(0, 0, 0, 0.968) calc(100% - var(--scroll-fade-r, 0px) * 0.875),
-      rgba(0, 0, 0, 0.883) calc(100% - var(--scroll-fade-r, 0px) * 0.75),
-      rgba(0, 0, 0, 0.763) calc(100% - var(--scroll-fade-r, 0px) * 0.625),
-      rgba(0, 0, 0, 0.625) calc(100% - var(--scroll-fade-r, 0px) * 0.5),
-      rgba(0, 0, 0, 0.487) calc(100% - var(--scroll-fade-r, 0px) * 0.375),
-      rgba(0, 0, 0, 0.367) calc(100% - var(--scroll-fade-r, 0px) * 0.25),
-      rgba(0, 0, 0, 0.282) calc(100% - var(--scroll-fade-r, 0px) * 0.125),
-      rgba(0, 0, 0, 0.25) 100%);
+      rgb(0 0 0 / var(--_scroll-fade-floor)) 0,
+      rgb(0 0 0 / calc(var(--_scroll-fade-floor) + (1 - var(--_scroll-fade-floor)) * 0.043)) calc(var(--scroll-fade-l, 0px) * 0.125),
+      rgb(0 0 0 / calc(var(--_scroll-fade-floor) + (1 - var(--_scroll-fade-floor)) * 0.156)) calc(var(--scroll-fade-l, 0px) * 0.25),
+      rgb(0 0 0 / calc(var(--_scroll-fade-floor) + (1 - var(--_scroll-fade-floor)) * 0.316)) calc(var(--scroll-fade-l, 0px) * 0.375),
+      rgb(0 0 0 / calc(var(--_scroll-fade-floor) + (1 - var(--_scroll-fade-floor)) * 0.5)) calc(var(--scroll-fade-l, 0px) * 0.5),
+      rgb(0 0 0 / calc(var(--_scroll-fade-floor) + (1 - var(--_scroll-fade-floor)) * 0.684)) calc(var(--scroll-fade-l, 0px) * 0.625),
+      rgb(0 0 0 / calc(var(--_scroll-fade-floor) + (1 - var(--_scroll-fade-floor)) * 0.844)) calc(var(--scroll-fade-l, 0px) * 0.75),
+      rgb(0 0 0 / calc(var(--_scroll-fade-floor) + (1 - var(--_scroll-fade-floor)) * 0.957)) calc(var(--scroll-fade-l, 0px) * 0.875),
+      rgb(0 0 0 / 1) var(--scroll-fade-l, 0px),
+      rgb(0 0 0 / 1) calc(100% - var(--scroll-fade-r, 0px)),
+      rgb(0 0 0 / calc(var(--_scroll-fade-floor) + (1 - var(--_scroll-fade-floor)) * 0.957)) calc(100% - var(--scroll-fade-r, 0px) * 0.875),
+      rgb(0 0 0 / calc(var(--_scroll-fade-floor) + (1 - var(--_scroll-fade-floor)) * 0.844)) calc(100% - var(--scroll-fade-r, 0px) * 0.75),
+      rgb(0 0 0 / calc(var(--_scroll-fade-floor) + (1 - var(--_scroll-fade-floor)) * 0.684)) calc(100% - var(--scroll-fade-r, 0px) * 0.625),
+      rgb(0 0 0 / calc(var(--_scroll-fade-floor) + (1 - var(--_scroll-fade-floor)) * 0.5)) calc(100% - var(--scroll-fade-r, 0px) * 0.5),
+      rgb(0 0 0 / calc(var(--_scroll-fade-floor) + (1 - var(--_scroll-fade-floor)) * 0.316)) calc(100% - var(--scroll-fade-r, 0px) * 0.375),
+      rgb(0 0 0 / calc(var(--_scroll-fade-floor) + (1 - var(--_scroll-fade-floor)) * 0.156)) calc(100% - var(--scroll-fade-r, 0px) * 0.25),
+      rgb(0 0 0 / calc(var(--_scroll-fade-floor) + (1 - var(--_scroll-fade-floor)) * 0.043)) calc(100% - var(--scroll-fade-r, 0px) * 0.125),
+      rgb(0 0 0 / var(--_scroll-fade-floor)) 100%);
   -webkit-mask-image: var(--scroll-fade-mask, var(--scroll-fade-inline));
   mask-image: var(--scroll-fade-mask, var(--scroll-fade-inline));
   -webkit-mask-composite: source-in;

@@ -68,6 +68,7 @@ export const buildOptimisticMessages = (
     files: OutgoingFile[],
     creation: string = optimisticNow(),
     reply?: { linkedMessage: string; repliedMessageDetails?: string },
+    linkedDocument?: { doctype: string; docname: string },
 ): OptimisticMessage[] => {
     const base = (extra: Partial<Message>): OptimisticMessage =>
         ({
@@ -98,7 +99,9 @@ export const buildOptimisticMessages = (
                 : {}),
         })
     })
-    if (content) {
+    // Mirror the backend: a document-only send still needs one (empty Text) message
+    // to carry the link — the card is the content.
+    if (content || (linkedDocument && files.length === 0)) {
         messages.push(base({ name: `${batchId}-text`, message_type: "Text", text: content }))
     }
 
@@ -110,6 +113,13 @@ export const buildOptimisticMessages = (
             is_reply: 1,
             linked_message: reply.linkedMessage,
             ...(reply.repliedMessageDetails ? { replied_message_details: reply.repliedMessageDetails } : {}),
+        })
+    }
+    // Same anchor as the reply — the linked document rides the last message.
+    if (linkedDocument && messages.length > 0) {
+        Object.assign(messages[messages.length - 1], {
+            link_doctype: linkedDocument.doctype,
+            link_document: linkedDocument.docname,
         })
     }
     return messages
@@ -134,13 +144,15 @@ export const enqueueSend = (
         repliedMessageDetails?: string
         /** Send without notifying recipients (skips push notifications server-side). */
         sendSilently?: boolean
+        /** A system document going out with the message (rendered as a card). */
+        linkedDocument?: { doctype: string; docname: string }
     },
 ) => {
-    const { channelID, batchId, owner, content, files, linkedMessage, repliedMessageDetails, sendSilently } = params
+    const { channelID, batchId, owner, content, files, linkedMessage, repliedMessageDetails, sendSilently, linkedDocument } = params
     const creation = optimisticNow()
     const reply = linkedMessage ? { linkedMessage, repliedMessageDetails } : undefined
 
-    const placeholders = buildOptimisticMessages(channelID, batchId, owner, content, files, creation, reply)
+    const placeholders = buildOptimisticMessages(channelID, batchId, owner, content, files, creation, reply, linkedDocument)
     channelMessagesStore.addOptimisticMessages(channelID, batchId, placeholders)
 
     // Sending means you're caught up — clear the unread badge instantly (the read tracker
@@ -159,9 +171,10 @@ export const enqueueSend = (
         linked_message: linkedMessage,
         replied_message_details: repliedMessageDetails,
         ...(sendSilently ? { send_silently: true } : {}),
+        ...(linkedDocument ? { link_doctype: linkedDocument.doctype, link_document: linkedDocument.docname } : {}),
     })
 
-    submitSend(client, channelID, batchId, content, files, linkedMessage, { sendSilently })
+    submitSend(client, channelID, batchId, content, files, linkedMessage, { sendSilently, linkedDocument })
 }
 
 /**
@@ -200,7 +213,11 @@ export const submitSend = (
     content: string,
     files: OutgoingFile[],
     linkedMessage?: string,
-    opts?: { suppressErrorToast?: boolean; sendSilently?: boolean },
+    opts?: {
+        suppressErrorToast?: boolean
+        sendSilently?: boolean
+        linkedDocument?: { doctype: string; docname: string }
+    },
 ) => {
     inFlight.add(batchId)
     return client
@@ -213,6 +230,9 @@ export const submitSend = (
             is_reply: linkedMessage ? 1 : 0,
             linked_message: linkedMessage ?? null,
             send_silently: opts?.sendSilently ? true : false,
+            // Linked document rides the last message too (the caption when there's text).
+            link_doctype: opts?.linkedDocument?.doctype ?? null,
+            link_document: opts?.linkedDocument?.docname ?? null,
         })
         .then((res) => {
             channelMessagesStore.resolveOptimisticSend(channelID, batchId, res.message ?? [])
@@ -265,7 +285,12 @@ export const retrySend = async (client: PostClient, channelID: string, batchId: 
 
     channelMessagesStore.retryOptimisticSend(channelID, batchId)
     setOutboxStatus(batchId, "sending")
-    submitSend(client, channelID, batchId, content, files, linkedMessage, { sendSilently: record?.send_silently })
+    // Linked document and the silent flag both come from the outbox record —
+    // the one place they're persisted (missing record degrades the same way).
+    submitSend(client, channelID, batchId, content, files, linkedMessage, {
+        sendSilently: record?.send_silently,
+        linkedDocument: record ? linkedDocumentOf(record) : undefined,
+    })
 }
 
 /** Discard a failed send: remove it both from the screen and from the saved outbox. */
@@ -290,11 +315,18 @@ export const injectOutboxRecord = (record: OutboxMessage) => {
         record.files,
         record.creation,
         record.linked_message ? { linkedMessage: record.linked_message, repliedMessageDetails: record.replied_message_details } : undefined,
+        linkedDocumentOf(record),
     )
     channelMessagesStore.addOptimisticMessages(record.channel_id, record.client_id, placeholders)
     // failed AND rejected both render as a failed bubble (Retry / Discard).
     if (record.status !== "sending") channelMessagesStore.failOptimisticSend(record.channel_id, record.client_id)
 }
+
+/** The linked document saved on an outbox record, in the shape the send pipeline uses. */
+const linkedDocumentOf = (record: OutboxMessage) =>
+    record.link_doctype && record.link_document
+        ? { doctype: record.link_doctype, docname: record.link_document }
+        : undefined
 
 /**
  * Re-send a saved message (the automatic retry on app start / reconnect). Works even
@@ -314,6 +346,7 @@ export const retryOutboxRecord = (client: PostClient, record: OutboxMessage): Pr
             record.files,
             record.creation,
             record.linked_message ? { linkedMessage: record.linked_message, repliedMessageDetails: record.replied_message_details } : undefined,
+            linkedDocumentOf(record),
         )
         channelMessagesStore.addOptimisticMessages(record.channel_id, record.client_id, placeholders)
     } else {
@@ -325,5 +358,6 @@ export const retryOutboxRecord = (client: PostClient, record: OutboxMessage): Pr
     return submitSend(client, record.channel_id, record.client_id, record.content, record.files, record.linked_message, {
         suppressErrorToast: true,
         sendSilently: record.send_silently,
+        linkedDocument: linkedDocumentOf(record),
     })
 }

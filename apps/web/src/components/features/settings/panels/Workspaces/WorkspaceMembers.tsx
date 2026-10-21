@@ -1,12 +1,14 @@
-import { useMemo, useState, useSyncExternalStore } from "react"
+import { useDeferredValue, useMemo, useState, useSyncExternalStore } from "react"
 import { useFrappeDeleteDoc, useFrappeGetCall, useFrappePostCall, useFrappeUpdateDoc, useSWRConfig } from "frappe-react-sdk"
 import { toast } from "sonner"
-import { CrownIcon, EllipsisVertical, PlusIcon, UserMinusIcon, UsersIcon } from "lucide-react"
+import { CrownIcon, EllipsisVertical, PlusIcon, SearchIcon, UserMinusIcon, UsersIcon } from "lucide-react"
 import { Badge } from "@components/ui/badge"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@components/ui/empty"
 import { Button } from "@components/ui/button"
+import { Input } from "@components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@components/ui/select"
 import {
-    Dialog, DialogContent, DialogDescription, DialogFooter,
+    Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter,
     DialogHeader, DialogTitle, DialogTrigger, DialogClose,
 } from "@components/ui/dialog"
 import {
@@ -28,6 +30,8 @@ import _ from "@lib/translate"
 
 type WorkspaceMemberFields = Pick<RavenWorkspaceMember, "user" | "is_admin" | "creation" | "name">
 
+type MemberFilter = "all" | "admins"
+
 const useFetchWorkspaceMembers = (workspaceID: string) =>
     useFrappeGetCall<{ message: WorkspaceMemberFields[] }>(
         "raven.api.workspaces.fetch_workspace_members",
@@ -48,6 +52,22 @@ const WorkspaceMembers = ({ workspaceID }: { workspaceID: string }) => {
     )
 
     const existingMemberIds = useMemo(() => data?.message.map((member) => member.user) ?? [], [data])
+
+    // Search by name or id, and an admins-only filter. Deferred so typing stays smooth
+    // on a large workspace.
+    const [search, setSearch] = useState("")
+    const [filter, setFilter] = useState<MemberFilter>("all")
+    const query = useDeferredValue(search.trim().toLowerCase())
+    const members = useMemo(() => {
+        const all = data?.message ?? []
+        return all.filter((member) => {
+            if (filter === "admins" && !member.is_admin) return false
+            if (!query) return true
+            const fullName = usersMap.get(member.user)?.full_name?.toLowerCase() ?? ""
+            return fullName.includes(query) || member.user.toLowerCase().includes(query)
+        })
+    }, [data, filter, query, usersMap])
+    const isFiltered = Boolean(query) || filter !== "all"
 
     const columns = useMemo<ColumnDef<WorkspaceMemberFields>[]>(() => {
         const cols: ColumnDef<WorkspaceMemberFields>[] = [
@@ -98,15 +118,36 @@ const WorkspaceMembers = ({ workspaceID }: { workspaceID: string }) => {
 
     return (
         <div className="flex flex-col gap-3 h-full min-h-0">
-            {isAdmin && (
-                <div className="flex justify-end">
+            <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                    <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-gray-4" aria-hidden="true" />
+                    <Input
+                        inputSize="sm"
+                        type="search"
+                        className="pl-9"
+                        placeholder={_("Search by name or email")}
+                        aria-label={_("Search members")}
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                    />
+                </div>
+                <Select value={filter} onValueChange={(value) => setFilter(value as MemberFilter)}>
+                    <SelectTrigger inputSize="sm" className="w-36" aria-label={_("Filter members")}>
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">{_("All members")}</SelectItem>
+                        <SelectItem value="admins">{_("Admins")}</SelectItem>
+                    </SelectContent>
+                </Select>
+                {isAdmin && (
                     <AddWorkspaceMembersDialog
                         workspaceID={workspaceID}
                         existingMemberIds={existingMemberIds}
                         onAdded={() => mutate()}
                     />
-                </div>
-            )}
+                )}
+            </div>
             {error && <ErrorBanner error={error} />}
             {isLoading && !error && (
                 <div className="flex flex-1 items-center justify-center">
@@ -118,7 +159,7 @@ const WorkspaceMembers = ({ workspaceID }: { workspaceID: string }) => {
                     className="flex-1 min-h-0"
                     scrollAreaClassName="flex-1"
                     maxHeight="100%"
-                    data={data?.message ?? []}
+                    data={members}
                     columns={columns}
                     getRowId={(row) => row.name}
                     rowHeight={44}
@@ -128,8 +169,12 @@ const WorkspaceMembers = ({ workspaceID }: { workspaceID: string }) => {
                                 <UsersIcon />
                             </EmptyMedia>
                             <EmptyHeader>
-                                <EmptyTitle>{_("No members found")}</EmptyTitle>
-                                <EmptyDescription>{_("Members of this workspace will show up here.")}</EmptyDescription>
+                                <EmptyTitle>{isFiltered ? _("No members match") : _("No members found")}</EmptyTitle>
+                                <EmptyDescription>
+                                    {isFiltered
+                                        ? _("Try a different search or filter.")
+                                        : _("Members of this workspace will show up here.")}
+                                </EmptyDescription>
                             </EmptyHeader>
                         </Empty>
                     }
@@ -218,29 +263,28 @@ const AddWorkspaceMembersDialog = ({
                     {_("Add Members")}
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[520px] max-h-[80vh] flex flex-col">
+            <DialogContent className="sm:max-w-[520px] max-h-[80vh]">
                 <DialogHeader>
                     <DialogTitle>{_("Add Members")}</DialogTitle>
-                    <DialogDescription>{_("Add members to your workspace.")}</DialogDescription>
+                    <DialogDescription className="sr-only">{_("Add members to your workspace.")}</DialogDescription>
                 </DialogHeader>
                 {error && <ErrorBanner error={error} />}
-                {/* Fixed height like AddChannelMembers — the picker's virtuoso list
-                    needs a computable height; flex-1 inside a content-sized dialog
-                    resolves to 0. */}
-                <div className="flex h-[24rem] min-h-0 flex-col gap-3">
+                {/* Fixed height (flex-none) like AddChannelMembers — the picker's virtuoso
+                    list needs a computable height; DialogBody's flex-1 inside a
+                    content-sized dialog resolves to 0. */}
+                <DialogBody className="flex h-[24rem] flex-none flex-col gap-3">
                     <AddMembersStep
                         selectedUsers={selectedUsers}
                         onSelectUsers={setSelectedUsers}
                         excludeUserIds={existingMemberIds}
                         emptyText={_("Everyone is already a member of this workspace.")}
                     />
-                </div>
+                </DialogBody>
                 <DialogFooter>
                     <DialogClose asChild>
                         <Button size="md" type="button" variant="outline" disabled={loading}>{_("Cancel")}</Button>
                     </DialogClose>
-                    <Button size="md" type="button" onClick={onSubmit} disabled={selectedUsers.length === 0 || loading}>
-                        {loading && <Spinner />}
+                    <Button size="md" type="button" onClick={onSubmit} disabled={selectedUsers.length === 0} loading={loading} loadingText={_("Adding members...")}>
                         {_("Add {0} members", [String(selectedUsers.length)])}
                     </Button>
                 </DialogFooter>

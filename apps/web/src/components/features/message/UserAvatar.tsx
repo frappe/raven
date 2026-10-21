@@ -1,3 +1,4 @@
+import { siteUrl } from '@lib/site'
 import { memo, useMemo } from 'react'
 import { Avatar, AvatarFallback, AvatarImage } from '@components/ui/avatar'
 import { cn } from '@lib/utils'
@@ -19,11 +20,11 @@ interface UserAvatarProps {
     avatarClassName?: string,
 }
 
-const getInitials = (name: string): string => {
+export const getInitials = (name: string): string => {
     return name.charAt(0).toLocaleUpperCase()
 }
 
-const generateAvatarColor = (name: string): string => {
+export const generateAvatarColor = (name: string): string => {
 
     const sampleColors = [
         "bg-surface-green-2 text-ink-green-8",
@@ -197,9 +198,9 @@ export const UserAvatar = memo<UserAvatarProps>(({
         <div className={cn("relative inline-block", className)}>
             <Avatar className={cn(sizeClasses.avatar, avatarClassName)}>
                 <AvatarImage
-                    src={user.user_image}
+                    src={user.user_image && siteUrl(user.user_image)}
                     alt={`${displayName}'s profile picture`}
-                    loading="lazy"
+                    className={!user.enabled ? 'grayscale' : ''}
                 />
                 <AvatarFallback
                     className={cn("font-medium select-none border-0", avatarColor, sizeClasses.font)}

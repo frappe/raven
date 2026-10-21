@@ -1,6 +1,9 @@
-import { memo, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
+import { OfflineState } from "@components/common/OfflineState"
+import { useOnlineStatus } from "@stores/connectionState"
+import { memo, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { FrappeConfig, FrappeContext } from "frappe-react-sdk"
-import { Virtuoso } from "react-virtuoso"
+import { useHotkeys } from "react-hotkeys-hook"
+import { Virtuoso, type VirtuosoHandle } from "react-virtuoso"
 import { UserData } from "@db"
 import { ThreadPreviewBox } from "./ThreadPreviewBox"
 import { ThreadMessage } from "src/types/ThreadMessage"
@@ -20,6 +23,7 @@ import ErrorBanner from "@components/ui/error-banner"
 import { Bot, CheckCheck, MessagesSquare, Search } from "lucide-react"
 import type { ChannelListItem, DMChannelListItem } from "@raven/types/common/ChannelListItem"
 import _ from "@lib/translate"
+import { getMessageAuthorId } from "@utils/messageUtils"
 
 interface ThreadsListProps {
     threadType?: "participating" | "other" | "ai"
@@ -91,7 +95,7 @@ const ThreadRow = memo(function ThreadRow({
     const dmChannel = dmById.get(thread.channel_id)
     const channel = channelById.get(thread.channel_id)
     const peer = dmChannel?.peer_user_id ? usersById.get(dmChannel.peer_user_id) : undefined
-    const user = usersById.get(thread.owner) ?? null
+    const user = usersById.get(getMessageAuthorId(thread, thread.owner)) ?? null
 
     // Members + reply count come from the stores, lazily. A regular channel thread fetches its
     // details (members + count) ONCE the row actually scrolls into view — gated on
@@ -124,7 +128,7 @@ const ThreadRow = memo(function ThreadRow({
             return {
                 channelName: channel.channel_name || channel.name,
                 channelIcon: (
-                    <ChannelIcon type={channel.type as "Public" | "Private" | "Open"} className="h-3.5 w-3.5" />
+                    <ChannelIcon type={channel.type as "Public" | "Private" | "Open"} className="h-4 w-4" />
                 ),
                 isDirectMessage: false,
                 participants: members,
@@ -158,6 +162,7 @@ export default function ThreadsList({
     onThreadClick,
     activeThreadID,
 }: ThreadsListProps) {
+    const online = useOnlineStatus()
     const { rows, leavingIds, isLoading, error, hasMore, loadMore, refresh } = useThreadList(threadType, {
         channel: channelFilter,
         onlyShowUnread,
@@ -166,6 +171,31 @@ export default function ThreadsList({
     })
 
     const [scroller, setScroller] = useState<HTMLElement | null>(null)
+    const virtuosoRef = useRef<VirtuosoHandle>(null)
+
+    /** Option+Down/Up = next/previous thread; with Shift, the nearest UNREAD
+     *  thread in that direction. Same convention as the channel sidebars
+     *  (see ChannelSidebar) — walks display order, no candidate = no-op. */
+    const goToAdjacentThread = (direction: 1 | -1, unreadOnly = false) => {
+        if (rows.length === 0) return
+        const currentIndex = rows.findIndex((row) => row.name === activeThreadID)
+        let index = currentIndex === -1 ? (direction === 1 ? 0 : rows.length - 1) : currentIndex + direction
+        while (index >= 0 && index < rows.length) {
+            const row = rows[index]
+            if (!unreadOnly || row._isUnread) {
+                // The same path as a row click: clears the unread dot + navigates.
+                onThreadClick?.(row)
+                virtuosoRef.current?.scrollIntoView({ index })
+                return
+            }
+            index += direction
+        }
+    }
+    const hotkeyOptions = { enableOnFormTags: true, enableOnContentEditable: true, preventDefault: true }
+    useHotkeys("alt+down", () => goToAdjacentThread(1), hotkeyOptions, [rows, activeThreadID, onThreadClick])
+    useHotkeys("alt+up", () => goToAdjacentThread(-1), hotkeyOptions, [rows, activeThreadID, onThreadClick])
+    useHotkeys("alt+shift+down", () => goToAdjacentThread(1, true), hotkeyOptions, [rows, activeThreadID, onThreadClick])
+    useHotkeys("alt+shift+up", () => goToAdjacentThread(-1, true), hotkeyOptions, [rows, activeThreadID, onThreadClick])
 
     const { usersById, channelById, dmById } = useMessageRowLookups()
     const lookups = useMemo<RowLookups>(
@@ -189,7 +219,10 @@ export default function ThreadsList({
     // no Virtuoso mounted the wrapper has no scroller, which PullToRefresh
     // treats as "at the top".
     let body: ReactNode
-    if (error) {
+    if (error && import.meta.env.VITE_NATIVE && !online) {
+        // Native offline: a retry would fail too; the list refetches itself on reconnect.
+        body = <EmptyOverlay><OfflineState /></EmptyOverlay>
+    } else if (error) {
         body = (
             <EmptyOverlay>
                 {/* pointer-events-auto: the overlay is pointer-events-none (keeps
@@ -232,8 +265,8 @@ export default function ThreadsList({
                             {onlyShowUnread
                                 ? _("There are no unread threads to show. Clear the filter to see all threads.")
                                 : threadType === "ai"
-                                  ? _("AI threads will appear here when you start conversations with an AI bot.")
-                                  : _("Create a thread by right-clicking a message and selecting 'Create Thread'.")}
+                                    ? _("AI threads will appear here when you start conversations with an AI bot.")
+                                    : _("Create a thread by right-clicking a message and selecting 'Create Thread'.")}
                         </EmptyDescription>
                     </EmptyHeader>
                 </Empty>
@@ -242,6 +275,7 @@ export default function ThreadsList({
     } else {
         body = (
             <Virtuoso
+                ref={virtuosoRef}
                 data={rows}
                 style={{ height: "100%" }}
                 scrollerRef={(ref) => setScroller(ref as HTMLElement | null)}

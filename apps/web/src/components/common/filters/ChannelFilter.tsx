@@ -30,6 +30,8 @@ interface ChannelFilterProps {
     triggerClassName?: string
     /** Root wrapper — width/shrink control so the filter can flex down in a shared row. */
     className?: string
+    /** Open the list in modal mode. Required inside a modal dialog, whose scroll lock would otherwise freeze the list. */
+    modal?: boolean
 }
 
 /**
@@ -130,6 +132,7 @@ export function ChannelFilter({
     allLabel = _("Any Channel"),
     triggerClassName,
     className,
+    modal,
 }: ChannelFilterProps) {
     const selectedChannel = useMemo(() => {
         if (!value || value === ALL) return null
@@ -142,6 +145,7 @@ export function ChannelFilter({
         <FilterCombobox
             className={className}
             triggerClassName={triggerClassName}
+            modal={modal}
             emptyLabel={_("No channels or DMs found.")}
             // Only while a channel is picked — the trigger shows a clear button in place of
             // its chevron, which is the sole way back to unfiltered on pages without the

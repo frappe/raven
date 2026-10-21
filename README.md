@@ -1,94 +1,82 @@
-<p align="center">
-  <a href="https://github.com/The-Commit-Company/raven">
-  <img src="raven_logo.png" alt="Raven logo" height="100" />
-     </a>
-   <hr />
-  <p align="center">Enterprise-first messaging platform that seamlessly integrates with your ERP
-     <br />
-    <br />
-    <a href="https://frappecloud.com/dashboard/signup?product=raven"><strong>Install on Frappe Cloud</strong></a>
-    <br />
-    <a href="https://ravenchat.ai">Website (ravenchat.ai)</a>
-    <br />
-    <a href="https://github.com/The-Commit-Company/raven/issues">Issues</a>
-    ·
-    <a href="https://community.ravenapp.cloud">Community & Support</a>
-     ·
-    <a href="https://github.com/sponsors/The-Commit-Company?frequency=one-time">Sponsor Us!</a>
-  </p>
-</p>
+<div align="center" markdown="1">
 
+<a href="https://frappe.io/product/raven">
+    <img src="raven/public/raven_logo.svg" height="80" alt="Raven logo">
+</a>
 
-<p align="center">
-  <a href="https://github.com/The-Commit-Company/Raven/blob/main/LICENSE">
-    <img alt="license" src="https://img.shields.io/badge/license-AGPLv3-blue">
-  </a>
-     <a href="https://github.com/The-Commit-Company/raven/stargazers"><img src="https://img.shields.io/github/stars/The-Commit-Company/raven" alt="Github Stars"></a>
-     <a href="https://github.com/The-Commit-Company/raven/pulse"><img src="https://img.shields.io/github/commit-activity/m/The-Commit-Company/raven" alt="Commits-per-month"></a>
-</p>
+<h1>Raven</h1>
 
-<p align="center">
-<img src="screenshots/RavenUIGraphic.png" alt="A graphic showing how the Raven interface looks on the web" />
-</p>
+**A simple chat app for teams**
 
+[![GitHub release](https://img.shields.io/github/v/release/frappe/raven)](https://github.com/frappe/raven/releases)
+[![CI](https://github.com/frappe/raven/actions/workflows/ci.yml/badge.svg)](https://github.com/frappe/raven/actions/workflows/ci.yml)
+[![License: AGPL v3](https://img.shields.io/badge/license-AGPLv3-blue)](LICENSE)
 
-​Raven is an open-source messaging platform that brings your team's conversations and information into one centralized place, enhancing collaboration and productivity. Whether you're at your desk or on the move, Raven keeps you connected on any device.​
+[Website](https://frappe.io/product/raven) - [Issues](https://github.com/frappe/raven/issues)
 
-It's built using [Frappe Framework](https://frappeframework.com) and offers deep integrations with other Frappe apps like [ERPNext](https://frappe.io/erpnext) and [FrappeHR](https://frappe.io/hr).
+</div>
 
-<hr>
+<picture>
+	<source media="(prefers-color-scheme: dark)" srcset=".github/readme/raven-dark.png">
+	<img src=".github/readme/raven-light.png" alt="Raven in the browser, showing a channel with shared photos" width="100%">
+</picture>
 
-## Key Features
+<picture>
+	<source media="(prefers-color-scheme: dark)" srcset=".github/readme/threads-documents-dark.png">
+	<img src=".github/readme/threads-documents-light.png" alt="A thread beside the channel, and a document from a Frappe app shown as a card in the chat" width="100%">
+</picture>
+<p align="center"><sub>Threads for side discussions &nbsp;&middot;&nbsp; Documents from any Frappe app, in the chat</sub></p>
 
-1. **Organize conversations in channels:** Organize your conversations by topics, projects, or any category that suits your workflow. Send direct messages to other users or create channels for group discussions to keep everyone informed and engaged.​
-2. **Craft your messages with rich text:** Easily send messages with formatting, highlights, links, emojis, code blocks, mentions and more
-3. **Share images, documents, GIFs and more:** Need to share a file? Simply drag and drop it onto the screen. You can also find and share memes using our GIF search
-4. **Reactions, Replies, and Threads:** Respond to messages with a reaction (custom emojis supported), inline replies or create threads for longer discussions.
-5. **Integrate Seamlessly:**  Raven works effortlessly with other Frappe apps, allowing you to share documents from ERPNext with customizable previews, trigger notifications based on document events, perform workflow actions and, print documents directly within chats.​
-6. **Agents, AI and more:** With Raven AI, automate tasks, extract data from files and images, and execute complex, multistep processes with just a message to an agent. Build your own agents without writing a single line of code to streamline your workflows.​
-7. **Supports Dark Mode and Mobile**: Raven allows users to customize the app's appearance as well as offers a mobile app.
-8. **Authentication and Security**: Supports all popular OAuth providers, custom OAuth providers, Login with email link, 2FA on Email/SMS/Auth App and LDAP.
+<picture>
+	<source media="(prefers-color-scheme: dark)" srcset=".github/readme/files-search-dark.png">
+	<img src=".github/readme/files-search-light.png" alt="The files drawer listing every photo shared in a channel, and search results across channels" width="100%">
+</picture>
+<p align="center"><sub>Every file shared in a channel &nbsp;&middot;&nbsp; Search across channels</sub></p>
 
-<hr>
+## Raven
 
-### Tech Stack
+Raven is an open-source chat app for teams, built on the [Frappe Framework](https://frappe.io/framework). It runs on your own Frappe site, so your messages stay in your database and nobody charges you per user.
 
-##### Common across web and mobile
+It lives alongside ERPNext, HR, CRM and Helpdesk, and any document from any Frappe app can be part of the conversation.
 
-- [Frappe Framework](https://frappeframework.com) - an open-source full stack development framework. It uses Python, MariaDB/Postgres, socket.io and Redis
-- [React](https://react.dev)
-- [Frappe React SDK](https://github.com/The-Commit-Company/frappe-react-sdk) - React Hooks library that we created/maintain to handle auth, data fetching and API calls to the Frappe Framework backend
-- [Tailwind CSS](https://tailwindcss.com/) - 
-- [Firebase](https://firebase.google.com) - Push notifications, Crash Analytics and Performance Monitoring
+### Key features
 
-##### Web
+- **Channels and direct messages:** Public and private channels for teams, projects and topics, grouped into workspaces. Direct messages for everything else.
+- **Threads:** Reply in the channel, or take a side discussion into a thread so it does not drown out everyone else.
+- **Rich messages:** Formatting, mentions, code blocks, polls, emoji and custom reactions.
+- **Files and previews:** Drop in photos, videos and documents. Links show a preview, and every file is listed per channel.
+- **Search:** Find messages, files, links and people across every channel you are in.
+- **Notifications:** Push notifications on the web and on your phone, with quiet hours and per-channel settings. Reminders bring a message back later, and scheduled messages go out at a set time.
+- **Mobile:** iOS and Android apps, plus an installable web app, all on the same site.
 
-- [RadixUI](https://www.radix-ui.com) - Accessible UI components for the web
-- [TipTap](https://www.tiptap.dev) - Rich Text Editor
-- [React Icons](https://react-icons.github.io/react-icons/) - icon library
-- [emoji-mart](https://github.com/missive/emoji-mart) - Emoji Picker library
+### Works with your Frappe apps
 
-##### Mobile
-- [React Native](https://reactnative.dev)
-- [Expo](https://expo.dev) - for all plugins/utilities and deployment
-- [NativeWind](https://www.nativewind.dev) - using TailwindCSS but on React Native
-- [React Native Reanimated](https://docs.swmansion.com/react-native-reanimated/) - Animations for React Native
-- [React Native Gesture Handler](https://docs.swmansion.com/react-native-gesture-handler) - to handle touch and gestures on React Native
-- [Zeego](https://zeego.dev) - Dropdown menus for React Native
+- **Share a document:** Paste a link to any document on the site and Raven shows a card with its status and key fields.
+- **Document notifications:** Post to a channel when a document is created, changed or submitted. Set the conditions and the message template without writing code.
+- **Approve from the chat:** Approve, reject or send back a document without leaving the conversation.
+- **Who is on leave:** Leave from Frappe HR shows next to a person's name.
+- **Bots, webhooks and AI agents:** Bots that post and reply, incoming webhooks that post into channels, and agents backed by your own OpenAI or compatible provider.
 
+### Under the hood
 
+- [Frappe Framework](https://github.com/frappe/frappe): A full-stack web application framework.
+- [Frappe React SDK](https://github.com/frappe/frappe-react-sdk): React hooks for auth, data fetching and realtime with a Frappe backend.
 
-<br>
+### Compatibility
 
-## Production setup
+| Raven branch | Frappe branch | Notes |
+| :----------- | :------------ | :---- |
+| main         | version-15 (15.111 or later), version-16 | Stable |
+| develop      | version-15 (15.111 or later), version-16, develop | Development |
 
-### Managed Hosting
-You can try [Frappe Cloud](https://frappecloud.com), a simple, user-friendly and sophisticated [open-source](https://github.com/frappe/press) platform to host Frappe applications with peace of mind.
+## Getting started
 
-It takes care of installation, setup, upgrades, monitoring, maintenance and support of your Frappe deployments. It is a fully featured developer platform with an ability to manage and control multiple Frappe deployments.
+### Frappe Cloud
+
+Install Raven on a site from the Frappe Cloud marketplace. Frappe Cloud takes care of hosting, upgrades, backups and support.
 
 <div>
-	<a href="https://frappecloud.com/dashboard/signup?product=raven" target="_blank">
+	<a href="https://cloud.frappe.io/marketplace/apps/raven" target="_blank">
 		<picture>
 			<source media="(prefers-color-scheme: dark)" srcset="https://frappe.io/files/try-on-fc-white.png">
 			<img src="https://frappe.io/files/try-on-fc-black.png" alt="Try on Frappe Cloud" height="28" />
@@ -96,176 +84,99 @@ It takes care of installation, setup, upgrades, monitoring, maintenance and supp
 	</a>
 </div>
 
-### Self Hosting
+### Self hosting
 
-Follow these steps to set up Raven in production:
+[Pilot](https://github.com/frappe/pilot) is the recommended way to run Raven on your own server. It installs Frappe, manages sites and backups, and sets up production with nginx and TLS. Pilot needs Frappe v16 or later.
 
-**Step 1**: Download the easy install script
-
-```bash
-wget https://frappe.io/easy-install.py
-```
-
-**Step 2**: Run the deployment command
+Install Pilot:
 
 ```bash
-python3 ./easy-install.py deploy \
-    --project=raven_prod_setup \
-    --email=your_email.example.com \
-    --image=ghcr.io/the-commit-company/raven \
-    --version=stable \
-    --app=raven \
-    --sitename subdomain.domain.tld
+curl -fsSL https://raw.githubusercontent.com/frappe/pilot/develop/install.sh | bash
 ```
 
-Replace the following parameters with your values:
-- `your_email.example.com`: Your email address
-- `subdomain.domain.tld`: Your domain name where Raven will be hosted
+Create a bench and run the setup wizard. The first `start` prints the URL of the admin wizard.
 
-The script will set up a production-ready instance of Raven with all the necessary configurations in about 5 minutes.
-
-
-## Development Setup
-
-### Docker
-
-You need Docker, docker-compose and git setup on your machine. Refer [Docker documentation](https://docs.docker.com/). After that, follow below steps:
-
-**Step 1**: Setup folder and download the required files
-
-    mkdir raven
-    cd raven
-
-    # Download the docker-compose file
-    wget -O docker-compose.yml https://raw.githubusercontent.com/The-Commit-Company/raven/develop/docker/docker-compose.yml
-
-    # Download the setup script
-    wget -O init.sh https://raw.githubusercontent.com/The-Commit-Company/raven/develop/docker/init.sh
-
-**Step 2**: Run the container and daemonize it
-
-    docker compose up -d
-
-**Step 3**: The site [http://raven.localhost:8000/raven](http://raven.localhost:8000/raven) should now be available. The default credentials are:
-- Username: Administrator
-- Password: admin
-
-### Local
-
-To setup the repository locally follow the steps mentioned below:
-
-1. Install bench and setup a `frappe-bench` directory by following the [Installation Steps](https://frappeframework.com/docs/user/en/installation)
-2. Start the server by running 
 ```bash
-bench start
+pilot new main
+pilot -b main start
 ```
-3. In a separate terminal window, create a new site by running 
-```bash
-bench new-site raven.test
-```
-4. Map your site to localhost with the command 
-```bash
-bench --site raven.test add-to-hosts
-```
-5. Download the Raven app. Run 
-```bash
-bench get-app https://github.com/The-Commit-Company/raven
-```
-6. Install the app on the site 
-```bash
-bench --site raven.test install-app raven
-```
-7. Now open the URL `http://raven.test:8000/raven` in your browser, you should see the app running
 
+Then add Raven and create a site:
 
-###### Other Local Configurations
+```bash
+pilot -b main get-app https://github.com/frappe/raven
+pilot -b main new-site chat.example.com
+pilot -b main install-app chat.example.com raven
+```
 
-Make sure that you have enabled [developer mode](https://frappeframework.com/how-to-enable-developer-mode-in-frappe) in your Frappe site config. You can do so by running the following in your bench directory:
+Raven opens at `https://chat.example.com/raven`. See the Pilot [production guide](https://github.com/frappe/pilot/blob/develop/docs/production.md) for nginx, TLS and process managers.
+
+If you already have a bench, install Raven the usual way:
+
+```bash
+bench get-app https://github.com/frappe/raven
+bench --site your-site install-app raven
+```
+
+### Mobile apps
+
+The iOS and Android apps connect to any site running Raven v3 or later. Enter the site address, sign in, and every channel is there, in sync with the web app.
+
+<div>
+	<a href="https://apps.apple.com/app/raven-mobile/id6741682327" target="_blank">
+		<img src=".github/readme/app-store-badge.svg" alt="Download on the App Store" height="40" />
+	</a>
+	&nbsp;
+	<a href="https://play.google.com/store/apps/details?id=raven.thecommit.company&hl=en_IN" target="_blank">
+		<img src=".github/readme/google-play-badge.png" alt="Get it on Google Play" height="40" />
+	</a>
+</div>
+
+## Development
+
+Set up a bench with Pilot or [bench](https://docs.frappe.io/framework/user/en/installation), get the app and create a site as above, then turn on developer mode and skip CSRF checks for the site. The second setting is for local development only, since the Vite dev server has no CSRF token.
 
 ```bash
 bench set-config -g developer_mode 1
+bench --site raven.localhost set-config ignore_csrf 1
 ```
 
-You also need to disable CSRF (add `ignore_csrf: 1` in your `site_config.json`) since the React web server will not have any CSRF token in live reload mode. Please note that this is only for the local dev setup and is **not meant for Production**. 
+### Web app
 
-```bash
-bench --site raven.test set-config ignore_csrf 1
+The web app is a React single page app in `apps/web`. To work on it with hot reloading, add a `.env.local` file in `apps/web`:
+
+```
+VITE_SITE_NAME='raven.localhost'
+VITE_SOCKET_PORT=9000
 ```
 
+`VITE_SOCKET_PORT` is the socket.io port of your bench, usually the web port plus 1000. Then start the dev server from the app folder:
 
-##### Web App
-
-Raven's **web app** is a React based single page app located in the `/frontend` directory. It uses Vite to compile the app.
-If you want to make changes to the frontend with hot reloading, follow the steps below:
-
-1. Navigate to the apps/raven folder in your bench directory
 ```bash
 cd apps/raven
-```
-2. Start the local web server
-```bash
-yarn run dev
+yarn
+yarn dev
 ```
 
-This will start a local server at `http://localhost:8080` where the frontend app can be previewed in real time as you make changes. To make sure the setup works correctly, add a `.env.local` file in the `/frontend` directory with the following contents:
+The app runs at `http://raven.localhost:8080` and proxies API calls to your site. Run `yarn` from the repository root only, not from `apps/web`.
 
-```
-VITE_BASE_NAME='' # This needs to be set as empty
-VITE_SOCKET_PORT=9000 # This is the port on which socket.io is running. It's usually the main Frappe server port (8000) but in the 9000 series
-VITE_SITE_NAME='raven.test' # This is the same of the site
-```
+## Contributing
 
-
-##### Mobile App
-
-Raven's **mobile app** is a React Native based app built using Expo. It requires an [Expo Development Build](https://docs.expo.dev/develop/development-builds/introduction/) and will not run on Expo Go.
-
-To get started, you need to install the [Expo CLI](https://docs.expo.dev/develop/tools/#expo-cli)
-
-```bash
-npm install -g eas-cli
-```
-
-You also need to have Xcode and/or Android Studio installed locally depending on your platform of choice.
-
-The mobile app is located under the `apps/mobile` directory.
-To start the development server and run it on a simulator, you can run 
-```bash
-yarn run ios
-```
-
-or 
-```
-yarn run android
-```
-
-This *should* start the emulators with the app running. For more info, please refer to the [Expo documentation](https://docs.expo.dev/get-started/introduction/)
-
-
-## Forum and Support
-
-- [Community Forum & Support](https://community.ravenapp.cloud)
-- [YouTube](https://www.youtube.com/@TheCommitCompany)
-<hr>
-
-## Repo Activity
-
-![Alt](https://repobeats.axiom.co/api/embed/8e66d9bc24dd93b7a61c804484af54233225d857.svg "Repobeats analytics image")
-
-## Contributors
-
-<a href="https://github.com/The-Commit-Company/raven/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=The-Commit-Company/raven" />
-</a>
-
-
-## Reporting Bugs
-If you find any bugs, feel free to report them here on [GitHub Issues](https://github.com/The-Commit-Company/raven/issues). Make sure you share enough information (app screenshots, browser console screenshots, stack traces, etc) for project maintainers to replicate your bug.
-
-
-<hr>
-
+- [GitHub Issues](https://github.com/frappe/raven/issues): Bug reports. Include steps to reproduce, screenshots and any console or server errors.
+- [Report security vulnerabilities](https://frappe.io/security)
+- [Translations](https://crowdin.com/project/frappe)
 
 ## License
 
-AGPLv3
+[AGPLv3](LICENSE)
+
+<br>
+<br>
+<div align="center" style="padding-top: 1rem; padding-bottom: 1rem; display: flex; justify-content:center;">
+	<a href="https://frappe.io" target="_blank">
+		<picture>
+			<source media="(prefers-color-scheme: dark)" srcset="https://frappe.io/files/Frappe-white.png">
+			<img src="https://frappe.io/files/Frappe-black.png" alt="Frappe Technologies" height="28"/>
+		</picture>
+	</a>
+</div>

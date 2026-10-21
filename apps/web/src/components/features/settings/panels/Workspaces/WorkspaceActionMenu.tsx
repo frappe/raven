@@ -1,6 +1,5 @@
 import { useState } from "react"
-import { useFrappeDeleteDoc, useFrappePostCall, useSWRConfig } from "frappe-react-sdk"
-import { useAtom } from "jotai"
+import { useFrappeDeleteDoc, useSWRConfig } from "frappe-react-sdk"
 import { toast } from "sonner"
 import { EllipsisVertical, PencilIcon, Trash2Icon } from "lucide-react"
 import {
@@ -17,8 +16,7 @@ import {
 import ErrorBanner from "@components/ui/error-banner"
 import { Input } from "@components/ui/input"
 import { Label } from "@components/ui/label"
-import { Spinner } from "@components/ui/spinner"
-import { lastWorkspaceAtom } from "@utils/lastVisitedAtoms"
+import { useRenameWorkspace } from "@components/features/workspaces/useRenameWorkspace"
 import _ from "@lib/translate"
 
 type Props = {
@@ -89,23 +87,12 @@ const RenameWorkspaceForm = ({
     workspaceID, workspaceName, onRenamed,
 }: { workspaceID: string; workspaceName: string; onRenamed: (newID: string) => void }) => {
     const [name, setName] = useState(workspaceName)
-    const { mutate: globalMutate } = useSWRConfig()
-    const [lastWorkspace, setLastWorkspace] = useAtom(lastWorkspaceAtom)
-    const { call, loading, error } = useFrappePostCall("frappe.model.rename_doc.update_document_title")
+    const { renameWorkspace, loading, error } = useRenameWorkspace()
 
     const handleSubmit = () => {
-        call({ doctype: "Raven Workspace", docname: workspaceID, name, merge: 0 }).then((res) => {
+        renameWorkspace(workspaceID, name).then((newName) => {
             toast.success(_("Workspace renamed"))
-            globalMutate("workspaces_list")
-            // Renaming cascades the new name into every channel's `workspace`
-            // link server-side — without refetching the channel list, the
-            // renamed workspace's sidebar shows no channels (they still carry
-            // the old name client-side) until some later revalidation.
-            globalMutate("channel_list")
-            if (lastWorkspace === workspaceID) {
-                setLastWorkspace(res.message)
-            }
-            onRenamed(res.message)
+            onRenamed(newName)
         })
     }
 
@@ -123,9 +110,8 @@ const RenameWorkspaceForm = ({
                 <DialogClose asChild>
                     <Button size="md" type="button" variant="outline" disabled={loading}>{_("Close")}</Button>
                 </DialogClose>
-                <Button size="md" type="button" disabled={loading || !name} onClick={handleSubmit}>
-                    {loading && <Spinner />}
-                    {loading ? _("Renaming...") : _("Rename")}
+                <Button size="md" type="button" disabled={!name} onClick={handleSubmit} loading={loading} loadingText={_("Renaming")}>
+                    {_("Rename")}
                 </Button>
             </DialogFooter>
         </>
@@ -174,9 +160,8 @@ const DeleteWorkspaceForm = ({
             </div>
             <AlertDialogFooter>
                 <AlertDialogCancel disabled={loading}>{_("Cancel")}</AlertDialogCancel>
-                <Button variant="solid" theme="red" disabled={loading || !isNameTyped} onClick={handleDelete}>
-                    {loading && <Spinner />}
-                    {loading ? _("Deleting...") : _("Delete")}
+                <Button variant="solid" theme="red" size="md" disabled={!isNameTyped} onClick={handleDelete} loading={loading} loadingText={_("Deleting")}>
+                    {_("Delete")}
                 </Button>
             </AlertDialogFooter>
         </>

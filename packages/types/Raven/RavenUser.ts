@@ -60,4 +60,6 @@ export interface RavenUser {
 	hide_read_receipts?: 0 | 1
 	/**	Quiet Hours Nudge : Select	*/
 	quiet_hours_nudge?: "Nudge" | "No Nudge" | "Auto Silent"
+	/**	Onboarded : Check - Set once the user finishes the profile step in the web app	*/
+	onboarded?: 0 | 1
 }

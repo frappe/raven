@@ -3,6 +3,7 @@ import { Virtuoso } from 'react-virtuoso'
 import { useFrappeEventListener } from 'frappe-react-sdk'
 import { MessageSquareMore } from 'lucide-react'
 import _ from '@lib/translate'
+import { getMessageAuthorId } from '@utils/messageUtils'
 import { formatRelativeDate } from '@lib/date'
 import { UserAvatar } from '@components/features/message/UserAvatar'
 import { ChannelIcon } from '@components/common/ChannelIcon/ChannelIcon'
@@ -36,7 +37,7 @@ const SearchLinkResults = ({ searchValue, filters, onSelect, selectedID }: Searc
 
     useFrappeEventListener('link_previews_updated', () => mutate())
 
-    if (error) return <ErrorBanner error={error} />
+    if (error) return <div className="p-3"><ErrorBanner error={error} /></div>
     if (isLoading) return <LinkPreviewSkeletonList />
     if (results.length === 0) return <SearchNoResults title={_('No links found')} />
 
@@ -61,7 +62,7 @@ const SearchLinkResults = ({ searchValue, filters, onSelect, selectedID }: Searc
                 return (
                     <LinkResultRow
                         link={link}
-                        user={usersById.get(link.author)}
+                        user={usersById.get(getMessageAuthorId(link, link.author))}
                         channel={channel}
                         dmChannel={dmChannel}
                         peer={peer}

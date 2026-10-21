@@ -2,6 +2,7 @@ import { useHotkeys } from "react-hotkeys-hook"
 import { getDefaultStore } from "jotai"
 import { attachmentPreviewAtom } from "@utils/attachmentPreview"
 import { messageDialogAtom } from "@utils/channelAtoms"
+import { cloudSettingsOpenAtom } from "@hooks/useCloudSettings"
 
 /** Live check: is any Esc-owning overlay open right now? Radix-style layers
  *  (dialogs, alert dialogs, bottom sheets, menus, open selects) plus the
@@ -11,6 +12,8 @@ const overlayOpenNow = (): boolean => {
     const store = getDefaultStore()
     if (store.get(attachmentPreviewAtom) !== null) return true
     if (store.get(messageDialogAtom) !== null) return true
+    // The Cloud Settings dialog lives in a shadow root the DOM query below cannot see.
+    if (store.get(cloudSettingsOpenAtom)) return true
     return (
         document.querySelector(
             '[data-state="open"]:is([role="dialog"],[role="alertdialog"],[role="menu"],[role="listbox"])',

@@ -340,6 +340,16 @@ def is_channel_member(channel_id: str, user: str = None) -> bool:
 	return user in get_channel_members(channel_id)
 
 
+def desk_has_raven_icon() -> bool:
+	"""Frappe 16.50 and later load the Raven icon sprite from hooks into the desk.
+
+	Older versions resolve the sprite path differently and never load it, so
+	the "raven" icon name would render blank there.
+	"""
+	major, minor = (int(part) for part in frappe.__version__.split(".")[:2])
+	return (major, minor) >= (16, 50)
+
+
 def get_raven_user(user_id: str) -> str:
 	"""
 	Get the Raven User ID of a user
@@ -454,9 +464,14 @@ def make_api_call(url: str, api_key: str, api_secret: str, method: str, params: 
 	auth_header = {"Authorization": f"Basic {token}"}
 
 	if method == "GET":
-		response = requests.get(url, headers=auth_header, params=params)
+		response = requests.get(url, headers=auth_header, params=params, timeout=15)
 	elif method == "POST":
-		response = requests.post(url, headers=auth_header, json=params)
+		response = requests.post(url, headers=auth_header, json=params, timeout=15)
+
+	if response.status_code in (401, 403):
+		from raven.frappe_cloud_push import retry_after_refusal
+
+		retry_after_refusal()
 
 	# return response.json only if the response is successful
 	if not response.ok:

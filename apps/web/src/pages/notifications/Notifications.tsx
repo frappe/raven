@@ -1,7 +1,10 @@
-import { useState, useCallback } from "react"
+import { OfflineState } from "@components/common/OfflineState"
+import { useOnlineStatus } from "@stores/connectionState"
+import { useState, useCallback, useRef } from "react"
 import { Outlet, useMatch, useNavigate } from "react-router-dom"
 import { BellCheckIcon, Check, CheckCheckIcon, Inbox, MoreVertical } from "lucide-react"
-import { Virtuoso } from "react-virtuoso"
+import { useHotkeys } from "react-hotkeys-hook"
+import { Virtuoso, type VirtuosoHandle } from "react-virtuoso"
 import { useNotificationList } from "@stores/notifications/useNotificationList"
 import { useUnreadNotificationsCount } from "@hooks/useNotifications"
 import { useUsersById } from "@hooks/useMessageRowLookups"
@@ -12,7 +15,6 @@ import { Tabs, TabsList, TabsTrigger } from "@components/ui/tabs"
 import { UnreadFilterPill } from "@components/common/UnreadFilterPill"
 import { Button } from "@components/ui/button"
 import { Badge } from "@components/ui/badge"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@components/ui/dropdown-menu"
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@components/ui/empty"
 import { Skeleton } from "@components/ui/skeleton"
 import { useIsMobile } from "@hooks/use-mobile"
@@ -42,6 +44,7 @@ export default function Notifications() {
     const [activeTab, setActiveTab] = useState<NotificationTab>("all")
     const [showUnread, setShowUnread] = useState(true)
     const isMobile = useIsMobile()
+    const online = useOnlineStatus()
 
     // The open notification is route-driven: `/notifications/:channelID/:messageID`
     // renders NotificationChatRoute in the Outlet. Being in history means the mobile
@@ -105,6 +108,40 @@ export default function Notifications() {
     const onSwipeRead = useCallback((messageID: string) => {
         markMessageRead(messageID, { expedite: true })
     }, [markMessageRead])
+
+    const virtuosoRef = useRef<VirtuosoHandle>(null)
+
+    /** Option+Down/Up = next/previous notification; with Shift, the nearest
+     *  UNREAD one in that direction. Same convention as the channel sidebars
+     *  (see ChannelSidebar) — walks display order, no candidate = no-op. */
+    const goToAdjacentNotification = (direction: 1 | -1, unreadOnly = false) => {
+        if (currentData.length === 0) return
+        const currentIndex = currentData.findIndex((item) => item.message_id === selectedMessageID)
+        let index = currentIndex === -1 ? (direction === 1 ? 0 : currentData.length - 1) : currentIndex + direction
+        while (index >= 0 && index < currentData.length) {
+            const item = currentData[index]
+            if (!unreadOnly || !item.is_read) {
+                // The same selection a row click builds — the DM peer is the
+                // sender for mentions and the first reactor for reactions.
+                const peerID = item.notification_type === "reaction" ? (item.reactors?.[0] ?? item.owner) : item.owner
+                onSelect({
+                    channelID: item.channel_id,
+                    messageID: item.message_id,
+                    isThread: !!item.is_thread,
+                    isDirectMessage: !!item.is_direct_message,
+                    peer: item.is_direct_message ? usersById.get(peerID) : undefined,
+                })
+                virtuosoRef.current?.scrollIntoView({ index })
+                return
+            }
+            index += direction
+        }
+    }
+    const hotkeyOptions = { enableOnFormTags: true, enableOnContentEditable: true, preventDefault: true }
+    useHotkeys("alt+down", () => goToAdjacentNotification(1), hotkeyOptions, [currentData, selectedMessageID, onSelect, usersById])
+    useHotkeys("alt+up", () => goToAdjacentNotification(-1), hotkeyOptions, [currentData, selectedMessageID, onSelect, usersById])
+    useHotkeys("alt+shift+down", () => goToAdjacentNotification(1, true), hotkeyOptions, [currentData, selectedMessageID, onSelect, usersById])
+    useHotkeys("alt+shift+up", () => goToAdjacentNotification(-1, true), hotkeyOptions, [currentData, selectedMessageID, onSelect, usersById])
 
     const onShowUnreadChange = useCallback((checked: boolean) => {
         setShowUnread(checked)
@@ -183,7 +220,10 @@ export default function Notifications() {
                                 clicks — transparent elements still hit-test. */}
                         {currentData.length === 0 && !isLoading && (
                             <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
-                                {error ? (
+                                {/* Native offline: a retry would fail too; the list refetches itself on reconnect. */}
+                                {error && import.meta.env.VITE_NATIVE && !online ? (
+                                    <OfflineState />
+                                ) : error ? (
                                     <ErrorBanner
                                         error={error}
                                         layout="centered"
@@ -203,6 +243,7 @@ export default function Notifications() {
                             {currentData.length === 0 && isLoading && <NotificationListSkeleton />}
                             {currentData.length > 0 && (
                                 <Virtuoso
+                                    ref={virtuosoRef}
                                     className="flex-1 min-h-0"
                                     style={{ height: "100%" }}
                                     data={currentData}

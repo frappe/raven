@@ -20,7 +20,8 @@ import { unreadThreadsStore } from "@stores/threads/unreadStore"
  */
 export const useAppBadge = () => {
     useEffect(() => {
-        if (typeof navigator.setAppBadge !== "function") return
+        const hasWebBadge = typeof navigator.setAppBadge === "function"
+        if (!hasWebBadge && !import.meta.env.VITE_NATIVE) return
         // Unread conversations (channels + DMs, MUTED excluded — muted means "don't
         // interrupt me", and the icon badge is an interruption, same rule as every
         // in-app aggregate) + unread THREADS (pushes fire for thread replies too, so
@@ -37,6 +38,9 @@ export const useAppBadge = () => {
             const total = conversations + unreadThreadsStore.getCount()
             if (!force && total === lastApplied) return
             lastApplied = total
+            // WebView has no Badging API; the plugin sets the icon badge. The constant in this
+            // condition is what keeps the plugin's chunk out of browser builds.
+            if (import.meta.env.VITE_NATIVE && !hasWebBadge) { import("../native/badge").then((m) => m.setNativeBadge(total)); return }
             if (total > 0) navigator.setAppBadge(total).catch(() => { })
             else navigator.clearAppBadge?.().catch(() => { })
         }

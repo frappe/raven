@@ -1,9 +1,12 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@components/ui/select"
+import { SAVE_TOAST_ID } from "@lib/toast"
 import { Separator } from "@components/ui/separator"
 import { SettingsPanelDescription, SettingsPanelHeader, SettingsPanelTitle, SettingsPanelContent, SettingsFormLabel, SettingsFormDescription, SettingsFormRow, SettingsSectionHeader } from "@components/ui/settings-dialog"
 import { Switch } from "@components/ui/switch"
 import { useAtom, useAtomValue } from "jotai"
 import { EnterKeyBehaviourAtom, QuickEmojisAtom, QuietHoursNudge, hideReadReceiptsAtom, quietHoursConfigAtom, quietHoursNudgeAtom, timeFormatAtom } from "@utils/preferences"
+import { useQuickEmojiSuggestions } from "@utils/reactionUsage"
+import { EmojiFace } from "@components/common/EmojiFace"
 import { formatWorkingHoursRange } from "@utils/quietHours"
 import { hasRole } from "@lib/permissions"
 import _ from "@lib/translate"
@@ -20,6 +23,7 @@ import { errorResponseToast } from "@components/ui/error-banner"
 import { LinkSettingsAdminSection } from "./LinkSettingsAdminSection"
 import { QuietHoursAdminSection } from "./QuietHoursAdminSection"
 import { Fragment } from "react"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip"
 
 const Preferences = () => {
 
@@ -48,9 +52,7 @@ const Preferences = () => {
                 setQuietHoursNudge(value as QuietHoursNudge)
             }
             mutate()
-            toast.success(_("Settings updated"), {
-                id: "preferences-updated"
-            })
+            toast.success(_("Settings updated"), { id: SAVE_TOAST_ID })
         }).catch((e) => {
             errorResponseToast(_("Could not update preference"), e)
         })
@@ -253,6 +255,12 @@ const QuickEmojis = () => {
 
     const { themeValue } = useTheme()
 
+    // Shared with the mobile drawer (one hook, one behavior): the four
+    // most-used reactions of recent months, applied to the visible slots
+    // with one click. Hidden until a full set exists, or when it matches
+    // what's pinned.
+    const { suggestions, showSuggestions, apply: applySuggestions } = useQuickEmojiSuggestions(4)
+
     const handleEmojiSelect = (index: number, emoji: any) => {
         const newEmojis = [...quickEmojis]
         newEmojis[index] = {
@@ -269,43 +277,58 @@ const QuickEmojis = () => {
             <SettingsFormDescription>
                 {_("Set your favorite emojis for quick reactions.")}
             </SettingsFormDescription>
-        </div>
-        <div className="flex gap-2">
-            {quickEmojis.slice(0, 4).map((emoji, index) => (
-                <Fragment key={index}>
-                    <Popover>
-                        <PopoverTrigger asChild>
+            {showSuggestions && (
+                <div className="flex items-center pt-1 gap-1">
+                    <span className="text-p-sm text-ink-gray-5">{_("Suggested based on your recent usage")}</span>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
                             <Button
-                                variant="outline"
-                                size="lg"
-                                isIconButton
-                                className="text-2xl"
+                                variant="ghost"
+                                size="sm"
+                                aria-label={_("Use your most-used emojis as quick reactions")}
+                                onClick={applySuggestions}
                             >
-                                {emoji.src ? (
-                                    <img
-                                        src={emoji.src}
-                                        alt={emoji.id}
-                                        loading="lazy"
-                                        className="h-4.5 w-4.5 object-contain"
-                                        aria-hidden="true"
-                                    />
-                                ) : (
-                                    // em-emoji renders from the Apple set (initialized in
-                                    // App.tsx) so reactions look the same on every platform
-                                    <span className="flex h-4.5 w-4.5 items-center justify-center" aria-hidden="true">
-                                        <em-emoji native={emoji.native} set="native" size="1.1em" fallback={emoji.id} />
-                                    </span>
-                                )}
+                                {suggestions.map((suggestion) => (
+                                    <EmojiFace key={suggestion.id} emoji={suggestion} />
+                                ))}
                             </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                            <Picker
-                                onEmojiSelect={(emoji: any) => handleEmojiSelect(index, emoji)} theme={themeValue} set="native" custom={customEmojis} previewPosition="none"
-                            />
-                        </PopoverContent>
-                    </Popover>
-                </Fragment>
-            ))}
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            {_("Click to apply these emojis as your quick reactions")}
+                        </TooltipContent>
+                    </Tooltip>
+
+                </div>
+            )}
+        </div>
+        <div className="flex flex-col items-end">
+            <div className="flex gap-2">
+                {quickEmojis.slice(0, 4).map((emoji, index) => (
+                    <Fragment key={index}>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    size="lg"
+                                    isIconButton
+                                    className="text-2xl"
+                                >
+                                    <EmojiFace emoji={emoji} />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                                {/* Dialog scroll lock preventDefaults wheel it can't inspect — emoji-mart
+                                    scrolls inside shadow DOM. This fixes it. */}
+                                <div onWheel={(event) => event.stopPropagation()}>
+                                    <Picker
+                                        onEmojiSelect={(emoji: any) => handleEmojiSelect(index, emoji)} theme={themeValue} set="native" custom={customEmojis} previewPosition="none"
+                                    />
+                                </div>
+                            </PopoverContent>
+                        </Popover>
+                    </Fragment>
+                ))}
+            </div>
         </div>
     </SettingsFormRow>
 }

@@ -1,7 +1,7 @@
 [project]
 name = "raven"
 authors = [
-    { name = "The Commit Company", email = "support@thecommit.company"}
+    { name = "Frappe", email = "support@frappe.io"}
 ]
 description = "Simple, open source messaging tool"
 requires-python = ">=3.10"
@@ -34,14 +34,14 @@ ensure_newline_before_comments = true
 indent = "\t"
 
 [tool.bench.frappe-dependencies]
-frappe = ">=15.0.0,<=17.0.0-dev"
+frappe = ">=15.111.0,<=17.0.0-dev"
 
 [tool.bench.assets]
-build_dir = "./frontend"
-out_dir = "../raven/public/raven"
-index_html_path = "../raven/www/raven.html"
+build_dir = "./apps/web"
+out_dir = "../../raven/public/raven"
+index_html_path = "../../raven/www/raven.html"
 
 [project.urls]
-Homepage = "https://www.ravenchat.ai/"
-Repository = "https://github.com/The-Commit-Company/raven.git"
-"Bug Reports" = "https://github.com/The-Commit-Company/raven/issues"
+Homepage = "https://frappe.io/products/raven"
+Repository = "https://github.com/frappe/raven.git"
+"Bug Reports" = "https://github.com/frappe/raven/issues"

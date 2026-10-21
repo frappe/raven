@@ -1,10 +1,12 @@
 import { Message } from "@raven/types/common/Message"
-import { MessageThreadPill } from "./ThreadMessage"
+import { MessageThreadPill, ThreadConnector } from "./ThreadMessage"
 import { useIntersectionObserver } from "usehooks-ts"
 import { MessageContent } from "./MessageContent"
+import { MessageReactionsRow } from "./MessageReactions"
 import { MessageRow, MessageSenderLayout } from "./MessageRow"
-import { OptimisticStatus, optimisticRowClass } from "./OptimisticStatus"
+import { FailedSendIndicator, OptimisticStatus, optimisticRowClass, sendingDimClass } from "./OptimisticStatus"
 import { isThreadParent } from "@utils/messageUtils"
+import { useMessageAlignment } from "@hooks/useChatStyle"
 
 /**
  * Anatomy of a message
@@ -55,6 +57,11 @@ export const MessageItem = ({ message, onInView }: { message: Message; onInView?
 
     const showThread = isThreadParent(message)
 
+    const owner = message.is_bot_message ? message.bot || '' : message.owner
+    // Own rows have no avatar column for the thread connector; their pill
+    // renders as the bubble's footer instead.
+    const { isLeftRight, isOwn } = useMessageAlignment(owner)
+
     const { ref } = useIntersectionObserver({
         onChange: (isIntersecting) => {
             if (onInView && isIntersecting) {
@@ -67,18 +74,29 @@ export const MessageItem = ({ message, onInView }: { message: Message; onInView?
     // the stream level via event delegation on the data-message-id wrapper.
     // A thread parent is never a continuation (the selector enforces this), so
     // the connector always anchors to the full header — no is_continuation branch.
-    return <MessageRow ref={ref} className={optimisticRowClass(message)}>
-        {showThread && <div className="absolute left-7 w-6 border-l-2 border-b-2 border-outline-gray-2 rounded-bl-2xl z-0 top-[48px] h-[calc(100%-66px)]" />}
+    // Left-Right rows show a failed send as an icon beside the message
+    // (iMessage-style) instead of the red row wash.
+    return <MessageRow
+        ref={ref}
+        alignment={isOwn ? "own" : isLeftRight ? "left-right" : "simple"}
+        className={isLeftRight ? sendingDimClass(message) : optimisticRowClass(message)}
+    >
+        {showThread && <ThreadConnector side={isOwn ? "right" : "left"} />}
         <MessageSenderLayout
-            owner={message.is_bot_message ? message.bot || '' : message.owner}
+            owner={owner}
             creation={message.creation}
             isContinuation={message.is_continuation === 1}
+            isLeftRight={isLeftRight}
+            isOwn={isOwn}
+            reactions={isLeftRight ? <MessageReactionsRow message={message} /> : undefined}
+            footer={showThread && isOwn ? <MessageThreadPill threadID={message.name} channelID={message.channel_id} align="end" /> : undefined}
+            statusIcon={isOwn ? <FailedSendIndicator message={message} /> : undefined}
         >
-            <MessageContent message={message} />
+            <MessageContent message={message} showReactions={!isLeftRight} bubble={isLeftRight ? (isOwn ? "end" : "start") : undefined} />
             <OptimisticStatus message={message} />
         </MessageSenderLayout>
 
-        {showThread ? <MessageThreadPill threadID={message.name} channelID={message.channel_id} /> : null}
+        {showThread && !isOwn ? <MessageThreadPill threadID={message.name} channelID={message.channel_id} align="start" /> : null}
     </MessageRow>
 }
 

@@ -77,7 +77,8 @@ def workspace_member_has_permission(doc, user=None, ptype=None):
 	if ptype == "create":
 		workspace_type = frappe.get_cached_value("Raven Workspace", doc.workspace, "type")
 		if workspace_type == "Public":
-			if user == doc.user:
+			# Anyone can join a public workspace, but not as an admin
+			if user == doc.user and not doc.is_admin:
 				return True
 			else:
 				workspace_member = get_workspace_member(doc.workspace, user)
@@ -143,9 +144,12 @@ def channel_has_permission(doc, user=None, ptype=None):
 	else:
 		# For regular channels
 		if ptype == "create":
-			# Only workspace admins can create a channel
+			# Channels can only be created by members of the workspace
 			workspace_member = get_workspace_member(doc.workspace, user)
-			if workspace_member and workspace_member.get("is_admin"):
+			if not workspace_member:
+				return False
+			# Workspace admins can always create a channel
+			if workspace_member.get("is_admin"):
 				return True
 			# If the workspace allows any member to create a channel, then the user can create a channel
 			if not frappe.db.get_value("Raven Workspace", doc.workspace, "only_admins_can_create_channels"):
@@ -192,10 +196,18 @@ def channel_has_permission(doc, user=None, ptype=None):
 	# 		return False
 
 
+def can_assign_channel_admins(channel_id: str, user: str) -> bool:
+	"""True if the user is in the channel and is its admin or a Raven Admin."""
+	channel_member = get_channel_member(channel_id, user)
+	if not channel_member:
+		return False
+	return bool(channel_member.get("is_admin")) or "Raven Admin" in frappe.get_roles(user)
+
+
 def channel_member_has_permission(doc, user=None, ptype=None):
 
-	# Allow reads for self and if the user is a member of the channel
-	#  They cannot make themselves an admin but this is handled in the controller method
+	# Allow reads and writes on your own membership.
+	# Changing is_admin on an existing membership is checked in the controller.
 	if doc.user_id == user:
 		if ptype == "read" or ptype == "write":
 			return True
@@ -215,7 +227,12 @@ def channel_member_has_permission(doc, user=None, ptype=None):
 			# This is handled in the creation of a direct message channel so we can safely return False
 			return False
 
-		elif doc.user_id == user:
+		# Only channel admins and Raven Admins can add someone as an admin.
+		# The server's own admin inserts (like the channel creator) skip this with ignore_permissions.
+		if doc.is_admin and not can_assign_channel_admins(doc.channel_id, user):
+			return False
+
+		if doc.user_id == user:
 			# Check if the channel is open or public. If yes, then the user needs to be a member of the workspace
 			# if the channel is private, the user cannot add themselves to the channel
 			if channel_type == "Open" or channel_type == "Public":

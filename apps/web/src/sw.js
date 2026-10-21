@@ -207,7 +207,9 @@ self.addEventListener("push", (event) => {
                 body: data.body || payload?.notification?.body || "",
                 // One notification per channel: a newer push replaces the older
                 // one instead of stacking (matches the server's `tag` intent).
-                tag: data.channel_id || undefined,
+                // A reminder is its own notification. Tag it by the reminder so it
+                // never swaps with the channel's message pushes in either direction.
+                tag: (data.type === "Reminder" && data.reminder_id) || data.channel_id || undefined,
                 // Fully-formed by the server (handles workspaces + threads).
                 data: { url: data.message_url || data.click_action || data.base_url },
             }

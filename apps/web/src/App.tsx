@@ -13,20 +13,23 @@ import DirectMessages, { DirectMessagesIndex } from "@pages/dm-channel/DirectMes
 import DirectMessage from "@pages/dm-channel/DirectMessage"
 import ThreadDrawerRoute from "@components/features/message/ThreadDrawerRoute"
 import { WorkspaceRedirect } from "@components/workspace-switcher/WorkspaceRedirect"
-import { FrappeProvider } from 'frappe-react-sdk'
+import { FrappeContext, FrappeProvider, type FrappeConfig } from 'frappe-react-sdk'
 import { redirectToLoginIfSessionDied } from '@lib/authRecovery'
 import { initEmojiMart } from '@lib/emojiMart'
-import Cookies from 'js-cookie'
+import { isLoggedIn } from "@lib/sessionUser"
+import { siteKey, APP_HEADERS } from '@lib/site'
 import { Toaster } from "@components/ui/sonner"
 import { TooltipProvider } from "@radix-ui/react-tooltip"
 import { LucideProvider } from "lucide-react"
-import { lazy, Suspense, useEffect } from "react"
+import { lazy, Suspense, useContext, useEffect } from "react"
 import AppShell from "@components/layout/AppShell"
 import { useAtomValue } from "jotai"
 import { lastChannelAtom, lastWorkspaceAtom } from "@utils/lastVisitedAtoms"
 import { useIsMobile } from "@hooks/use-mobile"
 import { useWorkspaces } from "@hooks/useWorkspaces"
 import WorkspaceLayout from "@pages/workspace/WorkspaceLayout"
+import NoWorkspace from "@components/features/workspaces/NoWorkspace"
+import { getIndexTarget } from "@utils/indexTarget"
 
 // Code-split the rarely-visited pages out of the main bundle. React.lazy +
 // Suspense (not the data router's route.lazy) on purpose: route.lazy blocks
@@ -39,9 +42,10 @@ import WorkspaceLayout from "@pages/workspace/WorkspaceLayout"
 // the frame stays put and the tabs stay tappable during the load.
 const MessagePermalink = lazy(() => import("@pages/message/MessagePermalink"))
 const ShareTarget = lazy(() => import("@pages/share/ShareTarget"))
-const SavedMessages = lazy(() => import("@pages/saved-messages/SavedMessages"))
+const Later = lazy(() => import("@pages/later/Later"))
 const MobileProfile = lazy(() => import("@pages/profile/Profile"))
 const Search = lazy(() => import("@pages/search/Search"))
+const ScheduledMessages = lazy(() => import("@pages/scheduled-messages/ScheduledMessages"))
 
 /**
  * Home ("/") redirect, evaluated at RENDER time — module-scope reads froze
@@ -52,31 +56,14 @@ const IndexRedirect = () => {
   const lastWorkspace = useAtomValue(lastWorkspaceAtom)
   const lastChannel = useAtomValue(lastChannelAtom)
   const isMobile = useIsMobile()
-  const { workspaces, isLoading } = useWorkspaces()
+  const { workspaces, isLoading, error } = useWorkspaces()
 
-  // Decide only once the workspace list is known — otherwise a deleted
-  // lastWorkspace can't be told apart from one that just hasn't loaded yet.
-  if (isLoading) return null
+  // Decide only on a list the fetch proved: a failed fetch also leaves it empty,
+  // and that must not read as "in no workspace".
+  if (isLoading || (error && workspaces.length === 0)) return null
 
-  // Reopen the remembered workspace only if it STILL EXISTS — it may have been
-  // deleted (here or by another admin) or the user removed from it, leaving the
-  // atom stale. Desktop reopens the exact channel; mobile lands on the
-  // workspace's channel list (the channel pair is written together).
-  const lastExists = lastWorkspace && workspaces.some((w) => w.name === lastWorkspace)
-  if (lastExists) {
-    if (lastChannel && !isMobile) {
-      return <Navigate to={`/${encodeURIComponent(lastWorkspace)}/${encodeURIComponent(lastChannel)}`} replace />
-    }
-    return <Navigate to={`/${encodeURIComponent(lastWorkspace)}`} replace />
-  }
-
-  // No valid remembered workspace — fresh install, an installed PWA's isolated
-  // storage on first launch, or a stale/deleted one. Fall back to the first
-  // workspace the user belongs to instead of rendering nothing: a blank index
-  // has no desktop sidebar to mask it on mobile, so `return null` shows black.
-  const fallback = workspaces.find((w) => w.workspace_member_name) ?? workspaces[0]
-  if (!fallback) return null
-  return <Navigate to={`/${encodeURIComponent(fallback.name)}`} replace />
+  const target = getIndexTarget({ lastWorkspace, lastChannel, workspaces, isMobile })
+  return target ? <Navigate to={target} replace /> : <NoWorkspace />
 }
 
 
@@ -123,9 +110,10 @@ const router = createBrowserRouter(
       <Route path="search" element={<Suspense key="search" fallback={<ListPageSkeleton title={_("Search")} />}><Search /></Suspense>}>
         <Route path=":channelID/:messageID" element={<NotificationChatRoute />} />
       </Route>
-      <Route path="saved-messages" element={<Suspense key="saved-messages" fallback={<ListPageSkeleton title={_("Saved Messages")} />}><SavedMessages /></Suspense>}>
+      <Route path="later" element={<Suspense key="later" fallback={<ListPageSkeleton title={_("Later")} />}><Later /></Suspense>}>
         <Route path=":channelID/:messageID" element={<NotificationChatRoute />} />
       </Route>
+      <Route path="scheduled-messages" element={<Suspense key="scheduled-messages" fallback={<ListPageSkeleton title={_("Scheduled Messages")} />}><ScheduledMessages /></Suspense>} />
       {/* Fallback = the page's silhouette WITH the real tab bar: the footer
           lives inside this lazy chunk, so a null fallback blanked the whole
           screen (footer included) for the duration of the load. */}
@@ -153,7 +141,22 @@ const router = createBrowserRouter(
   { basename: import.meta.env.VITE_BASE_NAME },
 )
 
-function App() {
+/** Provider settings the native entry passes; absent in the browser. */
+export type NativeProvider = {
+  url: string
+  siteName: string
+  getToken: () => string
+  onRequestError: (e: { httpStatus?: number }) => void
+  /** The native socket bridge; the sdk's own socket cannot pass Frappe's origin check from a WebView. */
+  socket: FrappeConfig["socket"]
+}
+
+const NativeSocketProvider = ({ socket, children }: { socket: FrappeConfig["socket"]; children: React.ReactNode }) => {
+  const config = useContext(FrappeContext) as FrappeConfig
+  return <FrappeContext.Provider value={{ ...config, socket }}>{children}</FrappeContext.Provider>
+}
+
+function App({ native }: { native?: NativeProvider }) {
 
   // Login check, SYNCHRONOUS and before the router renders. It used to live in
   // a post-paint effect, so a logged-out visitor rendered the whole app for a
@@ -161,9 +164,7 @@ function App() {
   // redirect kicked in. Checked during render, we paint nothing instead while
   // the browser navigates to login. (Frappe marks anonymous visitors with
   // user_id=Guest; dev builds skip the redirect — there's no local login page.)
-  const userId = Cookies.get('user_id')
-  const isLoggedIn = !!userId && userId !== 'Guest'
-  const shouldRedirectToLogin = !isLoggedIn && !import.meta.env.DEV
+  const shouldRedirectToLogin = !isLoggedIn() && !import.meta.env.DEV && !native
 
   useEffect(() => {
     if (shouldRedirectToLogin) {
@@ -175,13 +176,22 @@ function App() {
     return null
   }
 
+  const content = (
+    <>
+      <RouterProvider router={router} />
+      <Toaster />
+    </>
+  )
+
   return (
     <LucideProvider
       strokeWidth={1.5}
     >
       <TooltipProvider>
         <FrappeProvider
-          url={import.meta.env.VITE_FRAPPE_PATH ?? ''}
+          url={native?.url ?? (import.meta.env.VITE_FRAPPE_PATH ?? '')}
+          tokenParams={native ? { useToken: true, type: "Bearer", token: native.getToken } : undefined}
+          customHeaders={native ? APP_HEADERS : undefined}
           socketPort={import.meta.env.VITE_SOCKET_PORT ? import.meta.env.VITE_SOCKET_PORT : undefined}
           swrConfig={{
             // NO global errorRetryCount: SWR's default retry is UNLIMITED
@@ -193,14 +203,14 @@ function App() {
             // Dead-session recovery: Frappe rewrites the user_id cookie to
             // "Guest" on the failing response itself, so any fetch error while
             // the cookie says Guest means the session is gone — go to login.
-            onError: redirectToLoginIfSessionDied,
+            onError: native ? native.onRequestError : redirectToLoginIfSessionDied,
             // @ts-ignore - SWR config
             provider: localStorageProvider
           }}
-          siteName={getSiteName()}
+          siteName={native?.siteName ?? getSiteName()}
+          enableSocket={!native}
         >
-          <RouterProvider router={router} />
-          <Toaster />
+          {native ? <NativeSocketProvider socket={native.socket}>{content}</NativeSocketProvider> : content}
         </FrappeProvider>
       </TooltipProvider>
     </LucideProvider>
@@ -216,51 +226,37 @@ const CACHE_KEYS = [
   "message-actions-list",
 ]
 
+const isCachedKey = (key: string) => CACHE_KEYS.some((cacheKey) => key.includes(cacheKey))
+
 function localStorageProvider() {
   // When initializing, we restore the data from `localStorage` into a map.
   // Check if local storage is recent (less than a week). Else start with a fresh cache.
-  const timestamp = localStorage.getItem('app-cache-timestamp')
+  const timestamp = localStorage.getItem(siteKey('app-cache-timestamp'))
   let cache = '[]'
   if (timestamp && Date.now() - parseInt(timestamp) < 7 * 24 * 60 * 60 * 1000) {
-    const localCache = localStorage.getItem('app-cache')
+    const localCache = localStorage.getItem(siteKey('app-cache'))
     if (localCache) {
       cache = localCache
     }
   }
+
   const map = new Map<string, string | number>(JSON.parse(cache))
 
-  // Before unloading the app, we write back all the data into `localStorage`.
-  window.addEventListener('beforeunload', () => {
-
-    // Check if the user is logged in
-    const user_id = Cookies.get('user_id')
-    if (!user_id || user_id === 'Guest') {
-      localStorage.removeItem('app-cache')
-      localStorage.removeItem('app-cache-timestamp')
-    } else {
-      const entries = map.entries()
-
-      const cacheEntries = []
-
-      for (const [key, value] of entries) {
-
-        let hasCacheKey = false
-        for (const cacheKey of CACHE_KEYS) {
-          if (key.includes(cacheKey)) {
-            hasCacheKey = true
-            break
-          }
-        }
-
-        // Cache only the keys that are in CACHE_KEYS
-        if (hasCacheKey) {
-          cacheEntries.push([key, value])
-        }
-      }
-      const appCache = JSON.stringify(cacheEntries)
-      localStorage.setItem('app-cache', appCache)
-      localStorage.setItem('app-cache-timestamp', Date.now().toString())
+  const persist = () => {
+    if (!isLoggedIn()) {
+      localStorage.removeItem(siteKey('app-cache'))
+      localStorage.removeItem(siteKey('app-cache-timestamp'))
+      return
     }
+    const cacheEntries = [...map].filter(([key]) => isCachedKey(key))
+    localStorage.setItem(siteKey('app-cache'), JSON.stringify(cacheEntries))
+    localStorage.setItem(siteKey('app-cache-timestamp'), Date.now().toString())
+  }
+
+  window.addEventListener('beforeunload', persist)
+  // Backgrounding is the last signal before the OS kills a native app.
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) persist()
   })
 
   // We still use the map for write & read for performance.

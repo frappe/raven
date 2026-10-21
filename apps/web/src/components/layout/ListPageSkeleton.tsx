@@ -4,7 +4,7 @@ import { MessageListSkeleton } from "@components/features/dm-channel/DirectMessa
 import { Skeleton } from "@components/ui/skeleton"
 
 /**
- * Suspense fallback for the lazy list+pane pages (Search, Saved Messages) — a
+ * Suspense fallback for the lazy list+pane pages (Search, Later) — a
  * silhouette of their shared split layout: list column (full width on mobile,
  * ~45% on desktop) with header, search slot and message-shaped rows, an empty
  * right pane on desktop, and the tab bar on mobile.

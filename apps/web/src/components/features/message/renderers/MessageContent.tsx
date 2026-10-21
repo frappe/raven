@@ -10,12 +10,19 @@ import { MessageImages } from "./MessageImages"
 import { MessageFiles } from "./MessageFiles"
 import { MessageVideo } from "./MessageVideo"
 import { MessageAudio } from "./MessageAudio"
-import RichTextRenderer, { isJumbomojiHtml } from "./RichTextRenderer"
+import RichTextRenderer, { isJumbomojiHtml, parseBodySegments } from "./RichTextRenderer"
+import { messageBubbleClass } from "./MessageRow"
+import { cn } from "@lib/utils"
 import { MessageLinkPreview } from "./LinkPreview"
 import { PollMessageContent } from "./PollMessageContent"
 import SearchTextRenderer from "./SearchTextRenderer"
 import { MessageReactionsRow } from "./MessageReactions"
+import { DocumentLinkRenderer } from "./DocumentLinkRenderer"
 import { getAttachmentKind } from "@utils/attachmentPreview"
+import { escapeHtml } from "@utils/htmlUtils"
+import { parseRepliedMessageDetails } from "@utils/messageUtils"
+import { useCustomEmojiShortcodes } from "@lib/customEmojiShortcodes"
+import type { RepliedMessageDetails } from "./RepliedMessagePreview"
 import _ from "@lib/translate"
 import { Badge } from "@components/ui/badge"
 
@@ -25,14 +32,45 @@ import { Badge } from "@components/ui/badge"
  *  - sqlite FTS search snippets are plain text, optionally with `<mark>`
  *    highlights (which would begin with `<mark`) → SearchTextRenderer
  */
-export const MessageBody = ({ content }: { content?: string | null }) => {
+export const MessageBody = ({ content, bubble = false }: { content?: string | null; bubble?: boolean }) => {
     if (!content) return null
     const trimmed = content.trim()
     if (!trimmed) return null
     // jumbomoji: emoji-only messages render big in the stream (not in compact
     // contexts like notifications, which use RichTextRenderer directly).
-    if (trimmed.startsWith('<') && !trimmed.startsWith('<mark')) return <RichTextRenderer html={trimmed} jumbomoji />
+    if (trimmed.startsWith('<') && !trimmed.startsWith('<mark')) {
+        if (bubble) return <BubbledBody html={trimmed} />
+        return <RichTextRenderer html={trimmed} jumbomoji />
+    }
+    if (bubble) return <div className={messageBubbleClass}><SearchTextRenderer content={trimmed} /></div>
     return <SearchTextRenderer content={trimmed} />
+}
+
+/**
+ * The Left-Right text body: iMessage style. Text runs get a bubble each,
+ * code blocks and lone GIFs render bare between them, and an emoji-only
+ * message renders big with no bubble at all. The parent column (see
+ * MessageContent's bubble mode) aligns the pieces left or right.
+ */
+const BubbledBody = ({ html }: { html: string }) => {
+    const shortcodes = useCustomEmojiShortcodes(html)
+    const segments = useMemo(() => parseBodySegments(html, shortcodes), [html, shortcodes])
+    return (
+        <>
+            {segments.map((segment, index) => (
+                <div
+                    key={index}
+                    className={cn(
+                        "tiptap max-w-full min-w-0",
+                        segment.jumbo && "tiptap--jumbomoji",
+                        !segment.standalone && messageBubbleClass,
+                    )}
+                >
+                    {segment.node}
+                </div>
+            ))}
+        </>
+    )
 }
 
 /**
@@ -41,7 +79,7 @@ export const MessageBody = ({ content }: { content?: string | null }) => {
  * message and for a batch's caption-bearing member, so editing works the same way
  * everywhere the body is shown.
  */
-export const EditableMessageBody = ({ message }: { message: Message }) => {
+export const EditableMessageBody = ({ message, bubble = false }: { message: Message; bubble?: boolean }) => {
     // Subscribe to a derived boolean (is THIS message being edited?) rather than the
     // raw id, so toggling an edit only re-renders the affected body — not every body
     // sharing the channel's editing atom.
@@ -51,14 +89,11 @@ export const EditableMessageBody = ({ message }: { message: Message }) => {
             [message.channel_id, message.name],
         ),
     )
+    // The editor is never bubbled — it takes the full width while editing.
     if (isEditing) return <EditMessageComposer message={message} />
-    if (message.is_edited === 1 && message.text?.trim()) return <EditedMessageBody text={message.text} />
-    return <MessageBody content={message.text} />
+    if (message.is_edited === 1 && message.text?.trim()) return <EditedMessageBody text={message.text} bubble={bubble} />
+    return <MessageBody content={message.text} bubble={bubble} />
 }
-
-/** Escape the translated label before it goes into the message HTML. */
-const escapeHtml = (value: string) =>
-    value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
 
 /**
  * The body with a small "(edited)" marker, Slack style. A message ending in a
@@ -69,18 +104,19 @@ const escapeHtml = (value: string) =>
  * rendered inside them. A jumbomoji paragraph also takes the separate line:
  * added text would fail the emoji-only check and shrink the emojis.
  */
-const EditedMessageBody = ({ text }: { text: string }) => {
+const EditedMessageBody = ({ text, bubble = false }: { text: string; bubble?: boolean }) => {
     const label = `(${_("edited")})`
+    const shortcodes = useCustomEmojiShortcodes(text)
     const injected = useMemo(() => {
         const trimmed = text.trim()
-        if (!trimmed.endsWith("</p>") || isJumbomojiHtml(trimmed)) return null
+        if (!trimmed.endsWith("</p>") || isJumbomojiHtml(trimmed, shortcodes)) return null
         return `${trimmed.slice(0, -"</p>".length)}<span data-edited>${escapeHtml(label)}</span></p>`
-    }, [text, label])
+    }, [text, label, shortcodes])
 
-    if (injected) return <MessageBody content={injected} />
+    if (injected) return <MessageBody content={injected} bubble={bubble} />
     return (
         <>
-            <MessageBody content={text} />
+            <MessageBody content={text} bubble={bubble} />
             <div className="text-sm text-ink-gray-5">{label}</div>
         </>
     )
@@ -126,24 +162,42 @@ const MessageMedia = ({ message, fileUrl }: { message: Message; fileUrl: string 
     }
 }
 
-export const MessageContent = ({ message, showLinkPreview = true }: { message: Message, showLinkPreview?: boolean }) => {
+/** `showLinkedDocument` off for compact surfaces (thread lists, result blocks)
+ *  that render their own inline doc link or want no card. `showReactions` off
+ *  when the caller renders the reactions row outside the content (Left-Right).
+ *  `interactivePoll` off in list rows, where the row is the tap target and a
+ *  click must open the row, not cast a vote.
+ *
+ *  `bubble` turns on the iMessage layout: only TEXT gets a bubble; media,
+ *  polls, cards, code blocks and GIFs render bare, stacked in a column that
+ *  aligns "start" (others) or "end" (own messages). */
+export const MessageContent = ({ message, showLinkPreview = true, showLinkedDocument = true, showReactions = true, interactivePoll = true, bubble }: { message: Message, showLinkPreview?: boolean, showLinkedDocument?: boolean, showReactions?: boolean, interactivePoll?: boolean, bubble?: "start" | "end" }) => {
     const messageFile = "file" in message ? (message.file as string | undefined) : undefined
 
-    const repliedMessageDetails = useMemo(() => {
-        if (message.replied_message_details) {
-            try {
-                return JSON.parse(message.replied_message_details)
-            } catch {
-                return null
-            }
-        }
-        return null
-    }, [message.replied_message_details])
+    // String from fetches, OBJECT from realtime/ack payloads — the shared
+    // parser accepts both (a bare JSON.parse dropped live receivers' quotes).
+    const repliedMessageDetails = useMemo(
+        () => parseRepliedMessageDetails<RepliedMessageDetails>(message.replied_message_details),
+        [message.replied_message_details],
+    )
 
     // min-w-0: without it this flex column can't shrink below its content, so
-    // fixed-width media overflows narrow (mobile) columns and gets clipped
+    // fixed-width media overflows narrow (mobile) columns and gets clipped.
+    // Bubble mode is a flex column so each piece (bubble, card, media) keeps
+    // its own width and the column aligns them to the message's side. The
+    // editor escape lets the inline edit box take the full width back.
     return (
-        <div className="flex-1 min-w-0 space-y-1">
+        <div
+            className={cn(
+                "flex-1 min-w-0",
+                bubble
+                    ? cn(
+                        "flex max-w-full flex-col gap-1 has-[[data-raven-editor]]:w-full",
+                        bubble === "end" ? "items-end" : "items-start",
+                    )
+                    : "space-y-1",
+            )}
+        >
             <MessageAttributes message={message} />
 
             {message.linked_message && repliedMessageDetails && (
@@ -157,23 +211,34 @@ export const MessageContent = ({ message, showLinkPreview = true }: { message: M
             {/* Media dispatch is by file EXTENSION, not message_type (a video
                 arrives as message_type "File" but should render as a player) */}
             {message.message_type === "Poll" ? (
-                <PollMessageContent message={message} />
+                <PollMessageContent message={message} interactive={interactivePoll} />
             ) : messageFile ? (
                 <>
                     <MessageMedia message={message} fileUrl={messageFile} />
                     {/* Caption (editable inline). Hidden when empty unless being edited. */}
-                    {(message.text || undefined) && <EditableMessageBody message={message} />}
+                    {(message.text || undefined) && <EditableMessageBody message={message} bubble={!!bubble} />}
                 </>
             ) : (
                 // Render the HTML body (message.text), NOT message.content — the
                 // latter is the backend's derived plain-text (search/teasers).
-                <EditableMessageBody message={message} />
+                <EditableMessageBody message={message} bubble={!!bubble} />
             )}
 
             {/* Preview for the first link in the body (YouTube embed for now) */}
             {showLinkPreview && <MessageLinkPreview message={message} />}
 
-            <MessageReactionsRow message={message} />
+            {/* Linked document card sits ABOVE the reactions — reactions are always last.
+                In bubble mode the column is fit-content, so the card asks for a fixed
+                width (capped to the column on narrow screens) instead of stretching. */}
+            {showLinkedDocument && message.link_doctype && message.link_document && (
+                <DocumentLinkRenderer
+                    doctype={message.link_doctype}
+                    docname={message.link_document}
+                    className={bubble ? "w-96 max-w-full" : undefined}
+                />
+            )}
+
+            {showReactions && <MessageReactionsRow message={message} />}
         </div>
     )
 }

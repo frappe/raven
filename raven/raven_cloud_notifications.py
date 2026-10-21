@@ -9,7 +9,7 @@ from raven.utils import make_api_call
 
 
 def get_site_name():
-	return urlparse(frappe.utils.get_url()).hostname
+	return urlparse(frappe.utils.get_url(allow_header_override=False)).hostname
 
 
 # ----- Token Management -----

@@ -1,7 +1,8 @@
-# Copyright (c) 2024, The Commit Company and contributors
+# Copyright (c) 2026, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
 import json
+import re
 
 import frappe
 from frappe.model.document import Document
@@ -18,7 +19,7 @@ class RavenSchedulerEvent(Document):
 
 		bot: DF.Link
 		channel: DF.Link
-		content: DF.SmallText
+		content: DF.HTMLEditor
 		cron_expression: DF.Data | None
 		disabled: DF.Check
 		dm: DF.Link | None
@@ -78,10 +79,17 @@ class RavenSchedulerEvent(Document):
 		"""
 		Get the script for the Scheduler Event
 		"""
-		# bot = frappe.get_doc('Raven Bot', self.bot)
-		# bot.send_message(self.channel, {'text': self.content})
-		# return code snippet with bot & content as values
-		content = json.dumps(self.content)
+		# Messages are HTML. New records come from a rich-text editor and are stored as
+		# HTML already; sanitising strips anything a message must not carry (scripts, etc).
+		# Older records hold plain text from a textarea: each line becomes its own
+		# paragraph, the shape the composer saves multi-line text in, with "<" escaped.
+		content_html = self.content or ""
+		if re.search(r"<[a-zA-Z]", content_html):
+			content_html = frappe.utils.sanitize_html(content_html)
+		else:
+			lines = content_html.splitlines() or [""]
+			content_html = "".join(f"<p>{frappe.utils.escape_html(line)}</p>" for line in lines)
+		content = json.dumps(content_html)
 		script = f"""
 bot = frappe.get_doc('Raven Bot', '{self.bot}')\n
 bot.send_message('{self.channel}', {content})

@@ -5,7 +5,7 @@ import { Spinner } from "./spinner"
 import { cn } from "@lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 disabled:cursor-not-allowed whitespace-nowrap transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none aria-invalid:focus-ring-red aria-invalid:border-outline-red-3",
+  "inline-flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed whitespace-nowrap transition-colors disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none aria-invalid:focus-ring-red aria-invalid:border-outline-red-3",
   {
     variants: {
       variant: {
@@ -32,6 +32,12 @@ const buttonVariants = cva(
       }
     },
     compoundVariants: [
+      // data-[state=open]: Radix stamps data-state="open" on a trigger's child
+      // (DropdownMenuTrigger/PopoverTrigger asChild → this Button). While the
+      // menu is open the pointer sits in the menu, so hover alone would leave
+      // the trigger looking inert — hold each variant's hover treatment
+      // instead. Tooltips can't false-match: their states are delayed-open /
+      // instant-open, never "open".
       // Icon only buttons - Sizes
       {
         isIconButton: true,
@@ -57,49 +63,49 @@ const buttonVariants = cva(
       {
         variant: "solid",
         theme: "gray",
-        className: "text-ink-base bg-surface-gray-10 hover:bg-surface-gray-9 active:bg-surface-gray-8 disabled:bg-surface-gray-2 disabled:text-ink-gray-4"
+        className: "text-ink-base bg-surface-gray-10 hover:bg-surface-gray-9 active:bg-surface-gray-8 data-[state=open]:bg-surface-gray-9 disabled:bg-surface-gray-2 disabled:text-ink-gray-4"
       },
       {
         variant: "solid",
         theme: "red",
-        className: "text-ink-base dark:text-ink-red-10 bg-surface-red-7 hover:bg-surface-red-8 active:bg-surface-red-9 disabled:bg-surface-red-2 disabled:text-ink-red-5"
+        className: "text-ink-base dark:text-ink-red-10 bg-surface-red-7 hover:bg-surface-red-8 active:bg-surface-red-9 data-[state=open]:bg-surface-red-8 disabled:bg-surface-red-2 disabled:text-ink-red-5"
       },
       // Subtle Buttons
       {
         variant: "subtle",
         theme: "gray",
-        className: "text-ink-gray-8 bg-surface-gray-2 hover:bg-surface-gray-3 active:bg-surface-gray-4 disabled:bg-surface-gray-2 disabled:text-ink-gray-4"
+        className: "text-ink-gray-8 bg-surface-gray-2 hover:bg-surface-gray-3 active:bg-surface-gray-4 data-[state=open]:bg-surface-gray-3 disabled:bg-surface-gray-2 disabled:text-ink-gray-4"
       },
       {
         variant: "subtle",
         theme: "red",
-        className: "text-ink-red-8 bg-surface-red-2 hover:bg-surface-red-3 active:bg-surface-red-4 disabled:bg-surface-red-2 disabled:text-ink-red-5"
+        className: "text-ink-red-8 bg-surface-red-2 hover:bg-surface-red-3 active:bg-surface-red-4 data-[state=open]:bg-surface-red-3 disabled:bg-surface-red-2 disabled:text-ink-red-5"
       },
       // Outline buttons
       {
         variant: "outline",
         theme: "gray",
         className:
-          "text-ink-gray-8 border-outline-gray-2 hover:border-outline-gray-3 active:border-outline-gray-3 active:bg-surface-gray-4 disabled:bg-surface-gray-2 disabled:text-ink-gray-4 disabled:border-outline-gray-2"
+          "text-ink-gray-8 border-outline-gray-2 hover:border-outline-gray-3 active:border-outline-gray-3 active:bg-surface-gray-4 data-[state=open]:border-outline-gray-3 disabled:bg-surface-gray-2 disabled:text-ink-gray-4 disabled:border-outline-gray-2"
       },
       {
         variant: "outline",
         theme: "red",
         className:
-          "text-ink-red-8 border-outline-red-1 hover:border-outline-red-3 active:border-outline-red-3 active:bg-surface-red-3 disabled:bg-surface-red-2 disabled:text-ink-red-5 disabled:border-outline-red-1"
+          "text-ink-red-8 border-outline-red-1 hover:border-outline-red-3 active:border-outline-red-3 active:bg-surface-red-3 data-[state=open]:border-outline-red-3 disabled:bg-surface-red-2 disabled:text-ink-red-5 disabled:border-outline-red-1"
       },
       // Ghost buttons
       {
         variant: "ghost",
         theme: "gray",
         className:
-          "text-ink-gray-8 hover:bg-surface-gray-3 active:bg-surface-gray-4 disabled:text-ink-gray-4"
+          "text-ink-gray-8 hover:bg-surface-gray-3 active:bg-surface-gray-4 data-[state=open]:bg-surface-gray-3 disabled:text-ink-gray-4"
       },
       {
         variant: "ghost",
         theme: "red",
         className:
-          "text-ink-red-8 hover:bg-surface-red-3 active:bg-surface-red-4 disabled:text-ink-red-5"
+          "text-ink-red-8 hover:bg-surface-red-3 active:bg-surface-red-4 data-[state=open]:bg-surface-red-3 disabled:text-ink-red-5"
       },
       //Link buttons
       {

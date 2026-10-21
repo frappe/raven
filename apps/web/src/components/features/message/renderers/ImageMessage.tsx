@@ -2,6 +2,7 @@ import { useState, useRef } from "react"
 import { useHotkeys } from "react-hotkeys-hook"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@lib/utils"
+import { FileImage } from "@components/common/FileImage"
 import { Button } from "@components/ui/button"
 import { Badge } from "@components/ui/badge"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip"
@@ -161,7 +162,7 @@ export const ImageCarousel = ({ images, onImageClick }: { images: ImageFile[], o
                                     )}
                                     onClick={() => setCurrentIndex(index)}
                                 >
-                                    <img
+                                    <FileImage
                                         src={image.file_thumbnail || image.file_url}
                                         alt={image.file_name}
                                         className="w-12 h-12 object-cover"

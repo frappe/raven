@@ -21,6 +21,12 @@ function trimNodes(nodes: ChildNode[]) {
     }
 }
 
+/** Escape text for interpolation into an HTML string. Attribute-safe — quotes
+ *  included, so it also covers `href="${…}"`-style interpolation. */
+export function escapeHtml(raw: string): string {
+    return raw.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c)
+}
+
 export function trimNode<T extends Node>(node: T): T {
     const nodes = Array.from(node.childNodes)
 

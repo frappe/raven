@@ -3,6 +3,7 @@ import type { Message } from "@raven/types/common/Message"
 import {
     applyInitialPage,
     applyNewerPage,
+    applyWindowRefresh,
     applyOlderPage,
     patchMessage,
     removeMessage,
@@ -177,5 +178,79 @@ describe("pagination pages", () => {
         expect(next.order.length).toBe(MAX_WINDOW_SIZE)
         expect(next.hasNewerMessages).toBe(true)
         expect(next.order[0]).toBe("old0")
+    })
+})
+
+describe("applyWindowRefresh", () => {
+    const ids = (state: ChannelMessagesState) => state.order
+
+    it("replaces changed messages and keeps unchanged objects", () => {
+        const state = readyState([msg("a", 1), msg("b", 2), msg("c", 3)])
+        const edited = msg("b", 2, { text: "edited", modified: "2026-06-10 11:00:00.000000" })
+        const next = applyWindowRefresh(state, { messages: [msg("c", 3), edited, msg("a", 1)] }, ids(state))
+        expect(next.byId.get("a")).toBe(state.byId.get("a"))
+        expect(next.byId.get("c")).toBe(state.byId.get("c"))
+        expect(next.byId.get("b")?.text).toBe("edited")
+        expect(next.order).toEqual(["a", "b", "c"])
+    })
+
+    it("takes a reaction change even though modified did not move", () => {
+        const state = readyState([msg("a", 1), msg("b", 2)])
+        const reacted = msg("b", 2, { message_reactions: '{"👍":{"count":1}}' })
+        const next = applyWindowRefresh(state, { messages: [reacted, msg("a", 1)] }, ids(state))
+        expect(next.byId.get("b")?.message_reactions).toBe('{"👍":{"count":1}}')
+        expect(next.byId.get("a")).toBe(state.byId.get("a"))
+    })
+
+    it("keeps a newer local edit over an older server copy", () => {
+        const local = msg("a", 1, { text: "newer", modified: "2026-06-10 12:00:00.000000" })
+        const state = readyState([local])
+        const next = applyWindowRefresh(state, { messages: [msg("a", 1, { text: "older" })] }, ids(state))
+        expect(next).toBe(state)
+    })
+
+    it("removes a requested message the server did not send back", () => {
+        const state = readyState([msg("a", 1), msg("b", 2), msg("c", 3)])
+        const next = applyWindowRefresh(state, { messages: [msg("c", 3), msg("a", 1)] }, ids(state))
+        expect(next.order).toEqual(["a", "c"])
+    })
+
+    it("removes the newest messages when they were the ones deleted", () => {
+        const state = readyState([msg("a", 1), msg("b", 2), msg("c", 3)])
+        const next = applyWindowRefresh(state, { messages: [msg("a", 1)] }, ids(state))
+        expect(next.order).toEqual(["a"])
+    })
+
+    it("does not bring back a message deleted during the request", () => {
+        const before = readyState([msg("a", 1), msg("b", 2)])
+        const state = removeMessage(before, "b")
+        const next = applyWindowRefresh(state, { messages: [msg("b", 2), msg("a", 1)] }, ids(before))
+        expect(next.order).toEqual(["a"])
+    })
+
+    it("keeps a message that arrived during the request", () => {
+        const before = readyState([msg("a", 1), msg("b", 2)])
+        const state = upsertMessage(before, msg("live", 9))
+        const next = applyWindowRefresh(state, { messages: [msg("b", 2), msg("a", 1)] }, ids(before))
+        expect(next.order).toEqual(["a", "b", "live"])
+    })
+
+    it("appends what arrived and keeps sends still in flight", () => {
+        const optimistic = { ...msg("tmp", 10), _status: "sending" } as unknown as Message
+        const state = readyState([msg("a", 1), msg("b", 2), optimistic])
+        const next = applyWindowRefresh(state, { messages: [msg("d", 4), msg("b", 2), msg("a", 1)] }, ids(state))
+        expect(next.order).toEqual(["a", "b", "d", "tmp"])
+    })
+
+    it("marks the window behind the live edge when more arrived than fit", () => {
+        const state = readyState([msg("a", 1)])
+        const next = applyWindowRefresh(state, { messages: [msg("a", 1)], has_new_messages: true }, ids(state))
+        expect(next.hasNewerMessages).toBe(true)
+    })
+
+    it("returns the same state when nothing changed", () => {
+        const state = readyState([msg("a", 1), msg("b", 2)])
+        expect(applyWindowRefresh(state, { messages: [msg("b", 2), msg("a", 1)] }, ids(state))).toBe(state)
+        expect(applyWindowRefresh(state, { messages: [] }, ids(state))).toBe(state)
     })
 })

@@ -17,7 +17,7 @@ type NotificationNavState = {
 
 /**
  * Router glue for the chat-pane child routes — `/notifications/:channelID/:messageID?`,
- * `/search/:channelID/:messageID` and `/saved-messages/:channelID/:messageID`. The pane
+ * `/search/:channelID/:messageID` and `/later/:channelID/:messageID`. The pane
  * is a ROUTE, so opening a chat is a history entry: the mobile back-swipe closes it
  * instead of leaving the host page, and a refresh restores the open chat.
  */

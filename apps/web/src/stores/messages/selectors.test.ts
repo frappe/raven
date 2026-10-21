@@ -48,6 +48,22 @@ describe("selectStreamBlocks", () => {
         expect(third.is_continuation).toBe(0)
     })
 
+    it("ends a group 10 minutes after its first message even when every step is within 2 minutes", () => {
+        const state = stateOf([
+            msg("a", "2026-06-10 10:00:00.000000"),
+            msg("b", "2026-06-10 10:01:30.000000"),
+            msg("c", "2026-06-10 10:03:00.000000"),
+            msg("d", "2026-06-10 10:04:30.000000"),
+            msg("e", "2026-06-10 10:06:00.000000"),
+            msg("f", "2026-06-10 10:07:30.000000"),
+            msg("g", "2026-06-10 10:09:00.000000"),
+            msg("h", "2026-06-10 10:10:30.000000"),
+            msg("i", "2026-06-10 10:12:00.000000"),
+        ])
+        const blocks = selectStreamBlocks(state).slice(1) as Message[]
+        expect(blocks.map((b) => b.is_continuation)).toEqual([0, 1, 1, 1, 1, 1, 1, 0, 1])
+    })
+
     it("breaks continuation on sender change, system messages, and day boundaries", () => {
         const state = stateOf([
             msg("a", "2026-06-10 10:00:00.000000"),

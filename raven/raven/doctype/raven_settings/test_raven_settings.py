@@ -1,4 +1,4 @@
-# Copyright (c) 2023, The Commit Company and Contributors
+# Copyright (c) 2026, Frappe Technologies Pvt. Ltd. and Contributors
 # See license.txt
 
 # import frappe

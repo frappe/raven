@@ -38,13 +38,13 @@ const useCurrentPageLabel = (): string | null => {
     const dmIndex = useMatch({ path: "/dm-channel", end: true })
     const notifications = useMatch({ path: "/notifications", end: false })
     const threads = useMatch({ path: "/threads", end: false })
-    const saved = useMatch({ path: "/saved-messages", end: false })
+    const later = useMatch({ path: "/later", end: false })
     const search = useMatch({ path: "/search", end: false })
 
     // Static pages first — their leading segment would otherwise read as a workspace
     if (notifications) return _("Notifications")
     if (threads) return _("Threads")
-    if (saved) return _("Saved Messages")
+    if (later) return _("Later")
     if (search) return _("Search")
 
     if (dmMatch) {

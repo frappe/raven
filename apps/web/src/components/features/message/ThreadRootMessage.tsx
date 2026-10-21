@@ -4,6 +4,7 @@ import { Button } from "@components/ui/button"
 import { UserAvatar } from "@components/features/message/UserAvatar"
 import { EditableMessageBody, MessageContent } from "@components/features/message/renderers/MessageContent"
 import { BatchMediaGroups } from "@components/features/message/renderers/BatchMessageItem"
+import { DocumentLinkInline, DocumentLinkRenderer } from "@components/features/message/renderers/DocumentLinkRenderer"
 import RichTextRenderer from "@components/features/message/renderers/RichTextRenderer"
 import { useUser } from "@hooks/useUser"
 import { useMessageBatch } from "@hooks/useMessageBatch"
@@ -77,6 +78,9 @@ export const ThreadRootMessage = ({ threadID, parentID }: { threadID: string; pa
     // BatchMessageItem). For a single root this is just the root itself.
     const captionMember = members.find((member) => member.text)
     const fileCount = members.filter((member) => messageFile(member)).length
+    // A linked document rides one member (same rule as BatchMessageItem).
+    // Covers the single-root case too: members is then a list of one.
+    const linkedDocMember = members.find((member) => member.link_doctype && member.link_document)
 
     const previewHtml = useMemo(() => (captionMember?.text ?? "").trim(), [captionMember?.text])
 
@@ -124,8 +128,15 @@ export const ThreadRootMessage = ({ threadID, parentID }: { threadID: string; pa
                                 <div className="space-y-2">
                                     <BatchMediaGroups messages={members} />
                                     {captionMember && <EditableMessageBody message={captionMember} />}
+                                    {linkedDocMember && (
+                                        <DocumentLinkRenderer
+                                            doctype={linkedDocMember.link_doctype!}
+                                            docname={linkedDocMember.link_document!}
+                                        />
+                                    )}
                                 </div>
                             ) : (
+                                // MessageContent renders the linked-document card itself.
                                 <MessageContent message={message} />
                             )
                         ) : (
@@ -152,6 +163,15 @@ export const ThreadRootMessage = ({ threadID, parentID }: { threadID: string; pa
                                     }
                                 }}
                             >
+                                {/* Collapsed: the doctype + id line is enough — the full
+                                    card (and its fetches) waits for expand. */}
+                                {linkedDocMember && (
+                                    <DocumentLinkInline
+                                        doctype={linkedDocMember.link_doctype!}
+                                        docname={linkedDocMember.link_document!}
+                                        className="pb-1"
+                                    />
+                                )}
                                 {previewHtml ? (
                                     // Collapsed but RICH: the real HTML body, height-capped.
                                     // Links and mentions stay clickable without expanding — a
@@ -180,10 +200,11 @@ export const ThreadRootMessage = ({ threadID, parentID }: { threadID: string; pa
                                             <RichTextRenderer html={previewHtml} />
                                         </div>
                                     </>
-                                ) : (
+                                ) : isBatch || messageFile(message) || !linkedDocMember ? (
                                     // No caption → the plain one-line teaser: an attachment
                                     // count for a batch, the file name / poll question for a
-                                    // single root.
+                                    // single root. A document-only root skips it — the
+                                    // doctype + id line above already says everything.
                                     <p className="flex items-center gap-1 truncate md:text-p-base text-p-lg text-ink-gray-7">
                                         {(isBatch || messageFile(message)) && (
                                             <Paperclip className="size-3.5 shrink-0 text-ink-gray-5" />
@@ -192,7 +213,7 @@ export const ThreadRootMessage = ({ threadID, parentID }: { threadID: string; pa
                                             {isBatch ? attachmentCountLabel(fileCount) : rootPreviewText(message)}
                                         </span>
                                     </p>
-                                )}
+                                ) : null}
                             </div>
                         )}
                     </div>

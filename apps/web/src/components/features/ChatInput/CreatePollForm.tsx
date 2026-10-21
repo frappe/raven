@@ -174,7 +174,18 @@ export const CreatePollForm = ({ channelID, onClose }: CreatePollFormProps) => {
 
     return (
         <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
+            {/* stopPropagation is load-bearing. The poll dialog lives inside
+                ChatInput's own form in the REACT tree (the portal doesn't matter
+                to synthetic events), so a bubbled submit would run handleSend
+                and fire any drafted message when the poll is created. */}
+            <form
+                onSubmit={(event) => {
+                    event.stopPropagation()
+                    form.handleSubmit(onSubmit)(event)
+                }}
+                noValidate
+                className="flex flex-col gap-4"
+            >
                 <SmallTextField
                     name="question"
                     label={_('Question')}

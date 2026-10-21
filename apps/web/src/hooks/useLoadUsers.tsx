@@ -1,7 +1,29 @@
 import { FrappeConfig, FrappeContext, useFrappeDocTypeEventListener } from "frappe-react-sdk"
 import { useDebounceCallback } from "usehooks-ts"
 import { UserData, db } from "@db"
+import { usersStore } from "@stores/usersStore"
 import { useCallback, useContext, useEffect, useRef, useState } from "react"
+
+/**
+ * IndexedDB in privacy browsers (Brave shields, DuckDuckGo mobile, private
+ * windows) can reject — or WEDGE, with opens that never settle. Nothing that
+ * touches Dexie may gate the app, so every wait on it is capped.
+ */
+const IDB_TIMEOUT_MS = 3000
+
+/** Run a Dexie operation with a deadline; a failure or timeout returns the
+ *  fallback instead of throwing or hanging. The abandoned operation may still
+ *  finish later — that's harmless for all our uses. */
+const idbAttempt = async <T,>(work: () => Promise<T>, fallback: T): Promise<T> => {
+    try {
+        return await Promise.race([
+            work(),
+            new Promise<T>((resolve) => setTimeout(() => resolve(fallback), IDB_TIMEOUT_MS)),
+        ])
+    } catch {
+        return fallback
+    }
+}
 
 /** Coalesce window for batching Raven User changes before fetching them. */
 const REFRESH_DEBOUNCE_MS = 300
@@ -43,9 +65,20 @@ let usersInitialLoad: Promise<void> | null = null
 
 const loadAllUsers = async (call: FrappeConfig["call"]) => {
     const res = await call.get<{ message: UserData[] }>("raven.api.raven_users.get_list")
-    // Full initial load: clear first so users removed since last session drop out
-    await db.users.clear()
-    await db.users.bulkPut(res.message ?? [])
+    const users = res.message ?? []
+    // Persistence is BEST-EFFORT. On browsers where IndexedDB is blocked or
+    // wedged, the fetch above still succeeded — seed the in-memory store
+    // directly so the app works fully; it just loses cross-session persistence.
+    const persisted = await idbAttempt(async () => {
+        // Full initial load: clear first so users removed since last session drop out
+        await db.users.clear()
+        await db.users.bulkPut(users)
+        return true
+    }, false)
+    if (!persisted) {
+        console.error("Could not persist users to IndexedDB — seeding the in-memory store directly")
+        usersStore.seed(users)
+    }
 }
 
 const ensureUsersLoaded = (call: FrappeConfig["call"]) => {
@@ -68,10 +101,14 @@ export const useLoadUsers = () => {
         let cancelled = false
 
         const init = async () => {
-            // Ready immediately if the users table is already populated from a prior session
-            const count = await db.users.count()
-            if (count > 0 && !cancelled) setIsReady(true)
             try {
+                // Ready immediately if the users table is already populated from a
+                // prior session. This await used to sit OUTSIDE the try with no
+                // deadline — a rejecting or wedged IndexedDB skipped the finally
+                // and stranded the whole app on the skeleton (the DuckDuckGo /
+                // Brave mobile "keeps loading" reports).
+                const count = await idbAttempt(() => db.users.count(), 0)
+                if (count > 0 && !cancelled) setIsReady(true)
                 // Deduped at module level — runs the actual fetch once per page load.
                 await ensureUsersLoaded(call)
             } catch (error) {

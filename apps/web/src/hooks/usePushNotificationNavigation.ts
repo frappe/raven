@@ -1,3 +1,4 @@
+import { siteBaseName, siteOrigin } from "@lib/site"
 import { useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { consumePendingNotificationClick } from "@lib/push"
@@ -30,11 +31,11 @@ export const usePushNotificationNavigation = () => {
             } catch {
                 return
             }
-            if (target.origin !== window.location.origin) return
+            if (target.origin !== siteOrigin()) return
 
-            // Strip the router basename (e.g. /raven) — navigate() re-adds it.
+            // Strip the site's app base (e.g. /raven) — navigate() re-adds the router's own.
             let path = target.pathname
-            const base = import.meta.env.VITE_BASE_NAME
+            const base = siteBaseName()
             if (base && path.startsWith(`/${base}`)) path = path.slice(base.length + 1) || "/"
 
             navigate(path + target.search + target.hash)

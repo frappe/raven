@@ -1,5 +1,6 @@
 import { useContext } from "react"
 import { FrappeConfig, FrappeContext } from "frappe-react-sdk"
+import { CircleAlertIcon } from "lucide-react"
 import type { Message } from "@raven/types/common/Message"
 import { retrySend, discardSend } from "@stores/messages/messageSender"
 import { isOptimistic } from "@stores/messages/types"
@@ -18,6 +19,26 @@ export const optimisticRowClass = (message: Message): string => {
         return "bg-surface-red-1 hover:bg-surface-red-2 shadow-[inset_2px_0_0_0_var(--outline-red-4)] rounded-l-none"
     }
     return "opacity-50"
+}
+
+/**
+ * The Left-Right variant of the row treatment: dim while sending, nothing when
+ * failed. A red row wash doesn't work there — the bubble paints over it — so a
+ * failed send shows as an icon beside the bubble (FailedSendIndicator) instead.
+ */
+export const sendingDimClass = (message: Message): string =>
+    isOptimistic(message) && message._status !== "failed" ? "opacity-50" : ""
+
+/** Red mark beside an own message whose send failed — like iMessage's error
+ *  icon. Retry/Discard live in the OptimisticStatus footer below the message. */
+export const FailedSendIndicator = ({ message }: { message: Message }) => {
+    if (!isOptimistic(message) || message._status !== "failed") return null
+    return (
+        <CircleAlertIcon
+            className="size-4 shrink-0 text-ink-red-6"
+            aria-label={_("Failed to send")}
+        />
+    )
 }
 
 /** Quiet inline footer for a failed send: retry (re-sends the same batch) or discard. */

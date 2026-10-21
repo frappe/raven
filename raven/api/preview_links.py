@@ -26,6 +26,8 @@ def get_preview_link(urls: list[str] | str):
 	if not urls or urls == "[]":
 		return []
 
+	frappe.only_for("Raven User")
+
 	if isinstance(urls, str):
 		urls = json.loads(urls)
 

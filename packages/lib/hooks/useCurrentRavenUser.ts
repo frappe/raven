@@ -5,7 +5,7 @@ import { useFrappeGetCall } from 'frappe-react-sdk'
 const useCurrentRavenUser = () => {
 
     const isMobile = useIsMobile()
-    const { data, mutate } = useFrappeGetCall<{ message: RavenUser }>('raven.api.raven_users.get_current_raven_user',
+    const { data, error, isLoading, mutate } = useFrappeGetCall<{ message: RavenUser }>('raven.api.raven_users.get_current_raven_user',
         undefined,
         'my_profile',
         {
@@ -18,6 +18,8 @@ const useCurrentRavenUser = () => {
 
     return {
         myProfile: data?.message,
+        error,
+        isLoading,
         mutate
     }
 

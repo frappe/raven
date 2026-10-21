@@ -42,5 +42,5 @@ bench new-site dev.localhost \
 bench --site dev.localhost set-config developer_mode 1
 bench --site dev.localhost clear-cache
 bench use dev.localhost
-bench get-app https://github.com/The-Commit-Company/Raven.git
+bench get-app https://github.com/frappe/Raven.git
 bench --site dev.localhost install-app raven

@@ -1,6 +1,6 @@
 import { useState } from "react"
+import useCreateHotkey from "@hooks/useCreateHotkey"
 import { Controller, useForm } from "react-hook-form"
-import { useFrappeCreateDoc, useFrappeFileUpload, useFrappeUpdateDoc, useSWRConfig } from "frappe-react-sdk"
 import { toast } from "sonner"
 import { PlusIcon } from "lucide-react"
 import { Button } from "@components/ui/button"
@@ -20,19 +20,14 @@ import { Label } from "@components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@components/ui/radio-group"
 import { FileDropzone } from "@components/ui/file-dropzone"
 import ErrorBanner from "@components/ui/error-banner"
-import { Spinner } from "@components/ui/spinner"
 import { hasRole } from "@lib/permissions"
-import type { RavenWorkspace } from "@raven/types/Raven/RavenWorkspace"
+import { useCreateWorkspace, type WorkspaceFormData } from "@components/features/workspaces/useCreateWorkspace"
 import _ from "@lib/translate"
 
-/** Extends the generated type with the field that exists in the DocType but is not yet in the TS definition. */
-type WorkspaceFormData = RavenWorkspace & {
-    only_admins_can_create_channels?: 0 | 1
-}
-
-/** "Create" in the Workspaces panel header; jumps to the new workspace's detail view on success. */
-const CreateWorkspaceButton = ({ onCreated }: { onCreated: (workspaceID: string) => void }) => {
+/** "Create" in the Workspaces panel header; `onCreated` gets the new workspace's ID. */
+const CreateWorkspaceButton = ({ onCreated, label }: { onCreated?: (workspaceID: string) => void; label?: string }) => {
     const [open, setOpen] = useState(false)
+    useCreateHotkey(() => setOpen(true))
     const isRavenAdmin = hasRole("Raven Admin")
 
     return (
@@ -40,7 +35,7 @@ const CreateWorkspaceButton = ({ onCreated }: { onCreated: (workspaceID: string)
             <DialogTrigger asChild>
                 <Button size="sm" disabled={!isRavenAdmin}>
                     <PlusIcon />
-                    {_("Create")}
+                    {label ?? _("Create")}
                 </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[520px]">
@@ -54,7 +49,7 @@ const CreateWorkspaceButton = ({ onCreated }: { onCreated: (workspaceID: string)
                     <AddWorkspaceForm
                         onClose={(workspaceID) => {
                             setOpen(false)
-                            if (workspaceID) onCreated(workspaceID)
+                            if (workspaceID) onCreated?.(workspaceID)
                         }}
                     />
                 )}
@@ -64,36 +59,13 @@ const CreateWorkspaceButton = ({ onCreated }: { onCreated: (workspaceID: string)
 }
 
 const AddWorkspaceForm = ({ onClose }: { onClose: (workspaceID?: string) => void }) => {
-    const { mutate } = useSWRConfig()
     const form = useForm<WorkspaceFormData>({ defaultValues: { type: "Public" } })
     const [logoFiles, setLogoFiles] = useState<File[]>([])
-
-    const { createDoc, loading: creatingDoc, error } = useFrappeCreateDoc<WorkspaceFormData>()
-    const { updateDoc, loading: updatingDoc } = useFrappeUpdateDoc()
-    const { upload, loading: uploadingFile, error: fileError } = useFrappeFileUpload()
-
-    const loading = creatingDoc || uploadingFile || updatingDoc
+    const { createWorkspace, loading, error, uploadError: fileError } = useCreateWorkspace()
 
     const onSubmit = (data: WorkspaceFormData) => {
-        createDoc("Raven Workspace", data)
+        createWorkspace(data, logoFiles[0])
             .then((res) => {
-                const logo = logoFiles[0]
-                if (logo) {
-                    return upload(logo, {
-                        doctype: "Raven Workspace",
-                        docname: res.name,
-                        fieldname: "logo",
-                        otherData: { optimize: "1" },
-                        isPrivate: false,
-                    })
-                        .then((fileRes) => updateDoc("Raven Workspace", res.name, { logo: fileRes.file_url }))
-                        .then(() => res)
-                }
-                return res
-            })
-            .then((res) => {
-                mutate("workspaces_list")
-                mutate("channel_list")
                 toast.success(_("Workspace created"), {
                     description: _("You can now invite members to {0}", [res.workspace_name]),
                     duration: 2000,
@@ -156,9 +128,8 @@ const AddWorkspaceForm = ({ onClose }: { onClose: (workspaceID?: string) => void
                     <DialogClose asChild>
                         <Button size="md" type="button" variant="outline" disabled={loading}>{_("Cancel")}</Button>
                     </DialogClose>
-                    <Button size="md" type="submit" disabled={loading}>
-                        {loading && <Spinner />}
-                        {loading ? _("Saving") : _("Save")}
+                    <Button size="md" type="submit" loading={loading} loadingText={_("Saving...")}>
+                        {_("Save")}
                     </Button>
                 </DialogFooter>
             </form>

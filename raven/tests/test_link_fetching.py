@@ -157,6 +157,26 @@ class TestOpenGraphParse(IntegrationTestCase):
 		self.assertEqual(data["image_height"], 360)
 		self.assertEqual(data["site_name"], "example.com")
 
+	def test_soft_404_page_is_not_a_preview(self):
+		# frappe.io serves unpublished blog posts as HTTP 200 with its error
+		# page — og tags included. That must fail the fetch, not make a card.
+		html = b"""
+		<html><head>
+		<title>404</title>
+		<meta property="og:title" content="Page Not Found"/>
+		<meta property="og:image" content="https://example.com/preview.webp"/>
+		</head></html>
+		"""
+		with self.assertRaises(LinkFetchError):
+			parse_open_graph(html, "https://example.com/blog/unpublished-post")
+
+	def test_article_about_404_pages_still_previews(self):
+		html = (
+			b'<html><head><meta property="og:title" content="Designing a friendly 404 page"/></head></html>'
+		)
+		data = parse_open_graph(html, "https://example.com/post")
+		self.assertEqual(data["title"], "Designing a friendly 404 page")
+
 	def test_title_falls_back_to_title_tag(self):
 		data = parse_open_graph(
 			b"<html><head><title>Plain</title></head></html>", "https://example.com/"

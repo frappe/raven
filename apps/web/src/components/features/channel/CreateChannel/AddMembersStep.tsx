@@ -15,7 +15,8 @@ import { useDebounceValue } from 'usehooks-ts';
 import _ from '@lib/translate'
 import { cn } from '@lib/utils'
 import useCurrentRavenUser from "@raven/lib/hooks/useCurrentRavenUser"
-import { Virtuoso } from 'react-virtuoso'
+import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso'
+import { useResetScrollOnSearch } from '@hooks/useResetScrollOnSearch'
 
 interface AddMembersStepProps {
     selectedUsers: UserData[]
@@ -44,6 +45,8 @@ export const AddMembersStep = ({ selectedUsers, onSelectUsers, workspace, exclud
     // Debounced search text (same pattern as the members drawer's search) — the
     // input below is uncontrolled, this only lags the FILTER, not the typing.
     const [filterText, setFilterText] = useDebounceValue('', 200)
+    // Virtuoso keeps its scroll offset when the filtered list changes. Start each search at the top.
+    const listRef = useResetScrollOnSearch<VirtuosoHandle>(filterText)
 
     // Channel members must come from the channel's WORKSPACE, not the whole org —
     // the local users table holds everyone, so intersect it with the workspace's
@@ -214,6 +217,7 @@ export const AddMembersStep = ({ selectedUsers, onSelectUsers, workspace, exclud
                     </div>
                 ) : filteredUsers.length > 0 ? (
                     <Virtuoso
+                        ref={listRef}
                         style={{ height: '100%', width: '100%' }}
                         data={filteredUsers!}
                         overscan={200}

@@ -20,6 +20,9 @@ const inputVariants = cva(cn("flex w-full min-w-0 transition-colors outline-none
       variant: {
         subtle: "bg-surface-gray-2 hover:bg-surface-gray-3 hover:border-outline-elevation-2 aria-invalid:bg-surface-red-1",
         outline: "bg-surface-base border-outline-gray-2 hover:border-outline-gray-3 hover:shadow-sm active:border-outline-gray-4 disabled:border-outline-gray-2",
+        // Borderless, for cells of a grid that draws its own lines. No focus border, shadow
+        // or ring, as frappe-ui's ghost: the grid marks the active cell itself.
+        ghost: "rounded-none border-transparent bg-transparent hover:bg-transparent aria-invalid:bg-surface-red-1 focus-visible:border-transparent focus-visible:shadow-none focus-visible:outline-none active:border-transparent active:shadow-none",
       }
     },
     defaultVariants: {

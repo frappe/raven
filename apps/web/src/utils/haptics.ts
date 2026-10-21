@@ -11,6 +11,7 @@
  * platforms with neither. Haptics are decoration — never throw.
  */
 export const hapticTick = () => {
+    if (import.meta.env.VITE_NATIVE) { import("../native/haptics").then((m) => m.nativeHapticTick()); return }
     try {
         if (navigator.vibrate?.(10)) return
         const label = document.createElement("label")

@@ -27,13 +27,13 @@ def get(doctype: str, docname: str | int, with_site_url: bool = True):
 			link = frappe.get_attr(hook)(doctype, docname)
 			if link:
 				if with_site_url:
-					return get_url() + link
+					return get_url(allow_header_override=False) + link
 				return link
 
 	if with_site_url:
-		return frappe.utils.get_url() + f"/app/{slug(doctype)}/{docname}"
+		return frappe.utils.get_url(allow_header_override=False) + f"/desk/{slug(doctype)}/{docname}"
 
-	return f"/app/{slug(doctype)}/{docname}"
+	return f"/desk/{slug(doctype)}/{docname}"
 
 
 @frappe.whitelist(methods=["GET"])
@@ -89,6 +89,8 @@ def get_preview_data(doctype: str, docname: str | int):
 
 @frappe.whitelist(methods=["POST"])
 def update_preview_fields(doctype: str, fields: list[str]):
+	# Writes property setters, which change the doctype for the whole site.
+	frappe.only_for("System Manager")
 
 	meta = frappe.get_meta(doctype)
 
@@ -99,39 +101,47 @@ def update_preview_fields(doctype: str, fields: list[str]):
 		and field.fieldtype not in no_value_fields
 		and field.fieldtype not in table_fields
 	]
-	fields_to_remove = set(existing_preview_fields) - set(fields)
 
-	for field in fields_to_remove:
-		delete_property_setter(doctype, field_name=field, property="in_preview")
+	for field in set(existing_preview_fields) - set(fields):
+		_set_in_preview(doctype, field, 0)
 
 	for field in fields:
-		meta_df = meta.get_field(field)
-		if not meta_df:
-			continue
+		if meta.get_field(field):
+			_set_in_preview(doctype, field, 1)
 
-		delete_property_setter(doctype, field_name=field, property="in_preview")
 
-		# Check if a property setter needs to be created for this field - if the field was already in preview, we don't need to do anything
-		is_in_preview_by_default = frappe.db.get_value(
-			"DocField", {"parent": doctype, "fieldname": field}, "in_preview"
+def _default_in_preview(doctype: str, fieldname: str) -> int:
+	"""What in_preview is without any property setter: the DocField or Custom Field definition."""
+	value = frappe.db.get_value("DocField", {"parent": doctype, "fieldname": fieldname}, "in_preview")
+	if value is None:
+		value = frappe.db.get_value(
+			"Custom Field", {"dt": doctype, "fieldname": fieldname}, "in_preview"
 		)
+	return int(value or 0)
 
-		if is_in_preview_by_default:
-			# No need to create a property setter
-			continue
 
-		# create a new property setter
-		frappe.make_property_setter(
-			{
-				"doctype": doctype,
-				"doctype_or_field": "DocField",
-				"fieldname": field,
-				"property": "in_preview",
-				"value": "1",
-				"property_type": "Check",
-			},
-			is_system_generated=False,
-		)
+def _set_in_preview(doctype: str, fieldname: str, value: int):
+	"""
+	Make in_preview for a field equal `value`. Clears any existing property setter, then
+	adds one only when the field's own definition says otherwise. That covers turning a
+	default-on field off as well as turning a default-off field on.
+	"""
+	delete_property_setter(doctype, field_name=fieldname, property="in_preview")
+
+	if _default_in_preview(doctype, fieldname) == value:
+		return
+
+	frappe.make_property_setter(
+		{
+			"doctype": doctype,
+			"doctype_or_field": "DocField",
+			"fieldname": fieldname,
+			"property": "in_preview",
+			"value": str(value),
+			"property_type": "Check",
+		},
+		is_system_generated=False,
+	)
 
 
 def delete_property_setter(doc_type, property=None, field_name=None, row_name=None):

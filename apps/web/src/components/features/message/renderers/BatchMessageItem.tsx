@@ -4,15 +4,19 @@ import { MessageImages } from "./MessageImages"
 import { MessageFiles } from "./MessageFiles"
 import { MessageVideo } from "./MessageVideo"
 import { MessageAudio } from "./MessageAudio"
+import { DocumentLinkRenderer } from "./DocumentLinkRenderer"
 import { EditableMessageBody, MessageAttributes } from "./MessageContent"
 import { MessageLinkPreview } from "./LinkPreview"
 import { MessageReactionsRow } from "./MessageReactions"
 import { MessageRow, MessageSenderLayout } from "./MessageRow"
-import { MessageThreadPill } from "./ThreadMessage"
+import { cn } from "@lib/utils"
+import { MessageThreadPill, ThreadConnector } from "./ThreadMessage"
 import ReplyMessage from "./ReplyMessage"
-import { OptimisticStatus, optimisticRowClass } from "./OptimisticStatus"
+import { FailedSendIndicator, OptimisticStatus, optimisticRowClass, sendingDimClass } from "./OptimisticStatus"
 import { getAttachmentKind, messagesToAttachments } from "@utils/attachmentPreview"
-import { isThreadParent } from "@utils/messageUtils"
+import { isThreadParent, parseRepliedMessageDetails } from "@utils/messageUtils"
+import { useMessageAlignment } from "@hooks/useChatStyle"
+import type { RepliedMessageDetails } from "./RepliedMessagePreview"
 import type { MessageBatchBlock } from "@stores/messages/types"
 import type { Message } from "@raven/types/common/Message"
 
@@ -76,6 +80,10 @@ export const BatchMessageItem = ({
     const head = block.messages[0]
     const newest = block.messages[block.messages.length - 1]
 
+    const owner = head.is_bot_message ? head.bot || '' : head.owner
+    // See MessageItem — own rows have no avatar column for the connector.
+    const { isLeftRight, isOwn } = useMessageAlignment(owner)
+
     // The selector keeps at most one thread parent in a batch (it splits 2+ into individual
     // messages), so find that member wherever it sits and show its pill + connector. v3 batch
     // actions create the thread on the NEWEST member (see blockFromEvent), but finding it by
@@ -108,14 +116,17 @@ export const BatchMessageItem = ({
     // A batch reply lives on one member (the send API attaches it to the last);
     // render the quote once, at the top of the block.
     const replyMember = block.messages.find((message) => message.linked_message && message.replied_message_details)
-    const repliedDetails = useMemo(() => {
-        if (!replyMember?.replied_message_details) return null
-        try {
-            return JSON.parse(replyMember.replied_message_details)
-        } catch {
-            return null
-        }
-    }, [replyMember?.replied_message_details])
+
+    // Same for a linked document — one member carries it (the caption on a composer
+    // send). Found by field, not position, so links attached by other clients render too.
+    const linkedDocMember = block.messages.find((message) => message.link_doctype && message.link_document)
+
+    // String from fetches, OBJECT from realtime/ack payloads — the shared
+    // parser accepts both (a bare JSON.parse dropped live receivers' quotes).
+    const repliedDetails = useMemo(
+        () => parseRepliedMessageDetails<RepliedMessageDetails>(replyMember?.replied_message_details),
+        [replyMember?.replied_message_details],
+    )
 
     // Reactions target individual messages, so a batch can carry several rows —
     // one per member that has any (usually at most one)
@@ -124,7 +135,18 @@ export const BatchMessageItem = ({
     ))
 
     const content = (
-        <div className="space-y-2">
+        // Bubble mode is a flex column: media, caption bubble and cards each
+        // keep their own width and align to the message's side.
+        <div
+            className={
+                isLeftRight
+                    ? cn(
+                        "flex max-w-full flex-col gap-2 has-[[data-raven-editor]]:w-full",
+                        isOwn ? "items-end" : "items-start",
+                    )
+                    : "space-y-2"
+            }
+        >
             {/* Badges sit above everything, same as a single message — the flags
                 describe the whole block (a forwarded batch arrives all-forwarded). */}
             <MessageAttributes message={attributeFlags} />
@@ -136,27 +158,44 @@ export const BatchMessageItem = ({
                 />
             )}
             <BatchMediaGroups messages={block.messages} />
-            {captionMember && <EditableMessageBody message={captionMember} />}
+            {captionMember && <EditableMessageBody message={captionMember} bubble={isLeftRight} />}
             {/* Links live on the caption member (the server extracts them from its
                 text), so that's where the first-link preview hangs off a batch too. */}
             {captionMember && <MessageLinkPreview message={captionMember} />}
+            {linkedDocMember && (
+                <DocumentLinkRenderer
+                    doctype={linkedDocMember.link_doctype!}
+                    docname={linkedDocMember.link_document!}
+                    // Fixed width in the fit-content bubble column — see MessageContent.
+                    className={isLeftRight ? "w-96 max-w-full" : undefined}
+                />
+            )}
             <OptimisticStatus message={head} />
-            {memberReactions}
+            {!isLeftRight && memberReactions}
         </div>
     )
 
     return (
-        <MessageRow ref={ref} className={optimisticRowClass(head)}>
-            {threadMember && <div className="absolute left-7 w-6 border-l-2 border-b-2 border-outline-gray-2 rounded-bl-2xl z-0 top-[48px] h-[calc(100%-66px)]" />}
+        <MessageRow
+            ref={ref}
+            alignment={isOwn ? "own" : isLeftRight ? "left-right" : "simple"}
+            className={isLeftRight ? sendingDimClass(head) : optimisticRowClass(head)}
+        >
+            {threadMember && <ThreadConnector side={isOwn ? "right" : "left"} />}
             <MessageSenderLayout
-                owner={head.is_bot_message ? head.bot || '' : head.owner}
+                owner={owner}
                 creation={head.creation}
                 isContinuation={block.is_continuation === 1}
+                isLeftRight={isLeftRight}
+                isOwn={isOwn}
+                reactions={isLeftRight ? <>{memberReactions}</> : undefined}
+                footer={threadMember && isOwn ? <MessageThreadPill threadID={threadMember.name} channelID={threadMember.channel_id} align="end" /> : undefined}
+                statusIcon={isOwn ? <FailedSendIndicator message={head} /> : undefined}
             >
                 {content}
             </MessageSenderLayout>
 
-            {threadMember && <MessageThreadPill threadID={threadMember.name} channelID={threadMember.channel_id} />}
+            {threadMember && !isOwn && <MessageThreadPill threadID={threadMember.name} channelID={threadMember.channel_id} align="start" />}
         </MessageRow>
     )
 }

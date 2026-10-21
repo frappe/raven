@@ -85,7 +85,7 @@
    --ink-gray-3 → --ink-gray-6). pb-0.5 adds the gap frappe-ui gets for free
    from its looser line-height; our chat lines are denser. */
 .tiptap a {
-  @apply border-b border-ink-gray-3 text-ink-gray-8 no-underline transition-colors hover:border-ink-gray-6;
+  @apply border-b border-ink-gray-4 text-ink-gray-8 no-underline transition-colors hover:border-ink-gray-6;
 }
 
 /* Inline code (not inside a <pre>): calm gray pill, matching frappe-ui v3 —
@@ -112,24 +112,27 @@
    agree. The well is one surface step off the page in both modes: below it
    in light (gray-50 on white), above it in dark (surface-gray-2 on the
    #171717 pane) — the palette's own editor background is #171717, which
-   would blend into the chat pane. */
-.tiptap .code-block {
+   would blend into the chat pane.
+
+   Not scoped to .tiptap: the same block renders code samples in settings
+   (Raven Bot API docs), and the hljs token colors below follow suit. */
+.code-block {
   --code-bg: var(--surface-gray-1);
   @apply relative my-2 overflow-hidden rounded border border-outline-gray-2;
 }
 
-.dark .tiptap .code-block {
+.dark .code-block {
   --code-bg: var(--surface-gray-2);
 }
 
 /* Flex row: line-number gutter + code. Horizontal scroll is on <code> below so
    the gutter stays fixed while long lines scroll. */
-.tiptap .code-block pre {
+.code-block pre {
   @apply m-0 flex items-start gap-3 p-3 font-mono text-xs leading-relaxed text-ink-gray-8;
   background: var(--code-bg);
 }
 
-.tiptap .code-block pre code {
+.code-block pre code {
   @apply min-w-0 flex-1 overflow-x-auto border-0 bg-transparent p-0 text-inherit;
 }
 
@@ -167,16 +170,19 @@
   @apply rounded-sm bg-surface-gray-3 px-0.5 text-ink-gray-7;
 }
 
-/* Spoiler — in a RENDERED message the text hides behind a solid block until the
-   reader clicks/reveals it. Hide descendants too (a link/mention inside a spoiler
-   would otherwise show its own colour); :where() keeps that override at low
-   specificity so the revealed state still wins. */
+/* Spoiler — in a RENDERED message the content hides behind a solid block until
+   the reader clicks/reveals it. */
 .tiptap .message-spoiler {
-  @apply cursor-pointer select-none rounded-sm bg-surface-gray-4 px-0.5 text-transparent transition-colors;
+  @apply cursor-pointer select-none rounded-sm bg-surface-gray-4 px-0.5 transition-colors;
 }
 
-.tiptap .message-spoiler:not(.message-spoiler--revealed) :where(a, code, strong, em, s, span, img) {
-  color: transparent;
+/* visibility, not color: transparent — transparent text leaks images and native
+   emoji glyphs (color fonts ignore `color`), leaves a hidden link clickable, and
+   keeps the text readable to screen readers. visibility hides all of it, keeps
+   every box (the block's shape doesn't change on reveal), and sends clicks to
+   the outer span's reveal handler. */
+.tiptap .message-spoiler:not(.message-spoiler--revealed) .message-spoiler-content {
+  visibility: hidden;
 }
 
 .tiptap .message-spoiler:hover {
@@ -196,91 +202,91 @@
    palette de-emphasizes them, and unstyled text already reads as calm gray. */
 
 /* Keywords — orange. */
-.tiptap .hljs-doctag,
-.tiptap .hljs-keyword,
-.tiptap .hljs-meta .hljs-keyword,
-.tiptap .hljs-template-tag {
+.hljs-doctag,
+.hljs-keyword,
+.hljs-meta .hljs-keyword,
+.hljs-template-tag {
   color: #c04c00;
 }
 
 /* Types, tags and class names — green. */
-.tiptap .hljs-type,
-.tiptap .hljs-name,
-.tiptap .hljs-selector-tag,
-.tiptap .hljs-selector-pseudo,
-.tiptap .hljs-title.class_,
-.tiptap .hljs-title.class_.inherited__ {
+.hljs-type,
+.hljs-name,
+.hljs-selector-tag,
+.hljs-selector-pseudo,
+.hljs-title.class_,
+.hljs-title.class_.inherited__ {
   color: #317d58;
 }
 
 /* Functions — teal. */
-.tiptap .hljs-title,
-.tiptap .hljs-title.function_,
-.tiptap .hljs-built_in {
+.hljs-title,
+.hljs-title.function_,
+.hljs-built_in {
   color: #0f7d71;
 }
 
 /* Identifiers, members and params — blue. */
-.tiptap .hljs-attr,
-.tiptap .hljs-attribute,
-.tiptap .hljs-property,
-.tiptap .hljs-params,
-.tiptap .hljs-variable,
-.tiptap .hljs-template-variable,
-.tiptap .hljs-selector-attr,
-.tiptap .hljs-selector-class,
-.tiptap .hljs-selector-id {
+.hljs-attr,
+.hljs-attribute,
+.hljs-property,
+.hljs-params,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-selector-attr,
+.hljs-selector-class,
+.hljs-selector-id {
   color: #0073d1;
 }
 
 /* Numbers, constants and booleans — purple. */
-.tiptap .hljs-number,
-.tiptap .hljs-literal,
-.tiptap .hljs-symbol,
-.tiptap .hljs-meta,
-.tiptap .hljs-bullet {
+.hljs-number,
+.hljs-literal,
+.hljs-symbol,
+.hljs-meta,
+.hljs-bullet {
   color: #9a47d5;
 }
 
 /* Strings — sun, darkened to amber so it reads on a light well. */
-.tiptap .hljs-string,
-.tiptap .hljs-meta .hljs-string {
+.hljs-string,
+.hljs-meta .hljs-string {
   color: #9b6700;
 }
 
 /* Special: regex, language variables (this/self), section headings — red. */
-.tiptap .hljs-regexp,
-.tiptap .hljs-variable.language_ {
+.hljs-regexp,
+.hljs-variable.language_ {
   color: #cc3333;
 }
 
-.tiptap .hljs-section {
+.hljs-section {
   color: #cc3333;
   font-weight: bold;
 }
 
 /* Comments — grey. */
-.tiptap .hljs-comment,
-.tiptap .hljs-code,
-.tiptap .hljs-formula,
-.tiptap .hljs-quote {
+.hljs-comment,
+.hljs-code,
+.hljs-formula,
+.hljs-quote {
   color: #575757;
 }
 
-.tiptap .hljs-emphasis {
+.hljs-emphasis {
   font-style: italic;
 }
 
-.tiptap .hljs-strong {
+.hljs-strong {
   font-weight: 700;
 }
 
-.tiptap .hljs-addition {
+.hljs-addition {
   color: #317d58;
   background-color: #e4f2ea;
 }
 
-.tiptap .hljs-deletion {
+.hljs-deletion {
   color: #cc3333;
   background-color: #fbe9e9;
 }
@@ -289,76 +295,76 @@
    comments use #7a7a7a (the palette's base04) instead of its #575757 comment
    grey, which only reaches 2.7:1 on this background — too dim for the one
    token people actually read. */
-.dark .tiptap .hljs-doctag,
-.dark .tiptap .hljs-keyword,
-.dark .tiptap .hljs-meta .hljs-keyword,
-.dark .tiptap .hljs-template-tag {
+.dark .hljs-doctag,
+.dark .hljs-keyword,
+.dark .hljs-meta .hljs-keyword,
+.dark .hljs-template-tag {
   color: #fa8a40;
 }
 
-.dark .tiptap .hljs-type,
-.dark .tiptap .hljs-name,
-.dark .tiptap .hljs-selector-tag,
-.dark .tiptap .hljs-selector-pseudo,
-.dark .tiptap .hljs-title.class_,
-.dark .tiptap .hljs-title.class_.inherited__ {
+.dark .hljs-type,
+.dark .hljs-name,
+.dark .hljs-selector-tag,
+.dark .hljs-selector-pseudo,
+.dark .hljs-title.class_,
+.dark .hljs-title.class_.inherited__ {
   color: #7dc5a2;
 }
 
-.dark .tiptap .hljs-title,
-.dark .tiptap .hljs-title.function_,
-.dark .tiptap .hljs-built_in {
+.dark .hljs-title,
+.dark .hljs-title.function_,
+.dark .hljs-built_in {
   color: #51decf;
 }
 
-.dark .tiptap .hljs-attr,
-.dark .tiptap .hljs-attribute,
-.dark .tiptap .hljs-property,
-.dark .tiptap .hljs-params,
-.dark .tiptap .hljs-variable,
-.dark .tiptap .hljs-template-variable,
-.dark .tiptap .hljs-selector-attr,
-.dark .tiptap .hljs-selector-class,
-.dark .tiptap .hljs-selector-id {
+.dark .hljs-attr,
+.dark .hljs-attribute,
+.dark .hljs-property,
+.dark .hljs-params,
+.dark .hljs-variable,
+.dark .hljs-template-variable,
+.dark .hljs-selector-attr,
+.dark .hljs-selector-class,
+.dark .hljs-selector-id {
   color: #76bef9;
 }
 
-.dark .tiptap .hljs-number,
-.dark .tiptap .hljs-literal,
-.dark .tiptap .hljs-symbol,
-.dark .tiptap .hljs-meta,
-.dark .tiptap .hljs-bullet {
+.dark .hljs-number,
+.dark .hljs-literal,
+.dark .hljs-symbol,
+.dark .hljs-meta,
+.dark .hljs-bullet {
   color: #c993ef;
 }
 
-.dark .tiptap .hljs-string,
-.dark .tiptap .hljs-meta .hljs-string {
+.dark .hljs-string,
+.dark .hljs-meta .hljs-string {
   color: #f4c25f;
 }
 
-.dark .tiptap .hljs-regexp,
-.dark .tiptap .hljs-variable.language_ {
+.dark .hljs-regexp,
+.dark .hljs-variable.language_ {
   color: #ff7575;
 }
 
-.dark .tiptap .hljs-section {
+.dark .hljs-section {
   color: #ff7575;
   font-weight: bold;
 }
 
-.dark .tiptap .hljs-comment,
-.dark .tiptap .hljs-code,
-.dark .tiptap .hljs-formula,
-.dark .tiptap .hljs-quote {
+.dark .hljs-comment,
+.dark .hljs-code,
+.dark .hljs-formula,
+.dark .hljs-quote {
   color: #7a7a7a;
 }
 
-.dark .tiptap .hljs-addition {
+.dark .hljs-addition {
   color: #7dc5a2;
   background-color: #14231b;
 }
 
-.dark .tiptap .hljs-deletion {
+.dark .hljs-deletion {
   color: #ff7575;
   background-color: #2a1515;
 }

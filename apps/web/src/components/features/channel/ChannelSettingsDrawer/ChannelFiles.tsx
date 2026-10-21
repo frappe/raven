@@ -1,3 +1,5 @@
+import { FileImage } from '@components/common/FileImage'
+import { siteOrigin } from '@lib/site'
 import { UserAvatar } from '@components/features/message/UserAvatar'
 import { ArrowDownToLine, LayoutGridIcon, ListIcon, SearchIcon } from 'lucide-react'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -27,7 +29,7 @@ type FilesView = 'list' | 'grid'
 const toAttachment = (file: ChannelFile): Attachment => ({
     id: file.id,
     fileName: file.title,
-    fileUrl: new URL(file.internal_link!, window.location.origin).href,
+    fileUrl: new URL(file.internal_link!, siteOrigin()).href,
     kind: getAttachmentKind(file.internal_link!),
     // The filmstrip renders this; without it, it downloads the originals.
     thumbnail: file.file_thumbnail,
@@ -297,7 +299,7 @@ const FileListRow = memo(({ file, member, index, onOpen }: {
                 // Stored thumbnail, not the original — this is a 56px box.
                 // alt is empty on purpose: the row already announces the file
                 // name, so a non-empty alt would read it twice.
-                <img
+                <FileImage
                     src={file.file_thumbnail || file.internal_link}
                     alt=""
                     loading="lazy"
@@ -322,15 +324,13 @@ const FileListRow = memo(({ file, member, index, onOpen }: {
                 )}
             </div>
 
-            {/* Download is its own control — don't let it open the preview.
-                Hover-revealed on desktop, always visible on mobile (no hover
-                there). */}
+            {/* Desktop only, hover-revealed: on mobile the viewer's own action covers it. */}
             <a
                 href={file.internal_link}
                 download
                 onClick={(event) => event.stopPropagation()}
                 aria-label={_("Download {0}", [file.title])}
-                className="shrink-0 rounded p-1.5 text-ink-gray-4 transition-opacity hover:text-ink-gray-8 md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
+                className="hidden shrink-0 rounded p-1.5 text-ink-gray-4 transition-opacity hover:text-ink-gray-8 md:block md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
             >
                 <ArrowDownToLine className="h-4 w-4" />
             </a>
@@ -367,7 +367,7 @@ const FileGridTile = memo(({ file, member, index, onOpen }: {
                     // Stored thumbnail, not the original — tiles are ~110px.
                     // alt is empty on purpose: the button already announces the
                     // file name, so a non-empty alt would read it twice.
-                    <img
+                    <FileImage
                         src={file.file_thumbnail || file.internal_link}
                         alt=""
                         loading="lazy"

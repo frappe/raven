@@ -1,20 +1,41 @@
 import { useFrappeGetCall } from "frappe-react-sdk"
-import { isPushSupportedByBrowser, isRavenPushConfigured } from "@lib/push"
+import { isPushSupportedByBrowser, isRavenPushConfigured, initPushNotifications } from "@lib/push"
 
-/**
- * Whether push notifications can work HERE: the site must be on Raven Cloud
- * (v3 dropped the Frappe Cloud relay — that stays v2-only), boot must carry the
- * Firebase config, and the browser must support web push (false in iOS Safari
- * tabs until the PWA is installed). Used to hide push toggles entirely.
- * Defaults to false while the server check loads, so gated UI appears once confirmed.
- */
+interface PushConfiguration {
+    firebase_client_config?: string
+    vapid_public_key?: string
+}
+
+const isReady = (configuration?: PushConfiguration) =>
+    Boolean(configuration?.firebase_client_config && configuration?.vapid_public_key)
+
+// Background setup usually finishes in seconds. A failed setup is retried on a later page load.
+const pollUntil = Date.now() + 60_000
+
+/** Discover background registration without requiring a first-login page reload. */
 export function useIsPushNotificationEnabled(): boolean {
-    const { data } = useFrappeGetCall<{ message: boolean }>(
-        "raven.api.notification.are_push_notifications_enabled",
+    const supported = isPushSupportedByBrowser()
+    const pending = window.frappe?.boot?.raven_cloud_push_setup_pending
+    // Boot carries the config once setup is done, so only a running setup is asked about. The native
+    // app also runs against sites older than this method, which answer it with an error.
+    const configured = isRavenPushConfigured()
+    const { data } = useFrappeGetCall<{ message: PushConfiguration }>(
+        "raven.api.notification.get_push_notification_config",
         undefined,
-        // Skip the call when the client can't do push anyway
-        isPushSupportedByBrowser() && isRavenPushConfigured() ? undefined : null,
-        { revalidateIfStale: true, revalidateOnFocus: false, revalidateOnReconnect: false },
+        supported && pending && !configured ? undefined : null,
+        {
+            refreshInterval: (response) =>
+                pending && !isReady(response?.message) && Date.now() < pollUntil ? 5000 : 0,
+            revalidateOnFocus: false,
+            revalidateOnReconnect: false,
+            onSuccess: ({ message }) => {
+                if (!pending || !isReady(message)) return
+                Object.assign(window.frappe.boot, message, {
+                    push_notification_service: "Raven", raven_cloud_push_setup_pending: false,
+                })
+                initPushNotifications()
+            },
+        },
     )
-    return data?.message ? true : false
+    return supported && (configured || isReady(data?.message))
 }

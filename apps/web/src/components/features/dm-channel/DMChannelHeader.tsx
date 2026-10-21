@@ -160,8 +160,9 @@ export function DMChannelHeader({ peer, channelID, showActions = true, onOpenCha
                         )}
                         <OnLeaveBadge userID={peer.name} size="md" />
                         {customStatus && !isMobile && (
-                            <Badge size="md" variant="subtle" theme="gray" title={customStatus} className="max-w-96 md:flex hidden justify-start truncate">
-                                {customStatus}
+                            // The text needs its own box: an ellipsis doesn't apply to a flex container's bare text.
+                            <Badge size="md" variant="subtle" theme="gray" title={customStatus} className="hidden min-w-0 max-w-96 shrink justify-start md:flex">
+                                <span className="truncate">{customStatus}</span>
                             </Badge>
                         )}
 

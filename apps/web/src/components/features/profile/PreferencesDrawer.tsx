@@ -11,6 +11,8 @@ import { Button } from "@components/ui/button"
 import { useTheme } from "@components/theme-provider"
 import { customEmojiCategoriesAtom } from "@lib/emojiMart"
 import { DoubleTapReactionAtom, QuickEmojisAtom, type QuickEmoji, type TimeFormat, timeFormatAtom, imageGroupingLayoutAtom } from "@utils/preferences"
+import { useQuickEmojiSuggestions } from "@utils/reactionUsage"
+import { EmojiFace } from "@components/common/EmojiFace"
 import { errorResponseToast } from "@components/ui/error-banner"
 import { PrefRow, PrefSection } from "./PrefRows"
 import _ from "@lib/translate"
@@ -46,6 +48,11 @@ export const PreferencesDrawer = ({ open, onOpenChange }: { open: boolean; onOpe
     const [pickingSlot, setPickingSlot] = useState<number | "double-tap" | null>(null)
 
     const [imageGrouping, setImageGrouping] = useAtom(imageGroupingLayoutAtom)
+    // Shared with the desktop panel (one hook, one behavior): the most-used
+    // reactions of recent months, applied to the slots with one tap. The
+    // fetch waits for the drawer to actually open — this component mounts
+    // with the Profile page, closed.
+    const { suggestions, showSuggestions, apply: applySuggestions } = useQuickEmojiSuggestions(6, { enabled: open })
 
     const updateValue = (fieldname: string, value: string | number) => {
         if (!myProfile?.name) return
@@ -195,6 +202,24 @@ export const PreferencesDrawer = ({ open, onOpenChange }: { open: boolean; onOpe
                                     ))}
                                 </div>
                                 <span className="text-p-sm text-ink-gray-5">{_("Tap a slot to change its emoji - these are your one-tap reactions.")}</span>
+                                {/* Full-width like the slots row above — label left, emojis
+                                    spread; one tap applies the whole set. */}
+                                {showSuggestions && (
+                                    <div className="flex items-center">
+                                        <span className="text-base text-ink-gray-6 pr-1">{_("Suggested:")}</span>
+                                        <Button
+                                            variant="ghost"
+                                            size="lg"
+                                            className="flex-1 justify-evenly px-0"
+                                            aria-label={_("Use your most-used emojis as quick reactions")}
+                                            onClick={applySuggestions}
+                                        >
+                                            {suggestions.map((suggestion) => (
+                                                <span key={suggestion.id} className="text-2xl"><EmojiFace emoji={suggestion} /></span>
+                                            ))}
+                                        </Button>
+                                    </div>
+                                )}
                             </div>
 
                             <PrefRow
@@ -221,17 +246,4 @@ export const PreferencesDrawer = ({ open, onOpenChange }: { open: boolean; onOpe
     )
 }
 
-/**
- * A QuickEmoji face: custom emojis are plain images; native ones render via
- * em-emoji from the Apple set (initialized in App.tsx) so reactions look the
- * same on every platform.
- */
-const EmojiFace = ({ emoji }: { emoji: QuickEmoji }) =>
-    emoji.src ? (
-        <img src={emoji.src} alt={emoji.id} loading="lazy" className="h-4.5 w-4.5 object-contain" aria-hidden="true" />
-    ) : (
-        <span className="flex h-4.5 w-4.5 items-center justify-center" aria-hidden="true">
-            <em-emoji native={emoji.native} set="native" size="1.1em" fallback={emoji.id} />
-        </span>
-    )
 

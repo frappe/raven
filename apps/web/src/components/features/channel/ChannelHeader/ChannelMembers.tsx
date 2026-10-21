@@ -28,7 +28,10 @@ const ChannelMembers = ({ onClick, channelID }: ChannelMembersProps) => {
             t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
             return ((t ^ (t >>> 14)) >>> 0) / 4294967296
         }
-        const shuffled = [...members]
+        // The header shows who you can TALK to — deactivated accounts stay in
+        // the members list (settings drawer) but not in this face pile, and
+        // filtering before the shuffle keeps them out of the +N count too.
+        const shuffled = members.filter((member) => member.enabled !== 0)
         for (let i = shuffled.length - 1; i > 0; i--) {
             const j = Math.floor(random() * (i + 1))
                 ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]

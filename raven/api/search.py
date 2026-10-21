@@ -255,6 +255,19 @@ class RavenSearch(SQLiteSearch):
 		return self._process_search_results(raw_results, "")
 
 
+def validate_filter_keys(filters: dict):
+	"""Throw unless every filter key is an indexed field.
+
+	The keys are written into the SQL text as column names.
+	Only the values are passed safely as parameters.
+	So a key must never be anything other than a known column.
+	"""
+	allowed = set(RavenSearch.INDEX_SCHEMA["metadata_fields"])
+	unknown = [str(key) for key in filters if key not in allowed]
+	if unknown:
+		frappe.throw(_("Invalid search filter: {0}").format(", ".join(unknown)), frappe.ValidationError)
+
+
 @frappe.whitelist()
 def sqlite_search(query: str | None = None, filters: str | None = None, limit: int = 20):
 	"""Search (or, without a query, list) indexed messages, capped at limit."""
@@ -265,6 +278,8 @@ def sqlite_search(query: str | None = None, filters: str | None = None, limit: i
 
 	if parsed_filters.pop("mentions_me", None):
 		parsed_filters["mentions"] = ["LIKE", f"|{frappe.session.user}|"]
+
+	validate_filter_keys(parsed_filters)
 
 	search = RavenSearch()
 	if not query:
@@ -358,14 +373,6 @@ def get_channel_files(
 			query = query.where(message.creation < cursor_creation)
 
 	return query.run(as_dict=True)
-
-
-@frappe.whitelist()
-def rebuild_search_index():
-	search = RavenSearch()
-	search.drop_index()
-	search.build_index()
-	return "Search index rebuilt"
 
 
 @frappe.whitelist()
@@ -627,6 +634,8 @@ def search_links(
 			message.channel_id,
 			message.creation,
 			message.owner.as_("author"),
+			message.is_bot_message,
+			message.bot,
 			message.content,
 			channel.is_direct_message,
 			channel.is_thread,

@@ -12,21 +12,22 @@ import { db, type UserData } from "@db"
 import { cn } from "@lib/utils"
 import { formatRelativeDate } from "@lib/date"
 import { getMessageTeaser } from "@utils/messageUtils"
+import { TeaserText } from "@components/common/TeaserText"
 import { getUserDisplayName, isCurrentUser } from "@utils/userDisplay"
 import { useChannelDraft } from "@components/features/ChatInput/draft"
 import _ from "@lib/translate"
 import type { DMChannelListItem } from "@raven/types/common/ChannelListItem"
 import { useDMChannels } from "@stores/channels/useChannelList"
 import { useChannelUnread } from "@stores/unread/useChannelUnread"
+import { channelUnreadStore } from "@stores/unread/store"
 import { usePrefetchChannel, setChannelListScrolling } from "@stores/messages/usePrefetchChannel"
 import { useUserCookieData } from "@hooks/useUserCookieData"
 import { MobileSearchButton } from "@components/features/header/QuickSearch/SearchButton"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@components/ui/empty"
 import { BellOff, UsersRoundIcon } from "lucide-react"
 import { ChannelRowActions } from "@components/common/ChannelRowActions"
-import { useIsMobile } from "@hooks/use-mobile"
+import { useMediaQuery } from "usehooks-ts"
 import { useLongPress } from "@hooks/useLongPress"
-import { hapticTick } from "@utils/haptics"
 
 /** A DM channel joined to its resolved peer — what a sidebar row renders. */
 type DMRowData = { dm: DMChannelListItem; peer: UserData }
@@ -104,27 +105,37 @@ export function DMSidebar() {
     const routeMatch = useMatch({ path: "/dm-channel/:id", end: false })
     const currentChannelID = routeMatch?.params.id
 
-    /** Cmd/Ctrl+Down = next channel, Cmd/Ctrl+Up = previous — clamped at the ends. */
-    const goToAdjacentChannel = (direction: 1 | -1) => {
+    /** Option+Down = next DM, Option+Up = previous. With Shift, the nearest DM
+     *  with UNREAD messages in that direction (the current one is skipped —
+     *  it's being read). No candidate = no-op. */
+    const goToAdjacentChannel = (direction: 1 | -1, unreadOnly = false) => {
         if (rows.length === 0) return
         const currentIndex = rows.findIndex((row) => row.dm.name === currentChannelID)
-        // Nothing open yet: Down enters the list from the top, Up from the bottom
-        const nextIndex =
-            currentIndex === -1
-                ? direction === 1
-                    ? 0
-                    : rows.length - 1
-                : Math.min(rows.length - 1, Math.max(0, currentIndex + direction))
-        if (nextIndex === currentIndex) return
-        navigate(`/dm-channel/${encodeURIComponent(rows[nextIndex].dm.name)}`)
-        virtuosoRef.current?.scrollIntoView({ index: nextIndex })
+        // Walk outward from the neighbor (or in from the list's edge when
+        // nothing is open yet), taking the first row that qualifies.
+        let index = currentIndex === -1 ? (direction === 1 ? 0 : rows.length - 1) : currentIndex + direction
+        while (index >= 0 && index < rows.length) {
+            const target = rows[index].dm.name
+            // Imperative store read — a keypress needs a snapshot, not a subscription.
+            if (!unreadOnly || channelUnreadStore.getState(target).count > 0) {
+                navigate(`/dm-channel/${encodeURIComponent(target)}`)
+                virtuosoRef.current?.scrollIntoView({ index })
+                return
+            }
+            index += direction
+        }
     }
 
-    // Works while composing too (form tags + Tiptap's contenteditable);
-    // preventDefault stops the browser's own Cmd+Up/Down caret/scroll jumps
+    // Alt/Option, NOT mod (the Slack/Discord convention): Cmd+Up/Down is core
+    // macOS text editing (jump to start/end of the draft) and the composer is
+    // always focused, so a mod binding stole it mid-typing. Works while
+    // composing (form tags + Tiptap's contenteditable) — Option+arrows' native
+    // paragraph jump is obscure enough to own unconditionally.
     const hotkeyOptions = { enableOnFormTags: true, enableOnContentEditable: true, preventDefault: true }
-    useHotkeys("mod+down", () => goToAdjacentChannel(1), hotkeyOptions, [rows, currentChannelID])
-    useHotkeys("mod+up", () => goToAdjacentChannel(-1), hotkeyOptions, [rows, currentChannelID])
+    useHotkeys("alt+down", () => goToAdjacentChannel(1), hotkeyOptions, [rows, currentChannelID])
+    useHotkeys("alt+up", () => goToAdjacentChannel(-1), hotkeyOptions, [rows, currentChannelID])
+    useHotkeys("alt+shift+down", () => goToAdjacentChannel(1, true), hotkeyOptions, [rows, currentChannelID])
+    useHotkeys("alt+shift+up", () => goToAdjacentChannel(-1, true), hotkeyOptions, [rows, currentChannelID])
 
     return (
         // Full-height column with its own header — mirrors ChannelSidebar, so
@@ -151,17 +162,24 @@ export function DMSidebar() {
                         <DMSidebarSkeleton />
                     </div>
                 ) : rows.length === 0 ? (
-                    // No virtualizer for an empty list — just the empty state and,
-                    // when the org has people to suggest, the start-a-DM rows
-                    <Empty>
-                        <EmptyMedia>
-                            <UsersRoundIcon />
-                        </EmptyMedia>
-                        <EmptyHeader>
-                            <EmptyTitle>{_("No conversations yet")}</EmptyTitle>
-                            <EmptyDescription>{_("Search for a user and start a conversation.")}</EmptyDescription>
-                        </EmptyHeader>
-                    </Empty>
+                    // No virtualizer for an empty list: people to start a conversation with,
+                    // or the empty state when there's no one to suggest.
+                    <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto">
+                        <ExtraUsersList
+                            dmPeerIds={dmPeerIds}
+                            whenNone={
+                                <Empty>
+                                    <EmptyMedia>
+                                        <UsersRoundIcon />
+                                    </EmptyMedia>
+                                    <EmptyHeader>
+                                        <EmptyTitle>{_("No conversations yet")}</EmptyTitle>
+                                        <EmptyDescription>{_("Search for a user and start a conversation.")}</EmptyDescription>
+                                    </EmptyHeader>
+                                </Empty>
+                            }
+                        />
+                    </div>
                 ) : (
                     <Virtuoso
                         ref={virtuosoRef}
@@ -183,10 +201,10 @@ export function DMSidebar() {
 }
 
 
-function DMSidebarSkeleton() {
+export function DMSidebarSkeleton({ count = 10 }: { count?: number }) {
     return (
         <>
-            {Array.from({ length: 10 }).map((_, i) => (
+            {Array.from({ length: count }).map((_, i) => (
                 <div
                     key={i}
                     className="flex items-start gap-3 px-3 py-3 md:py-2"
@@ -230,15 +248,25 @@ const DMRow = memo(function DMRow({ dmChannel, peerUser }: DMRowProps) {
     // it's the thing you'd want to be reminded of when scanning the list.
     const draft = useChannelDraft(dmChannel.name)
 
-    const isMobile = useIsMobile()
+    // Touch screens open the sheet by long-press, tablets in the wide layout included: they have no hover for the kebab.
+    const touch = useMediaQuery("(pointer: coarse)")
     const [sheetOpen, setSheetOpen] = useState(false)
     const [menuOpen, setMenuOpen] = useState(false)
-    const longPress = useLongPress(() => {
-        hapticTick()
-        setSheetOpen(true)
-    }, isMobile)
+    const { handlers: longPress, consumeLongPress } = useLongPress(() => setSheetOpen(true))
 
-    return <NavLink {...prefetchHandlers} {...longPress} to={`/dm-channel/${encodeURIComponent(dmChannel.name)}`} className="group/row block px-2 py-0.5">
+    return <NavLink
+        {...prefetchHandlers}
+        {...(touch ? longPress : {})}
+        // Both hooks need the leave: a spread would keep only one.
+        onPointerLeave={() => {
+            prefetchHandlers.onPointerLeave()
+            if (touch) longPress.onPointerLeave()
+        }}
+        // The press that opened the sheet must not also open the conversation.
+        onClick={(event) => { if (consumeLongPress()) event.preventDefault() }}
+        to={`/dm-channel/${encodeURIComponent(dmChannel.name)}`}
+        className="group/row block px-2 py-0.5"
+    >
         {({ isActive }) => (
             <DMRowShell
                 user={peerUser}
@@ -270,24 +298,26 @@ const DMRow = memo(function DMRow({ dmChannel, peerUser }: DMRowProps) {
 })
 
 
-function ExtraUsersList({ dmPeerIds }: { dmPeerIds: Set<string> }) {
+/** Up to five people with no DM yet, as rows that start one. `whenNone` shows once the query proves there's nobody. */
+function ExtraUsersList({ dmPeerIds, whenNone = null }: { dmPeerIds: Set<string>; whenNone?: ReactNode }) {
     const { name: currentUser } = useUserCookieData()
 
-    const users =
-        useLiveQuery(
-            () =>
-                db.users
-                    .where("enabled")
-                    .equals(1)
-                    .and((u) => u.name !== currentUser)
-                    .and((u) => u.type !== "Bot")
-                    .and((u) => !dmPeerIds.has(u.name))
-                    .limit(5)
-                    .toArray(),
-            [currentUser, dmPeerIds]
-        ) ?? []
+    // Undefined until the first query result: nothing is shown meanwhile, so the empty state can't flash.
+    const users = useLiveQuery(
+        () =>
+            db.users
+                .where("enabled")
+                .equals(1)
+                .and((u) => u.name !== currentUser)
+                .and((u) => u.type !== "Bot")
+                .and((u) => !dmPeerIds.has(u.name))
+                .limit(5)
+                .toArray(),
+        [currentUser, dmPeerIds]
+    )
 
-    if (users.length === 0) return null
+    if (users === undefined) return null
+    if (users.length === 0) return whenNone
 
     return (
         <>
@@ -416,7 +446,7 @@ function DMRowShell({
                         )}
                     >
                         {isDraft && <span className="font-medium text-ink-gray-6">{_("Draft")}: </span>}
-                        {lastMessage}
+                        <TeaserText text={lastMessage} />
                     </div>}
                     {/* Badge yields its slot to the kebab on hover/menu-open (display
                         swap, like the muted marker below). */}

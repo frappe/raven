@@ -1,4 +1,4 @@
-# Copyright (c) 2024, The Commit Company and contributors
+# Copyright (c) 2026, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
 import json
@@ -172,7 +172,7 @@ class RavenBot(Document):
 			frappe.throw(
 				_(
 					"Connection to OpenAI API failed. Please check your Organization ID and API Key for any extra spaces. Error: {0}"
-				).format(e)
+				).format(str(e))
 			)
 		except Exception as e:
 			if "model_not_found" in str(e):
@@ -566,8 +566,13 @@ class RavenBot(Document):
 		markdown: If True, the text will be converted to HTML.
 		file: The file to send to the user.
 
-		Returns the message ID of the message sent
+		Returns the message ID of the message sent, or None if the user is disabled
 		"""
+		# A disabled user will never read the message. Skip quietly, no error log.
+		# A user who is not on Raven at all still raises below, as before.
+		enabled = frappe.db.get_value("Raven User", {"user": user_id}, "enabled")
+		if enabled is not None and not enabled:
+			return None
 
 		channel_id = self.create_direct_message_channel(user_id)
 

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useState } from "react"
 import { Button } from "@components/ui/button"
 import {
     DropdownMenu,
@@ -13,6 +13,9 @@ import { useLongPress } from "@hooks/useLongPress"
 import type { QuietSendMode } from "@hooks/useQuietHours"
 import { KeyboardMetaKeyIcon } from "@components/ui/keyboard-keys"
 import _ from "@lib/translate"
+import { ScheduleSendMenu } from "@components/features/schedule-send/ScheduleSendMenu"
+import { ScheduleSendSheet, SheetRow } from "@components/features/schedule-send/ScheduleSendSheet"
+import type { SchedulePick } from "@lib/timeUtils"
 
 type SendButtonProps = {
     onSend: () => void
@@ -25,17 +28,34 @@ type SendButtonProps = {
      *  becomes the bell-off and the menu offers the loud override. "nudge"
      *  changes nothing here (the composer banner carries the hint). */
     quietMode?: QuietSendMode
+    /** A preset slot was picked from the schedule submenu — schedule immediately. */
+    onSchedulePick: (pick: SchedulePick) => void
+    /** Open the custom date & time dialog. */
+    onScheduleSend: () => void
+    /** Scheduling needs text and no attachments (v1) — disable the submenu otherwise. */
+    scheduleDisabled?: boolean
     disabled?: boolean
     /** Send is held while attachments finish uploading — show a spinner. */
     loading?: boolean
 }
 
 /**
- * Desktop: a split button — "Send" plus a chevron opening send options (currently just
- * "Send without notification"). Mobile: an icon-only round button; a long-press opens
- * the same options menu, a plain tap sends.
+ * Desktop: a split button — "Send" plus a chevron opening send options (silent
+ * send and a schedule submenu with Today/Tomorrow preset slots plus a custom
+ * date & time entry). Mobile: an icon-only round button; a long-press opens the
+ * same options in a bottom sheet, a plain tap sends.
  */
-const SendButton = ({ onSend, onSendSilently, onSendLoud, quietMode, disabled, loading }: SendButtonProps) => {
+const SendButton = ({
+    onSend,
+    onSendSilently,
+    onSendLoud,
+    quietMode,
+    onSchedulePick,
+    onScheduleSend,
+    scheduleDisabled,
+    disabled,
+    loading,
+}: SendButtonProps) => {
     const isMobile = useIsMobile()
     const [menuOpen, setMenuOpen] = useState(false)
 
@@ -44,18 +64,11 @@ const SendButton = ({ onSend, onSendSilently, onSendLoud, quietMode, disabled, l
     // in onClick below).
     const { handlers: longPressHandlers, consumeLongPress } = useLongPress(() => setMenuOpen(true))
 
-    // Whether the menu was OPEN when this press started. A tap on the trigger
-    // while the menu is showing is a DISMISS: Radix closes the menu on that
-    // pointerdown, but the tap's click still lands on the send button — and
-    // without this latch it would fire onSend (dismissing a menu must never
-    // send). Captured at pointerdown, before Radix closes; consumed on click.
-    const menuWasOpenAtPress = useRef(false)
-
     // Whatever the current default is, the menu offers the OPPOSITE. Normally
     // sends are loud and the menu offers silent; in quiet-hours "auto" mode
     // silent IS the default, so the menu offers the loud override — the urgent
     // late-night message stays one deliberate gesture away.
-    const menuItem = quietMode === "auto" ? (
+    const notifyItem = quietMode === "auto" ? (
         <DropdownMenuItem onSelect={onSendLoud}>
             <BellRingIcon />
             {_("Send with notification")}
@@ -76,71 +89,70 @@ const SendButton = ({ onSend, onSendSilently, onSendLoud, quietMode, disabled, l
         </DropdownMenuItem>
     )
 
+    // Desktop menu: silent send + the schedule submenu.
+    const menuItems = (
+        <>
+            {notifyItem}
+            <ScheduleSendMenu onSchedulePick={onSchedulePick} onScheduleSend={onScheduleSend} scheduleDisabled={scheduleDisabled} />
+        </>
+    )
+
+    // Mobile sheet: the same notify option as a sheet row.
+    const closeSheet = () => setMenuOpen(false)
+    const sheetNotifyRow = quietMode === "auto" ? (
+        <SheetRow onClick={() => { closeSheet(); onSendLoud() }}>
+            <BellRingIcon />
+            {_("Send with notification")}
+        </SheetRow>
+    ) : (
+        <SheetRow onClick={() => { closeSheet(); onSendSilently() }}>
+            <BellOffIcon />
+            {_("Send without notification")}
+        </SheetRow>
+    )
+
     // Quiet-hours "auto": a plain send WILL be silent, and that must be
     // visible before the tap — the send icon itself becomes the bell-off.
     // Nudge mode changes nothing here; the composer banner carries the hint.
     const autoSilent = quietMode === "auto"
 
     if (isMobile) {
+        // The sheet's overlay covers the button while it is open, so a tap outside
+        // closes the sheet without reaching the send button.
         return (
-            <DropdownMenu
-                open={menuOpen}
-                // Only the long-press timer may OPEN the menu — a plain tap on the
-                // trigger must send, not toggle. Radix reports open-intent on tap;
-                // ignore it and honour only close.
-                onOpenChange={(open) => {
-                    if (!open) setMenuOpen(false)
-                }}
-            >
-                <DropdownMenuTrigger asChild>
-                    <Button
-                        size="lg"
-                        type="button"
-                        onClick={() => {
-                            // The click that ends the long-press itself.
-                            if (consumeLongPress()) return
-                            // A tap that dismissed the open menu (see the latch).
-                            if (menuWasOpenAtPress.current) {
-                                menuWasOpenAtPress.current = false
-                                return
-                            }
-                            onSend()
-                        }}
-                        {...longPressHandlers}
-                        // Latch the open state BEFORE arming — Radix closes the
-                        // menu on this same pointerdown.
-                        onPointerDown={(event) => {
-                            menuWasOpenAtPress.current = menuOpen
-                            longPressHandlers.onPointerDown(event)
-                        }}
-                        // Never steal focus from the editor: if the user is typing
-                        // (keyboard open), tapping Send keeps it open naturally.
-                        onMouseDown={(e) => e.preventDefault()}
-                        disabled={disabled}
-                        variant="solid"
-                        loading={loading}
-                        isIconButton
-                        className="rounded-full"
-                        aria-label={autoSilent ? _("Send message silently") : _("Send message")}
-                    >
-                        {!loading && (autoSilent ? <BellOffIcon /> : <SendHorizontalIcon />)}
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                    side="top"
-                    align="end"
-                    // Keep the composer keyboard steady across the menu's lifecycle:
-                    // close must not refocus the trigger (below), and open must not
-                    // steal focus from the editor. Radix's DropdownMenu.Content TYPE
-                    // omits onOpenAutoFocus (menus autofocus for keyboard nav by
-                    // design), but the runtime composes it into its FocusScope — so
-                    // it goes in through a cast.
-                    onCloseAutoFocus={(e) => e.preventDefault()}
-                    {...({ onOpenAutoFocus: (e: Event) => e.preventDefault() } as object)}
+            <>
+                <Button
+                    size="lg"
+                    type="button"
+                    onClick={() => {
+                        // The click that ends the long-press itself.
+                        if (consumeLongPress()) return
+                        onSend()
+                    }}
+                    {...longPressHandlers}
+                    // Never steal focus from the editor: if the user is typing
+                    // (keyboard open), tapping Send keeps it open naturally.
+                    onMouseDown={(e) => e.preventDefault()}
+                    disabled={disabled}
+                    variant="solid"
+                    loading={loading}
+                    isIconButton
+                    // No OS selection or callout on the long-press. Android still drops the editor's focus
+                    // (and its keyboard) when its own long-press fires, so the send options open without it there.
+                    className="rounded-full select-none [-webkit-touch-callout:none]"
+                    aria-label={autoSilent ? _("Send message silently") : _("Send message")}
                 >
-                    {menuItem}
-                </DropdownMenuContent>
-            </DropdownMenu>
+                    {!loading && (autoSilent ? <BellOffIcon /> : <SendHorizontalIcon />)}
+                </Button>
+                <ScheduleSendSheet
+                    open={menuOpen}
+                    onOpenChange={setMenuOpen}
+                    sendOptions={sheetNotifyRow}
+                    onSchedulePick={onSchedulePick}
+                    onScheduleSend={onScheduleSend}
+                    scheduleDisabled={scheduleDisabled}
+                />
+            </>
         )
     }
 
@@ -187,7 +199,7 @@ const SendButton = ({ onSend, onSendSilently, onSendLoud, quietMode, disabled, l
                     align="end"
                     onCloseAutoFocus={(e) => e.preventDefault()}
                 >
-                    {menuItem}
+                    {menuItems}
                 </DropdownMenuContent>
             </DropdownMenu>
         </div>

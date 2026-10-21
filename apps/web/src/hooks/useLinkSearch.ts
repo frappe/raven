@@ -7,6 +7,8 @@ export type LinkSearchResult = {
     channel_id: string
     creation: string
     author: string
+    is_bot_message?: 0 | 1
+    bot?: string | null
     content: string
     is_direct_message: 0 | 1
     is_thread: 0 | 1

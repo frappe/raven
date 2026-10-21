@@ -1,13 +1,11 @@
+import { lazy, Suspense } from "react"
 import { MainPageSkeleton } from "@components/features/main-page/MainPageSkeleton"
-import Cookies from "js-cookie"
-import { Alert, AlertDescription, AlertTitle } from "@components/ui/alert"
 import { useIsMobile } from "@hooks/use-mobile"
 import { useLoadUsers } from "@hooks/useLoadUsers"
-import { hasRole } from "@lib/permissions"
 import _ from "@lib/translate"
-import { AlertCircle } from "lucide-react"
 import { Outlet } from "react-router"
 import PrimarySidebar from "./PrimarySidebar/PrimarySidebar"
+import { ProtectedRoute } from "./ProtectedRoute"
 import CommandMenu from "@components/features/cmdk/CommandMenu"
 import { AttachmentPreviewModal } from "@components/features/message/renderers/AttachmentPreviewModal"
 import { useUnreadSync } from "@stores/unread/useUnreadSync"
@@ -16,6 +14,8 @@ import { useMessageRoomSubscriptions } from "@stores/messages/useMessageRoomSubs
 import { useMessagesRealtime } from "@stores/messages/useMessagesRealtime"
 import { useLinkPreviewsRealtime } from "@stores/linkPreviews/useLinkPreview"
 import { useConnectionFreshness } from "@hooks/useConnectionFreshness"
+import { useOnlineStatus } from "@stores/connectionState"
+import { cn } from "@lib/utils"
 import { useActiveSocketConnection } from "@hooks/useActiveSocketConnection"
 import { useOutboxAutoRetry } from "@stores/messages/useOutboxAutoRetry"
 import { useChannelListRealtime } from "@hooks/useChannelListRealtime"
@@ -27,6 +27,8 @@ import { useThreadsRealtime } from "@stores/threads/useThreadsRealtime"
 import { useUnreadThreadsSync } from "@stores/threads/useUnreadThreads"
 import { useNotificationsRealtime } from "@stores/notifications/useNotificationsRealtime"
 import { useUnreadNotificationsSync } from "@hooks/useNotifications"
+import { useRemindersRealtime } from "@components/features/reminders/useReminders"
+import { useScheduledMessagesRealtime } from "@components/features/schedule-send/useScheduledMessages"
 import { useReportActiveState } from "@stores/presence/useReportActiveState"
 import { usePushNotificationNavigation } from "@hooks/usePushNotificationNavigation"
 import { useAppBadge } from "@hooks/useAppBadge"
@@ -36,6 +38,7 @@ import DocumentTitle from "./DocumentTitle"
 import { AppUpdateAlert } from "./AppUpdateAlert"
 import { SessionBroadcast } from "./SessionBroadcast"
 import RavenSettingsDialog from "@components/features/settings/SettingsDialog"
+import { SetupGate } from "@components/features/setup/SetupGate"
 import { MessageActionDialogs } from "@components/features/message/actions/MessageActionDialogs"
 
 /**
@@ -72,38 +75,8 @@ const AppShell = () => {
     )
 }
 
-/** Check if the user has the Raven User role */
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-
-    const hasRavenUserRole = hasRole('Raven User')
-
-    // A GUEST lacking the role isn't a permissions problem — they're just not
-    // logged in, and App.tsx is redirecting them to login. Render nothing so
-    // the "no access" alert can't flash at them on the way out (it's meant for
-    // LOGGED-IN users who genuinely lack the Raven User role).
-    const userId = Cookies.get('user_id')
-    if (!userId || userId === 'Guest') {
-        return null
-    }
-
-    if (!hasRavenUserRole) {
-        return <div className="h-screen w-screen flex justify-center items-center">
-            <div>
-                <Alert
-                    theme="red"
-                >
-                    <AlertCircle />
-                    <AlertTitle>{_('You cannot access Raven.')}</AlertTitle>
-                    <AlertDescription>{_('You do not have the "Raven User" role. Please contact your system administrator.')}</AlertDescription>
-                </Alert>
-            </div >
-
-        </div >
-    }
-
-    return children
-
-}
+// Native only: the ternary keeps the chunk out of browser builds entirely.
+const NativeBridge = import.meta.env.VITE_NATIVE ? lazy(() => import("../../native/NativeBridge")) : () => null
 
 const AppListeners = ({ children }: { children: React.ReactNode }) => {
 
@@ -152,6 +125,12 @@ const AppListeners = ({ children }: { children: React.ReactNode }) => {
     // Seeds + reconciles the unread-notification id set (badge = set size; ids are marked
     // read as their messages scroll into view — markNotificationsReadOnView)
     useUnreadNotificationsSync()
+    // Reminders: the single subscriber for raven_reminders_updated. Revalidates the
+    // Later badge and list by SWR key, so no page-level hook needs its own socket listener.
+    useRemindersRealtime()
+    // Scheduled messages: the single subscriber for raven_scheduled_message_updated.
+    // Refreshes the badge count and rebroadcasts through the bus for the list.
+    useScheduledMessagesRealtime()
     // Focus-and-route when a push notification is clicked while a window exists
     // (sw.js posts the target URL instead of opening a duplicate tab)
     usePushNotificationNavigation()
@@ -170,8 +149,10 @@ const AppListeners = ({ children }: { children: React.ReactNode }) => {
 
     return <>
         <DocumentTitle />
+        {import.meta.env.VITE_NATIVE && <Suspense fallback={null}><NativeBridge /></Suspense>}
         {children}
         <CommandMenu />
+        <SetupGate />
         <AttachmentPreviewModal />
         {/* "App was updated — refresh" prompt (chunk failures, deploys, SW updates) */}
         <AppUpdateAlert />
@@ -183,9 +164,16 @@ const AppListeners = ({ children }: { children: React.ReactNode }) => {
 const AppShellLayout = ({ children }: { children: React.ReactNode }) => {
 
     const isMobile = useIsMobile()
+    const online = useOnlineStatus()
+    // The banner takes the top inset while it shows, so its colour fills the status bar.
+    const banner = !online && (
+        <div className="shrink-0 bg-surface-gray-3 py-1 text-center text-sm text-ink-gray-7 standalone:pt-[calc(var(--inset-top)+0.25rem)]">{_("You're offline")}</div>
+    )
+    const topInset = online ? "standalone:pt-[var(--inset-top)]" : ""
 
     if (isMobile) {
-        return <div className="flex h-dvh flex-col overflow-hidden">
+        return <div className={cn("flex h-dvh flex-col overflow-hidden", topInset)}>
+            {banner}
             {children}
         </div>
     }
@@ -193,7 +181,8 @@ const AppShellLayout = ({ children }: { children: React.ReactNode }) => {
     return <div className="flex h-dvh overflow-hidden bg-surface-elevation-1">
         <PrimarySidebar />
         <RavenSettingsDialog />
-        <main className="flex min-w-0 flex-1 flex-col">
+        <main className={cn("flex min-w-0 flex-1 flex-col", topInset)}>
+            {banner}
             {children}
         </main>
     </div>

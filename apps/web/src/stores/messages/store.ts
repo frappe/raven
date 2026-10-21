@@ -1,8 +1,9 @@
-import Cookies from "js-cookie"
+import { sessionUser } from "@lib/sessionUser"
 import type { Message } from "@raven/types/common/Message"
 import {
     applyInitialPage,
     applyNewerPage,
+    applyWindowRefresh,
     applyOlderPage,
     markError,
     markLoading,
@@ -123,6 +124,11 @@ class ChannelMessagesStore {
         this.update(channelID, applyNewerPage(this.getState(channelID), page))
     }
 
+    /** Re-applies the server's copy of the window's own span after a connection break. */
+    refreshWindow(channelID: string, page: MessagesPage, requested: readonly string[]) {
+        this.update(channelID, applyWindowRefresh(this.getState(channelID), page, requested))
+    }
+
     /** Marks a pagination direction in flight; returns false when it should not start. */
     beginPagination(channelID: string, direction: "older" | "newer"): boolean {
         const state = this.getState(channelID)
@@ -183,7 +189,7 @@ class ChannelMessagesStore {
             // anchored on the user's own message (most visibly in threads).
             // Bot messages are the exception: a bot can post with owner set to
             // the current user, and the user didn't write those — they ARE new.
-            const currentUser = Cookies.get("user_id")
+            const currentUser = sessionUser().name
             for (const id of state.order) {
                 const message = state.byId.get(id)
                 if (!message) continue

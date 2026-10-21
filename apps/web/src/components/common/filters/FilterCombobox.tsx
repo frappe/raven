@@ -2,7 +2,8 @@ import { useState, type ReactNode } from "react"
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover"
 import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "@components/ui/command"
 import { Button } from "@components/ui/button"
-import { CheckIcon, ChevronDownIcon, XIcon } from "lucide-react"
+import { CheckIcon, ChevronDownIcon } from "lucide-react"
+import ClearFieldButton from "@components/common/ClearFieldButton"
 import { cn } from "@lib/utils"
 import { useIsMobile } from "@hooks/use-mobile"
 import _ from "@lib/translate"
@@ -112,6 +113,12 @@ export function FilterComboboxItem({
 }
 
 interface FilterComboboxProps {
+    /**
+     * Open the popover in modal mode. Needed when the combobox sits inside a modal dialog:
+     * the dialog's scroll lock blocks wheel and touch scrolling on anything portalled
+     * outside it, and a modal popover brings its own lock that allows its list to scroll.
+     */
+    modal?: boolean
     /** Rendered inside the trigger button, left of the chevron. */
     trigger: ReactNode
     emptyLabel: string
@@ -144,6 +151,7 @@ export function FilterCombobox({
     onClear,
     triggerClassName,
     className,
+    modal = false,
 }: FilterComboboxProps) {
     const [open, setOpen] = useState(false)
     const isMobile = useIsMobile()
@@ -175,7 +183,7 @@ export function FilterCombobox({
         // nudged the whole filter row (and everything under it) down by a pixel.
         // relative: the clear button is positioned over the chevron's place.
         <div className={cn("relative flex shrink-0", className)}>
-            <Popover open={open} onOpenChange={onOpenChange}>
+            <Popover open={open} onOpenChange={onOpenChange} modal={modal}>
                 <PopoverTrigger asChild>
                     <Button
                         variant="subtle"
@@ -194,21 +202,7 @@ export function FilterCombobox({
                         {!onClear && <ChevronDownIcon className="size-4 shrink-0 text-ink-gray-4" />}
                     </Button>
                 </PopoverTrigger>
-                {/* A sibling of the trigger rather than a child of it: a button inside a
-                    button is invalid markup, and a span with a click handler would leave
-                    keyboard users no way to clear now that the list has no Clear row.
-                    Absolutely positioned so it takes the chevron's place without the trigger
-                    having to give up any width. */}
-                {onClear && (
-                    <button
-                        type="button"
-                        onClick={onClear}
-                        aria-label={_("Clear filter")}
-                        className="absolute right-1.5 top-1/2 flex size-5 -translate-y-1/2 cursor-pointer items-center justify-center rounded text-ink-gray-5 hover:bg-surface-gray-4 hover:text-ink-gray-8"
-                    >
-                        <XIcon className="size-3.5" />
-                    </button>
-                )}
+                {onClear && <ClearFieldButton onClick={onClear} ariaLabel={_("Clear filter")} />}
                 <PopoverContent
                     side="bottom"
                     align="start"

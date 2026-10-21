@@ -30,20 +30,6 @@ const UserList = ({ text }: { text: string }) => {
     const usersById = useUsersById()
     const { dmChannels } = useDMChannels()
     const isMobile = useIsMobile()
-    const filteredUsers = useMemo(() => {
-        if (!text) return []
-        // Pre-rank with cmdk's scorer over the same string its customFilter sees
-        // (keywords = [full_name, name]) so fuzzy matches survive, then cap.
-        const scored: { user: UserData; score: number }[] = []
-        for (const user of usersById.values()) {
-            const score = defaultFilter(`${user.full_name} ${user.name}`, text)
-            if (score > 0) scored.push({ user, score })
-        }
-        return scored
-            .sort((a, b) => b.score - a.score)
-            .slice(0, MAX_RESULTS)
-            .map((x) => x.user)
-    }, [usersById, text])
 
     /** peer_user_id → DM channel, so mapping users isn't O(users × DMs) per keystroke. */
     const dmByPeer = useMemo(() => {
@@ -51,6 +37,27 @@ const UserList = ({ text }: { text: string }) => {
         for (const dm of dmChannels) m.set(dm.peer_user_id, dm)
         return m
     }, [dmChannels])
+
+    const filteredUsers = useMemo(() => {
+        if (!text) return []
+        // Pre-rank with cmdk's scorer over the same string its customFilter sees
+        // (keywords = [full_name, name]) so fuzzy matches survive, then cap.
+        const scored: { user: UserData; score: number }[] = []
+        for (const user of usersById.values()) {
+            // A disabled user with no existing DM has no useful row: you can't
+            // start a DM with them, so the item was a dead end. With a DM, the
+            // row stays — it opens the conversation history (Disabled badge on
+            // the item says why they can't reply). Filtered HERE, before the
+            // cap, so dead rows don't eat result slots.
+            if (user.enabled === 0 && !dmByPeer.has(user.name)) continue
+            const score = defaultFilter(`${user.full_name} ${user.name}`, text)
+            if (score > 0) scored.push({ user, score })
+        }
+        return scored
+            .sort((a, b) => b.score - a.score)
+            .slice(0, MAX_RESULTS)
+            .map((x) => x.user)
+    }, [usersById, dmByPeer, text])
 
     const mappedUsers = useMemo(() => {
         if (text) {
@@ -69,14 +76,17 @@ const UserList = ({ text }: { text: string }) => {
     if (text && !filteredUsers.length) return null
     // filteredUsers need to be mapped to dmChannels and then render DMChannelItem or UserItem based on whether dm_channel exists or not. In UserItem, we will do api call on click to create dm_channel and then navigate to that dm_channel
 
-    const rows = mappedUsers.map(({ user, channel }) => {
-        if (!user) return null
+    const rows = mappedUsers.flatMap(({ user, channel }) => {
+        if (!user) return []
         return channel ? (
             <DMChannelItem key={channel.name} user={user} channel={channel} />
         ) : (
             <UserItem key={user.name} user={user} />
         )
     })
+    // No DMs yet (or none whose peer is loaded): cmdk only hides an empty group while
+    // searching, so the browse-mode "Users" heading would sit over nothing.
+    if (!rows.length) return null
 
     // While searching, rows go bare into the palette's single ranking group
     // (see CommandPalette) so people compete with channels and commands on
@@ -130,7 +140,7 @@ const UserItem = ({ user }: { user: UserData }) => {
     const navigateFromDrawer = useNavigateFromDrawer(() => setOpen(false))
 
     const onSelect = () => {
-        if (user.enabled === 0 || loading) return
+        if (loading) return
         // The palette stays OPEN (with the row's spinner) until the DM
         // resolves — on failure the user is still in the palette to retry
         // (createDM toasts the error). Only a successful resolve closes and
@@ -142,11 +152,14 @@ const UserItem = ({ user }: { user: UserData }) => {
     }
 
     return (
+        // Disabled users never reach this row: without a DM they're filtered
+        // out of the results entirely (UserList), and with one they render as
+        // DMChannelItem above. So this row is always a live "start a DM" action.
         <CommandItem
             value={user.name}
             keywords={[user.full_name, user.name]}
             onSelect={onSelect}
-            className={user.enabled === 0 ? 'cursor-not-allowed' : 'cursor-pointer'}
+            className='cursor-pointer'
         >
             <UserAvatar user={user} size="xs" showStatusIndicator={false} showBotIndicator={false} />
             <span className="truncate">
@@ -157,11 +170,6 @@ const UserItem = ({ user }: { user: UserData }) => {
                 {_("Bot")}
             </Badge>}
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {user?.enabled === 0 && (
-                <Badge variant="subtle" className="ml-auto">
-                    {_("Disabled")}
-                </Badge>
-            )}
         </CommandItem>
     )
 }

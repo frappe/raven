@@ -2,10 +2,11 @@ import * as React from "react"
 import { Progress as ProgressPrimitive } from "radix-ui"
 
 import { cn } from "@lib/utils"
+import { clampProgress, getFilledIntervals } from "@lib/progress"
 import { cva, VariantProps } from "class-variance-authority"
 
 const progressVariants = cva(
-  "relative w-full overflow-hidden rounded-full",
+  "relative w-full transform-gpu overflow-hidden rounded-7",
   {
     variants: {
       size: {
@@ -18,17 +19,19 @@ const progressVariants = cva(
   }
 )
 
-interface ProgressProps extends React.ComponentProps<typeof ProgressPrimitive.Root>, VariantProps<typeof progressVariants> {
-  /** Optional text label displayed on the progress bar */
+interface ProgressProps extends Omit<React.ComponentProps<typeof ProgressPrimitive.Root>, "value">, VariantProps<typeof progressVariants> {
+  /** 0–100; out-of-range values pin to the ends */
+  value: number,
+  /** Text above the bar, on the left */
   label?: React.ReactNode,
-  /** Whether to show a hint/tooltip for the progress value */
+  /** Shows the value as a percentage, on the right */
   hint?: boolean,
-  /** Override the default hint text with custom progress value */
+  /** Replaces the percentage; shown even without `hint` */
   hintText?: React.ReactNode,
-  /** Render as discrete filled segments instead of a continuous bar */
-  intervals?: boolean,
-  /** Number of segments to render when `intervals` is enabled */
-  intervalCount?: number
+  /** Number of segments; omit for a continuous bar */
+  intervals?: number,
+  /** Accessible name; defaults to a string `label`, then "Progress" */
+  ariaLabel?: string
 }
 
 function Progress({
@@ -38,42 +41,43 @@ function Progress({
   label,
   hint,
   hintText,
-  intervals = false,
-  intervalCount = 6,
+  intervals,
+  ariaLabel,
   ...props
 }: ProgressProps) {
 
-  const progressValue = hintText ? hintText : `${value}%`
-
-  const filledIntervalCount =
-    (value ?? 0) > 100 ? intervalCount : Math.round(((value ?? 0) / 100) * intervalCount)
+  const clamped = clampProgress(value)
+  const filled = intervals ? getFilledIntervals(value, intervals) : 0
+  const showHint = hint || hintText != null
 
   return (
-    <div className="flex flex-col gap-2.5">
-      {label || hint ? <div className="flex items-baseline justify-between gap-1">
-        {label && <span className="text-base-medium text-ink-gray-8">{label}</span>}
-        {hint && <span className="text-base-medium text-ink-gray-4">{progressValue}</span>}
+    <div className="flex w-full flex-col gap-2.5">
+      {label || showHint ? <div className="flex items-baseline justify-between">
+        {label ? <span className="text-base-medium text-ink-gray-8">{label}</span> : <span />}
+        {showHint && <span className="self-end">{hintText ?? <span className="text-base-medium text-ink-gray-4">{value}%</span>}</span>}
       </div> : null}
       <ProgressPrimitive.Root
         data-slot="progress"
         data-size={size}
-        value={value}
+        value={clamped}
+        aria-label={ariaLabel ?? (typeof label === "string" ? label : "Progress")}
         className={cn(progressVariants({ size }), intervals ? "flex gap-1" : "bg-surface-gray-2", className)}
         {...props}
       >
         {intervals ? (
-          Array.from({ length: intervalCount }, (_, index) => (
+          Array.from({ length: intervals }, (_, index) => (
             <div
               key={index}
               data-slot="progress-interval"
-              className={cn("h-full flex-1", index < filledIntervalCount ? "bg-surface-gray-10" : "bg-surface-gray-2")}
+              className={cn("h-full flex-1 transition-colors duration-300 motion-reduce:transition-none", index < filled ? "bg-surface-gray-10" : "bg-surface-gray-2")}
             />
           ))
         ) : (
+          // Full-width fill slid left: transform composites, animating width reflows.
           <ProgressPrimitive.Indicator
             data-slot="progress-indicator"
-            className="bg-surface-gray-10 rounded-xl h-full w-full flex-1 transition-all"
-            style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
+            className="h-full w-full bg-surface-gray-10 transition-transform duration-[660ms] ease-[cubic-bezier(0.65,0,0.35,1)] motion-reduce:transition-none"
+            style={{ transform: `translateX(${clamped - 100}%)` }}
           />
         )}
       </ProgressPrimitive.Root>

@@ -44,7 +44,7 @@ export function NotificationsEmptyState({ message }: { message?: string }) {
 /**
  * The chat pane a notification opens: a thread island for thread notifications,
  * otherwise the channel/DM header + chat. Shared by the state-driven pages
- * (Search / Saved Messages via NotificationChat below) and the notifications
+ * (Search / Later via NotificationChat below) and the notifications
  * page's route (NotificationChatRoute).
  */
 export function NotificationPane({

@@ -36,7 +36,7 @@ import { useIsMobile } from "@hooks/use-mobile"
 /** Pages that host the chat pane as a CHILD ROUTE (`/<host>/:channelID/:messageID`,
  *  see NotificationChatRoute). Headers rendered under one of these use the host's
  *  list as the mobile-back fallback / cold-start repair target. */
-export const PANE_HOSTS = ["/notifications", "/search", "/saved-messages"]
+export const PANE_HOSTS = ["/notifications", "/search", "/later"]
 export function useMobileBack(
     fallback: string | (() => void),
     options?: {

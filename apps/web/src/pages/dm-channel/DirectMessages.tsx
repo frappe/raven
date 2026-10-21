@@ -5,20 +5,30 @@ import { useIsMobile } from "@hooks/use-mobile"
 import { useLayerInAnimation } from "@hooks/useLayerInAnimation"
 import _ from "@lib/translate"
 import { cn } from "@lib/utils"
-import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from "@components/ui/empty"
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@components/ui/empty"
+import { Island } from "@components/layout/Island"
 import AppMobileFooter from "@components/features/header/AppMobileFooter"
+import { MessagesSquare } from "lucide-react"
 
 
 export function DirectMessagesEmptyState() {
     return (
-        <Empty>
-            <EmptyHeader>
-                <EmptyTitle>{_("Select a conversation")}</EmptyTitle>
-                <EmptyDescription>
-                    {_("Choose a direct message from the sidebar to start chatting.")}
-                </EmptyDescription>
-            </EmptyHeader>
-        </Empty>
+        // The frame a DM page has: the canvas gutter, then an island, so the empty state sits where the chat would.
+        <div className="flex min-h-0 min-w-0 flex-1 p-0 md:p-1">
+            <Island className="flex-1 items-center justify-center">
+                <Empty>
+                    <EmptyMedia>
+                        <MessagesSquare />
+                    </EmptyMedia>
+                    <EmptyHeader>
+                        <EmptyTitle>{_("Select a conversation")}</EmptyTitle>
+                        <EmptyDescription>
+                            {_("Choose a direct message from the sidebar to start chatting.")}
+                        </EmptyDescription>
+                    </EmptyHeader>
+                </Empty>
+            </Island>
+        </div>
     )
 }
 

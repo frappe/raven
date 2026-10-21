@@ -14,6 +14,10 @@ import { ChannelMessagesState, DateBlock, MessageBatchBlock, StreamBlock, Unread
  */
 
 const CONTINUATION_GAP_MS = 2 * 60 * 1000
+/** A group also ends this long after its first message, however steady the
+ *  sender. The header's time is the only one shown on mobile, so this bounds
+ *  how stale it can get. */
+const GROUP_SPAN_MS = 10 * 60 * 1000
 
 type Decoration = { isContinuation: 0 | 1; isPinned: 0 | 1; decorated: Message }
 
@@ -62,9 +66,10 @@ const dateBlockFor = (dateKey: string): DateBlock => ({
 /** Singleton — the divider carries no data, so one shared (stable) reference is enough. */
 const UNREAD_BLOCK: UnreadBlock = { message_type: "unread", name: "unread-divider" }
 
-/** A message continues the previous one when same sender, same day, within the gap. */
-const isContinuationOf = (message: Message, previous: Message | null): boolean => {
-    if (!previous) return false
+/** A message continues the previous one when same sender, same day, within the
+ *  gap, and still within the group span of the group's first message. */
+const isContinuationOf = (message: Message, previous: Message | null, groupStart: Message | null): boolean => {
+    if (!previous || !groupStart) return false
     // A thread parent is a continuation boundary in BOTH directions: it carries
     // avatar-anchored thread decorations (header, participant button, connector
     // line) that need a full header to attach to, and its trailing thread
@@ -73,6 +78,7 @@ const isContinuationOf = (message: Message, previous: Message | null): boolean =
     if (dateKeyOf(message) !== dateKeyOf(previous)) return false
     const sender = senderOf(message)
     if (sender === null || sender !== senderOf(previous)) return false
+    if (timeOf(message) - timeOf(groupStart) > GROUP_SPAN_MS) return false
     return timeOf(message) - timeOf(previous) <= CONTINUATION_GAP_MS
 }
 
@@ -115,6 +121,8 @@ const buildBlocks = (
 
     const blocks: StreamBlock[] = []
     let previous: Message | null = null
+    /** First message of the current group, for the group span rule. */
+    let groupStart: Message | null = null
     let unreadInserted = false
     for (let index = 0; index < messages.length; index++) {
         const message = messages[index]
@@ -127,7 +135,8 @@ const buildBlocks = (
             blocks.push(UNREAD_BLOCK)
             unreadInserted = true
         }
-        const isContinuation = isContinuationOf(message, previous) ? 1 : 0
+        const isContinuation = isContinuationOf(message, previous, groupStart) ? 1 : 0
+        if (!isContinuation) groupStart = message
 
         // Consume a run of consecutive same-batch messages into one block
         if (message.message_batch_id) {
@@ -148,7 +157,8 @@ const buildBlocks = (
                 // thread parents (and the message after one) break the run.
                 let runPrevious: Message | null = previous
                 for (const member of members) {
-                    const memberContinuation = isContinuationOf(member, runPrevious) ? 1 : 0
+                    const memberContinuation = isContinuationOf(member, runPrevious, groupStart) ? 1 : 0
+                    if (!memberContinuation) groupStart = member
                     blocks.push(decorate(member, memberContinuation, pinnedIds.has(member.name) ? 1 : 0))
                     runPrevious = member
                 }

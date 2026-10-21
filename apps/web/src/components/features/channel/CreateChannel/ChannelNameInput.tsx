@@ -4,6 +4,21 @@ import { RavenChannel } from '@raven/types/RavenChannelManagement/RavenChannel'
 import { ChannelIcon } from '@components/common/ChannelIcon/ChannelIcon'
 import _ from '@lib/translate'
 
+/**
+ * Validation rules for a channel name, shared by the create and edit forms.
+ * Letters and digits from any script, so names in Cyrillic, Arabic or CJK
+ * work. Hyphens anywhere but first, which is where spaces end up.
+ */
+export const channelNameRules = () => ({
+    required: _('Please add a channel name'),
+    maxLength: { value: 50, message: _('Channel name cannot be more than 50 characters.') },
+    minLength: { value: 3, message: _('Channel name cannot be less than 3 characters.') },
+    pattern: {
+        value: /^[\p{L}\p{N}][\p{L}\p{N}-]*$/u,
+        message: _('Channel name can only contain letters, numbers and hyphens.'),
+    },
+})
+
 interface ChannelNameInputProps extends Omit<React.ComponentProps<typeof Input>, 'value' | 'onChange'> {
     value: string
     onChange: (value: string) => void
@@ -18,7 +33,7 @@ interface ChannelNameInputProps extends Omit<React.ComponentProps<typeof Input>,
  * → the label/description/error wiring). Without the spread, those props died
  * on this wrapper and the field showed the error text but never highlighted.
  */
-export const ChannelNameInput = ({ value, onChange, channelType, 'aria-describedby': ariaDescribedBy, ...inputProps }: ChannelNameInputProps) => {
+export const ChannelNameInput = ({ value, onChange, channelType, placeholder, 'aria-describedby': ariaDescribedBy, ...inputProps }: ChannelNameInputProps) => {
     const handleChange = useCallback(
         (event: React.ChangeEvent<HTMLInputElement>) => {
             // Convert to lowercase and replace spaces with hyphens
@@ -38,7 +53,7 @@ export const ChannelNameInput = ({ value, onChange, channelType, 'aria-described
                 value={value}
                 onChange={handleChange}
                 maxLength={50}
-                placeholder={_('e.g. marketing, design-team, project-alpha')}
+                placeholder={placeholder ?? _('e.g. marketing, design-team, project-alpha')}
                 className="pl-9 pr-12"
                 // No autoFocus attribute — the form is lazy-loaded, so the attribute
                 // fires too late on a cold open; CreateChannelForm focuses via ref

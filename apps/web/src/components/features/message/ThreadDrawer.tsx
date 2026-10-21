@@ -205,7 +205,7 @@ export default function ThreadDrawer({
                 {/* Message input — posts into the thread channel (or skeleton / not-member banner) */}
                 <div className="shrink-0">
                     <ComposerArea gate={composerGate} isThread>
-                        {threadID && <ChatInput channelID={threadID} ref={threadInputRef} isDirectMessage={parentIsDM} parentChannelID={parentChannelID} />}
+                        {threadID && <ChatInput channelID={threadID} ref={threadInputRef} isDirectMessage={parentIsDM} parentChannelID={parentChannelID} disableSchedule />}
                     </ComposerArea>
                 </div>
             </FileDropZone>

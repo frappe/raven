@@ -43,7 +43,7 @@ export type MessagesPage = {
     messages: Message[]
     has_old_messages?: boolean
     has_new_messages?: boolean
-    /** The member's server-side read watermark at load — baselines client last_visit tracking. */
+    /** The member's server-side read watermark at load or refresh — baselines client last_visit tracking. */
     last_visit?: string | null
     /** First unread message id when the load was anchored to unread (drives the "New messages" divider). */
     first_unread_message?: string | null

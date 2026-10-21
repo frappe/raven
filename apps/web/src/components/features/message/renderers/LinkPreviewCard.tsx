@@ -35,9 +35,11 @@ const metaLine = (preview: LinkPreviewData): string => {
     const parts: string[] = []
     if (typeof meta.author === "string" && meta.author) parts.push(meta.author)
     if (typeof meta.published_on === "string") {
-        // Stored verbatim from the page — parse defensively, drop what
-        // doesn't parse.
-        const date = getDateObject(meta.published_on)
+        // Stored verbatim from the page, so it can be anything the site wrote. Some
+        // sites put a bare "Z" after a date-only value ("2026-09-21Z"), which Chrome
+        // accepts and Safari rejects. Strip it so both show the date. Anything that
+        // still does not parse is dropped.
+        const date = getDateObject(meta.published_on.replace(/^(\d{4}-\d{2}-\d{2})Z$/, "$1"))
         if (date.isValid()) parts.push(date.format("MMM D, YYYY"))
     }
     if (typeof meta.points === "number") parts.push(`${meta.points} ${_("points")}`)

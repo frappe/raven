@@ -72,6 +72,16 @@ class UsersStore {
         this.listeners.forEach((listener) => listener())
     }
 
+    /**
+     * Direct seed, bypassing Dexie — the fallback for browsers where
+     * IndexedDB is blocked or wedged (Brave shields, DuckDuckGo mobile,
+     * private windows). Same diff/reuse as a liveQuery emit, so the app runs
+     * fully; it just loses cross-session persistence.
+     */
+    seed = (users: UserData[]) => {
+        this.applyUsers(users)
+    }
+
     /** ----- Whole-map (bulk lookups) ----- */
 
     subscribe = (listener: Listener) => {

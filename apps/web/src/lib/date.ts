@@ -1,4 +1,5 @@
 import dayjs from 'dayjs'
+import { parseDate } from 'chrono-node'
 import _ from '@lib/translate'
 import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
@@ -36,7 +37,10 @@ export const formatDate = (date?: string | Date, format?: string) => {
 }
 
 export const getDateObject = (timestamp: string): dayjs.Dayjs => {
-
+    // Check the input before the timezone step. dayjs.tz finds the zone offset through
+    // Intl.DateTimeFormat, and Safari throws there on an invalid date where Chrome
+    // returns Invalid Date. Callers get an invalid dayjs back and can test isValid().
+    if (!timestamp || !dayjs(timestamp).isValid()) return dayjs(NaN)
     return dayjs.tz(timestamp, SYSTEM_TIMEZONE).local()
 }
 
@@ -74,4 +78,15 @@ export const formatRelativeDate = (timestamp?: string) => {
  */
 export const toDate = (date: string, format: string = "YYYY-MM-DD") => {
   return dayjs(date, format).toDate()
+}
+
+/**
+ * Parse a typed date: the user's date format first (strict), then chrono-node
+ * natural language ("tomorrow", "1st July 2025"). Null when unresolvable.
+ */
+export const parseTypedDate = (raw: string): Date | null => {
+  if (!raw) return null
+  const strict = toDate(raw, USER_DATE_FORMAT)
+  if (strict && !isNaN(strict.getTime())) return strict
+  return parseDate(raw)
 }

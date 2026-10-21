@@ -1,13 +1,13 @@
-from datetime import timedelta
-
 import frappe
 from frappe import _
-from frappe.query_builder import JoinType, Order
+from frappe.query_builder import Case, JoinType, Order
 from frappe.query_builder.functions import Coalesce, Count
+from frappe.utils import cint
 
 from raven.api.chat_stream import message_columns
 from raven.api.raven_channel import create_direct_message_channel, get_peer_user_id_from_dm_users
-from raven.utils import get_channel_member, is_channel_member, track_channel_visit
+from raven.api.search import channel_access_condition
+from raven.utils import desk_has_raven_icon, get_channel_member
 
 
 @frappe.whitelist(methods=["POST"])
@@ -177,6 +177,24 @@ def _create_batch_idempotent(
 	return _create_batch(channel_id, client_id, specs, send_silently)
 
 
+def validate_files_uploaded_by_user(file_urls: list[str]):
+	"""Throw unless the current user uploaded every one of these files.
+
+	Without this, a user could send someone else's private file. On insert,
+	older Frappe versions attach any unattached File with that URL to the
+	new message.
+	"""
+	if not file_urls:
+		return
+	uploaded = frappe.get_all(
+		"File",
+		filters={"file_url": ["in", file_urls], "owner": frappe.session.user},
+		pluck="file_url",
+	)
+	if set(file_urls) - set(uploaded):
+		frappe.throw(_("You can only send files that you uploaded."), frappe.PermissionError)
+
+
 @frappe.whitelist(methods=["POST"])
 def send_message_with_attachments(
 	channel_id: str,
@@ -186,6 +204,8 @@ def send_message_with_attachments(
 	is_reply: bool = False,
 	linked_message: str | None = None,
 	send_silently: bool = False,
+	link_doctype: str | None = None,
+	link_document: str | None = None,
 ):
 	"""
 	v3 composer send. Creates one message per (already-uploaded) file first —
@@ -222,8 +242,12 @@ def send_message_with_attachments(
 	has_custom_emoji = 'data-type="customEmoji"' in content
 	has_body = has_text or has_custom_emoji
 
-	if not has_body and not files:
+	has_linked_document = bool(link_doctype and link_document)
+
+	if not has_body and not files and not has_linked_document:
 		frappe.throw(_("Cannot send an empty message"))
+
+	validate_files_uploaded_by_user([f["file_url"] if isinstance(f, dict) else f for f in files])
 
 	# Every message from a send carries the client_id as its batch id: it groups
 	# multi-message sends in the UI AND lets the client match the realtime echo of
@@ -256,7 +280,9 @@ def send_message_with_attachments(
 				spec["thumbnail_width"] = width
 				spec["thumbnail_height"] = height
 		specs.append(spec)
-	if has_body:
+	# A document-only send has no text and no files — it still needs one message
+	# to carry the link, so an empty Text message hosts it (the card IS the content).
+	if has_body or (has_linked_document and not files):
 		specs.append({"message_type": "Text", "text": content})
 
 	# The reply attaches to the LAST message of the batch — the caption when there
@@ -265,6 +291,12 @@ def send_message_with_attachments(
 	if is_reply and linked_message and specs:
 		specs[-1]["is_reply"] = True
 		specs[-1]["linked_message"] = linked_message
+
+	# A linked document rides the same anchor as the reply: the last message of the
+	# batch (the caption when there's text), so the card renders under the text.
+	if has_linked_document and specs:
+		specs[-1]["link_doctype"] = link_doctype
+		specs[-1]["link_document"] = link_document
 
 	# Without a client_id there's no idempotency key — just create.
 	if not client_id:
@@ -351,41 +383,6 @@ def fetch_recent_files(channel_id: str):
 	return files
 
 
-def get_messages(channel_id: str):
-
-	messages = frappe.db.get_all(
-		"Raven Message",
-		filters={"channel_id": channel_id},
-		fields=[
-			"name",
-			"owner",
-			"creation",
-			"modified",
-			"text",
-			"file",
-			"message_type",
-			"message_reactions",
-			"is_reply",
-			"linked_message",
-			"_liked_by",
-			"channel_id",
-			"thumbnail_width",
-			"thumbnail_height",
-			"file_thumbnail",
-			"link_doctype",
-			"link_document",
-			"replied_message_details",
-			"content",
-			"is_edited",
-			"is_thread",
-			"is_forwarded",
-		],
-		order_by="creation asc",
-	)
-
-	return messages
-
-
 @frappe.whitelist()
 def save_message(message_id: str, add: str | bool = False):
 	"""
@@ -460,27 +457,47 @@ def get_pinned_messages(channel_id: str):
 
 
 @frappe.whitelist()
-def get_saved_messages():
+def get_saved_messages(
+	limit: int | None = None, start: int = 0, search: str | None = None, channel_id: str | None = None
+):
 	"""
-	Fetches list of all messages liked by the user
-	Check if the user has permission to view the message
+	Messages liked (saved) by the user, permission-filtered.
+
+	All params optional — legacy callers (v2) pass none and get the full list in
+	creation ASC. The Later page paginates: `limit`/`start` window, newest first,
+	server-side `search` (message text) and `channel_id` filter — thread replies
+	match their PARENT channel (a thread channel is named after its root message).
 	"""
 
 	raven_message = frappe.qb.DocType("Raven Message")
 	raven_channel = frappe.qb.DocType("Raven Channel")
 	raven_channel_member = frappe.qb.DocType("Raven Channel Member")
+	root_message = frappe.qb.DocType("Raven Message").as_("root_message")
+
+	# Thread replies resolve to the root message's channel; others are their own parent.
+	parent_channel = (
+		Case()
+		.when(raven_channel.is_thread == 1, root_message.channel_id)
+		.else_(raven_message.channel_id)
+	)
 
 	query = (
 		frappe.qb.from_(raven_message)
 		.join(raven_channel, JoinType.left)
 		.on(raven_message.channel_id == raven_channel.name)
 		.join(raven_channel_member, JoinType.left)
-		.on(raven_channel.name == raven_channel_member.channel_id)
+		.on(
+			(raven_channel.name == raven_channel_member.channel_id)
+			& (raven_channel_member.user_id == frappe.session.user)
+		)
+		.join(root_message, JoinType.left)
+		.on(root_message.name == raven_message.channel_id)
 		.select(
 			raven_message.name,
 			raven_message.owner,
 			raven_message.creation,
 			raven_message.text,
+			raven_message.content,
 			raven_message.channel_id,
 			raven_message.file,
 			raven_message.message_type,
@@ -492,73 +509,32 @@ def get_saved_messages():
 			raven_message.thumbnail_height,
 			raven_message.is_bot_message,
 			raven_message.bot,
+			parent_channel.as_("parent_channel_id"),
 		)
-		.where(raven_message._liked_by.like("%" + frappe.session.user + "%"))
+		# _liked_by is a JSON array of quoted user ids — quoting the pattern stops
+		# one user id matching inside another (ravi@… inside gauravi@…).
+		.where(raven_message._liked_by.like(f'%"{frappe.session.user}"%'))
+		# Membership is folded into the JOIN ON (one row per message, no DISTINCT
+		# needed) — the join only yields the current user's own membership row.
 		.where(
-			(raven_channel.type.isin(["Open", "Public"]))
-			| (raven_channel_member.user_id == frappe.session.user)
+			(raven_channel.type.isin(["Open", "Public"])) | (raven_channel_member.user_id.isnotnull())
 		)
-		.orderby(raven_message.creation, order=Order.asc)
-		.distinct()
-	)  # Add DISTINCT keyword to retrieve only unique messages
+	)
 
-	messages = query.run(as_dict=True)
+	if search:
+		query = query.where(raven_message.text.like(f"%{search}%"))
+	if channel_id:
+		query = query.where(parent_channel == channel_id)
 
-	# Resolve each message's real (parent) channel so the client can filter and route
-	# thread replies. A thread message lives in a thread channel (Raven Channel.is_thread = 1)
-	# whose name equals the thread's root message; the parent is that root message's channel.
-	# Non-thread messages are their own parent.
-	for message in messages:
-		is_thread_channel = message.pop("is_thread", 0)
-		if is_thread_channel:
-			parent_channel_id = frappe.db.get_value("Raven Message", message["channel_id"], "channel_id")
-			message["parent_channel_id"] = parent_channel_id or message["channel_id"]
-		else:
-			message["parent_channel_id"] = message["channel_id"]
-
-	return messages
-
-
-def parse_messages(messages):
-
-	messages_with_date_header = []
-	previous_message = None
-
-	for i in range(len(messages)):
-		message = messages[i]
-		is_continuation = (
-			previous_message
-			and message["owner"] == previous_message["owner"]
-			and (message["creation"] - previous_message["creation"]) < timedelta(minutes=2)
+	if limit:
+		# Paged mode reads newest-first; the legacy full fetch keeps its ASC order.
+		query = (
+			query.orderby(raven_message.creation, order=Order.desc).limit(cint(limit)).offset(cint(start))
 		)
-		message["is_continuation"] = int(bool(is_continuation))
+	else:
+		query = query.orderby(raven_message.creation, order=Order.asc)
 
-		if i == 0 or message["creation"].date() != previous_message["creation"].date():
-			messages_with_date_header.append({"block_type": "date", "data": message["creation"].date()})
-
-		messages_with_date_header.append({"block_type": "message", "data": message})
-
-		previous_message = message
-
-	return messages_with_date_header
-
-
-def check_permission(channel_id):
-	if frappe.get_cached_value("Raven Channel", channel_id, "type") == "Private":
-		if is_channel_member(channel_id):
-			pass
-		elif frappe.session.user == "Administrator":
-			pass
-		else:
-			frappe.throw(_("You don't have permission to view this channel"), frappe.PermissionError)
-
-
-@frappe.whitelist()
-def get_messages_with_dates(channel_id: str):
-	check_permission(channel_id)
-	messages = get_messages(channel_id)
-	track_channel_visit(channel_id=channel_id, publish_event_for_user=True, commit=True)
-	return parse_messages(messages)
+	return query.run(as_dict=True)
 
 
 @frappe.whitelist()
@@ -696,10 +672,25 @@ def get_message_readers(message_id: str):
 
 @frappe.whitelist()
 def get_timeline_message_content(doctype: str, docname: str | int):
+	"""Raven messages linked to a document, for its Desk form timeline.
+
+	Only for users who can read the document. Each message also needs read
+	access to its channel, the same rule search uses. For a thread message,
+	the thread's parent channel decides.
+	"""
+	# Empty, not an error: this runs on every form load.
+	if not frappe.has_permission(doctype=doctype, ptype="read", doc=docname):
+		return []
+
+	user_id = frappe.session.user
 	channel = frappe.qb.DocType("Raven Channel")
 	channel_member = frappe.qb.DocType("Raven Channel Member")
+	workspace_member = frappe.qb.DocType("Raven Workspace Member")
 	message = frappe.qb.DocType("Raven Message")
 	user = frappe.qb.DocType("User")
+	# A thread channel is named after the message it started from.
+	thread_root = frappe.qb.DocType("Raven Message").as_("thread_root")
+	perm_channel = frappe.qb.DocType("Raven Channel").as_("perm_channel")
 	query = (
 		frappe.qb.from_(message)
 		.select(
@@ -719,28 +710,37 @@ def get_timeline_message_content(doctype: str, docname: str | int):
 		)
 		.join(channel)
 		.on(message.channel_id == channel.name)
-		.join(channel_member)
+		.left_join(thread_root)
+		.on(thread_root.name == channel.name)
+		.left_join(perm_channel)
 		.on(
-			(message.channel_id == channel_member.channel_id) & (message.owner == channel_member.user_id)
+			perm_channel.name
+			== Case().when(channel.is_thread == 1, thread_root.channel_id).else_(channel.name)
 		)
+		.left_join(channel_member)
+		.on((channel_member.channel_id == perm_channel.name) & (channel_member.user_id == user_id))
+		.left_join(workspace_member)
+		.on((workspace_member.workspace == perm_channel.workspace) & (workspace_member.user == user_id))
 		.join(user)
 		.on(message.owner == user.name)
-		.where((channel.type != "Private") | (channel_member.user_id == frappe.session.user))
+		.where(channel_access_condition(perm_channel, channel_member, workspace_member, user_id))
 		.where(message.link_doctype == doctype)
-		.where(message.link_document == docname)
+		.where(message.link_document == str(docname))
 	)
 	data = query.run(as_dict=True)
 
+	icon = "raven" if desk_has_raven_icon() else "share"
 	timeline_contents = []
 	for log in data:
 
 		if log.is_direct_message:
 			peer_user_id = get_peer_user_id_from_dm_users(log)
 			if peer_user_id:
-				log["peer_user"] = frappe.db.get_value("User", peer_user_id, "full_name")
+				# Raven User covers bots too. A bot has no User row.
+				log["peer_user"] = frappe.get_cached_value("Raven User", peer_user_id, "full_name")
 		timeline_contents.append(
 			{
-				"icon": "share",
+				"icon": icon,
 				"is_card": True,
 				"creation": log.creation,
 				"template": "send_message",
@@ -808,8 +808,7 @@ def get_all_files_shared_in_channel(
 	page_length: int | None = None,
 ):
 
-	# check if the user has permission to view the channel
-	check_permission(channel_id)
+	frappe.has_permission("Raven Channel", doc=channel_id, ptype="read", throw=True)
 
 	message = frappe.qb.DocType("Raven Message")
 	user = frappe.qb.DocType("Raven User")
@@ -870,48 +869,6 @@ def get_all_files_shared_in_channel(
 	return files
 
 
-@frappe.whitelist()
-def get_count_for_pagination_of_files(
-	channel_id: str, file_name: str | None = None, file_type: str | None = None
-):
-
-	# check if the user has permission to view the channel
-	check_permission(channel_id)
-
-	message = frappe.qb.DocType("Raven Message")
-	# user = frappe.qb.DocType("Raven User")
-	file = frappe.qb.DocType("File")
-
-	query = (
-		frappe.qb.from_(message)
-		.join(file, JoinType.left)
-		.on(message.name == file.attached_to_name)
-		.select(Count(message.name).as_("count"))
-		.where(message.channel_id == channel_id)
-	)
-
-	# search for file name
-	if file_name:
-		query = query.where(file.file_name.like("%" + file_name + "%"))
-
-	# search for file type
-	if file_type:
-		if file_type == "image":
-			query = query.where(message.message_type == "Image")
-		elif file_type == "pdf":
-			query = query.where(file.file_type == "pdf")
-		else:
-			# Get the list of extensions for the given file type
-			extensions = file_extensions.get(file_type)
-			if extensions:
-				query = query.where((file.file_type).isin(extensions))
-	else:
-		query = query.where(message.message_type.isin(["Image", "File"]))
-	count = query.run(as_dict=True)
-
-	return count[0]["count"]
-
-
 # The Raven Message fields that survive a forward. Everything else (batch id,
 # poll, reactions, reply link, bot fields) belongs to the source conversation or is
 # overridden at insert time by add_forwarded_message_to_channel.
@@ -970,7 +927,9 @@ def _forward_payloads(message_id: str) -> list[dict]:
 
 	payloads = []
 	for member in members:
-		payload = {field: member.get(field) for field in FORWARDABLE_FIELDS if member.get(field) is not None}
+		payload = {
+			field: member.get(field) for field in FORWARDABLE_FIELDS if member.get(field) is not None
+		}
 		# Forwarding drops the reply link, so inline the quoted message into `text` up
 		# front. `json` goes with it: it still holds the unquoted body, and the copy
 		# should have one body that carries the quote.
@@ -991,61 +950,35 @@ def _forward_payloads(message_id: str) -> list[dict]:
 
 @frappe.whitelist(methods=["POST"])
 def forward_message(
-	message_receivers: list[dict], forwarded_message: dict | None = None, message_id: str | None = None
+	message_receivers: list[dict],
+	forwarded_message: dict | None = None,
+	message_id: str | None = None,
 ):
 	"""
 	Forward a message to multiple users/ or in multiple channels
 	"""
-	# The v3 client sends just the message id and the payloads are built here,
-	# from the database — including every member when the message is part of a
-	# batch (the client couldn't collect siblings itself: outside the open
-	# channel it only holds the one message). `forwarded_message` remains for
-	# older clients that send the copy's content themselves; those forward the
-	# single message as before.
-	if message_id:
-		payloads = _forward_payloads(message_id)
-		for receiver in message_receivers:
-			if receiver["type"] == "User":
-				channel_id = create_direct_message_channel(receiver["name"])
-			else:
-				channel_id = receiver["name"]
-			# A fresh batch id per destination, so a batch's copies group into one
-			# album there without fusing with any other batch.
-			new_batch_id = frappe.generate_hash(length=12) if len(payloads) > 1 else None
-			for payload in payloads:
-				if new_batch_id:
-					payload = {**payload, "message_batch_id": new_batch_id}
-				add_forwarded_message_to_channel(channel_id, payload)
-		return "messages forwarded"
-
-	if not forwarded_message:
+	# The copy is always built from the database, including every member when
+	# the message is part of a batch. The v3 client sends just the message id.
+	# Older clients (the old mobile app) send the whole message: only its name
+	# is used, so they can't forward content or files that aren't theirs to read.
+	if not message_id and forwarded_message:
+		message_id = forwarded_message.get("name")
+	if not message_id:
 		frappe.throw(_("Nothing to forward"))
 
-	# Forwarding drops the reply link (linked_message lives in the source channel); inline the
-	# replied message as a blockquote once, up front, so the quote survives every forward.
-	if forwarded_message.get("is_reply"):
-		quote = build_reply_blockquote(
-			forwarded_message.get("replied_message_details"),
-			linked_message=forwarded_message.get("linked_message"),
-		)
-		if quote:
-			forwarded_message["text"] = quote + (forwarded_message.get("text") or "")
-		# Drop the reply markers: the copy carries the quote in its body, and keeping
-		# linked_message would point at another channel — which validate_linked_message
-		# rejects, so a copy that kept it could never be inserted.
-		forwarded_message.pop("linked_message", None)
-		forwarded_message.pop("replied_message_details", None)
-
+	payloads = _forward_payloads(message_id)
 	for receiver in message_receivers:
 		if receiver["type"] == "User":
-			# send forwarded message as a DM to the user
-			# get DM channel ID, create a copy of the message and send it to the channel, change the message owner to current sender
-			dm_channel_id = create_direct_message_channel(receiver["name"])
-			add_forwarded_message_to_channel(dm_channel_id, forwarded_message)
+			channel_id = create_direct_message_channel(receiver["name"])
 		else:
-			# send forwarded message to the channel
-			add_forwarded_message_to_channel(receiver["name"], forwarded_message)
-
+			channel_id = receiver["name"]
+		# A fresh batch id per destination, so a batch's copies group into one
+		# album there without fusing with any other batch.
+		new_batch_id = frappe.generate_hash(length=12) if len(payloads) > 1 else None
+		for payload in payloads:
+			if new_batch_id:
+				payload = {**payload, "message_batch_id": new_batch_id}
+			add_forwarded_message_to_channel(channel_id, payload)
 	return "messages forwarded"
 
 

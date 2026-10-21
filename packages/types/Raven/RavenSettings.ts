@@ -14,8 +14,6 @@ export interface RavenSettings{
 	idx?: number
 	/**	Automatically add system users to Raven : Check	*/
 	auto_add_system_users?: 0 | 1
-	/**	Show Raven on Desk : Check	*/
-	show_raven_on_desk?: 0 | 1
 	/**	Tenor API Key : Data	*/
 	tenor_api_key?: string
 	/**	Enable AI Integration : Check	*/
@@ -84,4 +82,6 @@ export interface RavenSettings{
 	working_hours_start?: string
 	/**	Working Hours End : Time	*/
 	working_hours_end?: string
+	/**	Setup Pending : Check - Set on install. Cleared once the first admin finishes or skips the setup flow	*/
+	setup_completed?: 0 | 1
 }

@@ -1,0 +1,98 @@
+import { useFormContext } from "react-hook-form"
+import type { RavenBot } from "@raven/types/RavenBot/RavenBot"
+import CodeBlock from "@components/features/message/renderers/MessageCodeBlock"
+import _ from "@lib/translate"
+
+/**
+ * Turns a bot ID into a Python variable name: lowercase, with every run of
+ * other characters collapsed to one underscore. Python names can't start with
+ * a digit, so those get a prefix.
+ */
+export const toPythonIdentifier = (id: string): string => {
+    const slug = id.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "")
+    if (!slug) return "bot"
+    return /^\d/.test(slug) ? `bot_${slug}` : slug
+}
+
+/** API Docs tab of the Raven Bot editor. */
+const AgentApiDocsTab = () => {
+    const { getValues } = useFormContext<RavenBot>()
+
+    const botID = getValues("name")
+    const botVarName = toPythonIdentifier(botID)
+
+    const codeSamples = {
+        sendMessage: `${botVarName} = frappe.get_doc("Raven Bot", "${botID}")
+
+# Send a message to a channel. Text can be in HTML format.
+${botVarName}.send_message(channel_id="channel-name", text="This is a test message.")`,
+
+        sendMessageInMarkdown: `${botVarName}.send_message(
+    channel_id="channel-name",
+    text="This is a test message.",
+    markdown=True
+)`,
+
+        sendMessageWithDocumentLink: `${botVarName}.send_message(
+    channel_id="channel-name",
+    text="This is a test message.",
+    link_doctype="DocType",
+    link_document="Document Name"
+)`,
+
+        sendDirectMessage: `${botVarName}.send_direct_message(
+    user_id="john.doe@example.com",
+    text="This is a test message."
+)`,
+    }
+
+    return (
+        <div className="flex flex-col gap-3">
+            <p className="text-base text-ink-gray-8">
+                {_("The following code samples show how to use the bot/agent in a Frappe app or Server Script.")}
+            </p>
+
+            <div className="flex flex-col gap-1">
+                <h3 className="text-sm font-semibold">{_("Sending a message to a channel")}</h3>
+                <p className="text-p-sm text-ink-gray-6">
+                    {_("Bots can be used to send messages to channels with HTML formatted content.")}
+                </p>
+                <CodeBlock code={codeSamples.sendMessage} language="python" />
+            </div>
+
+            <div className="flex flex-col gap-1">
+                <h3 className="text-sm font-semibold">{_("Sending a message to a channel in markdown format")}</h3>
+                <p className="text-p-sm text-ink-gray-6">
+                    {_("You can send markdown formatted text to a channel by setting the")}{" "}
+                    <code className="rounded bg-surface-gray-2 px-1 py-0.5 font-mono text-p-xs">markdown</code>{" "}
+                    {_("parameter to True.")}
+                </p>
+                <CodeBlock code={codeSamples.sendMessageInMarkdown} language="python" />
+            </div>
+
+            <div className="flex flex-col gap-1">
+                <h3 className="text-sm font-semibold">{_("Sending a message with a document link")}</h3>
+                <p className="text-p-sm text-ink-gray-6">
+                    {_("You can send a message with a link to any document in the system by setting the")}{" "}
+                    <code className="rounded bg-surface-gray-2 px-1 py-0.5 font-mono text-p-xs">link_doctype</code>{" "}
+                    {_("and")}{" "}
+                    <code className="rounded bg-surface-gray-2 px-1 py-0.5 font-mono text-p-xs">link_document</code>{" "}
+                    {_("parameters.")}
+                </p>
+                <CodeBlock code={codeSamples.sendMessageWithDocumentLink} language="python" />
+            </div>
+
+            <div className="flex flex-col gap-1">
+                <h3 className="text-sm font-semibold">{_("Sending a direct message to a user")}</h3>
+                <p className="text-p-sm text-ink-gray-6">
+                    {_("You can send a direct message to a user by calling the")}{" "}
+                    <code className="rounded bg-surface-gray-2 px-1 py-0.5 font-mono text-p-xs">send_direct_message</code>{" "}
+                    {_("method and setting the user_id parameter. This method also accepts markdown and document link parameters.")}
+                </p>
+                <CodeBlock code={codeSamples.sendDirectMessage} language="python" />
+            </div>
+        </div>
+    )
+}
+
+export default AgentApiDocsTab

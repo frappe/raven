@@ -1,8 +1,11 @@
 import { useCallback, useState } from "react"
 import { useFrappeAuth, type FrappeError } from "frappe-react-sdk"
+import Cookies from "js-cookie"
 import { errorResponseToast } from "@components/ui/error-banner"
 import { disablePush } from "@lib/push"
 import { db } from "@db"
+import { siteKey, siteOrigin } from "@lib/site"
+import { clearSessionUser } from "@lib/sessionUser"
 import _ from "@lib/translate"
 
 /**
@@ -21,6 +24,16 @@ const LOCAL_STORAGE_PREFIXES = [
     "emoji-mart", // emoji-mart's own frequently-used tracking (emoji-mart.last / .frequently)
 ]
 
+/**
+ * Whether the server has already ended the session. Frappe writes its cookie clears
+ * even on an error response, so after a logout call the cookies say what actually
+ * happened regardless of the status code. Same check Desk's request layer makes.
+ */
+const sessionIsGone = () => {
+    const userID = Cookies.get("user_id")
+    return !userID || userID === "Guest"
+}
+
 /** Device-level appearance, not user data — keep it so login doesn't flash themes. */
 const LOCAL_STORAGE_KEEP = ["raven-theme"]
 
@@ -30,7 +43,7 @@ const clearLocalStorage = () => {
     for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i)
         if (!key || LOCAL_STORAGE_KEEP.includes(key)) continue
-        if (LOCAL_STORAGE_PREFIXES.some((prefix) => key.startsWith(prefix))) doomed.push(key)
+        if (LOCAL_STORAGE_PREFIXES.some((prefix) => key.startsWith(siteKey(prefix)))) doomed.push(key)
     }
     doomed.forEach((key) => localStorage.removeItem(key))
 }
@@ -82,19 +95,43 @@ export function useLogout(): { logout: () => Promise<void>; isLoggingOut: boolea
     const logout = useCallback(async () => {
         setIsLoggingOut(true)
 
-        // Best-effort: stop this device receiving pushes for a logged-out session.
+        // Best-effort: stop this device receiving pushes for a logged-out session, remembering
+        // that this site had them so signing in again does not start from off.
         try {
-            await disablePush()
+            await disablePush(true)
         } catch (e) {
             console.error("Failed to disable push notifications on logout", e)
+        }
+
+        if (import.meta.env.VITE_NATIVE) {
+            // Native: revoke the tokens, wipe the site's local data, back to the picker. The site
+            // stays saved, signed out; clearing the default keeps the picker from reopening it.
+            const [{ signOut }, { setDefaultSite }] = await Promise.all([import("../native/auth"), import("../native/sites")])
+            await signOut(siteOrigin())
+            await setDefaultSite(null)
+            // Logged out as far as the beforeunload cache writer is concerned; it wipes instead of persisting.
+            clearSessionUser()
+            clearLocalStorage()
+            await clearIndexedDB()
+            await import("../native/download").then((m) => m.clearMediaCache())
+            await import("../native/badge").then((m) => m.setNativeBadge(0))
+            window.location.replace("/")
+            return
         }
 
         try {
             await frappeLogout()
         } catch (e) {
-            setIsLoggingOut(false)
-            errorResponseToast(_("Could not log out"), e as FrappeError)
-            return
+            // The logout endpoint can fail AFTER it has deleted the session and cleared
+            // the cookies: it ends by starting a Guest session, and a site whose Guest
+            // user is missing or disabled throws right there. The user is logged out
+            // all the same, and Desk treats that case as a session expiry rather than an
+            // error. Only a session that survived the call is a real failure.
+            if (!sessionIsGone()) {
+                setIsLoggingOut(false)
+                errorResponseToast(_("Could not log out"), e as FrappeError)
+                return
+            }
         }
 
         clearLocalStorage()

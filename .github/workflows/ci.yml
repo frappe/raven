@@ -83,7 +83,7 @@ jobs:
       - name: Install
         working-directory: /home/runner/frappe-bench
         run: |
-          bench get-app https://github.com/The-Commit-Company/Raven.git $GITHUB_WORKSPACE
+          bench get-app https://github.com/frappe/Raven.git $GITHUB_WORKSPACE
           bench setup requirements
           bench new-site --db-root-password root --admin-password admin test_site
           bench --site test_site install-app raven

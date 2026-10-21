@@ -8,14 +8,17 @@ import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover"
 import { DrawerClose, DrawerContent, DrawerDescription, DrawerNested, DrawerTitle, DrawerTrigger } from "@components/ui/drawer";
 import { FormControl } from "@components/ui/form"
 import { ChevronDownIcon, ExternalLink } from "lucide-react";
+import ClearFieldButton from "@components/common/ClearFieldButton";
 import { Button } from "@components/ui/button";
 import { cn } from "@lib/utils";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@components/ui/command";
 import { FilterComboboxItem, FILTER_ITEM_STYLES, FILTER_TRIGGER_STYLES, PAGE_GUTTER } from "@components/common/filters/FilterCombobox";
 import { useIsMobile } from "@hooks/use-mobile";
 import { useNoDragWhileScrolled } from "@hooks/useNoDragWhileScrolled";
+import { useResetScrollOnSearch } from "@hooks/useResetScrollOnSearch";
 import _ from "@lib/translate";
 import ErrorBanner from "@components/ui/error-banner";
+import { Skeleton } from "@components/ui/skeleton";
 import MarkdownRenderer from "@components/ui/markdown";
 
 export interface ResultItem {
@@ -121,6 +124,8 @@ export interface LinkFieldComboboxProps {
     readOnly?: boolean;
     /** Should the field be disabled. Default: false */
     disabled?: boolean;
+    /** Hide the "Create New" row, for doctypes that are created elsewhere in Raven rather than on desk. */
+    hideCreate?: boolean;
     /**
     * Function to filter the options based on the input value/other criteria.
     *
@@ -139,6 +144,10 @@ export interface LinkFieldComboboxProps {
     useInForm?: boolean,
     /** Button Class name */
     buttonClassName?: string
+    /** Extra classes for the dropdown popover (e.g. a max-w cap). */
+    dropdownClassName?: string;
+    /** Show a clear (×) button in place of the chevron while a value is picked. */
+    clearable?: boolean;
 }
 const LinkFieldCombobox = ({
     doctype,
@@ -148,15 +157,18 @@ const LinkFieldCombobox = ({
     onChange,
     readOnly,
     disabled,
+    hideCreate = false,
     filterFn,
     suggestedItems,
-    placeholder = `Select ${doctype}`,
+    placeholder = _("Select {0}", [doctype]),
     customQuery,
     searchfield,
     searchAPIPath = "frappe.desk.search.search_link",
     limit,
     useInForm,
-    buttonClassName
+    buttonClassName,
+    dropdownClassName,
+    clearable
 }: LinkFieldComboboxProps) => {
 
     const pageLimit = useMemo(() => limit || getSystemDefault('link_field_results_limit') || 20, [limit])
@@ -174,6 +186,9 @@ const LinkFieldCombobox = ({
     const isMobile = useIsMobile()
 
     const [searchInput, setSearchInput] = useDebounceValue('', 400)
+    // The list does its own filtering (shouldFilter={false}), so cmdk does not reset the
+    // scroll when results change. Keyed on the debounced term: that is when the list swaps.
+    const listRef = useResetScrollOnSearch(searchInput)
 
     const { data: linkTitleData } = useFrappeGetCall('frappe.client.get_value', {
         doctype,
@@ -281,6 +296,9 @@ const LinkFieldCombobox = ({
         </FilterComboboxItem>
     )
 
+    const showClear = Boolean(clearable && value && !disabled && !readOnly)
+    const clearButton = showClear ? <ClearFieldButton onClick={() => onChange("")} /> : null
+
     // The trigger is identical for both shells (popover on desktop, drawer on
     // mobile), so it's built once and handed to whichever *Trigger wraps it.
     const trigger = useInForm ? (
@@ -292,13 +310,10 @@ const LinkFieldCombobox = ({
                 tabIndex={0}
                 disabled={disabled}
                 aria-expanded={open}
-                // FILTER_TRIGGER_STYLES sizes the trigger to fit its row (w-fit) — this
-                // one is a form field instead, so w-full overrides just the width half
-                // of that pairing. `group` scopes the hover-revealed external link
-                // below. subtle's own bg is already gray-2, so read-only dims the label
-                // rather than swapping in a background that would look identical to the
-                // normal state.
-                className={cn(FILTER_TRIGGER_STYLES, "group w-full", readOnly && "text-ink-gray-5", buttonClassName)}>
+                // w-full overrides FILTER_TRIGGER_STYLES' w-fit — this one is a form field.
+                // read-only dims the label; subtle's bg is already gray-2.
+                // disabled keeps pointer-events so cursor-not-allowed shows; pr-7 = room for the clear ×.
+                className={cn(FILTER_TRIGGER_STYLES, "group w-full disabled:pointer-events-auto", showClear && "pr-7", readOnly && "text-ink-gray-5", buttonClassName)}>
                 <span className={cn("min-w-0 flex-1 truncate text-left", !linkTitle && "text-ink-gray-4")}>
                     {linkTitle || placeholder}
                 </span>
@@ -312,7 +327,7 @@ const LinkFieldCombobox = ({
                             <ExternalLink className="size-4 shrink-0 text-ink-gray-5" />
                         </a>
                     )}
-                    <ChevronDownIcon className="size-4 shrink-0 text-ink-gray-4" />
+                    {!showClear && <ChevronDownIcon className="size-4 shrink-0 text-ink-gray-4" />}
                 </div>
             </Button>
         </FormControl>
@@ -323,12 +338,14 @@ const LinkFieldCombobox = ({
             role="combobox"
             disabled={disabled}
             aria-expanded={open}
-            className={cn(FILTER_TRIGGER_STYLES, "w-full", readOnly && "text-ink-gray-5", buttonClassName)}>
-            <span className={cn("min-w-0 flex-1 truncate text-left", !value && "text-ink-gray-4")}>
-                {value || placeholder}
+            className={cn(FILTER_TRIGGER_STYLES, "w-full disabled:pointer-events-auto", showClear && "pr-7", readOnly && "text-ink-gray-5", buttonClassName)}>
+            {/* linkTitle, like the form branch: a doctype with a title field shows
+                "English", not "en". Falls back to the raw value. */}
+            <span className={cn("min-w-0 flex-1 truncate text-left", !linkTitle && "text-ink-gray-4")}>
+                {linkTitle || placeholder}
             </span>
 
-            <ChevronDownIcon className="size-4 shrink-0 text-ink-gray-4" />
+            {!showClear && <ChevronDownIcon className="size-4 shrink-0 text-ink-gray-4" />}
         </Button>
     )
 
@@ -345,27 +362,38 @@ const LinkFieldCombobox = ({
                     text-base keeps the taller box on mobile for touch. See FilterCombobox. */}
                 <CommandInput
                     variant="plain"
-                    placeholder={placeholder}
+                    placeholder={_("Search")}
                     onValueChange={setSearchInput}
                     className="text-base"
                 />
-                <CommandList className={listClassName}>
-                    <CommandEmpty>{isLoading ? _("Loading...") : _("No results found.")}</CommandEmpty>
+                <CommandList ref={listRef} className={listClassName}>
+                    {/* Hidden while results load — the skeleton below owns that state.
+                        A bare "Loading..." line read as a hang in the drawer sheet. */}
+                    {!isLoading && <CommandEmpty>{_("No results found.")}</CommandEmpty>}
                     {!searchInput && suggestedItems && suggestedItems.length > 0 && (
                         <CommandGroup heading={_("Recent")}>
                             {suggestedItems.map((item) => renderItem(item, "recent-"))}
                         </CommandGroup>
                     )}
+                    {isLoading && !items?.length && (
+                        <div className="flex flex-col p-1" aria-hidden="true">
+                            {Array.from({ length: 8 }, (unused, i) => (
+                                <div key={i} className="flex h-9 items-center px-3">
+                                    <Skeleton className={cn("h-4", i % 3 === 0 ? "w-3/4" : i % 3 === 1 ? "w-1/2" : "w-2/3")} />
+                                </div>
+                            ))}
+                        </div>
+                    )}
                     <CommandGroup>
                         {items?.map((result) => renderItem(result))}
-                        {userCanCreate && (
+                        {userCanCreate && !hideCreate && (
                             <CommandItem asChild className={cn(LINK_ITEM_STYLES, "justify-between")}>
                                 {/* No equivalent endpoint exists for "create a new document" the
                                     way document_link.get resolves an existing one, so this still
-                                    hand-builds a /app/ URL — wrong for a doctype whose app lives
+                                    hand-builds a /desk/ URL — wrong for a doctype whose app lives
                                     elsewhere (e.g. Frappe CRM). Left as-is until such an endpoint
                                     exists. */}
-                                <a href={`/app/${slug(doctype)}/new-${slug(doctype)}-1`} target="_blank">
+                                <a href={`/desk/${slug(doctype)}/new-${slug(doctype)}-1`} target="_blank">
                                     {_("Create New {0}", [doctype])}
                                     <ExternalLink />
                                 </a>
@@ -388,7 +416,10 @@ const LinkFieldCombobox = ({
                 {/* No disabled/readOnly handling here — the trigger button carries
                     `disabled` itself, and readOnly is enforced in onOpenChange (same
                     as the popover), keeping the read-only look distinct from disabled. */}
-                <DrawerTrigger asChild>{trigger}</DrawerTrigger>
+                <div className="relative w-full">
+                    <DrawerTrigger asChild>{trigger}</DrawerTrigger>
+                    {clearButton}
+                </div>
                 <DrawerContent
                     className="h-[85dvh]"
                     // Radix focuses the search field on open — the keyboard would cover
@@ -412,9 +443,12 @@ const LinkFieldCombobox = ({
 
     return (
         <Popover open={open} onOpenChange={onOpenChange} modal={true}>
-            <PopoverTrigger asChild>
-                {trigger}
-            </PopoverTrigger>
+            <div className="relative w-full">
+                <PopoverTrigger asChild>
+                    {trigger}
+                </PopoverTrigger>
+                {clearButton}
+            </div>
             <PopoverContent
                 side="bottom"
                 align="start"
@@ -436,6 +470,7 @@ const LinkFieldCombobox = ({
                 className={cn(
                     "flex min-w-(--radix-popover-trigger-width) flex-col p-0 shadow-2xl",
                     "max-h-[min(18rem,var(--radix-popover-content-available-height))]",
+                    dropdownClassName,
                 )}
             >
                 {/* max-h-none hands height control to the popover's cap above — cmdk's own

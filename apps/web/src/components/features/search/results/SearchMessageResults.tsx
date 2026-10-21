@@ -2,6 +2,7 @@ import { Virtuoso } from 'react-virtuoso'
 import { useSqliteSearch } from '@hooks/useSqliteSearch'
 import { MessageListSkeleton } from '@components/features/dm-channel/DirectMessagePageSkeleton'
 import _ from '@lib/translate'
+import { getMessageAuthorId } from '@utils/messageUtils'
 import ErrorBanner from '@components/ui/error-banner'
 import { MessageResultBlock, RESULT_ROW_ACTIVE_CLASS } from '@components/common/MessageResultBlock/MessageResultBlock'
 import { searchResultToMessage } from '@components/common/MessageResultBlock/searchResultToMessage'
@@ -29,7 +30,7 @@ const SearchMessageResults = ({ searchValue, filters, onSelect, selectedID }: Se
 
     const { usersById, channelById, dmById, workspaceById } = useMessageRowLookups()
 
-    if (error) return <ErrorBanner error={error} />
+    if (error) return <div className="p-3"><ErrorBanner error={error} /></div>
     if (isLoading || !results) return <MessageListSkeleton />
     if (results.length === 0) return <SearchNoResults title={_('No messages found')} />
 
@@ -54,7 +55,7 @@ const SearchMessageResults = ({ searchValue, filters, onSelect, selectedID }: Se
                 return (
                     <MessageResultBlock
                         message={searchResultToMessage(r)}
-                        user={usersById.get(r.author)}
+                        user={usersById.get(getMessageAuthorId(r, r.author))}
                         channel={channel}
                         dmChannel={dmChannel}
                         peer={peer}

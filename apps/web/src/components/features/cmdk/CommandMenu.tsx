@@ -3,7 +3,7 @@ import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from '@componen
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@components/ui/command'
 import _ from '@lib/translate'
 import { defaultFilter } from 'cmdk'
-import React, { useRef, useState } from 'react'
+import React, { useLayoutEffect, useRef, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useNavigate } from 'react-router-dom'
 import { ArrowDownIcon, ArrowUpIcon, CornerDownLeftIcon, TextSearch } from 'lucide-react'
@@ -16,7 +16,6 @@ import SettingsList from './SettingsList'
 import QuickActions from './CommandList'
 import NavigationList from './NavigationList'
 import { commandMenuOpenAtom } from './atoms'
-import { useHistoryBackClose } from '@hooks/useHistoryBackClose'
 import { useNavigateFromDrawer } from '@hooks/useNavigateFromDrawer'
 import { useChannel } from '@hooks/useChannel'
 import { useUser } from '@hooks/useUser'
@@ -67,13 +66,6 @@ const CommandMenu = () => {
         enableOnContentEditable: true,
     }, [open, navigate])
 
-    // MOBILE only: the open palette drawer owns the system back gesture
-    // (atom-driven overlay above the routes). Every selection closes AND
-    // navigates in one handler — the hook's history.state guard is what keeps
-    // that from popping the destination. Desktop keeps browser-back as plain
-    // navigation (no gesture problem to solve there).
-    useHistoryBackClose(isMobile && open, () => setOpen(false))
-
     if (isMobile) {
         return (
             <Drawer open={open} onOpenChange={setOpen}>
@@ -112,6 +104,19 @@ const CommandPalette = ({ inDrawer = false }: { inDrawer?: boolean }) => {
     const navigateFromDrawer = useNavigateFromDrawer(() => setOpen(false))
     const location = useLocation()
     const listRef = useRef<HTMLDivElement>(null)
+    const [selected, setSelected] = useState('')
+
+    // cmdk picks its first row before sorting the rows a new query mounts, then scrolls to that pick.
+    // Once it settles, before paint: select the real first row and pin the list to the top.
+    useLayoutEffect(() => {
+        const frame = requestAnimationFrame(() => {
+            const first = listRef.current?.querySelector('[cmdk-item=""]:not([aria-disabled="true"])')
+            const value = first?.getAttribute('data-value')
+            if (value) setSelected(value)
+            listRef.current?.scrollTo({ top: 0 })
+        })
+        return () => cancelAnimationFrame(frame)
+    }, [text])
 
     // The current channel comes from the URL, parsed by hand — NOT useParams:
     // the palette mounts at the AppShell root, and useParams only sees params
@@ -164,20 +169,15 @@ const CommandPalette = ({ inDrawer = false }: { inDrawer?: boolean }) => {
         <Command
             label="Global Command Menu"
             filter={customFilter}
+            value={selected}
+            onValueChange={setSelected}
             className={cn(PALETTE_OVERRIDES, inDrawer && "flex flex-col flex-1 min-h-0 bg-transparent")}
         >
             <CommandInput
                 variant="palette"
                 autoFocus={!isMobile}
                 value={text}
-                onValueChange={(v) => {
-                    setText(v.slice(0, 140))
-                    // Every keystroke re-filters, but cmdk keeps the list's old
-                    // scroll offset — so after scrolling down and typing more, the
-                    // auto-selected FIRST result sat above the fold. Jump back to
-                    // the top whenever the query changes.
-                    listRef.current?.scrollTo({ top: 0 })
-                }}
+                onValueChange={(v) => setText(v.slice(0, 140))}
                 maxLength={140}
                 placeholder={isMobile ? _("Search") : _("Search or type a command")}
             />

@@ -5,6 +5,7 @@ import { BaseThreadMessage } from "@components/common/BaseThreadMessage"
 import { ThreadChannelDetails } from "./ThreadsList"
 import { ThreadMessage } from "src/types/ThreadMessage"
 import { formatRelativeDate } from "@lib/date"
+import { UnreadDot } from "@components/common/UnreadDot"
 
 interface ThreadPreviewBoxProps {
     user: UserData | null
@@ -28,27 +29,29 @@ export const ThreadPreviewBox = ({
 }: ThreadPreviewBoxProps) => {
 
     return (
-        <div className="px-2 py-0.5">
+        <div className="md:px-2 py-0.5">
             <div
                 onClick={onClick}
                 className={cn(
-                    "group block rounded p-4 transition-colors relative cursor-pointer select-none",
+                    "group block md:rounded px-3 py-4 transition-colors relative cursor-pointer select-none",
                     "hover:bg-surface-gray-3 active:bg-surface-gray-3 focus:outline-none focus-visible:bg-surface-gray-3",
                     isActive && RESULT_ROW_ACTIVE_CLASS,
-                    isUnread && !isActive && "bg-surface-gray-1"
                 )}
             >
                 {/* Connecting line from avatar down to the participants / reply-count row. */}
-                <div className="absolute top-20 left-10 w-7 h-[calc(100%-6.75rem)] border-l border-b border-outline-gray-2 rounded-bl-lg z-0" />
+                <div className="absolute top-20 left-7 w-7 h-[calc(100%-6.75rem)] border-l border-b border-outline-gray-2 rounded-bl-lg z-0" />
 
                 {/* Header: Channel name and date */}
                 {channelDetails.channelName && (
-                    <div className="flex items-center gap-2 mb-3 relative z-10">
-                        {channelDetails.channelIcon && (
-                            <span>{channelDetails.channelIcon}</span>
-                        )}
-                        <span className="font-medium text-xs">{channelDetails.channelName}</span>
-                        <span className="text-xs text-ink-gray-4">{formatRelativeDate(thread.last_message_timestamp)}</span>
+                    <div className="flex items-baseline gap-2.5 mb-3.5 relative z-10">
+                        <div className="flex items-baseline gap-1">
+                            {channelDetails.channelIcon && (
+                                <span className="flex h-lh self-center items-center text-sm">{channelDetails.channelIcon}</span>
+                            )}
+                            <span className="text-sm-medium">{channelDetails.channelName}</span>
+                        </div>
+                        <span className="text-xs text-ink-gray-6">{formatRelativeDate(thread.last_message_timestamp)}</span>
+                        {isUnread && <UnreadDot className="self-center text-xs" />}
                     </div>
                 )}
 

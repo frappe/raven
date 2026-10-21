@@ -1,6 +1,8 @@
+import { fileSrc } from "@hooks/useFileSrc"
 import { Fragment, memo, useRef } from "react"
-import { CheckCheck, MessageSquare } from "lucide-react"
+import { AtSign, CheckCheck, SmilePlus, type LucideIcon } from "lucide-react"
 import { cn } from "@lib/utils"
+import { UnreadDot } from "@components/common/UnreadDot"
 import { hapticTick } from "@utils/haptics"
 import { type NotificationObject } from "@stores/notifications/reducers"
 import { LeavingRow } from "@components/common/LeavingRow"
@@ -8,6 +10,7 @@ import { UserAvatar } from "@components/features/message/UserAvatar"
 import { ChannelIcon } from "@components/common/ChannelIcon/ChannelIcon"
 import { formatRelativeDate } from "@lib/date"
 import { formatNameList } from "@lib/nameList"
+import { getMessageTeaser } from "@utils/messageUtils"
 import _ from "@lib/translate"
 import RichTextRenderer from "@components/features/message/renderers/RichTextRenderer"
 import type { UserData } from "@db"
@@ -20,25 +23,40 @@ const ChannelContext = ({
 }) => {
     if (notification.is_thread) {
         return (
-            <div className="flex items-center gap-1 text-xs text-ink-gray-4">
-                <MessageSquare className="w-3 h-3" />
-                <span>{_("Thread")}</span>
-            </div>
+            <span className="shrink-0 text-p-xs text-ink-gray-5">{_("in thread")}</span>
         )
     }
     if (!notification.is_direct_message) {
         return (
-            <div className="flex items-center gap-1 text-xs">
-                <span className="text-ink-gray-4/80">{_("in")}</span>
-                <ChannelIcon type={notification.channel_type} className="h-3 w-3 text-ink-gray-4" />
-                <span className="font-medium text-ink-gray-8/70 group-hover:text-ink-gray-9 group-hover:underline transition-colors">
-                    {notification.channel_name}
+            <div className="flex min-w-0 items-center gap-1 text-p-xs text-ink-gray-5">
+                <span className="shrink-0">{_("in")}</span>
+                <span className="flex min-w-0 items-center gap-1">
+                    <span className="flex h-lh shrink-0 items-center">
+                        <ChannelIcon type={notification.channel_type} className="size-3.5" />
+                    </span>
+                    <span className="truncate">{notification.channel_name}</span>
                 </span>
             </div>
         )
     }
     return null
 }
+
+/** The type badge on a notification avatar, in the bot badge's geometry: an @ for
+ * a mention, a smile for a reaction. It owns the avatar's bottom-right corner, so
+ * callers switch the presence and bot indicators off. */
+const AvatarBadge = ({ icon: Icon, label, className }: { icon: LucideIcon; label: string; className?: string }) => (
+    <span
+        className={cn(
+            "absolute -bottom-1 -right-1 flex size-4 items-center justify-center rounded-full border border-outline-gray-1 bg-surface-base",
+            className,
+        )}
+        aria-label={label}
+        role="img"
+    >
+        <Icon className="size-3 text-ink-gray-7" aria-hidden="true" />
+    </span>
+)
 
 /** Swipe-right-to-mark-read (touch): the same gesture language and feel as
  * swipe-to-reply on message rows — same slop, flick, edge guard and haptic.
@@ -53,9 +71,8 @@ const SWIPE_READ_FLICK_MIN_PX = 20
 const SWIPE_READ_CLICK_GUARD_MS = 300
 
 const rowShellClasses = (isRead: boolean | number, isActive: boolean) => cn(
-    "group flex w-full items-start gap-3 px-2 py-3 md:py-2 text-sm rounded transition-colors relative text-left select-none",
+    "group flex w-full items-start gap-3 px-2 py-3 md:py-2 text-p-sm rounded transition-colors relative text-left select-none",
     "hover:bg-surface-gray-3 active:bg-surface-gray-3",
-    !isRead && !isActive && "bg-surface-gray-2/10",
     isActive && "bg-surface-elevation-3 hover:bg-surface-elevation-3 active:bg-surface-elevation-3 shadow-sm"
 )
 
@@ -142,7 +159,7 @@ const NotificationRowLayout = ({
             }
             if (dx > SWIPE_READ_SLOP_PX && dx > Math.abs(dy)) {
                 swipe.active = true
-                ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
+                    ; (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
                 if (rowRef.current) rowRef.current.style.transition = "none"
                 if (glyphRef.current) glyphRef.current.style.transition = "none"
             }
@@ -242,65 +259,84 @@ const NotificationRowLayout = ({
 
     return (
         <LeavingRow leaving={leaving}>
-        <div
-            role="button"
-            tabIndex={0}
-            onClick={onRowClick}
-            onKeyDown={onRowKeyDown}
-            onClickCapture={onClickCapture}
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerEnd}
-            onPointerCancel={onPointerEnd}
-            // pan-y: the browser keeps vertical scrolling, horizontal drags stay
-            // ours — without it the scroller claims the touch mid-swipe
-            // (pointercancel) and the row snaps back for no visible reason.
-            className={cn("relative block w-full cursor-pointer px-2 py-0.5", canSwipeRead && "[touch-action:pan-y]")}
-        >
-            {/* Mark-read glyph behind the row's left edge — fades in as the row
+            <div
+                role="button"
+                tabIndex={0}
+                onClick={onRowClick}
+                onKeyDown={onRowKeyDown}
+                onClickCapture={onClickCapture}
+                onPointerDown={onPointerDown}
+                onPointerMove={onPointerMove}
+                onPointerUp={onPointerEnd}
+                onPointerCancel={onPointerEnd}
+                // pan-y: the browser keeps vertical scrolling, horizontal drags stay
+                // ours — without it the scroller claims the touch mid-swipe
+                // (pointercancel) and the row snaps back for no visible reason.
+                className={cn("relative block w-full cursor-pointer px-2 py-0.5", canSwipeRead && "[touch-action:pan-y]")}
+            >
+                {/* Mark-read glyph behind the row's left edge — fades in as the row
                 slides right, full strength at the commit distance. */}
-            {canSwipeRead && (
-                <div
-                    ref={glyphRef}
-                    aria-hidden
-                    className="pointer-events-none absolute left-4 top-1/2 z-0 flex size-8 -translate-y-1/2 items-center justify-center rounded-full bg-surface-gray-3 text-ink-gray-7 opacity-0"
-                >
-                    <CheckCheck className="size-4" />
-                </div>
-            )}
-            <div ref={rowRef} className={rowShellClasses(isRead, isActive)}>
-                {avatar}
-                <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline gap-2 flex-wrap">
-                        <span className={cn("text-sm", !isRead ? "font-semibold" : "font-medium")}>
-                            {name}
-                        </span>
-                        <span className="text-xs font-regular text-ink-gray-4 shrink-0">
-                            {relativeDate}
-                        </span>
-                        {channelContext}
+                {canSwipeRead && (
+                    <div
+                        ref={glyphRef}
+                        aria-hidden
+                        className="pointer-events-none absolute left-4 top-1/2 z-0 flex size-8 -translate-y-1/2 items-center justify-center rounded-full bg-surface-gray-3 text-ink-gray-7 opacity-0"
+                    >
+                        <CheckCheck className="size-4" />
                     </div>
-                    <div className="pt-1">
-                        {children}
+                )}
+                <div ref={rowRef} className={rowShellClasses(isRead, isActive)}>
+                    {avatar}
+                    <div className="flex-1 min-w-0">
+                        {/* items-baseline, not center: a long reactor list wraps the name
+                            to two lines, and a centered date floated mid-row. */}
+                        <div className="flex items-baseline gap-2">
+                            <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+                                <span className={cn("text-p-sm text-ink-gray-8", !isRead ? "font-semibold" : "font-medium")}>
+                                    {name}
+                                </span>
+                                {/* Mobile: the channel context gets its OWN line (basis-full)
+                                    instead of trailing wherever the name wrap left off. */}
+                                {channelContext && <div className="min-w-0 max-md:basis-full">{channelContext}</div>}
+                            </div>
+                            {/* One group with the date: the dot's box has no text baseline
+                                of its own, so it rides the date's — centered on that line. */}
+                            <span className="flex shrink-0 items-center gap-2">
+                                <span className="text-p-xs text-ink-gray-5">
+                                    {relativeDate}
+                                </span>
+                                {!isRead && <UnreadDot className="text-p-xs" />}
+                            </span>
+                        </div>
+                        <div className="pt-1.5">
+                            {children}
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
         </LeavingRow>
     )
 }
 
-const UnreadDot = () => (
-    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-surface-blue-5" />
-)
+/** True when the HTML would paint something: any text after stripping tags, or
+ * an embedded image/video (a custom-emoji-only message is all <img>). An image
+ * message with no caption arrives as an empty <p> — truthy, renders nothing. */
+export const hasRenderableContent = (html: string) =>
+    /<(img|video)\b/i.test(html) || html.replace(/<[^>]*>/g, "").trim().length > 0
 
 /** Body preview for a notification. Prefers the rich `text` (Tiptap HTML); when
- * empty (File/Poll/Image messages, or text-less custom types) falls back to the
- * plain-text `content` field maintained server-side. */
+ * that would render BLANK (media messages with no caption, text-less custom
+ * types) falls back to the same teaser the DM list shows — 📷 Photo, 📎 file
+ * name, 📊 poll question — built from `message_type` + plain `content`. */
 const NotificationBody = ({ notification }: { notification: NotificationObject }) => {
-    if (notification.text) return <RichTextRenderer html={notification.text} />
-    if (notification.content) return <span>{notification.content}</span>
-    return <span>{_("Message")}</span>
+    if (notification.text && hasRenderableContent(notification.text)) {
+        return <RichTextRenderer html={notification.text} />
+    }
+    const teaser = getMessageTeaser({ message_type: notification.message_type, content: notification.content })
+    // Same reading tier as .tiptap: the rich branch overrides the quote
+    // container's xs/gray styling, so the plain fallback must too, or a
+    // "📷 Photo" teaser renders smaller and dimmer than text quotes.
+    return <span className="text-p-lg md:text-p-base text-ink-gray-8">{teaser || _("Message")}</span>
 }
 
 /** Single-string template with a `{0}` placeholder for the emoji slot — keeps
@@ -323,7 +359,7 @@ const renderReactedSentence = (reactions: { reaction: string; is_custom: 0 | 1 }
                         {i > 0 && <span>,&nbsp;</span>}
                         {r.is_custom ? (
                             <img
-                                src={r.reaction}
+                                src={fileSrc(r.reaction)}
                                 alt=""
                                 loading="lazy"
                                 className="h-4 w-4 inline-block"
@@ -377,16 +413,16 @@ export const MentionItem = memo(({
             onMarkRead={onMarkRead ? () => onMarkRead(notification.message_id) : undefined}
             swipeDismisses={swipeDismisses}
             avatar={
-                <div className="relative shrink-0">
-                    {sender && <UserAvatar user={sender} size="md" />}
-                    {!notification.is_read && <UnreadDot />}
+                <div className="relative mt-0.5 flex shrink-0">
+                    {sender && <UserAvatar user={sender} size="md" showStatusIndicator={false} showBotIndicator={false} />}
+                    <AvatarBadge icon={AtSign} label={_("Mention")} />
                 </div>
             }
             name={sender?.full_name ?? notification.owner}
             relativeDate={formatRelativeDate(notification.creation)}
             channelContext={<ChannelContext notification={notification} />}
         >
-            <div className="line-clamp-2">
+            <div className="line-clamp-2 [&_.mention]:pointer-events-none">
                 <NotificationBody notification={notification} />
             </div>
         </NotificationRowLayout>
@@ -444,28 +480,28 @@ export const ReactionItem = memo(({
             onMarkRead={onMarkRead ? () => onMarkRead(notification.message_id) : undefined}
             swipeDismisses={swipeDismisses}
             avatar={
-                <div className="relative shrink-0 w-8 h-8">
+                <div className="relative mt-0.5 h-8 w-8 shrink-0">
                     {reactorsData[0] && (
                         <div className={cn("absolute", total > 1 ? "top-0 left-0 w-6 h-6" : "inset-0")}>
-                            <UserAvatar user={reactorsData[0]} size={total > 1 ? "xs" : "md"} />
+                            <UserAvatar user={reactorsData[0]} size={total > 1 ? "xs" : "md"} showStatusIndicator={false} showBotIndicator={false} />
                         </div>
                     )}
                     {reactorsData[1] && total > 1 && (
                         <div className="absolute bottom-0 right-0 w-5 h-5 ring-1 ring-surface-gray-1 rounded-full overflow-hidden">
-                            <UserAvatar user={reactorsData[1]} size="xs" />
+                            <UserAvatar user={reactorsData[1]} size="xs" showStatusIndicator={false} showBotIndicator={false} />
                         </div>
                     )}
-                    {!notification.is_read && <UnreadDot />}
+                    <AvatarBadge icon={SmilePlus} label={_("Reaction")} className={total > 1 ? "-bottom-2 -right-1.5" : undefined} />
                 </div>
             }
             name={reactorText}
             relativeDate={formatRelativeDate(notification.creation)}
             channelContext={<ChannelContext notification={notification} />}
         >
-            <p className="flex items-center gap-1.5 text-sm text-ink-gray-8">
+            <p className="flex items-center gap-1.5 text-p-sm text-ink-gray-8">
                 {renderReactedSentence(displayReactions)}
             </p>
-            <div className="mt-2 border-l-2 border-outline-gray-2 pl-2 text-xs text-ink-gray-4 line-clamp-2 [&_p]:my-0">
+            <div className="mt-2 border-l-2 border-outline-gray-2 pl-2 text-p-xs text-ink-gray-5 line-clamp-2 [&_p]:my-0 [&_.mention]:pointer-events-none">
                 <NotificationBody notification={notification} />
             </div>
         </NotificationRowLayout>

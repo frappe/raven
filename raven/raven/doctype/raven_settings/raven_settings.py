@@ -1,4 +1,4 @@
-# Copyright (c) 2023, The Commit Company and contributors
+# Copyright (c) 2026, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
 import frappe
@@ -14,8 +14,11 @@ class RavenSettings(Document):
 
 	if TYPE_CHECKING:
 		from frappe.types import DF
+
 		from raven.raven.doctype.raven_blocked_links.raven_blocked_links import RavenBlockedLinks
-		from raven.raven_integrations.doctype.raven_hr_company_workspace.raven_hr_company_workspace import RavenHRCompanyWorkspace
+		from raven.raven_integrations.doctype.raven_hr_company_workspace.raven_hr_company_workspace import (
+			RavenHRCompanyWorkspace,
+		)
 
 		auto_add_system_users: DF.Check
 		auto_create_department_channel: DF.Check
@@ -43,8 +46,8 @@ class RavenSettings(Document):
 		push_notification_api_secret: DF.Password | None
 		push_notification_server_url: DF.Data | None
 		push_notification_service: DF.Literal["Frappe Cloud", "Raven"]
+		setup_completed: DF.Check
 		show_if_a_user_is_on_leave: DF.Check
-		show_raven_on_desk: DF.Check
 		tenor_api_key: DF.Data | None
 		use_website_favicon: DF.Check
 		vapid_public_key: DF.Data | None
@@ -62,7 +65,13 @@ class RavenSettings(Document):
 				if not frappe.db.exists("Company", row.company):
 					frappe.throw(f"Company {row.company} does not exist.")
 
-		if self.push_notification_service == "Raven":
+		# "Raven" is the field's DEFAULT, so an unconfigured site must still be able
+		# to save settings. Only a partially filled config is an error.
+		if self.push_notification_service == "Raven" and (
+			self.push_notification_server_url
+			or self.push_notification_api_key
+			or self.push_notification_api_secret
+		):
 			if not self.push_notification_server_url:
 				frappe.throw(_("Please enter the Push Notification Server URL"))
 			if not self.push_notification_api_key:

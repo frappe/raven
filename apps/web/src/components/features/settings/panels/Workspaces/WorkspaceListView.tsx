@@ -1,3 +1,4 @@
+import { siteUrl } from "@lib/site"
 import { useMemo } from "react"
 import WorkspaceActions from "@components/features/workspaces/WorkspaceActions"
 import { Avatar, AvatarFallback, AvatarImage } from "@components/ui/avatar"
@@ -71,7 +72,7 @@ export default function WorkspaceListView({ onOpenWorkspace }: { onOpenWorkspace
                     {_("Workspaces allow you to organize your channels and teams.")}
                 </SettingsPanelDescription>
             </SettingsPanelHeader>
-            <SettingsPanelContent className="min-h-0">
+            <SettingsPanelContent className="min-h-0 gap-2">
                 {error && <ErrorBanner error={error} />}
                 {isLoading && !error && (
                     <div className="flex flex-1 items-center justify-center">
@@ -119,7 +120,7 @@ function WorkspaceNameCell({
     const content = (
         <div className="flex items-center gap-2 min-w-0">
             <Avatar className="h-8 w-8 rounded-md border border-outline-gray-2">
-                <AvatarImage src={workspace.logo} alt={workspace.workspace_name} />
+                <AvatarImage src={workspace.logo && siteUrl(workspace.logo)} alt={workspace.workspace_name} />
                 <AvatarFallback className="rounded-md">
                     {workspace.workspace_name?.charAt(0)?.toUpperCase()}
                 </AvatarFallback>
@@ -162,7 +163,7 @@ function WorkspaceTypeCell({ type }: { type: WorkspaceFields["type"] }) {
  */
 function MembershipCell({ workspace }: { workspace: WorkspaceFields }) {
     if (workspace.is_admin) {
-        return <Badge variant="solid">{_("Admin")}</Badge>
+        return <Badge theme="blue">{_("Admin")}</Badge>
     }
     if (workspace.workspace_member_name) {
         return <Badge variant="subtle">{_("Member")}</Badge>

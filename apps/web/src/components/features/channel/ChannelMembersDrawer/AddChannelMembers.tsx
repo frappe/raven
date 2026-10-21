@@ -7,6 +7,7 @@ import {
     Dialog,
     DialogContent,
     DialogDescription,
+    DialogBody,
     DialogFooter,
     DialogHeader,
     DialogTitle,
@@ -175,17 +176,17 @@ const AddChannelMembers = ({ channelID, existingMemberIds }: AddChannelMembersPr
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>{trigger}</DialogTrigger>
-            <DialogContent className="flex max-h-[85vh] flex-col">
+            <DialogContent className="max-h-[85vh]">
                 <DialogHeader>
                     <DialogTitle>{_('Add members')}</DialogTitle>
                     <DialogDescription className="sr-only">
                         {_('Search for people in this workspace and add them to the channel.')}
                     </DialogDescription>
                 </DialogHeader>
-                {/* Fixed list height: filtering while typing must not resize the dialog */}
-                <div className="flex h-[24rem] min-h-0 flex-col gap-3">
+                {/* Fixed list height (flex-none): filtering while typing must not resize the dialog */}
+                <DialogBody className="flex h-[24rem] flex-none flex-col gap-3">
                     {body}
-                </div>
+                </DialogBody>
                 <DialogFooter>
                     <Button
                         type="button"

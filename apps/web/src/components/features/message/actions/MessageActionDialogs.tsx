@@ -7,6 +7,7 @@ import { ForwardMessageDialog } from "./dialogs/ForwardMessageDialog"
 import { AttachToDocumentDialog } from "./dialogs/AttachToDocumentDialog"
 import { RunMessageActionDialog, type RunMessageActionTarget } from "./dialogs/RunMessageActionDialog"
 import { ReadReceiptsDialog } from "./dialogs/ReadReceiptsDialog"
+import { ReminderDialog } from "@components/features/reminders/ReminderDialog"
 import type { Message } from "@raven/types/common/Message"
 
 /**
@@ -36,6 +37,8 @@ export const MessageActionDialogs = () => {
     if (dialog?.type === "custom-action") lastCustomActionRef.current = { message: dialog.message, actionID: dialog.actionID }
     const lastReadReceiptsRef = useRef<Message | null>(null)
     if (dialog?.type === "read-receipts") lastReadReceiptsRef.current = dialog.message
+    const lastReminderRef = useRef<Message | null>(null)
+    if (dialog?.type === "reminder") lastReminderRef.current = dialog.message
 
     return (
         <>
@@ -72,6 +75,12 @@ export const MessageActionDialogs = () => {
             <ReadReceiptsDialog
                 open={dialog?.type === "read-receipts"}
                 message={dialog?.type === "read-receipts" ? dialog.message : lastReadReceiptsRef.current}
+                onClose={close}
+            />
+
+            <ReminderDialog
+                open={dialog?.type === "reminder"}
+                message={dialog?.type === "reminder" ? dialog.message : lastReminderRef.current}
                 onClose={close}
             />
         </>

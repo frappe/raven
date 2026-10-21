@@ -23,7 +23,7 @@ export default function ReplyMessage({
     return (
         <div className="py-0.5">
             <div
-                className="border-l-2 cursor-pointer border-outline-gray-3 bg-surface-gray-1 pl-3 py-2"
+                className="border-l-2 cursor-pointer border-outline-gray-3 bg-surface-gray-1 pl-3 pr-2 py-2"
                 role="button"
                 onClick={jumpToOriginal}
             >

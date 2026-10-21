@@ -164,6 +164,71 @@ export const applyNewerPage = (
 }
 
 /**
+ * True when the server's copy of a message matches every field we hold. Compared field
+ * by field, not by `modified`: reactions and saves are written on the server without
+ * bumping it, so an unchanged `modified` does not mean an unchanged message.
+ */
+const sameFields = (existing: Message, incoming: Message): boolean => {
+    const ours = existing as unknown as Record<string, unknown>
+    for (const [key, value] of Object.entries(incoming)) {
+        if (ours[key] !== value) return false
+    }
+    return true
+}
+
+/**
+ * Re-apply the server's copy of the window's own span, fetched from its oldest message
+ * up, after a connection break. Changed messages are replaced, unchanged ones keep
+ * their object. `requested` is the window as it was when the request went out: a
+ * message in it that the server did not send back was deleted, so it is removed.
+ * Messages that arrived during the request are not in `requested`, so they are
+ * kept, as are sends still in flight. Returns the same state when nothing changed.
+ */
+export const applyWindowRefresh = (
+    state: ChannelMessagesState,
+    page: MessagesPage,
+    requested: readonly string[],
+): ChannelMessagesState => {
+    if (page.messages.length === 0) return state
+    const byId = new Map(state.byId)
+    const requestedIds = new Set(requested)
+    let changed = false
+    for (const message of page.messages) {
+        const existing = byId.get(message.name)
+        // A requested message that is gone from the window was deleted while the
+        // request ran. The response is older than that delete: do not bring it back.
+        if (!existing && requestedIds.has(message.name)) continue
+        // Never go backwards: an edit that arrived over the socket while the
+        // fetch ran is newer than the response.
+        if (existing?.modified && message.modified && message.modified < existing.modified) continue
+        if (existing && sameFields(existing, message)) continue
+        byId.set(message.name, message)
+        changed = true
+    }
+    // The response always holds every surviving requested message: they are the
+    // oldest rows of the span, and there are fewer of them than the limit. So a
+    // requested message that is missing was deleted, wherever it sat in the window.
+    const fetched = new Set(page.messages.map((message) => message.name))
+    for (const id of requested) {
+        if (fetched.has(id)) continue
+        const existing = byId.get(id)
+        if (!existing || isOptimistic(existing)) continue
+        byId.delete(id)
+        changed = true
+    }
+    const hasNewerMessages = page.has_new_messages ?? false
+    if (!changed && hasNewerMessages === state.hasNewerMessages) return state
+    const { order, trimmed } = enforceWindowCap(byId, sortIds(byId), "oldest")
+    return {
+        ...state,
+        byId,
+        order,
+        hasNewerMessages,
+        hasOlderMessages: trimmed ? true : state.hasOlderMessages,
+    }
+}
+
+/**
  * Insert or update a single message (socket `message_created`, optimistic send ack).
  * New messages are ignored while the window is detached from the live edge —
  * they exist beyond the window and arrive via `applyNewerPage` when the user returns.

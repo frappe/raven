@@ -42,7 +42,7 @@ export const CustomizeSidebarDialog = () => {
         () => workspaces.filter((workspace) => workspace.workspace_member_name),
         [workspaces],
     )
-    // Routes like /saved-messages, /search or /threads carry no :workspaceID, so
+    // Routes like /later, /search or /threads carry no :workspaceID, so
     // fall back to the first member workspace and let the user switch. Without
     // this the grouping filters to workspace `undefined` and the dialog is empty.
     // The URL's workspace only wins when the user is a member of it (they may be
@@ -118,7 +118,7 @@ export const CustomizeSidebarDialog = () => {
                         {_("Customize your sidebar channels and groups")}
                     </SettingsPanelDescription>
                 </SettingsPanelHeader>
-                <SettingsPanelContent className="min-h-0 gap-4 pt-0.5">
+                <SettingsPanelContent className="min-h-0 gap-2">
                     {/* flex-1 min-h-0: fill the space between header and footer and DON'T grow
                     with content, so the table and preview columns get a bounded height and
                     scroll internally (otherwise the tall preview makes the whole panel scroll). */}

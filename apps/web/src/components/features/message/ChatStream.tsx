@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useOnlineStatus } from "@stores/connectionState"
+import { OfflineState } from "@components/common/OfflineState"
 import { useSearchParams } from "react-router-dom"
 import { useAtom, useAtomValue } from "jotai"
-import { ArrowDown, LoaderCircle } from "lucide-react"
+import { ArrowDown, LoaderCircle, MessageCircle } from "lucide-react"
 import DateSeparator from "./renderers/DateSeparator"
 import UnreadSeparator from "./renderers/UnreadSeparator"
 import SystemMessage from "./renderers/SystemMessage"
@@ -9,7 +11,7 @@ import { MessageItem } from "./renderers/MessageItem"
 import { BatchMessageItem } from "./renderers/BatchMessageItem"
 import { MessageListSkeleton } from "@components/features/dm-channel/DirectMessagePageSkeleton"
 import { Button } from "@components/ui/button"
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@components/ui/empty"
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle, EmptyMedia } from "@components/ui/empty"
 import { useChannelMessages } from "@stores/messages/useChannelMessages"
 import { channelMessagesStore } from "@stores/messages/store"
 import { claimWindowForTarget, releaseWindowClaim } from "@stores/messages/loaders"
@@ -129,9 +131,9 @@ export default function ChatStream({ channelID, pinnedMessagesString, initialMes
         }
     }, [target, channelID])
 
-    // Give the window claim back when the user moves to another channel. It intentionally
-    // stays claimed after the scroll lands, so late background fetches still can't replace
-    // the page the user is reading. "Jump to present" releases it explicitly.
+    // Give the window claim back when the user moves to another channel. It stays claimed
+    // after the scroll lands, so a plain latest-page load can't replace the page being read;
+    // the quiet refresh still runs once that page is the latest. "Jump to present" releases it.
     useEffect(() => {
         return () => releaseWindowClaim(channelID)
     }, [channelID])
@@ -178,6 +180,7 @@ export default function ChatStream({ channelID, pinnedMessagesString, initialMes
     // Tracks how far the user has read (the newest in-view message) and flushes
     // that watermark to the server (last_visit), which defines unread counts.
     const { onMessageInView } = useChannelReadTracker(channelID, { isAtBottom, hasNewerMessages })
+    const online = useOnlineStatus()
 
     // Puts this channel's not-yet-confirmed sends (the saved outbox) back on screen,
     // so pending/failed messages survive a refresh and reappear when you reopen it.
@@ -240,8 +243,11 @@ export default function ChatStream({ channelID, pinnedMessagesString, initialMes
     return (
         <ScrollViewportContext.Provider value={viewport}>
             <DateTrackerContext.Provider value={tracker}>
-                <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-                    <FloatingDatePill />
+                {/* A named container, so rows can size to the pane they are in
+                    rather than the viewport: a thread pane halves the chat width
+                    on the same screen. */}
+                <div className="@container/stream relative flex min-h-0 min-w-0 flex-1 flex-col">
+                    {online && <FloatingDatePill />}
                     <MessageActionMenu channelID={channelID} canInteract={canInteract}>
                         <div
                             ref={containerRef}
@@ -251,9 +257,13 @@ export default function ChatStream({ channelID, pinnedMessagesString, initialMes
                             // so the smaller the region the less an image visibly dissolves on scroll.
                             className="dark:scroll-fade [--scroll-fade-t-size:2rem] [--scroll-fade-b-size:2rem] flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto [overflow-anchor:none]"
                         >
-                            <div className="flex min-w-0 w-full flex-col md:px-3 pb-6">
+                            {/* flex-1: fills the scroll area, so the empty and error states centre in it. */}
+                            <div className="flex min-w-0 w-full flex-1 flex-col md:px-3 pb-6">
                                 {isLoading ? (
-                                    <MessageListSkeleton />
+                                    <MessageListSkeleton followsChatStyle />
+                                ) : error && import.meta.env.VITE_NATIVE && !online ? (
+                                    // Native offline: a retry would fail too; the stream refetches itself on reconnect.
+                                    <OfflineState />
                                 ) : error ? (
                                     <StreamError error={error} onRetry={jumpToLatest} />
                                 ) : blocks.length === 0 ? (
@@ -265,7 +275,9 @@ export default function ChatStream({ channelID, pinnedMessagesString, initialMes
                                 land atomically with `blocks` changes for scroll compensation to be exact. */}
                                         {hasOlderMessages && (
                                             <div className="flex h-10 shrink-0 items-center justify-center">
-                                                {loadingOlder && (
+                                                {!online ? (
+                                                    <span className="truncate px-4 text-sm text-ink-gray-5">{_("Older messages load when you're back online.")}</span>
+                                                ) : loadingOlder && (
                                                     <LoaderCircle className="h-4 w-4 animate-spin text-ink-gray-5" />
                                                 )}
                                             </div>
@@ -331,7 +343,9 @@ export default function ChatStream({ channelID, pinnedMessagesString, initialMes
                                 detached, this slot exists whether or not a fetch is running. */}
                                         {hasNewerMessages && (
                                             <div className="flex h-10 shrink-0 items-center justify-center">
-                                                {loadingNewer && (
+                                                {!online ? (
+                                                    <span className="truncate px-4 text-sm text-ink-gray-5">{_("Newer messages load when you're back online.")}</span>
+                                                ) : loadingNewer && (
                                                     <LoaderCircle className="h-4 w-4 animate-spin text-ink-gray-5" />
                                                 )}
                                             </div>
@@ -369,6 +383,9 @@ export default function ChatStream({ channelID, pinnedMessagesString, initialMes
 
 const StreamEmpty = () => (
     <Empty>
+        <EmptyMedia>
+            <MessageCircle />
+        </EmptyMedia>
         <EmptyHeader>
             <EmptyTitle>{_("No messages yet")}</EmptyTitle>
             <EmptyDescription>{_("Start the conversation by sending a message.")}</EmptyDescription>

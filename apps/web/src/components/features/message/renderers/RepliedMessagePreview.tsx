@@ -2,6 +2,7 @@ import { RavenMessage } from "@raven/types/RavenMessaging/RavenMessage"
 import { useUser } from "@hooks/useUser"
 import { ChartColumnIcon } from "lucide-react"
 import FileTypeIcon from "@components/common/FileIcons/FileTypeIcon"
+import { FileImage } from "@components/common/FileImage"
 import { getFileExtension, getFileName } from "@raven/lib/utils/operations"
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@components/ui/hover-card"
 import _ from "@lib/translate"
@@ -53,10 +54,10 @@ export const RepliedMessagePreview = ({ details }: { details: RepliedMessageDeta
                     <span className="flex items-center gap-2">
                         <HoverCard>
                             <HoverCardTrigger>
-                                <img src={details.file} alt={getFileName(details.file)} className="md:w-6 md:h-6 w-5 h-5 rounded-sm" />
+                                <FileImage src={details.file} alt={getFileName(details.file)} className="md:w-6 md:h-6 w-5 h-5 rounded-sm" />
                             </HoverCardTrigger>
                             <HoverCardContent className="p-0">
-                                <img src={details.file} alt={getFileName(details.file)} className="w-full h-full object-cover rounded-lg" />
+                                <FileImage src={details.file} alt={getFileName(details.file)} className="w-full h-full object-cover rounded-lg" />
                             </HoverCardContent>
                         </HoverCard>
                         <span className="md:line-clamp-2 line-clamp-1 md:text-p-base text-p-lg">{getFileName(details.file)}</span>

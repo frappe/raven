@@ -1,3 +1,4 @@
+import { siteBaseName, siteOrigin } from "@lib/site"
 import { useCallback, useSyncExternalStore, type ReactNode } from "react"
 import { Link } from "react-router-dom"
 import { MessageSquareTextIcon } from "lucide-react"
@@ -9,6 +10,7 @@ import { useChannelById } from "@stores/channels/useChannelList"
 import { usersStore } from "@stores/usersStore"
 import { useWorkspaces } from "@hooks/useWorkspaces"
 import { attachmentCountLabel, getMessageTeaser } from "@utils/messageUtils"
+import { TeaserText } from "@components/common/TeaserText"
 import { useMessageBatch } from "@hooks/useMessageBatch"
 import type { ChannelListItem, DMChannelListItem } from "@raven/types/common/ChannelListItem"
 import _ from "@lib/translate"
@@ -41,7 +43,7 @@ type RavenLink =
 /** Top-level routes that are NOT workspace names — a two-segment path under one
  *  of these is never a channel link. */
 const RESERVED_ROOTS = new Set([
-    "dm-channel", "threads", "notifications", "search", "saved-messages",
+    "dm-channel", "threads", "notifications", "search", "later", "scheduled-messages",
     "profile", "share-target", "message", "settings", "login", "app",
 ])
 
@@ -52,10 +54,10 @@ export const matchRavenLink = (href: string): RavenLink | null => {
     } catch {
         return null
     }
-    if (url.origin !== window.location.origin) return null
+    if (url.origin !== siteOrigin()) return null
 
     // Strip the app base (/raven) — copied links always carry it.
-    const base = import.meta.env.VITE_BASE_NAME
+    const base = siteBaseName()
     let path = url.pathname
     if (base) {
         if (path !== `/${base}` && !path.startsWith(`/${base}/`)) return null
@@ -193,7 +195,10 @@ const MessageLinkCard = ({ messageID, to, label }: { messageID: string; to: stri
                     {context && <span>{isMobile ? "" : " · "} {context}</span>}
                 </div>
                 <div className="line-clamp-2 text-p-sm text-ink-gray-7">
-                    {label ? `${senderName}: ${teaser}` : teaser}
+                    {/* The sender's name stays outside TeaserText: only the teaser holds
+                        the preview text's `:name:` shortcodes and backticked code. */}
+                    {label && `${senderName}: `}
+                    <TeaserText text={teaser} />
                 </div>
             </div>
         </CardShell>

@@ -1,10 +1,12 @@
 import { useEffect } from "react"
+import { SAVE_TOAST_ID } from "@lib/toast"
 import { useForm } from "react-hook-form"
 import { useFrappeUpdateDoc } from "frappe-react-sdk"
 import { toast } from "sonner"
 import { useRavenSettings } from "@hooks/fetchers/useRavenSettings"
 import { hasRole } from "@lib/permissions"
 import { Alert, AlertDescription } from "@components/ui/alert"
+import { getErrorMessageAsMarkdown } from "@components/ui/error-banner"
 import { Button } from "@components/ui/button"
 import { Form } from "@components/ui/form"
 import { Spinner } from "@components/ui/spinner"
@@ -16,9 +18,10 @@ import {
 } from "@components/ui/settings-dialog"
 import type { RavenSettings } from "@raven/types/Raven/RavenSettings"
 import _ from "@lib/translate"
+import { useSaveHotkey } from "@hooks/useSaveHotkey"
 
 /** Only Raven Admins / System Managers may edit Raven Settings. */
-const isRavenSettingsAdmin = () => hasRole("Raven Admin") || hasRole("System Manager")
+export const isRavenSettingsAdmin = () => hasRole("Raven Admin") || hasRole("System Manager")
 
 /**
  * Shared scaffold for the admin-facing Raven Settings panels (AI, HR, Notifications).
@@ -64,15 +67,26 @@ export function AdminSettingsForm({
         if (ravenSettings) form.reset(ravenSettings)
     }, [ravenSettings]) // eslint-disable-line react-hooks/exhaustive-deps
 
+    // Same gate as the Save button: admins only, one save at a time.
+    useSaveHotkey(() => { if (isAdmin && !saving && !isLoading) form.handleSubmit(onSubmit)() })
+
     const onSubmit = (data: RavenSettings) => {
         if (!ravenSettings) return
-        toast.promise(
-            // Merge over the current doc so we only change this panel's fields.
-            updateDoc("Raven Settings", ravenSettings.name, { ...ravenSettings, ...data }).then((res) =>
-                mutate(res, { revalidate: false }),
-            ),
-            { loading: _("Saving…"), success: _("Settings updated"), error: _("Could not update settings") },
-        )
+        toast.loading(_("Saving…"), { id: SAVE_TOAST_ID })
+        // Merge over the current doc so we only change this panel's fields.
+        updateDoc("Raven Settings", ravenSettings.name, { ...ravenSettings, ...data })
+            .then((res) => {
+                mutate(res, { revalidate: false })
+                toast.success(_("Settings updated"), { id: SAVE_TOAST_ID })
+            })
+            .catch((error) => {
+                // The server's own message (a validation throw names the exact
+                // field), not just a generic failure line.
+                toast.error(_("Could not update settings"), {
+                    id: SAVE_TOAST_ID,
+                    description: getErrorMessageAsMarkdown(error),
+                })
+            })
     }
 
     return (

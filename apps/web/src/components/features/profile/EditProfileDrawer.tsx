@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react"
+import { SAVE_TOAST_ID } from "@lib/toast"
 import { useForm } from "react-hook-form"
 import { useFrappePostCall } from "frappe-react-sdk"
 import { toast } from "sonner"
@@ -59,10 +60,10 @@ export function EditProfileDrawer({ open, onOpenChange }: { open: boolean; onOpe
         try {
             await call({ doctype: "Raven User", name: myProfile.name, fieldname: values })
             await mutate()
-            toast.success(_("Profile updated"))
+            toast.success(_("Profile updated"), { id: SAVE_TOAST_ID })
             onOpenChange(false)
         } catch (e) {
-            errorResponseToast(_("Could not update profile"), e as FrappeError)
+            errorResponseToast(_("Could not update profile"), e as FrappeError, { id: SAVE_TOAST_ID })
         }
     }
 
