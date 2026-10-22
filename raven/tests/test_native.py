@@ -5,8 +5,9 @@ import frappe
 import frappe.boot
 import frappe.sessions
 from frappe.tests import IntegrationTestCase
+from werkzeug.wrappers import Response
 
-from raven.api.native import APP_HEADER, APP_ORIGINS, app_boot, boot, set_cors
+from raven.api.native import APP_HEADER, APP_ORIGINS, add_cors_headers, app_boot, boot, set_cors
 from raven.api.raven_mobile import (
 	MIN_APP_VERSION,
 	NATIVE_REDIRECT_URI,
@@ -244,6 +245,34 @@ class TestNative(IntegrationTestCase):
 		self.assertIsNone(self._cors_for("https://localhost", app=False))
 		self.assertEqual(self._cors_for("https://localhost", method="OPTIONS"), "https://localhost")
 		self.assertIsNone(self._cors_for("https://localhost", app=False, method="OPTIONS"))
+
+	def _preflight_headers(self, frappe_version, allow_cors=None):
+		"""CORS headers Raven adds to the app's preflight, on a given Frappe version and site allow_cors."""
+		response = Response()
+		with self._request("capacitor://localhost", method="OPTIONS"):
+			set_cors()
+			with (
+				patch("frappe.__version__", frappe_version),
+				patch("frappe.conf", frappe._dict(dict(frappe.conf), allow_cors=allow_cors)),
+			):
+				add_cors_headers(response=response, request=frappe.local.request)
+		return response.headers
+
+	def test_cors_headers_written_on_frappe_15(self):
+		headers = self._preflight_headers("15.80.0")
+		self.assertEqual(headers.get("Access-Control-Allow-Origin"), "capacitor://localhost")
+		self.assertIn(APP_HEADER.lower(), headers.get("Access-Control-Allow-Headers"))
+
+	def test_cors_headers_left_to_frappe_when_it_writes_them(self):
+		# Frappe 16 answers the origin itself; on 15 a site allow_cors covering it does too. A second copy breaks CORS.
+		for version, allow_cors in (
+			("16.0.0", None),
+			("15.80.0", "*"),
+			("15.80.0", ["capacitor://localhost"]),
+		):
+			self.assertIsNone(
+				self._preflight_headers(version, allow_cors).get("Access-Control-Allow-Origin")
+			)
 
 	def test_cors_allows_http_localhost_in_developer_mode_only(self):
 		self.assertIsNone(self._cors_for("http://localhost"))
