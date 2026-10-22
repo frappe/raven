@@ -47,6 +47,10 @@ export interface FileMessage extends BaseMessage {
     message_type: 'File'
     /** Size of the attached file in bytes (denormalized onto the message at send). */
     file_size?: number,
+    /** Voice note length in seconds (set only on recorded voice notes). */
+    audio_duration?: number,
+    /** Voice note waveform: comma-separated bar heights 0-100. */
+    audio_waveform?: string,
 }
 
 export interface ImageMessage extends BaseMessage {

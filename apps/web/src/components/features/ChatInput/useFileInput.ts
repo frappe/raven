@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { formatBytes, getFileExtension } from '@raven/lib/utils/operations'
 import { randomUUID } from '@lib/uuid'
 import { measureMediaDimensions } from '@lib/mediaDimensions'
+import type { VoiceNoteMeta } from '@lib/voiceNote'
 import _ from '@lib/translate'
 
 /**
@@ -47,7 +48,8 @@ export interface QueuedFileType {
     timestamp: number
 }
 
-export interface UploadedFile {
+/** Voice notes also carry duration + waveform, measured when recorded. */
+export interface UploadedFile extends Partial<VoiceNoteMeta> {
     /** File ID returned from the server */
     fileID: string
     /** File URL returned from the server */
@@ -142,7 +144,7 @@ export const useAttachFile = (channelID: string) => {
      * When a file is attached by the user, start uploading it immediately
      * The user should not wait for files to upload when they hit the send button.
      */
-    const onAddFile = (files: FileList | File[]) => {
+    const onAddFile = (files: FileList | File[], options?: { voiceNote?: VoiceNoteMeta }) => {
         // Enforce the server's size + type limits up front (covers the attach button,
         // paste, and drop — all routed through here). Rejected files are toasted.
         const allowedFiles = filterAllowedFiles(Array.from(files))
@@ -197,6 +199,7 @@ export const useAttachFile = (channelID: string) => {
                     timestamp: f.timestamp,
                     width: dims?.width,
                     height: dims?.height,
+                    ...options?.voiceNote,
                 }])
                 setUploadingFiles((prevFiles) => prevFiles.filter((item) => item.id !== f.id))
 
