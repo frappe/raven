@@ -40,6 +40,8 @@ class RavenMessage(Document):
 			RavenMessageLinks,
 		)
 
+		audio_duration: DF.Float
+		audio_waveform: DF.SmallText | None
 		blurhash: DF.SmallText | None
 		bot: DF.Link | None
 		channel_id: DF.Link
@@ -990,6 +992,8 @@ class RavenMessage(Document):
 						"message_reactions": self.message_reactions,
 						"thumbnail_width": self.thumbnail_width,
 						"thumbnail_height": self.thumbnail_height,
+						"audio_duration": self.audio_duration,
+						"audio_waveform": self.audio_waveform,
 						"file_thumbnail": self.file_thumbnail,
 						"image_width": self.image_width,
 						"image_height": self.image_height,

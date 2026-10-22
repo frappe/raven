@@ -27,6 +27,8 @@ def message_columns(message):
 		message.channel_id,
 		message.thumbnail_width,
 		message.thumbnail_height,
+		message.audio_duration,
+		message.audio_waveform,
 		message.file_thumbnail,
 		message.link_doctype,
 		message.link_document,
