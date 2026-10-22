@@ -34,17 +34,8 @@ def track_visit(channel_id: str, last_visit: str = None):
 	if frappe.flags.read_only:
 		return False
 
-	# On v3, the client sends the last_visit only on the basis of viewing a more reecent message and hence this needs to be broadcasted back to the user.
-	# On v2, this is called when the user enters/exists a channel, without the timestamp - should not be published to the user.
-
-	# So temp fix for DM sorting error in v2 mentioned by Mangesh
-	publish_event_for_user = False
-	if last_visit:
-		publish_event_for_user = True
 	# No explicit commit: this is a POST, which auto-commits on success.
-	track_channel_visit(
-		channel_id=channel_id, last_visit=last_visit, publish_event_for_user=publish_event_for_user
-	)
+	track_channel_visit(channel_id=channel_id, last_visit=last_visit, publish_event_for_user=True)
 	return True
 
 

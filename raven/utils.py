@@ -16,9 +16,7 @@ def get_raven_room():
 	return "doctype:Raven User"
 
 
-def track_channel_visit(
-	channel_id, user=None, commit=False, publish_event_for_user=False, last_visit=None
-):
+def track_channel_visit(channel_id, user=None, publish_event_for_user=False, last_visit=None):
 	"""
 	Track the last visit of the user to the channel.
 	If the user is not a member of the channel, create a new member record.
@@ -78,13 +76,6 @@ def track_channel_visit(
 				"last_visit": target_dt,
 			}
 		).insert()
-
-	# TODO(no-commit): this explicit commit only exists because some callers update
-	# last_visit during GET requests (chat_stream), which don't auto-commit. Once
-	# those move off GET-time writes, drop the `commit` param entirely — POST
-	# requests already commit on success. Kept for now to preserve v2 behaviour.
-	if commit:
-		frappe.db.commit()  # nosempgrep
 
 	if publish_event_for_user:
 		# Update all clients with the "last visit" timestamp for this channel for this user

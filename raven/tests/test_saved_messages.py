@@ -69,12 +69,6 @@ class TestSavedMessagesPagination(IntegrationTestCase):
 		page_two = get_saved_messages(limit=2, start=2, channel_id=self.channel)
 		self.assertEqual([r["name"] for r in page_two], [self.messages[0]])
 
-	def test_legacy_call_returns_all_ascending(self):
-		from raven.api.raven_message import get_saved_messages
-
-		rows = [r["name"] for r in get_saved_messages(channel_id=self.channel)]
-		self.assertEqual(rows, self.messages)
-
 	def test_search_filters_server_side(self):
 		from raven.api.raven_message import get_saved_messages
 

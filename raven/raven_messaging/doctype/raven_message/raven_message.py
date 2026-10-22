@@ -870,30 +870,9 @@ class RavenMessage(Document):
 		if self.message_type == "Poll":
 			frappe.delete_doc("Raven Poll", self.poll_id, ignore_permissions=True, delete_permanently=True)
 
-		# TEMP: this is a temp fix for the Desk interface
-		self.publish_deprecated_event_for_desk()
-
-	def publish_deprecated_event_for_desk(self):
-		# TEMP: this is a temp fix for the Desk interface
-		frappe.publish_realtime(
-			"message_updated",
-			{
-				"channel_id": self.channel_id,
-				"sender": frappe.session.user,
-				"message_id": self.name,
-				"message_batch_id": self.message_batch_id,
-			},
-			doctype="Raven Channel",
-			docname=self.channel_id,
-			after_commit=True,
-		)
-
 	def on_update(self):
 
 		self.queue_link_preview_processing()
-
-		# TEMP: this is a temp fix for the Desk interface
-		self.publish_deprecated_event_for_desk()
 
 		# An edit can change the text shown in the channel's sidebar teaser.
 		# Create and delete already keep the teaser fresh — this covers edits.

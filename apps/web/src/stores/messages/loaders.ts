@@ -100,9 +100,6 @@ export const loadInitialMessages = (
                 channel_id: channelID,
                 limit: PAGE_SIZE,
                 base_message: baseMessage,
-                // We track last_visit ourselves (useChannelReadTracker), so the fetch must
-                // not also write it — that GET-time write can deadlock with a concurrent send.
-                update_last_visit: false,
                 // Center the window on the first unread message (for the "New messages" divider)
                 // unless we're jumping to a specific message — an explicit jump wins.
                 anchor_to_unread: !baseMessage,
@@ -166,8 +163,6 @@ export const loadNewerMessages = async (client: FrappeCallClient, channelID: str
             channel_id: channelID,
             from_message: newestID,
             limit: PAGE_SIZE,
-            // last_visit is tracked client-side; don't let the fetch write it (deadlock risk).
-            update_last_visit: false,
         })
         seedPreviews(response.message)
         channelMessagesStore.setNewerPage(channelID, response.message)
@@ -273,7 +268,6 @@ export const reconcileStaleWindow = async (client: FrappeCallClient, channelID: 
             // would detach them after 30 messages. The server returns only what
             // exists, so a quiet night costs the window's size, not the limit.
             limit: Math.max(1, MAX_WINDOW_SIZE - inFlightSends),
-            update_last_visit: false,
         })
         // The user started their own fetch while ours was running. Theirs wins.
         if (windowIntent.get(channelID) !== token) return

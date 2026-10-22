@@ -439,15 +439,14 @@ def get_pinned_messages(channel_id: str):
 
 @frappe.whitelist()
 def get_saved_messages(
-	limit: int | None = None, start: int = 0, search: str | None = None, channel_id: str | None = None
+	limit: int = 20, start: int = 0, search: str | None = None, channel_id: str | None = None
 ):
 	"""
 	Messages liked (saved) by the user, permission-filtered.
 
-	All params optional — legacy callers (v2) pass none and get the full list in
-	creation ASC. The Later page paginates: `limit`/`start` window, newest first,
-	server-side `search` (message text) and `channel_id` filter — thread replies
-	match their PARENT channel (a thread channel is named after its root message).
+	Newest first, in a `limit`/`start` window, with a server-side `search` (message text)
+	and `channel_id` filter — thread replies match their PARENT channel (a thread channel
+	is named after its root message).
 	"""
 
 	raven_message = frappe.qb.DocType("Raven Message")
@@ -507,13 +506,9 @@ def get_saved_messages(
 	if channel_id:
 		query = query.where(parent_channel == channel_id)
 
-	if limit:
-		# Paged mode reads newest-first; the legacy full fetch keeps its ASC order.
-		query = (
-			query.orderby(raven_message.creation, order=Order.desc).limit(cint(limit)).offset(cint(start))
-		)
-	else:
-		query = query.orderby(raven_message.creation, order=Order.asc)
+	query = (
+		query.orderby(raven_message.creation, order=Order.desc).limit(cint(limit)).offset(cint(start))
+	)
 
 	return query.run(as_dict=True)
 
@@ -860,18 +855,14 @@ def _forward_payloads(message_id: str) -> list[dict]:
 @frappe.whitelist(methods=["POST"])
 def forward_message(
 	message_receivers: list[dict],
-	forwarded_message: dict | None = None,
-	message_id: str | None = None,
+	message_id: str,
 ):
 	"""
 	Forward a message to multiple users/ or in multiple channels
 	"""
 	# The copy is always built from the database, including every member when
-	# the message is part of a batch. The v3 client sends just the message id.
-	# Older clients (the old mobile app) send the whole message: only its name
-	# is used, so they can't forward content or files that aren't theirs to read.
-	if not message_id and forwarded_message:
-		message_id = forwarded_message.get("name")
+	# the message is part of a batch, so a caller can't forward content or files
+	# that aren't theirs to read.
 	if not message_id:
 		frappe.throw(_("Nothing to forward"))
 

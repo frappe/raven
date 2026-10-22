@@ -26,8 +26,8 @@ type ProfileFormValues = {
  * Bottom sheet for editing the current user's profile details (name, availability, status).
  * The profile photo is edited on the profile page's avatar instead (see ProfileImageMenu).
  * A react-hook-form form is re-seeded from the SWR `my_profile` each time the sheet opens;
- * submit sends a single frappe.client.set_value POST (raven.api.raven_users.update_raven_user
- * is deprecated in v3), then revalidates my_profile and closes. Save is disabled until
+ * submit sends a single frappe.client.set_value POST, then revalidates my_profile and
+ * closes. Save is disabled until
  * something changes.
  */
 export function EditProfileDrawer({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {

@@ -70,28 +70,23 @@ class TestSendAttachments(IntegrationTestCase):
 		messages = self.send()
 		self.assertEqual(messages[0].file, self.file_url)
 
-	def test_cannot_forward_a_made_up_message(self):
-		# The audit's case: an old-client forward with someone else's file and no real message.
+	def test_cannot_forward_without_a_message(self):
 		frappe.set_user("test3@example.com")
 		with self.assertRaises(frappe.ValidationError):
 			forward_message(
 				message_receivers=[{"type": "Channel", "name": self.channel.name}],
-				forwarded_message={"message_type": "File", "file": self.file_url},
+				message_id="",
 			)
 
-	def test_old_clients_forward_the_saved_message(self):
+	def test_forward_copies_the_saved_message(self):
 		frappe.set_user("test1@example.com")
 		original = self.send()[0]
 
-		# test3 forwards it the old way, with a tampered copy. Only the name is used.
+		# The copy comes from the database, never from anything the caller sends.
 		frappe.set_user("test3@example.com")
 		forward_message(
 			message_receivers=[{"type": "Channel", "name": self.channel.name}],
-			forwarded_message={
-				"name": original.name,
-				"is_bot_message": 1,
-				"file": "/private/files/other.txt",
-			},
+			message_id=original.name,
 		)
 		copy = frappe.get_all(
 			"Raven Message",

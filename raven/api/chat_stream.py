@@ -4,8 +4,6 @@ import frappe
 from frappe import _
 from frappe.query_builder import Order
 
-from raven.utils import track_channel_visit
-
 
 def message_columns(message):
 	"""The columns every chat stream endpoint returns for a message.
@@ -132,24 +130,19 @@ def get_messages(
 	channel_id: str,
 	limit: int = 20,
 	base_message: str | None = None,
-	update_last_visit: bool = True,
 	anchor_to_unread: bool = False,
 ):
 	"""
 	API to get list of messages for a channel, ordered by creation date (newest first)
 
-	`update_last_visit` (DEPRECATED, v2-compat): when True the fetch also advances the
-	caller's last_visit. The v3 client tracks last_visit itself (a debounced watermark
-	via raven_channel_member.track_visit), so it passes False — this avoids a write to
-	the Raven Channel Member row inside the read transaction, which can collide with a
-	concurrent message send and surface as a QueryDeadlockError (MariaDB 1020). Remove
-	this flag and the GET-time write once v2 is gone.
+	Never writes last_visit: the client tracks its own watermark through
+	raven_channel_member.track_visit. A write here, inside the read transaction, could
+	collide with a concurrent send and deadlock (MariaDB 1020).
 
-	`anchor_to_unread` (v3): when True and the caller has unread messages (anything created
+	`anchor_to_unread`: when True and the caller has unread messages (anything created
 	after their last_visit), the returned window is centered on the FIRST unread message
 	instead of the latest page — so the client can render a "New messages" divider and land
-	the user on it. Backward-compatible: v2 omits it (defaults False) and keeps getting the
-	latest page. Ignored when `base_message` is given (an explicit jump wins), and a no-op
+	the user on it. Ignored when `base_message` is given (an explicit jump wins), and a no-op
 	when the caller has never visited (no last_visit → show recent, no divider).
 	"""
 
@@ -161,9 +154,8 @@ def get_messages(
 	if base_message and frappe.db.exists("Raven Message", base_message):
 		return get_messages_around_base(channel_id, base_message, limit)
 
-	# The member's current read watermark: returned so the v3 client can baseline its own
-	# last_visit tracking, and used below to locate the unread boundary. Read before the
-	# optional legacy write further down.
+	# The member's current read watermark: returned so the client can baseline its own
+	# last_visit tracking, and used below to locate the unread boundary.
 	last_visit = frappe.db.get_value(
 		"Raven Channel Member",
 		{"channel_id": channel_id, "user_id": frappe.session.user},
@@ -236,8 +228,6 @@ def get_messages(
 		if len(older_message) > 0:
 			has_old_messages = True
 
-	if update_last_visit:
-		track_channel_visit(channel_id=channel_id, commit=True)
 	return {
 		"messages": messages,
 		"has_old_messages": has_old_messages,
@@ -350,7 +340,6 @@ def get_newer_messages(
 	channel_id: str,
 	from_message: str,
 	limit: int = 20,
-	update_last_visit: bool = True,
 	include_from_message: bool = False,
 ):
 	"""
@@ -360,9 +349,7 @@ def get_newer_messages(
 	refresh the window it already holds after a connection break, from its oldest
 	message up, so edits, reactions and deletes on loaded messages come back too.
 
-	`update_last_visit` (DEPRECATED, v2-compat): see get_messages. v3 passes False and
-	advances last_visit itself, avoiding a GET-time write that can collide with a
-	concurrent send. Remove with v2.
+	Never writes last_visit; see get_messages.
 	"""
 
 	# Check permission for channel access
@@ -384,19 +371,12 @@ def get_newer_messages(
 
 	# The member's current read watermark, as get_messages returns it: a window refreshed
 	# after a connection break re-baselines its "New messages" divider from this, since
-	# another device may have read the channel meanwhile. Read before the legacy write below.
+	# another device may have read the channel meanwhile.
 	response["last_visit"] = frappe.db.get_value(
 		"Raven Channel Member",
 		{"channel_id": channel_id, "user_id": frappe.session.user},
 		"last_visit",
 	)
-
-	if update_last_visit and response.get("has_new_messages") == False:
-		# If no newer messages are available, we can track it as a visit to the channel
-		# There are cases when we want to publish the unread count update event for a specific user
-		# Example: The user is viewing an older message in a channel. If a new message comes up, the sidebar shows an unread count
-		# Now if the user scrolls to the bottom, we need to update the unread count
-		track_channel_visit(channel_id=channel_id, commit=True, publish_event_for_user=True)
 
 	return response
 

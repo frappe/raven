@@ -34,7 +34,6 @@ def get_all_threads(
 	start_after: int = 0,
 	limit: int = 10,
 	only_show_unread: bool = False,
-	fetch_members: bool = True,
 ):
 	"""
 	Get all the threads in which the user is a participant
@@ -108,19 +107,8 @@ def get_all_threads(
 
 	query = query.orderby(channel.last_message_timestamp, order=Order.desc)
 
-	threads = query.run(as_dict=True)
-
-	# v2 renders participants in the list, so it fetches them inline (the default). v3 sends
-	# fetch_members=False and lazy-loads members per row on view (get_thread_details →
-	# channelMembersStore), avoiding this per-thread get_channel_members fan-out. reply_count
-	# is computed in the query above (free) either way.
-	if fetch_members not in (False, "false", "False", 0, "0"):
-		for thread in threads:
-			if not thread["is_ai_thread"] and not thread["is_dm_thread"]:
-				thread_members = get_channel_members(thread["name"])
-				thread["participants"] = [{"user_id": member} for member in thread_members]
-
-	return threads
+	# Members are not fetched here: the client loads them per row on view (get_thread_details).
+	return query.run(as_dict=True)
 
 
 @frappe.whitelist(methods=["GET"])
@@ -131,7 +119,6 @@ def get_other_threads(
 	is_ai_thread: int = 0,
 	start_after: int = 0,
 	limit: int = 10,
-	fetch_members: bool = True,
 ):
 	"""
 	Get all the threads in which the user is not a participant, but is a member of the channel
@@ -207,17 +194,8 @@ def get_other_threads(
 
 	query = query.orderby(thread_channel.last_message_timestamp, order=Order.desc)
 
-	threads = query.run(as_dict=True)
-
-	# v2 fetches members inline (default); v3 sends fetch_members=False and lazy-loads on
-	# row view (see get_all_threads) to avoid the per-thread fan-out.
-	if fetch_members not in (False, "false", "False", 0, "0"):
-		for thread in threads:
-			if not thread["is_ai_thread"] and not thread["is_dm_thread"]:
-				thread_members = get_channel_members(thread["name"])
-				thread["participants"] = [{"user_id": member} for member in thread_members]
-
-	return threads
+	# Members are not fetched here: the client loads them per row on view (get_thread_details).
+	return query.run(as_dict=True)
 
 
 @frappe.whitelist(methods=["GET"])

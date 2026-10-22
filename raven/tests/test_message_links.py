@@ -299,7 +299,7 @@ class TestMessageLinkRows(IntegrationTestCase):
 			f'<p><a href="{raw_url}">article</a> and <a href="{no_preview_url}">unknown</a></p>'
 		)
 
-		result = get_messages(channel_id=self.channel.name, update_last_visit=False)
+		result = get_messages(channel_id=self.channel.name)
 
 		# Keyed by the RAW spelling, exactly as the message ships it.
 		self.assertEqual(result["previews"][raw_url]["title"], "Sidecar Title")

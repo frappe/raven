@@ -55,9 +55,6 @@ const fetchPage = (
             // get_other_threads has no unread filter — and threads you don't participate in
             // can't be unread for you, so the client unread filter yields empty there anyway.
             only_show_unread: tab !== "other" && filters.onlyShowUnread ? true : undefined,
-            // v3 lazy-loads members per row on view (see ThreadRow → loadThreadDetails); the
-            // API still fetches them inline for v2 (fetch_members defaults True there).
-            fetch_members: false,
             start_after: startAfter,
             limit: PAGE_SIZE,
         })

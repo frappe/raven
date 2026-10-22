@@ -11,8 +11,6 @@ Before deleting one, search again. Some method names are built at runtime, like 
 | Endpoint | File | Note |
 |---|---|---|
 | `raven.api.preview_links.hide_link_preview` | `raven/api/preview_links.py` | No app calls it. The `hide_link_preview` field stays either way: messages, the chat stream and threads read it. Same decision as the todo item about the UI never setting it: add the UI, or drop the endpoint. |
-| `raven.api.raven_channel_member.mark_channel_as_unread` | `raven/api/raven_channel_member.py` | Unused, but the web app still listens for the event it sends (`stores/unread/useUnreadRealtime.ts`). Keep it only if "mark as unread" is coming back. |
-| `raven.api.raven_channel.transfer_channel_to_workspace` | `raven/api/raven_channel.py` | Unused by any app, but has `raven/tests/test_transfer_channel.py`. Delete it, or keep it as a `bench execute` tool without the whitelist. |
 
 ## Keep
 
@@ -22,6 +20,8 @@ Before deleting one, search again. Some method names are built at runtime, like 
 | `raven.raven_integrations.doctype.raven_incoming_webhook.raven_incoming_webhook.handle_incoming_webhook` | Called by outside systems. |
 | `raven.api.notification.subscribe` and `unsubscribe` | Built at runtime in `lib/push.ts`, so a plain search misses them. |
 | `raven.api.native.boot` and `raven.api.raven_mobile.get_client_id` | The native app. |
+| `raven.api.raven_channel_member.mark_channel_as_unread` | Added in frappe/raven#2182 for "mark as unread". The web app already listens for the event it sends (`stores/unread/useUnreadRealtime.ts`); the UI is still to come. |
+| `raven.api.raven_channel.transfer_channel_to_workspace` | Added in frappe/raven#2182 as an admin tool, with `raven/tests/test_transfer_channel.py`. Stays whitelisted so a client can call it later. |
 | `raven.api.raven_channel.get_channels` | The Desk "Send a Raven" timeline button (`raven/public/js/timeline_button.js`, loaded through `app_include_js`) lists channels with it and inserts the message with `frappe.db.insert`. If that button goes with the rest of the Desk integration, this endpoint and `raven/public/js` go too. |
 
 Everything else is called from the web app.
