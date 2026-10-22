@@ -37,6 +37,10 @@ export interface RavenMessage{
 	file?: string
 	/**	Image Width : Data	*/
 	image_width?: string
+	/**	Audio Duration : Float - Voice note length in seconds, measured by the sender's browser	*/
+	audio_duration?: number
+	/**	Audio Waveform : Small Text - Voice note waveform: comma-separated bar heights 0-100	*/
+	audio_waveform?: string
 	/**	Image Height : Data	*/
 	image_height?: string
 	/**	Blurhash : Small Text	*/

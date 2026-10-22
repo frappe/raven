@@ -24,6 +24,8 @@
   "content",
   "file",
   "file_size",
+  "audio_duration",
+  "audio_waveform",
   "image_width",
   "image_height",
   "blurhash",
@@ -227,6 +229,21 @@
    "read_only": 1
   },
   {
+   "description": "Voice note length in seconds, measured by the sender's browser",
+   "fieldname": "audio_duration",
+   "fieldtype": "Float",
+   "label": "Audio Duration",
+   "non_negative": 1,
+   "read_only": 1
+  },
+  {
+   "description": "Voice note waveform: comma-separated bar heights 0-100",
+   "fieldname": "audio_waveform",
+   "fieldtype": "Small Text",
+   "label": "Audio Waveform",
+   "read_only": 1
+  },
+  {
    "fieldname": "links_table",
    "fieldtype": "Table",
    "label": "Links Table",
@@ -235,7 +252,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-06-21 02:21:16.323515",
+ "modified": "2026-10-21 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Raven Messaging",
  "name": "Raven Message",

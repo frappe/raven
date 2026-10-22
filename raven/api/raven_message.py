@@ -51,6 +51,12 @@ def send_message(
 
 IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "ico", "heic", "heif"}
 
+# Mirror of AUDIO_EXTENSIONS in apps/web/src/utils/attachmentPreview.ts — keep in sync.
+AUDIO_EXTENSIONS = {"mp3", "wav", "ogg", "oga", "m4a", "aac", "flac", "opus", "weba"}
+
+_MAX_AUDIO_SECONDS = 600
+_MAX_WAVEFORM_BARS = 64
+
 # Inline-image display caps (mirror the web client's reserved box). The stored
 # aspect ratio is what prevents reflow; the absolute thumbnail size only needs
 # to be reasonable. The client mirrors these values for its optimistic
@@ -66,6 +72,31 @@ def _sane_dimension(value) -> int | None:
 	except (TypeError, ValueError):
 		return None
 	return number if 0 < number <= 10000 else None
+
+
+def _is_audio(file_url: str) -> bool:
+	ext = file_url.rsplit(".", 1)[-1].split("?")[0].lower() if "." in file_url else ""
+	return ext in AUDIO_EXTENSIONS
+
+
+def _sane_duration(value) -> float | None:
+	"""A plausible voice note length in seconds from an untrusted client, or None."""
+	try:
+		number = float(value)
+	except (TypeError, ValueError):
+		return None
+	return number if 0 < number <= _MAX_AUDIO_SECONDS else None
+
+
+def _sane_waveform(value) -> str | None:
+	"""Comma-separated bar heights clamped to 0-100 and capped in count, or None."""
+	if not isinstance(value, str) or not value:
+		return None
+	try:
+		bars = [round(float(part)) for part in value.split(",")[:_MAX_WAVEFORM_BARS]]
+	except ValueError:
+		return None
+	return ",".join(str(min(100, max(0, bar))) for bar in bars)
 
 
 def _file_message_type(file_url: str) -> str:
@@ -218,6 +249,8 @@ def send_message_with_attachments(
 	it without a File lookup. (A bare URL string per file is also tolerated.)
 	Videos may also carry `width`/`height`, measured by the client's browser at
 	attach time — stored so the message reserves its display box up front.
+	Voice notes may carry `duration` (seconds) and `waveform` (comma-separated
+	bar heights), measured by the client when it recorded the clip.
 
 	`send_silently` suppresses notifications for the whole batch (the flag is set on
 	every message before insert).
@@ -279,6 +312,15 @@ def send_message_with_attachments(
 			if width and height:
 				spec["thumbnail_width"] = width
 				spec["thumbnail_height"] = height
+		# Voice note metadata, measured by the client when it recorded the clip.
+		# A waveform without a valid duration is dropped with it.
+		if spec["message_type"] == "File" and isinstance(f, dict) and _is_audio(file_url):
+			duration = _sane_duration(f.get("duration"))
+			waveform = _sane_waveform(f.get("waveform"))
+			if duration:
+				spec["audio_duration"] = duration
+				if waveform:
+					spec["audio_waveform"] = waveform
 		specs.append(spec)
 	# A document-only send has no text and no files — it still needs one message
 	# to carry the link, so an empty Text message hosts it (the card IS the content).
@@ -441,6 +483,8 @@ def get_pinned_messages(channel_id: str):
 			"channel_id",
 			"thumbnail_width",
 			"thumbnail_height",
+			"audio_duration",
+			"audio_waveform",
 			"file_thumbnail",
 			"link_doctype",
 			"link_document",
@@ -507,6 +551,8 @@ def get_saved_messages(
 			raven_channel.is_thread,
 			raven_message.thumbnail_width,
 			raven_message.thumbnail_height,
+			raven_message.audio_duration,
+			raven_message.audio_waveform,
 			raven_message.is_bot_message,
 			raven_message.bot,
 			parent_channel.as_("parent_channel_id"),
@@ -884,6 +930,8 @@ FORWARDABLE_FIELDS = [
 	"link_document",
 	"thumbnail_width",
 	"thumbnail_height",
+	"audio_duration",
+	"audio_waveform",
 	"blurhash",
 	"links",
 	"hide_link_preview",
