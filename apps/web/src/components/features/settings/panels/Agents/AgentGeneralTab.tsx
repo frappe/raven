@@ -38,7 +38,7 @@ const AgentGeneralTab = ({ isEdit }: { isEdit?: boolean }) => {
             <SwitchFormField
                 name="is_ai_bot"
                 label={_("Is AI Agent")}
-                formDescription={_("Check to enable AI features for this bot")}
+                formDescription={_("This agent answers with an AI model.")}
             />
             {/* The switch stays usable when AI is off. Turning it on is what
                 surfaces the setup callout, which renders nothing once AI is

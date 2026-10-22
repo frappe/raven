@@ -88,7 +88,7 @@ const ChannelHeader = ({ channelID, showActions = true, onOpenChannel }: Channel
                                     </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                    {_('Add to Favorites')}
+                                    {isStarred ? _('Remove from Favorites') : _('Add to Favorites')}
                                 </TooltipContent>
                             </Tooltip>
                         </div>

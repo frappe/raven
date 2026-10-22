@@ -9,3 +9,6 @@ export const isAndroid = typeof navigator !== "undefined" && /android/i.test(nav
 export const isIOS = typeof navigator !== "undefined" &&
     (/iPad|iPhone|iPod/.test(navigator.userAgent) ||
         (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1))
+
+/** Mac, iPhone and iPad: where the modifier key is ⌘ and shortcuts are shown as glyphs. */
+export const isApple = typeof navigator !== "undefined" && (navigator.platform.startsWith("Mac") || isIOS)

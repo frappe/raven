@@ -212,7 +212,7 @@ export const SitePicker = () => {
             <form className="flex flex-col gap-2" onSubmit={(e) => { e.preventDefault(); addSite() }}>
                 <label htmlFor="site-url" className="text-sm text-ink-gray-6">{_("Site address")}</label>
                 {/* type="text": a type="url" input rejects a bare host; normalizeSiteUrl adds the scheme. */}
-                <Input id="site-url" type="text" inputMode="url" inputSize="lg" placeholder="raven.frappe.cloud" autoCapitalize="none" autoCorrect="off" spellCheck={false}
+                <Input id="site-url" type="text" inputMode="url" inputSize="lg" placeholder="yourcompany.frappe.cloud" autoCapitalize="none" autoCorrect="off" spellCheck={false}
                     value={url} onChange={(e) => setUrl(e.target.value)} />
                 <Button type="submit" variant="solid" size="lg" loading={busy === "add"} loadingText={_("Connecting…")}>{_("Add site")}</Button>
             </form>

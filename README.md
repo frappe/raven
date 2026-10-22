@@ -120,7 +120,7 @@ bench --site your-site install-app raven
 
 ### Mobile apps
 
-The iOS and Android apps connect to any site running Raven v3 or later. Enter the site address, sign in, and every channel is there, in sync with the web app.
+The iOS and Android apps connect to any site running Raven 3.1 or later. Enter the site address, sign in, and every channel is there, in sync with the web app.
 
 <div>
 	<a href="https://apps.apple.com/app/raven-mobile/id6741682327" target="_blank">
