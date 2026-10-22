@@ -65,7 +65,6 @@ def get_client_id():
 # TODO: API to fetch boot information for the app - settings like GIF API key etc.
 
 
-@frappe.whitelist(methods=["POST"])
 def create_oauth_client():
 	"""Creates, or repairs, the OAuth client the app signs in with. Runs on install and by the
 	3.1 patch; by hand with `bench execute` when a site needs it again."""

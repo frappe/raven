@@ -7,53 +7,6 @@ from google.cloud import documentai, documentai_v1
 from google.oauth2 import service_account
 
 
-@frappe.whitelist()
-def get_document_ai_processors():
-	"""
-	Get the list of document AI processors available for the Google Cloud project.
-
-	NOTE: This is not in use, but keeping it here for future reference.
-	"""
-	frappe.has_permission("Raven Settings", ptype="read", throw=True)
-
-	raven_settings = frappe.get_single("Raven Settings")
-	if not raven_settings.enable_google_apis:
-		return []
-
-	location = raven_settings.google_processor_location
-
-	key = json.loads(raven_settings.get_password("google_service_account_json_key"))
-
-	# Create credentials from the API key
-	credentials = service_account.Credentials.from_service_account_info(key)
-
-	client_options = ClientOptions(api_endpoint=f"{location}-documentai.googleapis.com")
-	client = documentai.DocumentProcessorServiceClient(
-		credentials=credentials, client_options=client_options
-	)
-
-	# The full resource name of the location
-	# e.g.: projects/project_id/locations/location
-	parent = client.common_location_path(raven_settings.google_project_id, location)
-
-	# Fetch all processor types
-	response = client.list_processors(parent=parent)
-
-	processors = []
-	# Print the available processor types
-	for processor in response:
-		if processor.type_ == "FORM_PARSER_PROCESSOR":
-			processors.append(
-				{
-					"id": processor.name,
-					"display_name": processor.display_name,
-					"type": processor.type_,
-				}
-			)
-
-	return processors
-
-
 def run_document_ai_processor(processor_id: str, file_path: str, extension: str):
 	"""
 	Run the document AI processor on the given file.

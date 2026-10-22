@@ -365,25 +365,6 @@ def get_message_batch(message_id: str):
 
 
 @frappe.whitelist()
-def fetch_recent_files(channel_id: str):
-	"""
-	Fetches recently sent files in a channel
-	Check if the user has permission to view the channel
-	"""
-	if not frappe.has_permission("Raven Channel", doc=channel_id):
-		frappe.throw(_("You don't have permission to view this channel"), frappe.PermissionError)
-	files = frappe.db.get_all(
-		"Raven Message",
-		filters={"channel_id": channel_id, "message_type": ["in", ["Image", "File"]]},
-		fields=["name", "file", "owner", "creation", "message_type"],
-		order_by="creation desc",
-		limit_page_length=10,
-	)
-
-	return files
-
-
-@frappe.whitelist()
 def save_message(message_id: str, add: str | bool = False):
 	"""
 	Save the message as a bookmark
@@ -579,7 +560,6 @@ def get_unread_count_for_channels():
 	return channels_query
 
 
-@frappe.whitelist()
 def get_unread_count_for_channel(channel_id: str):
 	"""
 	Deprecated - not used in v3
@@ -670,7 +650,6 @@ def get_message_readers(message_id: str):
 	return readers
 
 
-@frappe.whitelist()
 def get_timeline_message_content(doctype: str, docname: str | int):
 	"""Raven messages linked to a document, for its Desk form timeline.
 
@@ -797,76 +776,6 @@ file_extensions = {
 		"numbers",
 	],
 }
-
-
-@frappe.whitelist()
-def get_all_files_shared_in_channel(
-	channel_id: str,
-	file_name: str | None = None,
-	file_type: str | None = None,
-	start_after: int = 0,
-	page_length: int | None = None,
-):
-
-	frappe.has_permission("Raven Channel", doc=channel_id, ptype="read", throw=True)
-
-	message = frappe.qb.DocType("Raven Message")
-	user = frappe.qb.DocType("Raven User")
-	file = frappe.qb.DocType("File")
-
-	query = (
-		frappe.qb.from_(message)
-		.join(file)
-		.on(message.name == file.attached_to_name)
-		.join(user)
-		.on(message.owner == user.name)
-		.select(
-			file.name,
-			file.file_name,
-			file.file_type,
-			file.file_size,
-			file.file_url,
-			message.owner,
-			message.creation,
-			message.message_type,
-			message.thumbnail_width,
-			message.thumbnail_height,
-			message.file_thumbnail,
-			user.full_name,
-			user.user_image,
-			message.name.as_("message_id"),
-		)
-		.where(message.channel_id == channel_id)
-	)
-
-	# search for file name
-	if file_name:
-		query = query.where(file.file_name.like("%" + file_name + "%"))
-
-	# search for file type
-	if file_type:
-		if file_type == "image":
-			query = query.where(message.message_type == "Image")
-		elif file_type == "file":
-			query = query.where(message.message_type == "File")
-		elif file_type == "pdf":
-			query = query.where(file.file_type == "pdf")
-		else:
-			# Get the list of extensions for the given file type
-			extensions = file_extensions.get(file_type)
-			if extensions:
-				query = query.where((file.file_type).isin(extensions))
-	else:
-		query = query.where(message.message_type.isin(["Image", "File"]))
-
-	files = (
-		query.orderby(message.creation, order=Order["desc"])
-		.limit(page_length)
-		.offset(start_after)
-		.run(as_dict=True)
-	)
-
-	return files
 
 
 # The Raven Message fields that survive a forward. Everything else (batch id,

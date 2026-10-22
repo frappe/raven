@@ -1,7 +1,7 @@
 import frappe
 from frappe.tests import IntegrationTestCase
 
-from raven.api.preview_links import get_preview_link
+from raven.api.preview_links import get_previews
 from raven.links import normalize_url
 
 EXTRA_TEST_RECORD_DEPENDENCIES = ["User", "Raven User"]
@@ -34,11 +34,10 @@ class TestLinkPreviewPermissions(IntegrationTestCase):
 		with self.assertRaises(frappe.PermissionError):
 			frappe.get_list("Raven Link Preview", fields=["url"])
 
-	def test_get_preview_link_needs_the_raven_user_role(self):
+	def test_get_previews_needs_the_raven_user_role(self):
 		frappe.set_user("test2@example.com")
 		with self.assertRaises(frappe.PermissionError):
-			get_preview_link([SECRET_URL])
+			get_previews([SECRET_URL])
 
-		# The old mobile app still reads previews this way.
 		frappe.set_user("test1@example.com")
-		self.assertEqual(get_preview_link([SECRET_URL])[0]["title"], "Private invite")
+		self.assertEqual(get_previews([SECRET_URL])[SECRET_URL].title, "Private invite")

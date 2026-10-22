@@ -1,49 +1,38 @@
 # Endpoints to remove later
 
-Whitelisted endpoints that the web app (`apps/web`) no longer calls. Checked on 2026-10-15 against `develop`, and against the native app on the `native-bundled` branch.
+Whitelisted endpoints that no app calls any more. First checked on 2026-10-15; rechecked on 2026-10-22 against `develop` by listing every `@frappe.whitelist` in the package and searching for each dotted path in `apps/web`, `packages`, Raven's own Python, hooks, the Desk JS under `raven/public/js`, the docs, raven-cloud and HRMS. The native app bundles the web app and has no calls of its own.
 
-Before deleting one, search `apps/web`, `packages` and the native app again. Some method names are built at runtime, like `raven.api.notification.${method}` in `apps/web/src/lib/push.ts`.
+On 2026-10-22 the unused endpoints were deleted, along with the `events`, `mentions`, `chat` and `upload_file` modules, fourteen package hooks nothing imported, and the `linkpreview` and `blurhash-python` dependencies. Five Python-only functions lost their `@frappe.whitelist`. What is left below needs a decision.
 
-## Used only by the old mobile app
+Before deleting one, search again. Some method names are built at runtime, like `raven.api.notification.${method}` in `apps/web/src/lib/push.ts`.
 
-Remove these once old builds of the mobile app (`apps/mobile`) are no longer in use.
-
-| Endpoint | File |
-|---|---|
-| `raven.api.mentions.get_mentions` | `raven/api/mentions.py` |
-| `raven.api.mentions.get_unread_mention_count` | `raven/api/mentions.py` |
-| `raven.api.raven_channel.mark_all_messages_as_read` | `raven/api/raven_channel.py` |
-| `raven.api.raven_message.get_all_files_shared_in_channel` | `raven/api/raven_message.py` |
-| `raven.api.raven_poll.get_all_votes` | `raven/api/raven_poll.py` |
-| `raven.api.threads.get_number_of_replies` | `raven/api/threads.py` |
-
-## Not used by any app
-
-Left over from the v2 frontend.
+## Decide first
 
 | Endpoint | File | Note |
 |---|---|---|
-| `raven.ai.google_ai.get_document_ai_processors` | `raven/ai/google_ai.py` | |
-| `raven.api.ai_features.get_saved_prompts` | `raven/api/ai_features.py` | |
-| `raven.api.events.create_event` | `raven/api/events.py` | |
-| `raven.api.raven_channel.transfer_channel_to_workspace` | `raven/api/raven_channel.py` | Has tests in `raven/tests/test_transfer_channel.py` |
-| `raven.api.raven_channel_member.mark_channel_as_unread` | `raven/api/raven_channel_member.py` | The web app listens for the event it sends (`stores/unread/useUnreadRealtime.ts`). Keep it if "mark as unread" is planned. |
-| `raven.api.raven_channel_member.remove_channel_member` | `raven/api/raven_channel_member.py` | |
-| `raven.api.raven_message.fetch_recent_files` | `raven/api/raven_message.py` | |
-| `raven.api.raven_users.add_users_to_raven` | `raven/api/raven_users.py` | |
-| `raven.api.search.get_search_result` | `raven/api/search.py` | |
-| `raven.api.workspaces.can_create_channel` | `raven/api/workspaces.py` | |
-| `raven.api.workspaces.get_workspace_member_count` | `raven/api/workspaces.py` | |
-| `raven.api.workspaces.is_workspace_admin` | `raven/api/workspaces.py` | |
-| `raven.api.workspaces.update_workspace_members` | `raven/api/workspaces.py` | |
+| `raven.api.preview_links.hide_link_preview` | `raven/api/preview_links.py` | No app calls it. The `hide_link_preview` field stays either way: messages, the chat stream and threads read it. Same decision as the todo item about the UI never setting it: add the UI, or drop the endpoint. |
+| `raven.api.raven_channel_member.mark_channel_as_unread` | `raven/api/raven_channel_member.py` | Unused, but the web app still listens for the event it sends (`stores/unread/useUnreadRealtime.ts`). Keep it only if "mark as unread" is coming back. |
+| `raven.api.raven_channel.transfer_channel_to_workspace` | `raven/api/raven_channel.py` | Unused by any app, but has `raven/tests/test_transfer_channel.py`. Delete it, or keep it as a `bench execute` tool without the whitelist. |
 
-## Keep, even though `apps/web` doesn't call them
+## Keep
 
 | Endpoint | Why |
 |---|---|
-| `raven.api.native.boot` | The native app uses it. |
-| `raven.api.raven_mobile.get_client_id` | The native app uses it. |
-| `raven.api.raven_mobile.create_oauth_client` | Run with `bench execute`. It doesn't need `@frappe.whitelist`. |
+| `raven.api.raven_message.send_message` | The documented API that bots and outside systems post with. No app calls it. |
 | `raven.raven_integrations.doctype.raven_incoming_webhook.raven_incoming_webhook.handle_incoming_webhook` | Called by outside systems. |
-| `raven.api.raven_channel.get_channels` | The Desk "Send a Raven" dialog uses it. |
-| `raven.api.raven_message.get_timeline_message_content` | The Desk form timeline uses it. |
+| `raven.api.notification.subscribe` and `unsubscribe` | Built at runtime in `lib/push.ts`, so a plain search misses them. |
+| `raven.api.native.boot` and `raven.api.raven_mobile.get_client_id` | The native app. |
+| `raven.api.raven_channel.get_channels` | The Desk "Send a Raven" timeline button (`raven/public/js/timeline_button.js`, loaded through `app_include_js`) lists channels with it and inserts the message with `frappe.db.insert`. If that button goes with the rest of the Desk integration, this endpoint and `raven/public/js` go too. |
+
+Everything else is called from the web app.
+
+## Python dependencies
+
+From `pyproject.toml`, checked against the imports in the package.
+
+| Package | Status |
+|---|---|
+| `markitdown`, `pandas` | Imported lazily in `raven/ai/conversation_file_handler.py`, with a user-facing "library not installed" message when missing. Only the AI file handler needs them. Could leave the hard dependencies. |
+| `openai`, `openai-agents`, `google-cloud-documentai` | AI only. The Document Processors settings pages still use `raven.ai.google_ai`. These go when AI goes. |
+
+The v3 upload path (`send_message_with_attachments`) never computed a blurhash, so the `blurhash` field on Raven Message is empty for every new image. If a blurred placeholder is wanted back, that is the path to add it to.

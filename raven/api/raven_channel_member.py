@@ -10,19 +10,6 @@ from raven.utils import get_channel_members as get_channel_members_util
 from raven.utils import get_workspace_members, set_channel_unread, track_channel_visit
 
 
-@frappe.whitelist()
-def remove_channel_member(user_id: str, channel_id: str):
-	# Get raven channel member name where user_id and channel_id match
-	member = get_channel_member(channel_id, user_id)
-	# Delete raven channel member
-	if member:
-		frappe.delete_doc("Raven Channel Member", member["name"], delete_permanently=True)
-	else:
-		frappe.throw(_("User is not a member of this channel"))
-
-	return True
-
-
 @frappe.whitelist(methods=["POST"])
 def track_visit(channel_id: str, last_visit: str = None):
 	"""

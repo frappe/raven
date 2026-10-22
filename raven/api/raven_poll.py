@@ -195,58 +195,6 @@ def retract_vote(poll_id: str):
 		publish_poll_update(poll_id)
 
 
-@frappe.whitelist()
-def get_all_votes(poll_id: str):
-
-	# Check if the current user has access to the poll
-	if not frappe.has_permission(doctype="Raven Poll", doc=poll_id, ptype="read"):
-		frappe.throw(_("You do not have permission to access this poll"), frappe.PermissionError)
-
-	poll_doc = frappe.get_cached_doc("Raven Poll", poll_id)
-
-	if poll_doc.is_anonymous:
-		frappe.throw(
-			_("This poll is anonymous. You do not have permission to access the votes."),
-			frappe.PermissionError,
-		)
-	else:
-		# Get all votes for this poll from the child table vote_selection.
-		raven_poll_vote_selection = frappe.qb.DocType("Raven Poll Vote Selection")
-		raven_poll_vote = frappe.qb.DocType("Raven Poll Vote")
-
-		votes = (
-			frappe.qb.from_(raven_poll_vote_selection)
-			.join(raven_poll_vote)
-			.on(raven_poll_vote_selection.parent == raven_poll_vote.name)
-			.select(
-				raven_poll_vote_selection.option, raven_poll_vote_selection.name, raven_poll_vote.user_id
-			)
-			.where(raven_poll_vote.poll_id == poll_id)
-		).run(as_dict=True)
-
-		# Initialize results dictionary
-		results = {
-			option.name: {"users": [], "count": option.votes} for option in poll_doc.options if option.votes
-		}
-
-		# Process votes
-		for vote in votes:
-			option = vote["option"]
-			results[option]["users"].append(vote["user_id"])
-
-		# Calculate total votes (use unique voters, not sum of all votes)
-		total_votes = poll_doc.total_votes or 0
-
-		# Calculate percentages
-		for result in results.values():
-			if total_votes > 0:
-				result["percentage"] = (result["count"] / total_votes) * 100
-			else:
-				result["percentage"] = 0
-
-		return results
-
-
 @frappe.whitelist(methods=["POST"])
 def close_poll(poll_id: str):
 	"""

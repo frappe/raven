@@ -5,7 +5,6 @@ from frappe import _
 from frappe.frappeclient import FrappeClient
 
 
-@frappe.whitelist()
 def are_push_notifications_enabled() -> bool:
 	try:
 		push_service = frappe.db.get_single_value("Raven Settings", "push_notification_service")

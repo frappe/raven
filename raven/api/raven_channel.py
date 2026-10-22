@@ -304,18 +304,6 @@ def toggle_pin_message(channel_id: str, message_id: str):
 	return "Ok"
 
 
-@frappe.whitelist()
-def mark_all_messages_as_read(channel_ids: list):
-	"""
-	Mark all messages in these channels as read
-	"""
-	user = frappe.session.user
-	for channel_id in channel_ids:
-		track_channel_visit(channel_id, user=user)
-
-	return "Ok"
-
-
 @frappe.whitelist(methods=["POST"])
 def create_channel(channel_name: str, channel_description: str, type: str, workspace: str):
 	"""

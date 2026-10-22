@@ -83,7 +83,6 @@ def leave_workspace(workspace: str):
 		frappe.throw(_("You are not a member of this workspace."), frappe.PermissionError)
 
 
-@frappe.whitelist()
 def is_workspace_admin(workspace: str):
 	"""
 	Checks if the current user is an admin of a workspace
@@ -99,18 +98,6 @@ def is_workspace_admin(workspace: str):
 
 
 @frappe.whitelist()
-def can_create_channel(workspace: str):
-	"""
-	Checks if the current user can create a channel in a workspace
-	"""
-	workspace_doc = frappe.get_doc("Raven Workspace", workspace)
-	if workspace_doc.only_admins_can_create_channels:
-		return is_workspace_admin(workspace)
-
-	return True
-
-
-@frappe.whitelist()
 def fetch_workspace_members(workspace: str):
 	"""
 	Gets all members of a workspace
@@ -121,15 +108,6 @@ def fetch_workspace_members(workspace: str):
 		filters={"workspace": workspace},
 		fields=["user", "is_admin", "creation", "name"],
 	)
-
-
-@frappe.whitelist()
-def get_workspace_member_count(workspace: str):
-	"""
-	Gets the number of members in a workspace
-	"""
-	frappe.has_permission("Raven Workspace", doc=workspace, throw=True)
-	return frappe.db.count("Raven Workspace Member", filters={"workspace": workspace})
 
 
 @frappe.whitelist()
@@ -149,64 +127,3 @@ def add_workspace_members(workspace: str, members: list):
 		member_doc.insert(ignore_permissions=True)
 
 	delete_workspace_members_cache(workspace)
-
-
-@frappe.whitelist()
-def update_workspace_members(workspace: str, members: list):
-	"""
-	Updates the members of a workspace
-	"""
-	# Check if the current user is an admin of the workspace
-	if not is_workspace_admin(workspace):
-		frappe.throw(_("You are not an admin of this workspace."), frappe.PermissionError)
-
-	# Since we are performing a bulk update, we need to do two things:
-	# Do not check for permissions again (since we already have permission to update members)
-	# Do not trigger a cache update (since we will do this manually)
-
-	errors = []
-
-	for member in members:
-		try:
-			is_member = member.get("is_member", 0)
-			is_admin = member.get("is_admin", 0)
-			user = member.get("user")
-
-			member_id = frappe.db.exists("Raven Workspace Member", {"workspace": workspace, "user": user})
-
-			# If not a member, delete the member
-			if not is_member:
-				if member_id:
-					member_doc = frappe.get_doc("Raven Workspace Member", member_id)
-					member_doc.flags.ignore_cache_invalidation = True
-					# Delete the member this way to avoid cache invalidation + delete all channel members for this user
-					member_doc.delete(ignore_permissions=True)
-			# If is_member is True, create or update the member
-			else:
-				# The user is a member and could be an admin as well
-				if member_id:
-					member_doc = frappe.get_doc("Raven Workspace Member", member_id)
-					member_doc.flags.ignore_cache_invalidation = True
-					member_doc.is_admin = is_admin
-					member_doc.save(ignore_permissions=True)
-				else:
-					member_doc = frappe.get_doc(
-						{
-							"doctype": "Raven Workspace Member",
-							"workspace": workspace,
-							"user": user,
-							"is_admin": is_admin,
-						}
-					).insert()
-		except Exception as e:
-			errors.append(f"There was an error updating member {user}: {str(e)}")
-
-	delete_workspace_members_cache(workspace)
-	workspace_channels = frappe.get_all("Raven Channel", {"workspace": workspace}, pluck="name")
-	for channel in workspace_channels:
-		delete_channel_members_cache(channel)
-
-	if errors:
-		return {"errors": errors}
-	else:
-		return {"message": "Members updated successfully"}

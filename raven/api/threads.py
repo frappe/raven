@@ -12,14 +12,6 @@ from raven.utils import (
 
 
 @frappe.whitelist(methods=["GET"])
-def get_number_of_replies(thread_id: str):
-	"""
-	Get the number of replies in a thread
-	"""
-	return get_thread_reply_count(thread_id)
-
-
-@frappe.whitelist(methods=["GET"])
 def get_thread_details(thread_id: str):
 	"""
 	Get the members and count of messages in a thread

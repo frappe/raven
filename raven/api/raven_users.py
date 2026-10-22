@@ -164,27 +164,6 @@ def give_raven_access(user_doc):
 
 
 @frappe.whitelist(methods=["POST"])
-def add_users_to_raven(users: list[str] | str):
-
-	if isinstance(users, str):
-		users = json.loads(users)
-
-	failed_users = []
-	success_users = []
-
-	for user in users:
-		user_doc = frappe.get_doc("User", user)
-		# Only a Frappe 15 user on a role profile can't be given access.
-		if has_role_profile(user_doc) and not profiles_can_stack():
-			failed_users.append(user_doc)
-			continue
-		give_raven_access(user_doc)
-		success_users.append(user_doc)
-
-	return {"success_users": success_users, "failed_users": failed_users}
-
-
-@frappe.whitelist(methods=["POST"])
 def invite_user(
 	email: str,
 	first_name: str = None,
