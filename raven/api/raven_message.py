@@ -54,7 +54,8 @@ IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "ico", "h
 # Mirror of AUDIO_EXTENSIONS in apps/web/src/utils/attachmentPreview.ts — keep in sync.
 AUDIO_EXTENSIONS = {"mp3", "wav", "ogg", "oga", "m4a", "aac", "flac", "opus", "weba"}
 
-_MAX_AUDIO_SECONDS = 600
+# The client caps recordings at 600 s; headroom covers the time it takes to stop.
+_MAX_AUDIO_SECONDS = 660
 _MAX_WAVEFORM_BARS = 64
 
 # Inline-image display caps (mirror the web client's reserved box). The stored

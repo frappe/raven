@@ -29,7 +29,9 @@ class TestVoiceNoteSanitizers(IntegrationTestCase):
 		self.assertEqual(_sane_duration(7.25), 7.25)
 		self.assertEqual(_sane_duration("3.5"), 3.5)
 		self.assertEqual(_sane_duration(600), 600.0)
-		for junk in (0, -1, 601, float("nan"), float("inf"), "abc", None, [1]):
+		# The recorder auto-stops at 600 s; stop latency lands a max-length clip just past it
+		self.assertEqual(_sane_duration(600.3), 600.3)
+		for junk in (0, -1, 661, float("nan"), float("inf"), "abc", None, [1]):
 			self.assertIsNone(_sane_duration(junk), junk)
 
 	def test_sane_waveform(self):
