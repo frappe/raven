@@ -492,17 +492,19 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                                     <VoiceComposer onSend={sendVoiceNote} onClose={closeVoiceComposer} />
                                 </div>
                             )}
-                            // Mobile is a single row: [+] · editor · send. The `[&_.tiptap]` overrides
-                            // deliberately replace the editor surface's default EDITOR_CLASS heights
-                            // (EDITOR_MIN_H etc.) with a compact one-line-that-grows box — these values
-                            // are mobile-specific and intentionally NOT tied to EDITOR_MIN_H.
-                            // Unequal paddings are added to make the entire thing optically balanced since the Plus button is bare (ghost) and does not have a structure.
-                            // max(inset, 0.75rem): iOS reports the 34px home-indicator inset, but
-                            // Android Chrome reports 0 (content doesn't extend under the nav bar),
-                            // which left the composer flush against the screen bottom. Keyboard
-                            // open → no override: the row's own py-2 gives a little breathing
-                            // room above the keyboard. Native never resizes the page for the
-                            // keyboard: --keyboard-height (set by the keyboard plugin) lifts the row.
+                            {/*
+                            Mobile is a single row: [+] · editor · send. The `[&_.tiptap]` overrides
+                            deliberately replace the editor surface's default EDITOR_CLASS heights
+                            (EDITOR_MIN_H etc.) with a compact one-line-that-grows box — these values
+                            are mobile-specific and intentionally NOT tied to EDITOR_MIN_H.
+                            Unequal paddings are added to make the entire thing optically balanced since the Plus button is bare (ghost) and does not have a structure.
+                            max(inset, 0.75rem): iOS reports the 34px home-indicator inset, but
+                            Android Chrome reports 0 (content doesn't extend under the nav bar),
+                            which left the composer flush against the screen bottom. Keyboard
+                            open → no override: the row's own py-2 gives a little breathing
+                            room above the keyboard. Native never resizes the page for the
+                            keyboard: --keyboard-height (set by the keyboard plugin) lifts the row.
+                            */}
                             <div className={cn("flex items-end gap-0 pe-2 ps-1 py-2 border-t border-outline-gray-2 bg-surface-base mb-[var(--keyboard-height,0px)]", isMobile && !keyboardOpen && "standalone:pb-[max(var(--inset-bottom),0.75rem)]", recording && "hidden")}>
                                 <div className="flex items-center justify-center h-10">
                                     <MobileComposerActions channelID={channelID} />

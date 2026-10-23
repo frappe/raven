@@ -1,11 +1,14 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { VoicePlaybackStore } from "./store"
 
-/** Minimal HTMLAudioElement: events, a src swap that pauses, and a controllable play(). */
+/** Minimal HTMLAudioElement: events, the load algorithm on a src swap, and a controllable play(). */
 class FakeAudio extends EventTarget {
     static instances: FakeAudio[] = []
     /** Replaces the next play() call (e.g. to reject it). */
     static nextPlay: (() => Promise<void>) | null = null
+    /** play() stays pending (still loading) instead of starting at once. */
+    static deferPlay = false
+    private pendingPlay: { reject: (error: Error) => void } | null = null
     currentTime = 0
     paused = true
     ended = false
@@ -24,8 +27,15 @@ class FakeAudio extends EventTarget {
     }
 
     set src(value: string) {
-        // A real element pauses (and fires `pause`) when its source is replaced mid-play.
-        if (!this.paused) this.pause()
+        // The load algorithm: no `pause` event, position back to 0, a pending play()
+        // rejects, and a stale `timeupdate` is queued.
+        if (this.source) {
+            this.paused = true
+            this.currentTime = 0
+            this.pendingPlay?.reject(Object.assign(new Error("interrupted"), { name: "AbortError" }))
+            this.pendingPlay = null
+            queueMicrotask(() => this.dispatchEvent(new Event("timeupdate")))
+        }
         this.source = value
     }
 
@@ -35,6 +45,7 @@ class FakeAudio extends EventTarget {
         if (custom) return custom()
         this.paused = false
         this.dispatchEvent(new Event("play"))
+        if (FakeAudio.deferPlay) return new Promise<void>((_resolve, reject) => { this.pendingPlay = { reject } })
         this.dispatchEvent(new Event("playing"))
         return Promise.resolve()
     }
@@ -54,11 +65,17 @@ describe("VoicePlaybackStore", () => {
     beforeEach(() => {
         FakeAudio.instances = []
         FakeAudio.nextPlay = null
+        FakeAudio.deferPlay = false
         globalThis.Audio = FakeAudio as unknown as typeof Audio
+        vi.useFakeTimers()
+        vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => setTimeout(() => callback(0), 16))
+        vi.stubGlobal("cancelAnimationFrame", (handle: number) => clearTimeout(handle))
     })
 
     afterEach(() => {
         globalThis.Audio = original
+        vi.useRealTimers()
+        vi.unstubAllGlobals()
     })
 
     it("switching notes doesn't pause the new one", () => {
@@ -89,6 +106,7 @@ describe("VoicePlaybackStore", () => {
     it("a play from outside (media keys) marks the note playing again", () => {
         const store = new VoicePlaybackStore()
         store.toggle("a", "/a.m4a", "ch")
+        audio().dispatchEvent(new Event("loadedmetadata"))
         audio().pause()
         expect(store.getSnapshot("a").playing).toBe(false)
         audio().play()
@@ -115,5 +133,74 @@ describe("VoicePlaybackStore", () => {
         expect(store.getSnapshot("a")).toMatchObject({ playing: false, position: 0 })
         expect(store.getSnapshot("b").position).toBe(0)
         expect(audio().paused).toBe(true)
+    })
+
+    it("switching back to a note resumes where it was left", async () => {
+        const store = new VoicePlaybackStore()
+        store.toggle("a", "/a.m4a", "ch")
+        audio().currentTime = 40
+        store.toggle("b", "/b.m4a", "ch")
+        store.toggle("a", "/a.m4a", "ch")
+        await Promise.resolve()
+        audio().dispatchEvent(new Event("loadedmetadata"))
+        expect(audio().currentTime).toBe(40)
+        expect(store.getSnapshot("a").position).toBe(40)
+    })
+
+    it("pausing a note that is still loading stops it", () => {
+        const store = new VoicePlaybackStore()
+        FakeAudio.deferPlay = true
+        store.toggle("b", "/b.m4a", "ch")
+        store.toggle("b", "/b.m4a", "ch")
+        expect(store.getSnapshot("b").playing).toBe(false)
+    })
+
+    it("a note that finished isn't shown as played after switching", () => {
+        const store = new VoicePlaybackStore()
+        store.toggle("a", "/a.m4a", "ch")
+        audio().currentTime = 12
+        audio().ended = true
+        audio().dispatchEvent(new Event("ended"))
+        store.toggle("b", "/b.m4a", "ch")
+        expect(store.getSnapshot("a").position).toBe(0)
+    })
+
+    it("the playing note's position follows playback every frame", () => {
+        const store = new VoicePlaybackStore()
+        store.toggle("a", "/a.m4a", "ch")
+        audio().dispatchEvent(new Event("loadedmetadata"))
+        audio().currentTime = 3.2
+        vi.advanceTimersByTime(20)
+        expect(store.getSnapshot("a").position).toBe(3.2)
+    })
+
+    it("frames during a switch don't overwrite the resume position", async () => {
+        const store = new VoicePlaybackStore()
+        store.toggle("a", "/a.m4a", "ch")
+        audio().currentTime = 40
+        vi.advanceTimersByTime(20)
+        store.toggle("b", "/b.m4a", "ch")
+        vi.advanceTimersByTime(20)
+        store.toggle("a", "/a.m4a", "ch")
+        vi.advanceTimersByTime(20)
+        await Promise.resolve()
+        audio().dispatchEvent(new Event("loadedmetadata"))
+        expect(audio().currentTime).toBe(40)
+    })
+
+    it("a stray pause event while the new note loads doesn't stop it", () => {
+        const store = new VoicePlaybackStore()
+        store.toggle("a", "/a.m4a", "ch")
+        audio().dispatchEvent(new Event("pause"))
+        expect(store.getSnapshot("a").playing).toBe(true)
+    })
+
+    it("tapping a note the element already paused un-sticks it", () => {
+        const store = new VoicePlaybackStore()
+        store.toggle("a", "/a.m4a", "ch")
+        audio().dispatchEvent(new Event("loadedmetadata"))
+        audio().paused = true
+        store.toggle("a", "/a.m4a", "ch")
+        expect(store.getSnapshot("a").playing).toBe(false)
     })
 })

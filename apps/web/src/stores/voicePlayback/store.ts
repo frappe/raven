@@ -24,15 +24,18 @@ const writeSpeed = (speed: Speed) => {
 /**
  * Voice note playback for the whole app: ONE audio element, so one note plays at a
  * time and playback survives its row scrolling out of the virtualized stream.
- * Notifies per message id; timeupdate wakes only the playing note.
+ * Notifies per message id; playback frames wake only the playing note.
  */
 export class VoicePlaybackStore {
     private state: PlaybackState = initialPlayback(readSpeed())
     private audio: HTMLAudioElement | null = null
     private listeners = new Map<string, Set<Listener>>()
     private snapshots = new Map<string, NotePlayback>()
-    // A src swap fires the element's own `pause`; it must not pause the new note.
-    private switching = false
+    // Follows the playing note every frame, so the waveform fills one bar at a time.
+    private frame = 0
+    // From a src swap to its resume seek the element reads 0 and may fire a stray `pause`;
+    // neither frames nor that event may touch the new note's state.
+    private loading = false
     /** Channel or thread of every note with state, so leaving one resets only its own notes. */
     private channelOf = new Map<string, string>()
 
@@ -61,6 +64,12 @@ export class VoicePlaybackStore {
     toggle(id: string, src: string, channelId: string) {
         const audio = this.element()
         if (this.state.activeId === id && this.state.playing) {
+            // No `pause` event will record this (ignored mid-load, or the element is already
+            // paused, e.g. by the OS during a load), so record it here.
+            if (this.loading || audio.paused) {
+                const position = this.loading ? (this.state.positions.get(id) ?? 0) : audio.currentTime
+                this.update(pause(this.state, position), [id])
+            }
             audio.pause()
             return
         }
@@ -70,17 +79,19 @@ export class VoicePlaybackStore {
         const reload = previous !== id || !audio.src || this.state.errors.has(id)
         this.update(play(this.state, id, audio.currentTime), [previous, id])
         if (reload) {
-            this.switching = true
+            this.loading = true
             audio.src = src
             // Read at load time: a seek made while loading must win over the old position.
-            audio.addEventListener("loadedmetadata", () => { audio.currentTime = this.state.positions.get(id) ?? 0 }, { once: true })
+            audio.addEventListener("loadedmetadata", () => {
+                audio.currentTime = this.state.positions.get(id) ?? 0
+                this.loading = false
+            }, { once: true })
         }
         audio.defaultPlaybackRate = this.state.speed
         audio.playbackRate = this.state.speed
         audio.play().catch((error: unknown) => {
             // A newer toggle replaced this load; that note owns the element now.
             if ((error as { name?: string })?.name === "AbortError" || this.state.activeId !== id) return
-            this.switching = false
             this.update(fail(this.state), [id])
         })
     }
@@ -133,24 +144,34 @@ export class VoicePlaybackStore {
         if (this.audio) return this.audio
         const audio = new Audio()
         audio.preload = "auto"
-        audio.addEventListener("playing", () => { this.switching = false })
+        audio.addEventListener("playing", () => {
+            if (!this.frame) this.frame = requestAnimationFrame(this.follow)
+        })
         // Media keys / OS controls can resume the element without a toggle.
         audio.addEventListener("play", () => {
             if (this.state.activeId && !this.state.playing) this.update(play(this.state, this.state.activeId, audio.currentTime), [this.state.activeId])
         })
         audio.addEventListener("pause", () => {
-            if (this.switching || audio.ended) return
+            if (this.loading || audio.ended) return
             this.update(pause(this.state, audio.currentTime), [this.state.activeId])
         })
-        audio.addEventListener("timeupdate", () => this.update(tick(this.state, audio.currentTime), [this.state.activeId]))
         audio.addEventListener("ended", () => this.update(end(this.state), [this.state.activeId]))
         audio.addEventListener("error", () => {
             if (!audio.src) return
-            this.switching = false
             this.update(fail(this.state), [this.state.activeId])
         })
         this.audio = audio
         return audio
+    }
+
+    private follow = () => {
+        const audio = this.audio
+        if (!audio || audio.paused || audio.ended) {
+            this.frame = 0
+            return
+        }
+        if (!this.loading) this.update(tick(this.state, audio.currentTime), [this.state.activeId])
+        this.frame = requestAnimationFrame(this.follow)
     }
 
     private update(next: PlaybackState, ids: (string | null)[] | "all") {
