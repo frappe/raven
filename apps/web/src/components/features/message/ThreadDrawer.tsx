@@ -1,4 +1,5 @@
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { voicePlaybackStore } from "@stores/voicePlayback/store"
 import { useNavigate } from "react-router-dom"
 import { useFrappePostCall, useFrappeDeleteDoc } from "frappe-react-sdk"
 import { useEscHotkey } from "@hooks/useEscHotkey"
@@ -97,6 +98,8 @@ export default function ThreadDrawer({
     // the pill / get_thread_details). Only members can leave; only thread admins can delete.
     const { name: currentUser } = useUserCookieData()
     const { members } = useChannelMembers(threadID ?? "")
+    // Closing the thread stops its voice notes; they start over next time.
+    useEffect(() => () => voicePlaybackStore.leaveChannel(threadID), [threadID])
     const me = members.find((m) => m.name === currentUser)
     const isMember = !!me
     const isAdmin = me?.is_admin === 1

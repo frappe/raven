@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react"
+import { voicePlaybackStore } from "@stores/voicePlayback/store"
 import { useOutlet } from "react-router-dom"
 import { useEscHotkey } from "@hooks/useEscHotkey"
 import { useAtom } from "jotai"
@@ -60,6 +61,9 @@ export function ChatContentView({
 
     // Skeleton while loading, archived/not-member banner (with Join), or the composer.
     const composerGate = useComposerGate(channelID)
+
+    // Leaving the channel stops its voice notes; they start over next time.
+    useEffect(() => () => voicePlaybackStore.leaveChannel(channelID), [channelID])
     const composerBlocked = composerGate.state !== "composer"
 
     // Mobile stacked navigation: the channel stays MOUNTED under an open thread layer,
