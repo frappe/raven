@@ -6,25 +6,30 @@ import { unlockAudioContext } from "@lib/audioContext"
 import { voiceRecordingAtom } from "@utils/channelAtoms"
 import _ from "@lib/translate"
 
-export const VoiceNoteButton = ({ channelID }: { channelID: string }) => {
+export const VoiceNoteButton = ({ channelID, size = "sm", variant = "ghost" }: { channelID: string; size?: "sm" | "lg"; variant?: "ghost" | "solid" }) => {
     const setRecording = useSetAtom(voiceRecordingAtom(channelID))
+    const button = (
+        <Button
+            variant={variant}
+            size={size}
+            isIconButton
+            type="button"
+            className={size === "lg" ? "rounded-full" : undefined}
+            aria-label={_("Record voice note")}
+            // Don't take focus: on mobile that would open the keyboard.
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => {
+                unlockAudioContext()
+                setRecording(true)
+            }}
+        >
+            <Mic />
+        </Button>
+    )
+    if (size === "lg") return button
     return (
         <Tooltip>
-            <TooltipTrigger asChild>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    isIconButton
-                    type="button"
-                    aria-label={_("Record voice note")}
-                    onClick={() => {
-                        unlockAudioContext()
-                        setRecording(true)
-                    }}
-                >
-                    <Mic />
-                </Button>
-            </TooltipTrigger>
+            <TooltipTrigger asChild>{button}</TooltipTrigger>
             <TooltipContent>{_("Record voice note")}</TooltipContent>
         </Tooltip>
     )

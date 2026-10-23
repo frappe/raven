@@ -27,14 +27,14 @@ import { MentionWarningBanner } from "./MentionWarningBanner"
 import { QuietHoursBanner } from "./QuietHoursBanner"
 import { MobileComposerActions } from "./MobileComposerActions"
 import { VoiceNoteButton } from "./VoiceNoteButton"
-import { VoiceRecorderBar } from "./VoiceRecorderBar"
+import { VoiceComposer } from "./VoiceComposer"
 import { canRecordVoice } from "./recordingFormat"
 import { loadDraft, saveDraft } from "./draft"
 import { useTypingEmitter } from "@stores/typing/useTypingEmitter"
 import { TypingIndicator } from "./TypingIndicator"
 import { useIsMobile } from "@hooks/use-mobile"
 import { useIsKeyboardOpen } from "@hooks/useIsKeyboardOpen"
-import { enqueueSend } from "@stores/messages/messageSender"
+import { enqueueSend, type OutgoingFile } from "@stores/messages/messageSender"
 import { buildReplySnapshot } from "@utils/replySnapshot"
 import { editingMessageAtom, linkedDocumentAtom, replyToMessageAtom, voiceRecordingAtom } from "@utils/channelAtoms"
 import { getLastEditableMessage } from "@components/features/message/actions/editTarget"
@@ -153,9 +153,9 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
     )
 
     const editor = useRavenEditor({ submitRef: sendRef, linkRef, filesRef, cancelReplyRef, editLastRef, content: initialDraft || undefined, autofocus: true, placeholder: _("Type a message...") })
-    const closeRecorder = (attached: boolean) => {
+    const closeVoiceComposer = (sent: boolean) => {
         setRecording(false)
-        if (attached && !isMobile) editor?.commands.focus()
+        if (sent && !isMobile) editor?.commands.focus()
     }
 
     // On mobile the composer bottom padding is keyboard-aware: closed → clear the home
@@ -301,6 +301,22 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
     // button advertises it and offers the loud override) — resolved HERE, the
     // one dispatch gate, so Enter, the button, and held sends all agree.
     const quietSendMode = useQuietSendMode()
+
+    /** A voice note goes out alone: no text, the current reply, the quiet-hours default. */
+    const sendVoiceNote = useCallback((file: OutgoingFile) => {
+        enqueueSend(call, {
+            channelID,
+            batchId: randomUUID(),
+            owner: currentUser,
+            content: "",
+            files: [file],
+            linkedMessage: replyTo?.name,
+            repliedMessageDetails: buildReplySnapshot(replyTo),
+            sendSilently: quietSendMode === "auto" ? true : undefined,
+        })
+        if (replyTo) setReplyTo(null)
+        stopTyping()
+    }, [call, channelID, currentUser, replyTo, setReplyTo, quietSendMode, stopTyping])
 
     const handleSend = useCallback((opts?: { sendSilently?: boolean }) => {
         if (!editor) return
@@ -473,7 +489,7 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                             <>
                             {recording && (
                                 <div className="border-t border-outline-gray-2 bg-surface-base standalone:pb-[max(var(--inset-bottom),0.75rem)]">
-                                    <VoiceRecorderBar channelID={channelID} onClose={closeRecorder} />
+                                    <VoiceComposer onSend={sendVoiceNote} onClose={closeVoiceComposer} />
                                 </div>
                             )}
                             // Mobile is a single row: [+] · editor · send. The `[&_.tiptap]` overrides
@@ -495,24 +511,29 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                                     <EditorContent editor={editor} />
                                 </div>
                                 <div className="flex items-center justify-center h-10 ms-1.5">
-                                    <SendButton
-                                        onSend={handleSend}
-                                        onSendSilently={() => handleSend({ sendSilently: true })}
-                                        onSendLoud={() => handleSend({ sendSilently: false })}
-                                        quietMode={quietSendMode}
-                                        onSchedulePick={handleSchedulePick}
-                                        onScheduleSend={() => setScheduleOpen(true)}
-                                        scheduleDisabled={scheduleDisabled}
-                                        loading={!!pendingSend}
-                                        disabled={nothingToSend}
-                                    />
+                                    {/* Slack-style: an idle, empty composer offers voice; focusing it offers Send. */}
+                                    {canRecordVoice() && !keyboardOpen && nothingToSend ? (
+                                        <VoiceNoteButton channelID={channelID} size="lg" variant="solid" />
+                                    ) : (
+                                        <SendButton
+                                            onSend={handleSend}
+                                            onSendSilently={() => handleSend({ sendSilently: true })}
+                                            onSendLoud={() => handleSend({ sendSilently: false })}
+                                            quietMode={quietSendMode}
+                                            onSchedulePick={handleSchedulePick}
+                                            onScheduleSend={() => setScheduleOpen(true)}
+                                            scheduleDisabled={scheduleDisabled}
+                                            loading={!!pendingSend}
+                                            disabled={nothingToSend}
+                                        />
+                                    )}
                                 </div>
 
                             </div>
                             </>
                         ) : (
                             <>
-                                {recording && <VoiceRecorderBar channelID={channelID} onClose={closeRecorder} />}
+                                {recording && <VoiceComposer onSend={sendVoiceNote} onClose={closeVoiceComposer} />}
                                 {/* Hidden, not unmounted: the draft, reply and staged files survive recording. */}
                                 <div className={cn(recording && "hidden")}>
                                 <div className={EDITOR_MIN_H}>
