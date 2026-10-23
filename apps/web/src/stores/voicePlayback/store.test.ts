@@ -106,4 +106,14 @@ describe("VoicePlaybackStore", () => {
         expect(store.getSnapshot("b").position).toBe(0)
         expect(audio().paused).toBe(true)
     })
+
+    it("stopAll stops the playing note and forgets every position", () => {
+        const store = new VoicePlaybackStore()
+        store.toggle("a", "/a.m4a", "ch-1")
+        store.seek("b", 8, "ch-2")
+        store.stopAll()
+        expect(store.getSnapshot("a")).toMatchObject({ playing: false, position: 0 })
+        expect(store.getSnapshot("b").position).toBe(0)
+        expect(audio().paused).toBe(true)
+    })
 })

@@ -111,6 +111,15 @@ export class VoicePlaybackStore {
         this.audio?.pause()
     }
 
+    /** Leaving a list of notes from many channels (saved, threads): everything stops and starts over. */
+    stopAll() {
+        const ids = new Set([...this.channelOf.keys(), ...this.state.positions.keys()])
+        if (this.state.activeId) ids.add(this.state.activeId)
+        this.channelOf.clear()
+        this.audio?.pause()
+        if (ids.size > 0) this.update(forget(this.state, [...ids]), [...ids])
+    }
+
     /** Leaving a channel or thread: its notes stop and start over next time. */
     leaveChannel(channelId: string) {
         const ids = [...this.channelOf].filter(([, channel]) => channel === channelId).map(([id]) => id)

@@ -1,10 +1,11 @@
-import { BarChart3Icon, File, FileText, Film, MessageSquareText, Music, type LucideIcon } from "lucide-react"
+import { BarChart3Icon, File, FileText, Film, MessageSquareText, Mic, Music, type LucideIcon } from "lucide-react"
 import { getAttachmentKind, type AttachmentKind } from "@utils/attachmentPreview"
 import { formatBytes, getFileExtension } from "@lib/file"
 import { getFileName } from "@raven/lib/utils/operations"
 import { FileImage } from "@components/common/FileImage"
 import { type FileBearingMessage } from "../fileMessage"
 import _ from "@lib/translate"
+import { voiceNoteLabel } from "@components/features/message/renderers/voiceNoteLabel"
 import type { Message } from "@raven/types/common/Message"
 import FileTypeIcon from "@components/common/FileIcons/FileTypeIcon"
 
@@ -55,6 +56,17 @@ const getMessagePreviewText = (message: Message): string => {
 export const MessagePreview = ({ message }: { message: Message }) => {
     const media = message as MediaMessage
     const file = media.file
+
+    if (message.message_type === "Voice") {
+        return (
+            <>
+                <div className="flex size-8 shrink-0 items-center justify-center rounded bg-surface-gray-2 text-ink-gray-6">
+                    <Mic className="size-4" />
+                </div>
+                <p className="min-w-0 flex-1 truncate text-sm text-ink-gray-8">{voiceNoteLabel(message.json)}</p>
+            </>
+        )
+    }
 
     if (file) {
         const extension = getFileExtension(file)
