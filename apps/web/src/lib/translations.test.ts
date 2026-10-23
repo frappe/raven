@@ -36,6 +36,20 @@ describe("loadTranslations", () => {
         vi.useRealTimers()
     })
 
+    it("lets only the newest call write when fetches overlap", async () => {
+        // The first call's answer is held back until after the second has landed.
+        let answerFirst: (value: unknown) => void = () => {}
+        siteFetch
+            .mockImplementationOnce(() => new Promise((resolve) => { answerFirst = resolve }))
+            .mockResolvedValueOnce({ ok: true, json: async () => ({ message: { Hello: "Hallo" } }) })
+        const first = loadTranslations({ lang: "tr", translations_version: "old" })
+        await loadTranslations({ lang: "de", translations_version: "new" })
+        expect(window.frappe._messages).toEqual({ Hello: "Hallo" })
+        answerFirst({ ok: true, json: async () => ({ message: { Hello: "Merhaba" } }) })
+        await first
+        expect(window.frappe._messages).toEqual({ Hello: "Hallo" })
+    })
+
     it("falls back to the source strings when the fetch fails", async () => {
         siteFetch.mockRejectedValue(new Error("offline"))
         await loadTranslations({ lang: "tr", translations_version: "abc_1" })

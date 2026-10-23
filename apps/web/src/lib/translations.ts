@@ -7,14 +7,20 @@ type Boot = { lang?: string; __messages?: Record<string, string>; translations_v
  * as `__messages`. Frappe develop ships only a version stamp and serves the table from
  * `get_boot_translations`, which the browser caches by that version.
  */
+// Calls can overlap: the native app installs a cached boot while a fresh one loads. Only the
+// newest call may write, or a stale table arriving last would replace the current one.
+let newest = 0
+
 export const loadTranslations = async (boot: Boot): Promise<void> => {
+    const call = ++newest
     if (!window.frappe) window.frappe = {}
     // Before the first await, so a boot that carries the table installs it at once.
     if (boot.__messages) {
         window.frappe._messages = boot.__messages
         return
     }
-    window.frappe._messages = boot.translations_version ? await fetchTranslations(boot) : {}
+    const table = boot.translations_version ? await fetchTranslations(boot) : {}
+    if (call === newest) window.frappe._messages = table
 }
 
 // Nothing renders until this settles, so a stalled connection must not hold the app.
