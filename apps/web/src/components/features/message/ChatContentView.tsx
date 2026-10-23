@@ -140,7 +140,7 @@ export function ChatContentView({
                             {/* key by channel: remount per channel so the editor re-autofocuses and
                                 draft text doesn't bleed across channels (file/send state already
                                 lives in channel-keyed atoms, so a remount is safe). */}
-                            <ChatInput key={channelID} channelID={channelID} />
+                            <ChatInput key={channelID} channelID={channelID} covered={isMobile && hasThread} />
                         </ComposerArea>
                     </div>
                 </FileDropZone>
