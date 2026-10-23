@@ -24,6 +24,15 @@ export const downsamplePeaks = (samples: ArrayLike<number>, bars = WAVEFORM_BARS
     return loudest === 0 ? peaks.map(() => 0) : peaks.map((peak) => Math.round((peak / loudest) * 100))
 }
 
+// Below this, a peak is background noise: it never becomes the 100% bar.
+const NOISE_FLOOR = 0.1
+
+/** Live meter peaks scaled like the final waveform: the loudest bar on screen is 100. */
+export const scaleToLoudest = (peaks: number[]): number[] => {
+    const loudest = Math.max(NOISE_FLOOR, ...peaks)
+    return peaks.map((peak) => Math.round((peak / loudest) * 100))
+}
+
 /** A voice note's `json` (object, or string from a fetch); null unless it has a usable duration. */
 export const parseVoiceJson = (json: unknown): VoiceNoteMeta | null => {
     let value = json

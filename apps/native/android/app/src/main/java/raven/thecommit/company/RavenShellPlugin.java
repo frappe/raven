@@ -62,6 +62,15 @@ public class RavenShellPlugin extends Plugin {
         });
     }
 
+    // ---- haptics -------------------------------------------------------------------
+
+    // The plugin's Android patterns don't match iOS's meanings (its warning is one long buzz).
+    @PluginMethod
+    public void haptic(PluginCall call) {
+        RavenHaptics.play(getContext(), call.getString("kind", "medium"));
+        call.resolve();
+    }
+
     // ---- sign-in -------------------------------------------------------------------
 
     @PluginMethod

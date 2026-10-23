@@ -70,9 +70,6 @@ export type LinkedDocument = { doctype: string; docname: string }
  */
 export const linkedDocumentAtom = atomFamily((_channelID: string) => atom<LinkedDocument | null>(null))
 
-/** True while this channel's composer is recording a voice note. */
-export const voiceRecordingAtom = atomFamily((_channelID: string) => atom(false))
-
 /**
  * The message currently being edited inline, per channel (its id, or null). The
  * message body renderer swaps `RichTextRenderer` for an inline editor when its id

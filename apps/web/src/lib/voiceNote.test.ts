@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { WAVEFORM_BARS, downsamplePeaks, parseVoiceJson } from "./voiceNote"
+import { WAVEFORM_BARS, downsamplePeaks, parseVoiceJson, scaleToLoudest } from "./voiceNote"
 
 describe("downsamplePeaks", () => {
     it("returns zeros for silence and for empty input", () => {
@@ -47,5 +47,17 @@ describe("parseVoiceJson", () => {
         for (const junk of [null, undefined, "", "{", "[]", 5, {}, { duration: 0 }, { duration: -1 }, { duration: "3" }, { duration: Infinity }]) {
             expect(parseVoiceJson(junk)).toBeNull()
         }
+    })
+})
+
+describe("scaleToLoudest", () => {
+    it("scales live peaks so the loudest is 100, like the final waveform", () => {
+        expect(scaleToLoudest([0.1, 0.4, 0.2])).toEqual([25, 100, 50])
+    })
+
+    it("doesn't magnify silence into full bars", () => {
+        // Background noise stays small against the noise floor.
+        expect(scaleToLoudest([0.01, 0.02]).every((bar) => bar <= 20)).toBe(true)
+        expect(scaleToLoudest([])).toEqual([])
     })
 })

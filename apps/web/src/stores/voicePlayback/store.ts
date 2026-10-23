@@ -36,8 +36,6 @@ export class VoicePlaybackStore {
     // From a src swap to its resume seek the element reads 0 and may fire a stray `pause`;
     // neither frames nor that event may touch the new note's state.
     private loading = false
-    /** Channel or thread of every note with state, so leaving one resets only its own notes. */
-    private channelOf = new Map<string, string>()
 
     subscribe(id: string, listener: Listener): () => void {
         let set = this.listeners.get(id)
@@ -61,7 +59,7 @@ export class VoicePlaybackStore {
         return snapshot
     }
 
-    toggle(id: string, src: string, channelId: string) {
+    toggle(id: string, src: string) {
         const audio = this.element()
         if (this.state.activeId === id && this.state.playing) {
             // No `pause` event will record this (ignored mid-load, or the element is already
@@ -74,7 +72,6 @@ export class VoicePlaybackStore {
             return
         }
         const previous = this.state.activeId
-        this.channelOf.set(id, channelId)
         // A failed note reloads its source on retry.
         const reload = previous !== id || !audio.src || this.state.errors.has(id)
         this.update(play(this.state, id, audio.currentTime), [previous, id])
@@ -96,16 +93,15 @@ export class VoicePlaybackStore {
         })
     }
 
-    seek(id: string, seconds: number, channelId: string) {
-        this.channelOf.set(id, channelId)
+    seek(id: string, seconds: number) {
         if (this.state.activeId === id && this.audio) this.audio.currentTime = Math.max(0, seconds)
         this.update(seek(this.state, id, seconds), [id])
     }
 
     /** Keyboard seek: relative to where the note is, kept within [0, duration]. */
-    seekBy(id: string, deltaSeconds: number, duration: number, channelId: string) {
+    seekBy(id: string, deltaSeconds: number, duration: number) {
         const from = this.state.positions.get(id) ?? 0
-        this.seek(id, Math.min(duration, Math.max(0, from + deltaSeconds)), channelId)
+        this.seek(id, Math.min(duration, Math.max(0, from + deltaSeconds)))
     }
 
     cycleSpeed() {
@@ -122,22 +118,18 @@ export class VoicePlaybackStore {
         this.audio?.pause()
     }
 
-    /** Leaving a list of notes from many channels (saved, threads): everything stops and starts over. */
-    stopAll() {
-        const ids = new Set([...this.channelOf.keys(), ...this.state.positions.keys()])
-        if (this.state.activeId) ids.add(this.state.activeId)
-        this.channelOf.clear()
-        this.audio?.pause()
-        if (ids.size > 0) this.update(forget(this.state, [...ids]), [...ids])
+    /** Drop one note's playback, e.g. a review clip that is being sent or discarded. */
+    stop(id: string) {
+        if (this.state.activeId === id) this.audio?.pause()
+        this.update(forget(this.state, [id]), [id])
     }
 
-    /** Leaving a channel or thread: its notes stop and start over next time. */
-    leaveChannel(channelId: string) {
-        const ids = [...this.channelOf].filter(([, channel]) => channel === channelId).map(([id]) => id)
-        if (ids.length === 0) return
-        ids.forEach((id) => this.channelOf.delete(id))
-        if (this.state.activeId && ids.includes(this.state.activeId)) this.audio?.pause()
-        this.update(forget(this.state, ids), ids)
+    /** Navigation: whatever was playing stops, and every note starts over next time. */
+    stopAll() {
+        const ids = [...this.state.positions.keys()]
+        if (this.state.activeId) ids.push(this.state.activeId)
+        this.audio?.pause()
+        if (ids.length > 0) this.update(forget(this.state, ids), ids)
     }
 
     private element(): HTMLAudioElement {

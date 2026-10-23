@@ -29,23 +29,32 @@ const toOutgoing = (draft: VoiceDraft, uploaded: Uploaded): OutgoingFile => ({
 
 /**
  * A recorded clip between Stop and Send: measures it and uploads it in the
- * background. Send waits for the upload — even after the composer is gone — while
+ * background. Send waits for both — even after the composer is gone — while
  * a discarded or abandoned clip has its upload deleted.
  */
 export const useVoiceDraft = () => {
     const { file: fileApi, db } = useContext(FrappeContext) as FrappeConfig
+    // The ref is the source of truth (uploads and decodes can land after unmount); state mirrors it for rendering.
+    const draftRef = useRef<VoiceDraft | null>(null)
     const [draft, setDraft] = useState<VoiceDraft | null>(null)
     const [sending, setSending] = useState(false)
-    const draftRef = useRef(draft)
-    draftRef.current = draft
-    // Send pressed before the upload landed: delivered when it does.
+    // Send pressed before the upload or the measurement landed: delivered once both have.
     const pendingSend = useRef<{ deliver: (file: OutgoingFile) => void; onSent: () => void } | null>(null)
     const mounted = useRef(true)
     // Clips whose upload must be deleted once it lands (discarded, or composer gone).
     const abandoned = useRef(new WeakSet<File>())
 
-    const patch = (file: File, change: Partial<VoiceDraft>) =>
-        setDraft((current) => (current && current.file === file ? { ...current, ...change } : current))
+    const commit = (next: VoiceDraft | null) => {
+        draftRef.current = next
+        setDraft(next)
+    }
+
+    const patch = (file: File, change: Partial<VoiceDraft>) => {
+        const current = draftRef.current
+        if (!current || current.file !== file) return
+        commit({ ...current, ...change })
+        tryDeliver()
+    }
 
     const release = (current: VoiceDraft, deleteUpload: boolean) => {
         URL.revokeObjectURL(current.url)
@@ -58,10 +67,19 @@ export const useVoiceDraft = () => {
     // cleanup must not delete (or re-release) a clip already sent or discarded.
     const finishWith = (deleteUpload: boolean) => {
         if (draftRef.current) release(draftRef.current, deleteUpload)
-        draftRef.current = null
         pendingSend.current = null
-        setDraft(null)
+        commit(null)
         setSending(false)
+    }
+
+    /** Sends once Send was pressed and both the upload and the measurement are in. */
+    const tryDeliver = () => {
+        const current = draftRef.current
+        const pending = pendingSend.current
+        if (!current || !pending || current.voice === undefined || current.upload.status !== "uploaded") return
+        pending.deliver(toOutgoing(current, current.upload))
+        finishWith(false)
+        if (mounted.current) pending.onSent()
     }
 
     const upload = (file: File) => {
@@ -72,14 +90,6 @@ export const useVoiceDraft = () => {
                 const uploaded: Uploaded = { status: "uploaded", fileID: res.data.message.name, fileURL: res.data.message.file_url, fileSize: res.data.message.file_size ?? file.size }
                 if (abandoned.current.has(file)) {
                     void db.deleteDoc("File", uploaded.fileID)
-                    return
-                }
-                const current = draftRef.current
-                const pending = pendingSend.current
-                if (pending && current?.file === file) {
-                    pending.deliver(toOutgoing(current, uploaded))
-                    finishWith(false)
-                    if (mounted.current) pending.onSent()
                     return
                 }
                 patch(file, { upload: uploaded })
@@ -98,27 +108,22 @@ export const useVoiceDraft = () => {
     }
 
     const prepare = (file: File, seconds: number) => {
-        setDraft({ file, url: URL.createObjectURL(file), voice: undefined, seconds, upload: { status: "uploading" } })
+        commit({ file, url: URL.createObjectURL(file), voice: undefined, seconds, upload: { status: "uploading" } })
         upload(file)
         void measureVoiceNote(file).then((voice) => patch(file, { voice }))
     }
 
     /**
-     * Send now if uploaded; otherwise once the upload lands (a failed one is retried).
+     * Send as soon as the upload and the measurement are both in (a failed upload is retried).
      * `onSent` runs only if the composer is still on screen by then.
      */
     const send = (deliver: (file: OutgoingFile) => void, onSent: () => void) => {
         const current = draftRef.current
         if (!current || pendingSend.current) return
-        if (current.upload.status === "uploaded") {
-            deliver(toOutgoing(current, current.upload))
-            finishWith(false)
-            onSent()
-            return
-        }
         pendingSend.current = { deliver, onSent }
         setSending(true)
         if (current.upload.status === "failed") upload(current.file)
+        tryDeliver()
     }
 
     const discard = () => finishWith(true)

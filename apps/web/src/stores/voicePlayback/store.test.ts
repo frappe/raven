@@ -80,8 +80,8 @@ describe("VoicePlaybackStore", () => {
 
     it("switching notes doesn't pause the new one", () => {
         const store = new VoicePlaybackStore()
-        store.toggle("a", "/a.m4a", "ch")
-        store.toggle("b", "/b.m4a", "ch")
+        store.toggle("a", "/a.m4a")
+        store.toggle("b", "/b.m4a")
         expect(store.getSnapshot("b").playing).toBe(true)
         expect(store.getSnapshot("a").playing).toBe(false)
     })
@@ -89,23 +89,23 @@ describe("VoicePlaybackStore", () => {
     it("an aborted play of a replaced note doesn't mark the new one failed", async () => {
         const store = new VoicePlaybackStore()
         FakeAudio.nextPlay = () => Promise.reject(Object.assign(new Error("interrupted"), { name: "AbortError" }))
-        store.toggle("a", "/a.m4a", "ch")
-        store.toggle("b", "/b.m4a", "ch")
+        store.toggle("a", "/a.m4a")
+        store.toggle("b", "/b.m4a")
         await Promise.resolve()
         expect(store.getSnapshot("b").error).toBe(false)
     })
 
     it("a seek right after starting a note survives its metadata load", () => {
         const store = new VoicePlaybackStore()
-        store.toggle("a", "/a.m4a", "ch")
-        store.seek("a", 5, "ch")
+        store.toggle("a", "/a.m4a")
+        store.seek("a", 5)
         audio().dispatchEvent(new Event("loadedmetadata"))
         expect(audio().currentTime).toBe(5)
     })
 
     it("a play from outside (media keys) marks the note playing again", () => {
         const store = new VoicePlaybackStore()
-        store.toggle("a", "/a.m4a", "ch")
+        store.toggle("a", "/a.m4a")
         audio().dispatchEvent(new Event("loadedmetadata"))
         audio().pause()
         expect(store.getSnapshot("a").playing).toBe(false)
@@ -113,22 +113,10 @@ describe("VoicePlaybackStore", () => {
         expect(store.getSnapshot("a").playing).toBe(true)
     })
 
-    it("leaving a channel stops its notes and forgets their positions", () => {
+    it("stopAll (navigation) stops the playing note and forgets every position", () => {
         const store = new VoicePlaybackStore()
-        store.toggle("a", "/a.m4a", "thread-1")
-        store.seek("b", 8, "thread-1")
-        store.leaveChannel("channel-1")
-        expect(store.getSnapshot("a").playing).toBe(true)
-        store.leaveChannel("thread-1")
-        expect(store.getSnapshot("a")).toMatchObject({ playing: false, position: 0 })
-        expect(store.getSnapshot("b").position).toBe(0)
-        expect(audio().paused).toBe(true)
-    })
-
-    it("stopAll stops the playing note and forgets every position", () => {
-        const store = new VoicePlaybackStore()
-        store.toggle("a", "/a.m4a", "ch-1")
-        store.seek("b", 8, "ch-2")
+        store.toggle("a", "/a.m4a")
+        store.seek("b", 8)
         store.stopAll()
         expect(store.getSnapshot("a")).toMatchObject({ playing: false, position: 0 })
         expect(store.getSnapshot("b").position).toBe(0)
@@ -137,10 +125,10 @@ describe("VoicePlaybackStore", () => {
 
     it("switching back to a note resumes where it was left", async () => {
         const store = new VoicePlaybackStore()
-        store.toggle("a", "/a.m4a", "ch")
+        store.toggle("a", "/a.m4a")
         audio().currentTime = 40
-        store.toggle("b", "/b.m4a", "ch")
-        store.toggle("a", "/a.m4a", "ch")
+        store.toggle("b", "/b.m4a")
+        store.toggle("a", "/a.m4a")
         await Promise.resolve()
         audio().dispatchEvent(new Event("loadedmetadata"))
         expect(audio().currentTime).toBe(40)
@@ -150,24 +138,24 @@ describe("VoicePlaybackStore", () => {
     it("pausing a note that is still loading stops it", () => {
         const store = new VoicePlaybackStore()
         FakeAudio.deferPlay = true
-        store.toggle("b", "/b.m4a", "ch")
-        store.toggle("b", "/b.m4a", "ch")
+        store.toggle("b", "/b.m4a")
+        store.toggle("b", "/b.m4a")
         expect(store.getSnapshot("b").playing).toBe(false)
     })
 
     it("a note that finished isn't shown as played after switching", () => {
         const store = new VoicePlaybackStore()
-        store.toggle("a", "/a.m4a", "ch")
+        store.toggle("a", "/a.m4a")
         audio().currentTime = 12
         audio().ended = true
         audio().dispatchEvent(new Event("ended"))
-        store.toggle("b", "/b.m4a", "ch")
+        store.toggle("b", "/b.m4a")
         expect(store.getSnapshot("a").position).toBe(0)
     })
 
     it("the playing note's position follows playback every frame", () => {
         const store = new VoicePlaybackStore()
-        store.toggle("a", "/a.m4a", "ch")
+        store.toggle("a", "/a.m4a")
         audio().dispatchEvent(new Event("loadedmetadata"))
         audio().currentTime = 3.2
         vi.advanceTimersByTime(20)
@@ -176,12 +164,12 @@ describe("VoicePlaybackStore", () => {
 
     it("frames during a switch don't overwrite the resume position", async () => {
         const store = new VoicePlaybackStore()
-        store.toggle("a", "/a.m4a", "ch")
+        store.toggle("a", "/a.m4a")
         audio().currentTime = 40
         vi.advanceTimersByTime(20)
-        store.toggle("b", "/b.m4a", "ch")
+        store.toggle("b", "/b.m4a")
         vi.advanceTimersByTime(20)
-        store.toggle("a", "/a.m4a", "ch")
+        store.toggle("a", "/a.m4a")
         vi.advanceTimersByTime(20)
         await Promise.resolve()
         audio().dispatchEvent(new Event("loadedmetadata"))
@@ -190,17 +178,27 @@ describe("VoicePlaybackStore", () => {
 
     it("a stray pause event while the new note loads doesn't stop it", () => {
         const store = new VoicePlaybackStore()
-        store.toggle("a", "/a.m4a", "ch")
+        store.toggle("a", "/a.m4a")
         audio().dispatchEvent(new Event("pause"))
         expect(store.getSnapshot("a").playing).toBe(true)
     })
 
     it("tapping a note the element already paused un-sticks it", () => {
         const store = new VoicePlaybackStore()
-        store.toggle("a", "/a.m4a", "ch")
+        store.toggle("a", "/a.m4a")
         audio().dispatchEvent(new Event("loadedmetadata"))
         audio().paused = true
-        store.toggle("a", "/a.m4a", "ch")
+        store.toggle("a", "/a.m4a")
         expect(store.getSnapshot("a").playing).toBe(false)
+    })
+
+    it("stop drops one note: pauses it if playing, forgets its position, leaves others", () => {
+        const store = new VoicePlaybackStore()
+        store.seek("other", 5)
+        store.toggle("draft", "blob:draft")
+        store.stop("draft")
+        expect(store.getSnapshot("draft")).toMatchObject({ playing: false, position: 0 })
+        expect(audio().paused).toBe(true)
+        expect(store.getSnapshot("other").position).toBe(5)
     })
 })

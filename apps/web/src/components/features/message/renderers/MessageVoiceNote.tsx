@@ -20,12 +20,12 @@ export const MessageVoiceNote = ({ message }: { message: Message }) => {
     // Unreadable payload: still playable as a plain audio file.
     if (!voice || !file) return <MessageAudio messages={[message]} />
 
-    const toggle = () => voicePlaybackStore.toggle(message.name, fileSrc(file), message.channel_id)
+    const toggle = () => voicePlaybackStore.toggle(message.name, fileSrc(file))
     const remaining = Math.max(0, voice.duration - position)
     const barCount = voice.waveform.length || WAVEFORM_BARS
 
     return (
-        <div data-message-id={message.name} data-media-root="" className="flex h-12 w-full max-w-[340px] items-center gap-2.5 rounded-xl border border-outline-gray-2 bg-surface-base pe-2.5 ps-2">
+        <div data-message-id={message.name} data-media-root="" className="flex h-12 w-full max-w-[420px] items-center gap-2.5 rounded-xl border border-outline-gray-2 bg-surface-base pe-2.5 ps-2">
             {/* A failed load shows on the button, so the row keeps its layout. */}
             <Button
                 variant={playing ? "solid" : "subtle"}
@@ -45,11 +45,11 @@ export const MessageVoiceNote = ({ message }: { message: Message }) => {
                 // Whole bars only, so the 48 bars re-render when one flips, not on every tick.
                 progress={Math.floor((position / voice.duration) * barCount) / barCount}
                 label={_("Seek")}
-                onSeek={(fraction) => voicePlaybackStore.seek(message.name, fraction * voice.duration, message.channel_id)}
+                onSeek={(fraction) => voicePlaybackStore.seek(message.name, fraction * voice.duration)}
                 onToggle={toggle}
-                onStep={(delta) => voicePlaybackStore.seekBy(message.name, delta, voice.duration, message.channel_id)}
+                onStep={(delta) => voicePlaybackStore.seekBy(message.name, delta, voice.duration)}
             />
-            <span className="w-9 shrink-0 text-right text-base md:text-sm tabular-nums text-ink-gray-5">
+            <span className="w-9 shrink-0 text-base md:text-sm tabular-nums text-ink-gray-5">
                 {formatTime(playing || position > 0 ? remaining : voice.duration)}
             </span>
             {/* Always shown, fixed width: appearing or changing "1×" → "1.5×" would shift the waveform. */}

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useCallback, useRef, useState } from "react"
 import { Plus, Camera, Images, FileBox, type LucideIcon, FilesIcon, ChartBar, Video, Mic } from "lucide-react"
 import { Button } from "@components/ui/button"
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle, DrawerTrigger } from "@components/ui/drawer"
@@ -7,9 +7,7 @@ import { preparingFilesAtom, useAttachFile, type PreparingFile } from "./useFile
 import { CreatePollDialog } from "./CreatePollDialog"
 import AttachFrappeDocumentDialog from "./AttachFrappeDocumentDialog"
 import { isAndroid } from "@utils/platform"
-import { voiceRecordingAtom } from "@utils/channelAtoms"
 import { unlockAudioContext } from "@lib/audioContext"
-import { canRecordVoice } from "./recordingFormat"
 import _ from "@lib/translate"
 
 /** Numbers each native pick, so its rows are cleared together. */
@@ -41,19 +39,32 @@ let pickCount = 0
  */
 export const MobileComposerActions = ({
     channelID,
+    onRecord,
 }: {
     channelID: string
+    /** Starts a voice note; absent when this device can't record. */
+    onRecord?: () => void
 }) => {
     const [sheetOpen, setSheetOpen] = useState(false)
     const [pollOpen, setPollOpen] = useState(false)
     const [docOpen, setDocOpen] = useState(false)
     const onAddFile = useAttachFile(channelID)
-    const setRecording = useSetAtom(voiceRecordingAtom(channelID))
     const setPreparing = useSetAtom(preparingFilesAtom(channelID))
     const cameraInputRef = useRef<HTMLInputElement>(null)
     const videoCaptureRef = useRef<HTMLInputElement>(null)
     const galleryInputRef = useRef<HTMLInputElement>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
+    // A voice note starts once the sheet is gone: the recorder's start-up work would stall
+    // the sheet's exit, and it snaps back into view until it unmounts.
+    const recordAfterClose = useRef<(() => void) | null>(null)
+    const sheetBody = useCallback(
+        () => () => {
+            const record = recordAfterClose.current
+            recordAfterClose.current = null
+            record?.()
+        },
+        [],
+    )
 
     const iosApp = !!import.meta.env.VITE_NATIVE && window.Capacitor?.getPlatform() === "ios"
     // The ternary keeps the native chunk out of browser builds entirely.
@@ -90,13 +101,14 @@ export const MobileComposerActions = ({
         ...(isAndroid ? [{ icon: Video, label: _("Video"), onSelect: () => videoCaptureRef.current?.click() }] : []),
         { icon: Images, label: _("Photos"), onSelect: () => (iosApp ? pickNative("photos") : galleryInputRef.current?.click()) },
         { icon: FilesIcon, label: _("Files"), onSelect: () => (iosApp ? pickNative("files") : fileInputRef.current?.click()) },
-        ...(canRecordVoice()
+        ...(onRecord
             ? [{
                 icon: Mic,
                 label: _("Voice note"),
                 onSelect: () => {
+                    // In the tap: iOS only lets audio start from a user gesture.
                     unlockAudioContext()
-                    setRecording(true)
+                    recordAfterClose.current = onRecord
                 },
             }]
             : []),
@@ -127,7 +139,7 @@ export const MobileComposerActions = ({
                     <DrawerTitle className="sr-only">{_("Composer actions")}</DrawerTitle>
                     <DrawerDescription className="sr-only">{_("Attach files, polls and more")}</DrawerDescription>
                     {/* Circle icon tiles, WhatsApp-style — every option is an icon */}
-                    <div className="grid grid-cols-4 gap-x-2 gap-y-6 px-4 pt-6 pb-10">
+                    <div ref={sheetBody} className="grid grid-cols-4 gap-x-2 gap-y-6 px-4 pt-6 pb-10">
                         {tiles.map((tile) => (
                             <button
                                 key={tile.label}

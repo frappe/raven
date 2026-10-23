@@ -28,15 +28,16 @@ import { QuietHoursBanner } from "./QuietHoursBanner"
 import { MobileComposerActions } from "./MobileComposerActions"
 import { VoiceNoteButton } from "./VoiceNoteButton"
 import { VoiceComposer } from "./VoiceComposer"
+import { useVoiceRecording } from "./useVoiceRecording"
 import { canRecordVoice } from "./recordingFormat"
 import { loadDraft, saveDraft } from "./draft"
 import { useTypingEmitter } from "@stores/typing/useTypingEmitter"
 import { TypingIndicator } from "./TypingIndicator"
 import { useIsMobile } from "@hooks/use-mobile"
 import { useIsKeyboardOpen } from "@hooks/useIsKeyboardOpen"
-import { enqueueSend, type OutgoingFile } from "@stores/messages/messageSender"
+import { enqueueSend } from "@stores/messages/messageSender"
 import { buildReplySnapshot } from "@utils/replySnapshot"
-import { editingMessageAtom, linkedDocumentAtom, replyToMessageAtom, voiceRecordingAtom } from "@utils/channelAtoms"
+import { editingMessageAtom, linkedDocumentAtom, replyToMessageAtom } from "@utils/channelAtoms"
 import { getLastEditableMessage } from "@components/features/message/actions/editTarget"
 import { useChannelById } from "@stores/channels/useChannelList"
 import { isInReadOnlyMode } from "@lib/frappe"
@@ -78,6 +79,9 @@ interface ChatInputProps {
  * finishes (pendingSendAtom). The actual send (dispatchSend) is split out so the
  * normal path and the waiting path share one implementation.
  */
+// Inert composer parts while recording: they read as disabled.
+const RECORDING_DISABLED = "[&_*]:text-ink-gray-4 [&_button]:bg-transparent!"
+
 const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDirectMessage, parentChannelID, disableSchedule }, ref) => {
     const { call } = useContext(FrappeContext) as FrappeConfig
     const [files, setFiles] = useAtom(uploadedFilesAtom(channelID))
@@ -86,9 +90,6 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
     const [linkedDocument, setLinkedDocument] = useAtom(linkedDocumentAtom(channelID))
     const { name: currentUser } = useUserCookieData()
     const isMobile = useIsMobile()
-    const [recording, setRecording] = useAtom(voiceRecordingAtom(channelID))
-    // The flag must not outlive this composer, or reopening the channel would start recording.
-    useEffect(() => () => setRecording(false), [setRecording])
     // The mention warning banner (on-leave / non-member) is channel-only — DMs and DM
     // threads have no membership to manage and you're talking to one person already.
     // A thread composer passes isDirectMessage (its parent's status) since the thread
@@ -153,10 +154,6 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
     )
 
     const editor = useRavenEditor({ submitRef: sendRef, linkRef, filesRef, cancelReplyRef, editLastRef, content: initialDraft || undefined, autofocus: true, placeholder: _("Type a message...") })
-    const closeVoiceComposer = (sent: boolean) => {
-        setRecording(false)
-        if (sent && !isMobile) editor?.commands.focus()
-    }
 
     // On mobile the composer bottom padding is keyboard-aware: closed → clear the home
     // indicator (safe-area inset, with an Android floor); open → just the row's own py-2,
@@ -302,21 +299,8 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
     // one dispatch gate, so Enter, the button, and held sends all agree.
     const quietSendMode = useQuietSendMode()
 
-    /** A voice note goes out alone: no text, the current reply, the quiet-hours default. */
-    const sendVoiceNote = useCallback((file: OutgoingFile) => {
-        enqueueSend(call, {
-            channelID,
-            batchId: randomUUID(),
-            owner: currentUser,
-            content: "",
-            files: [file],
-            linkedMessage: replyTo?.name,
-            repliedMessageDetails: buildReplySnapshot(replyTo),
-            sendSilently: quietSendMode === "auto" ? true : undefined,
-        })
-        if (replyTo) setReplyTo(null)
-        stopTyping()
-    }, [call, channelID, currentUser, replyTo, setReplyTo, quietSendMode, stopTyping])
+    const voice = useVoiceRecording({ channelID, editor, quietSendMode, stopTyping })
+    const { recording } = voice
 
     const handleSend = useCallback((opts?: { sendSilently?: boolean }) => {
         if (!editor) return
@@ -462,15 +446,17 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                 so they must NOT be clipped. The inner box keeps overflow-y-hidden so the
                 formatting toolbar's square top corners stay within the rounded border. */}
             <div data-raven-editor className="relative w-full">
-                <div className={cn("w-full md:rounded-lg md:border border-outline-gray-2 shadow-outline-base bg-surface-base focus-within:border-outline-gray-3 overflow-y-hidden")}>
+                <div className="w-full md:rounded-lg md:border border-outline-gray-2 shadow-outline-base bg-surface-base focus-within:border-outline-gray-3 overflow-y-hidden">
                     <TooltipProvider>
 
                         {editor && showFormatting && !isMobile && (
-                            <EditorFormattingToolbar
-                                editor={editor}
-                                linkSignal={linkSignal}
-                                onLinkConsumed={() => setLinkSignal(0)}
-                            />
+                            <div inert={recording} className={cn(recording && RECORDING_DISABLED)}>
+                                <EditorFormattingToolbar
+                                    editor={editor}
+                                    linkSignal={linkSignal}
+                                    onLinkConsumed={() => setLinkSignal(0)}
+                                />
+                            </div>
                         )}
                         {/* Reply banner slides open/closed (grid-rows 0fr↔1fr — the
                             animatable "height:auto"). The last reply is snapshotted so
@@ -488,8 +474,8 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                         {isMobile ? (
                             <>
                             {recording && (
-                                <div className="border-t border-outline-gray-2 bg-surface-base standalone:pb-[max(var(--inset-bottom),0.75rem)]">
-                                    <VoiceComposer onSend={sendVoiceNote} onClose={closeVoiceComposer} />
+                                <div className="border-t border-outline-gray-2 bg-surface-base">
+                                    <VoiceComposer ref={voice.composerRef} layout="row" onSend={voice.send} onClose={voice.close} />
                                 </div>
                             )}
                             {/*
@@ -507,7 +493,7 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                             */}
                             <div className={cn("flex items-end gap-0 pe-2 ps-1 py-2 border-t border-outline-gray-2 bg-surface-base mb-[var(--keyboard-height,0px)]", isMobile && !keyboardOpen && "standalone:pb-[max(var(--inset-bottom),0.75rem)]", recording && "hidden")}>
                                 <div className="flex items-center justify-center h-10">
-                                    <MobileComposerActions channelID={channelID} />
+                                    <MobileComposerActions channelID={channelID} onRecord={canRecordVoice() ? voice.start : undefined} />
                                 </div>
                                 <div className="flex-1 min-w-0 dark:bg-surface-elevation-2 bg-surface-gray-1 rounded-2xl [&_.tiptap]:min-h-10 [&_.tiptap]:max-h-64 [&_.tiptap]:overflow-y-auto [&_.tiptap]:py-2">
                                     <EditorContent editor={editor} />
@@ -515,7 +501,7 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                                 <div className="flex items-center justify-center h-10 ms-1.5">
                                     {/* Slack-style: an idle, empty composer offers voice; focusing it offers Send. */}
                                     {canRecordVoice() && !keyboardOpen && nothingToSend ? (
-                                        <VoiceNoteButton channelID={channelID} size="lg" variant="solid" />
+                                        <VoiceNoteButton onRecord={voice.start} onHold={voice.startHold} size="lg" variant="solid" />
                                     ) : (
                                         <SendButton
                                             onSend={handleSend}
@@ -535,54 +521,80 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                             </>
                         ) : (
                             <>
-                                {recording && <VoiceComposer onSend={sendVoiceNote} onClose={closeVoiceComposer} />}
-                                {/* Hidden, not unmounted: the draft, reply and staged files survive recording. */}
-                                <div className={cn(recording && "hidden")}>
-                                <div className={EDITOR_MIN_H}>
+                                {/* Kept mounted while recording so the draft and its undo history survive */}
+                                <div className={cn(EDITOR_MIN_H, recording && "hidden")}>
                                     <EditorContent editor={editor} />
                                 </div>
-                                <div className="flex items-center gap-1 px-1 pb-1">
-                                    <AddFileButton channelID={channelID} onAfterAttach={() => editor?.commands.focus()} />
-                                    {canRecordVoice() && <VoiceNoteButton channelID={channelID} />}
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="sm"
-                                                isIconButton
-                                                aria-label={_("Formatting")}
-                                                aria-pressed={showFormatting}
-                                                onClick={() => {
-                                                    setShowFormatting((v) => !v)
-                                                    editor?.commands.focus()
-                                                }}
-                                                className={cn(showFormatting && "bg-surface-gray-3 text-ink-gray-9")}
-                                            >
-                                                <Type />
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>{_("Formatting")}</TooltipContent>
-                                    </Tooltip>
-                                    <Separator orientation="vertical" className="mx-1 h-4!" />
-                                    {editor && <MentionButton editor={editor} />}
-                                    {editor && <EmojiPickerButton editor={editor} />}
-                                    <Separator orientation="vertical" className="mx-1 h-4!" />
-                                    <CreatePollDialog channelID={channelID} />
-                                    <AttachFrappeDocumentDialog channelID={channelID} />
-                                    <div className="flex-1" />
-                                    <SendButton
-                                        onSend={handleSend}
-                                        onSendSilently={() => handleSend({ sendSilently: true })}
-                                        onSendLoud={() => handleSend({ sendSilently: false })}
-                                        quietMode={quietSendMode}
-                                        onSchedulePick={handleSchedulePick}
-                                        onScheduleSend={() => setScheduleOpen(true)}
-                                        scheduleDisabled={scheduleDisabled}
-                                        loading={!!pendingSend}
-                                        disabled={nothingToSend}
+                                {recording && (
+                                    // The recorder takes the editor's place; the toolbar stays, inert, and Send sends the note.
+                                    <VoiceComposer
+                                        layout="inline"
+                                        onSend={voice.send}
+                                        onClose={voice.close}
+                                        sendSlot={voice.sendSlot}
+                                        renderSend={(control) => (
+                                            <SendButton
+                                                onSend={() => control.send()}
+                                                onSendSilently={() => control.send({ sendSilently: true })}
+                                                onSendLoud={() => control.send({ sendSilently: false })}
+                                                quietMode={quietSendMode}
+                                                onSchedulePick={handleSchedulePick}
+                                                onScheduleSend={() => setScheduleOpen(true)}
+                                                scheduleDisabled
+                                                loading={control.sending}
+                                                disabled={control.disabled}
+                                            />
+                                        )}
                                     />
-                                </div>
+                                )}
+                                <div className="flex items-center gap-1 px-1 pb-1">
+                                    {/* While recording every action but Send is inert */}
+                                    <div inert={recording} className={cn("flex items-center gap-1", recording && RECORDING_DISABLED)}>
+                                        <AddFileButton channelID={channelID} onAfterAttach={() => editor?.commands.focus()} />
+                                        {canRecordVoice() && <VoiceNoteButton onRecord={voice.start} />}
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    isIconButton
+                                                    aria-label={_("Formatting")}
+                                                    aria-pressed={showFormatting}
+                                                    onClick={() => {
+                                                        setShowFormatting((v) => !v)
+                                                        editor?.commands.focus()
+                                                    }}
+                                                    className={cn(showFormatting && "bg-surface-gray-3 text-ink-gray-9")}
+                                                >
+                                                    <Type />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>{_("Formatting")}</TooltipContent>
+                                        </Tooltip>
+                                        <Separator orientation="vertical" className="mx-1 h-4!" />
+                                        {editor && <MentionButton editor={editor} />}
+                                        {editor && <EmojiPickerButton editor={editor} />}
+                                        <Separator orientation="vertical" className="mx-1 h-4!" />
+                                        <CreatePollDialog channelID={channelID} />
+                                        <AttachFrappeDocumentDialog channelID={channelID} />
+                                    </div>
+                                    <div className="flex-1" />
+                                    {recording ? (
+                                        <div ref={voice.setSendSlot} className="contents" />
+                                    ) : (
+                                        <SendButton
+                                            onSend={handleSend}
+                                            onSendSilently={() => handleSend({ sendSilently: true })}
+                                            onSendLoud={() => handleSend({ sendSilently: false })}
+                                            quietMode={quietSendMode}
+                                            onSchedulePick={handleSchedulePick}
+                                            onScheduleSend={() => setScheduleOpen(true)}
+                                            scheduleDisabled={scheduleDisabled}
+                                            loading={!!pendingSend}
+                                            disabled={nothingToSend}
+                                        />
+                                    )}
                                 </div>
                             </>
                         )}
