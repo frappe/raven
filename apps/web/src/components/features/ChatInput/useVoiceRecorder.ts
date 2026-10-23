@@ -9,6 +9,7 @@ import {
     type MicErrorKind,
     type RecordingFormat,
 } from "./recordingFormat"
+import { createRecordingMeter } from "./recordingMeterStore"
 
 export type RecordingEnd = "stopped" | "limit" | "interrupted"
 export type VoiceRecorderStatus = "idle" | "requesting" | "recording"
@@ -34,14 +35,15 @@ const LEVEL_SAMPLES = 256
 /** Only one composer may hold the mic, from the permission prompt on; a new start pre-empts it. */
 let active: Claim | null = null
 
-const readLevel = (session: Session) => {
+/** Loudest sample in the analyser window, 0–1: the measure the final waveform's bars use. */
+const readPeak = (session: Session) => {
     session.analyser.getByteTimeDomainData(session.levelBuffer)
-    let sum = 0
+    let peak = 0
     for (const value of session.levelBuffer) {
-        const sample = (value - 128) / 128
-        sum += sample * sample
+        const magnitude = Math.abs(value - 128) / 128
+        if (magnitude > peak) peak = magnitude
     }
-    return Math.min(1, Math.sqrt(sum / session.levelBuffer.length) * 3)
+    return peak
 }
 
 const stopTracks = (stream: MediaStream) => stream.getTracks().forEach((track) => track.stop())
@@ -62,16 +64,18 @@ const release = (session: Session) => {
     suspendAudioContext()
 }
 
-export const useVoiceRecorder = (onFinish: (file: File | null, reason: RecordingEnd) => void) => {
+/** Records while mounted: starts on mount, and unmounting discards the take and releases the mic. */
+export const useVoiceRecorder = (onFinish: (file: File | null, reason: RecordingEnd) => void, onStartError: (error: MicErrorKind) => void) => {
     const [status, setStatus] = useState<VoiceRecorderStatus>("idle")
-    const [elapsed, setElapsed] = useState(0)
-    const [levels, setLevels] = useState<number[]>([])
+    const [meter] = useState(() => createRecordingMeter(LEVEL_SAMPLES))
     const sessionRef = useRef<Session | null>(null)
     const claimRef = useRef<Claim | null>(null)
     // Bumped on stop/cancel/unmount so a late getUserMedia resolve knows it's stale.
     const generationRef = useRef(0)
     const onFinishRef = useRef(onFinish)
     onFinishRef.current = onFinish
+    const onStartErrorRef = useRef(onStartError)
+    onStartErrorRef.current = onStartError
 
     const unclaim = () => {
         if (active === claimRef.current) active = null
@@ -161,8 +165,7 @@ export const useVoiceRecorder = (onFinish: (file: File | null, reason: Recording
             own.recorder.start(1000)
             own.timer = window.setInterval(() => {
                 const ms = Date.now() - own.startedAt
-                setElapsed(ms)
-                setLevels((previous) => [...previous.slice(-(LEVEL_SAMPLES - 1)), readLevel(own)])
+                meter.tick(ms, readPeak(own))
                 if (ms >= MAX_RECORDING_MS) finish("limit")
             }, TICK_MS)
         } catch {
@@ -175,14 +178,16 @@ export const useVoiceRecorder = (onFinish: (file: File | null, reason: Recording
         }
 
         sessionRef.current = session
-        setElapsed(0)
-        setLevels([])
         setStatus("recording")
         return null
     }
 
-    // Leaving the composer discards the recording and releases the mic.
-    useEffect(() => () => cancel(), [])
+    useEffect(() => {
+        void start().then((error) => {
+            if (error) onStartErrorRef.current(error)
+        })
+        return () => cancel()
+    }, [])
 
-    return { status, elapsed, levels, start, stop: () => finish("stopped"), cancel }
+    return { status, meter, stop: () => finish("stopped"), cancel }
 }

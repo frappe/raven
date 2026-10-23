@@ -12,6 +12,7 @@ type VoiceWaveformProps = {
     onStep: (deltaSeconds: number) => void
     label: string
     disabled?: boolean
+    className?: string
 }
 
 const FLAT = new Array<number>(WAVEFORM_BARS).fill(0)
@@ -20,7 +21,7 @@ const FLAT = new Array<number>(WAVEFORM_BARS).fill(0)
 const TOUCH_SLOP = 6
 
 /** Scrubbable waveform shared by the stream card and the composer's review row. */
-export const VoiceWaveform = ({ bars, progress, onSeek, onToggle, onStep, label, disabled }: VoiceWaveformProps) => {
+export const VoiceWaveform = ({ bars, progress, onSeek, onToggle, onStep, label, disabled, className }: VoiceWaveformProps) => {
     const ref = useRef<HTMLDivElement>(null)
     // Touch: where the finger went down, and whether it has turned into a horizontal scrub.
     const touch = useRef<{ x: number; y: number; scrubbing: boolean } | null>(null)
@@ -43,7 +44,9 @@ export const VoiceWaveform = ({ bars, progress, onSeek, onToggle, onStep, label,
             aria-valuenow={Math.round(progress * 100)}
             aria-disabled={disabled}
             // Vertical swipes stay page scrolls; only taps and horizontal drags seek.
-            className="flex h-6 min-w-0 flex-1 cursor-pointer touch-pan-y items-center gap-0.5 rounded outline-none focus-visible:focus-ring"
+            // 1px bars and gaps on mobile: 48 bars must fit a phone-width card beside the time and speed.
+            // justify-between: in a wide row the 3px-capped bars spread out instead of bunching left.
+            className={cn("flex h-6 min-w-0 flex-1 cursor-pointer touch-pan-y items-center justify-between gap-px md:gap-0.5 rounded outline-none focus-visible:focus-ring", className)}
             onPointerDown={(event) => {
                 if (event.pointerType !== "mouse") {
                     touch.current = { x: event.clientX, y: event.clientY, scrubbing: false }
@@ -83,7 +86,7 @@ export const VoiceWaveform = ({ bars, progress, onSeek, onToggle, onStep, label,
             {shown.map((height, index) => (
                 <span
                     key={index}
-                    className={cn("max-w-[3px] min-w-0.5 flex-1 rounded-full transition-colors duration-150", index / shown.length < progress ? "bg-ink-gray-8" : "bg-surface-gray-4")}
+                    className={cn("max-w-[3px] min-w-px flex-1 rounded-full transition-colors duration-150", index / shown.length < progress ? "bg-ink-gray-8" : "bg-surface-gray-4")}
                     style={{ height: `${Math.max(12, height)}%` }}
                 />
             ))}

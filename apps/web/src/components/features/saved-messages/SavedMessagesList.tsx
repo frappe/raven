@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react'
-import { voicePlaybackStore } from '@stores/voicePlayback/store'
 import { Virtuoso } from 'react-virtuoso'
 import { useFrappeGetCall, useFrappeEventListener } from 'frappe-react-sdk'
 
-import { Message, BaseMessage } from '@raven/types/common/Message'
 import { useMessageRowLookups } from '@hooks/useMessageRowLookups'
 import { useUserCookieData } from '@hooks/useUserCookieData'
 import { MessageListSkeleton } from '@components/features/dm-channel/DirectMessagePageSkeleton'
@@ -35,8 +33,6 @@ type SavedMessagesResponse = { message: SavedMessageRow[] }
 const PAGE_SIZE = 50
 
 const SavedMessagesList = ({ searchQuery, channel, onSelect, selectedID }: SavedMessagesListProps) => {
-    // Leaving the list stops its voice notes; they start over next time.
-    useEffect(() => () => voicePlaybackStore.stopAll(), [])
     const channelParam = channel && channel !== '*all' ? channel : undefined
     const { name: currentUser } = useUserCookieData()
 

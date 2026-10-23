@@ -51,6 +51,7 @@ import { getMessageAuthorId } from "@utils/messageUtils"
 import { formatDateTimeLabel, fromServerDatetime, getReminderPresets, toServerDatetime } from "@lib/timeUtils"
 import { ReminderDialog } from "./ReminderDialog"
 import { UNREAD_REMINDER_COUNT_KEY, useRemindersList, type ReminderRow } from "./useReminders"
+import { hapticTick } from "@utils/haptics"
 
 interface RemindersListProps {
     /** Page-level search (shared across tabs) — matches the note, the message body and its plain content. */
@@ -207,6 +208,7 @@ const RemindersList = ({ searchQuery, channel, mode, onSelect, selectedID, selec
         const timer = window.setTimeout(() => {
             pressRef.current = null
             suppressClicksUntilRef.current = performance.now() + 200
+            hapticTick()
             setSheetTarget(reminder)
         }, 450)
         pressRef.current = { timer, x: event.clientX, y: event.clientY }
