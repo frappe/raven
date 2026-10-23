@@ -3,7 +3,7 @@ import { createRoot, type Root } from "react-dom/client"
 import type { FrappeConfig } from "frappe-react-sdk"
 import { ThemeProvider } from "@components/theme-provider"
 import { setActiveSite } from "@lib/site"
-import { bootFromCache, loadBoot } from "./appBoot"
+import { bootFromCache, loadBoot, translationsReady } from "./appBoot"
 import { NativeSocket } from "./nativeSocket"
 import { BootErrorScreen } from "./BootErrorScreen"
 import { onRequestError, reloginAt, setSessionLostHandler, setTokenRefreshedHandler, startSession } from "./session"
@@ -73,7 +73,7 @@ const boot = async () => {
     const socket = new NativeSocket({ url: socketUrl(session.site.url), namespace: session.site.sitename, origin: session.site.url }, session.getToken)
     setTokenRefreshedHandler((token) => { socket.setToken(token); void import("./media").then((m) => m.setMediaSession(token)) })
     socket.start().catch(() => { })
-    await mediaSession
+    await Promise.all([mediaSession, translationsReady()])
     render(<App native={{ url: session.site.url, siteName: session.site.sitename, getToken: session.getToken, onRequestError, socket: socket as unknown as FrappeConfig["socket"] }} />)
     initNativePush()
     // An app opened from the cache still answers to a revoked session.

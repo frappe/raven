@@ -7,7 +7,7 @@ function _(txt: string, replace?: string[], context = null) {
     const key = txt; // txt.replace(/\n/g, "");
     if (window.frappe) {
         if (context) {
-            translated_text = window.frappe._messages[`${key}:${context}`];
+            translated_text = window.frappe._messages?.[`${key}:${context}`];
         }
 
         if (!translated_text) {
