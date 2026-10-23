@@ -30,17 +30,13 @@ export interface RavenMessage{
 	/**	Is Thread : Check - This message starts a thread	*/
 	is_thread?: 0 | 1
 	/**	Message Type : Select	*/
-	message_type?: "Text" | "Image" | "File" | "Poll" | "System"
+	message_type?: "Text" | "Image" | "File" | "Poll" | "System" | "Voice"
 	/**	Content : Long Text	*/
 	content?: string
 	/**	File : Attach	*/
 	file?: string
 	/**	Image Width : Data	*/
 	image_width?: string
-	/**	Audio Duration : Float - Voice note length in seconds, measured by the sender's browser	*/
-	audio_duration?: number
-	/**	Audio Waveform : Small Text - Voice note waveform: comma-separated bar heights 0-100	*/
-	audio_waveform?: string
 	/**	Image Height : Data	*/
 	image_height?: string
 	/**	Blurhash : Small Text	*/

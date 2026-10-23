@@ -15,11 +15,14 @@ export const MAX_RECORDING_MS = 600_000
 export const pickRecordingFormat = (isTypeSupported: (type: string) => boolean): RecordingFormat | null =>
     RECORDING_FORMATS.find((format) => isTypeSupported(format.mimeType)) ?? null
 
-/** Mic entry points render only when this is true. */
+let voiceSupported: boolean | undefined
+
+/** Mic entry points render only when this is true. Checked once: composers remount on every channel switch. */
 export const canRecordVoice = (): boolean =>
-    typeof MediaRecorder !== "undefined" &&
-    !!navigator.mediaDevices?.getUserMedia &&
-    pickRecordingFormat((type) => MediaRecorder.isTypeSupported(type)) !== null
+    (voiceSupported ??=
+        typeof MediaRecorder !== "undefined" &&
+        !!navigator.mediaDevices?.getUserMedia &&
+        pickRecordingFormat((type) => MediaRecorder.isTypeSupported(type)) !== null)
 
 const pad = (value: number) => value.toString().padStart(2, "0")
 

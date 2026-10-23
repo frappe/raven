@@ -14,6 +14,10 @@ EXTRA_TEST_RECORD_DEPENDENCIES = ["User", "Raven User"]
 WEB_AUDIO_EXTENSIONS = {"mp3", "wav", "ogg", "oga", "m4a", "aac", "flac", "opus", "weba"}
 
 
+def voice_payload(message):
+	return frappe.parse_json(message.json) if isinstance(message.json, str) else message.json
+
+
 class TestVoiceNoteSanitizers(IntegrationTestCase):
 	def test_audio_extensions_match_the_web_client(self):
 		# Mirror of AUDIO_EXTENSIONS in apps/web/src/utils/attachmentPreview.ts
@@ -28,17 +32,18 @@ class TestVoiceNoteSanitizers(IntegrationTestCase):
 	def test_sane_duration(self):
 		self.assertEqual(_sane_duration(7.25), 7.25)
 		self.assertEqual(_sane_duration("3.5"), 3.5)
-		self.assertEqual(_sane_duration(600), 600.0)
 		# The recorder auto-stops at 600 s; stop latency lands a max-length clip just past it
 		self.assertEqual(_sane_duration(600.3), 600.3)
-		for junk in (0, -1, 661, float("nan"), float("inf"), "abc", None, [1]):
+		for junk in (0, -1, 661, float("nan"), float("inf"), "abc", None, [1], True):
 			self.assertIsNone(_sane_duration(junk), junk)
 
 	def test_sane_waveform(self):
-		self.assertEqual(_sane_waveform("0,50,100"), "0,50,100")
-		self.assertEqual(_sane_waveform("-5,150,42.6"), "0,100,43")
-		self.assertEqual(len(_sane_waveform(",".join(["10"] * 500)).split(",")), 64)
-		for junk in ("", "abc", "1,abc", None, 12, ["1"]):
+		self.assertEqual(_sane_waveform([0, 50, 100]), [0, 50, 100])
+		self.assertEqual(_sane_waveform([-5, 150, 42.6]), [0, 100, 43])
+		self.assertEqual(_sane_waveform([1, "x", None, True, float("inf"), 2]), [1, 2])
+		self.assertEqual(len(_sane_waveform([10] * 500)), 64)
+		self.assertEqual(_sane_waveform([]), [])
+		for junk in ("1,2", None, 12, {"a": 1}):
 			self.assertIsNone(_sane_waveform(junk), junk)
 
 
@@ -97,49 +102,83 @@ class TestVoiceNoteSend(IntegrationTestCase):
 			.file_url
 		)
 
-	def _send(self, file_url, **meta):
-		return send_message_with_attachments(
-			channel_id=self.channel.name, files=[{"file_url": file_url, "file_size": 1, **meta}]
+	def _send(self, file_url, voice=None, **kwargs):
+		file = {"file_url": file_url, "file_size": 1}
+		if voice is not None:
+			file["voice"] = voice
+		return send_message_with_attachments(channel_id=self.channel.name, files=[file], **kwargs)[0]
+
+	def test_voice_payload_makes_a_voice_message(self):
+		message = self._send(self.audio_url, {"duration": 7.25, "waveform": [0, 50, 100]})
+		self.assertEqual(message.message_type, "Voice")
+		self.assertEqual(voice_payload(message), {"duration": 7.25, "waveform": [0, 50, 100]})
+
+	def test_unusable_waveform_still_makes_a_voice_message(self):
+		message = self._send(self.audio_url, {"duration": 3, "waveform": "abc"})
+		self.assertEqual(message.message_type, "Voice")
+		self.assertEqual(voice_payload(message), {"duration": 3.0, "waveform": []})
+
+	def test_junk_duration_falls_back_to_a_file(self):
+		message = self._send(self.audio_url, {"duration": -3, "waveform": [1, 2]})
+		self.assertEqual(message.message_type, "File")
+		self.assertFalse(message.json)
+
+	def test_voice_payload_on_non_audio_is_ignored(self):
+		message = self._send(self.text_url, {"duration": 5, "waveform": [1, 2]})
+		self.assertEqual(message.message_type, "File")
+		self.assertFalse(message.json)
+
+	def test_audio_without_voice_payload_is_a_file(self):
+		self.assertEqual(self._send(self.audio_url).message_type, "File")
+
+	def test_notification_text(self):
+		message = self._send(self.audio_url, {"duration": 67.4, "waveform": [1]})
+		self.assertEqual(message.get_notification_message_content(), "🎤 Sent a voice note (1:07)")
+
+	def test_reply_snapshot_carries_the_voice_payload(self):
+		original = self._send(self.audio_url, {"duration": 7.25, "waveform": [0, 50, 100]})
+		reply = send_message_with_attachments(
+			channel_id=self.channel.name, content="<p>nice</p>", is_reply=True, linked_message=original.name
 		)[0]
+		details = frappe.parse_json(reply.replied_message_details)
+		self.assertEqual(details["message_type"], "Voice")
+		self.assertEqual(details["json"], {"duration": 7.25, "waveform": [0, 50, 100]})
 
-	def test_stores_duration_and_waveform_on_audio(self):
-		message = self._send(self.audio_url, duration=7.25, waveform="0,50,100")
-		self.assertEqual(message.audio_duration, 7.25)
-		self.assertEqual(message.audio_waveform, "0,50,100")
-
-	def test_drops_junk_and_still_inserts(self):
-		message = self._send(self.audio_url, duration=-3, waveform="abc")
-		self.assertFalse(message.audio_duration)
-		self.assertFalse(message.audio_waveform)
-
-	def test_waveform_needs_a_valid_duration(self):
-		message = self._send(self.audio_url, duration="nope", waveform="1,2,3")
-		self.assertFalse(message.audio_waveform)
-
-	def test_ignored_on_non_audio_files(self):
-		message = self._send(self.text_url, duration=5, waveform="1,2,3")
-		self.assertFalse(message.audio_duration)
-		self.assertFalse(message.audio_waveform)
-
-	def test_forward_keeps_voice_note_fields(self):
+	def test_forwarded_voice_reply_keeps_payload(self):
 		from raven.api.raven_message import forward_message
 
-		original = self._send(self.audio_url, duration=7.25, waveform="0,50,100")
+		text = send_message_with_attachments(channel_id=self.channel.name, content="<p>q</p>")[0]
+		original = self._send(
+			self.audio_url,
+			{"duration": 7.25, "waveform": [0, 50, 100]},
+			is_reply=True,
+			linked_message=text.name,
+		)
 		forward_message(
 			message_receivers=[{"type": "Channel", "name": self.channel.name}], message_id=original.name
 		)
 		copy = frappe.get_all(
 			"Raven Message",
 			filters={"is_forwarded": 1, "channel_id": self.channel.name},
-			fields=["audio_duration", "audio_waveform"],
+			fields=["message_type", "json", "text", "is_reply"],
 		)[0]
-		self.assertEqual(copy.audio_duration, 7.25)
-		self.assertEqual(copy.audio_waveform, "0,50,100")
+		self.assertEqual(copy.message_type, "Voice")
+		self.assertEqual(frappe.parse_json(copy.json), {"duration": 7.25, "waveform": [0, 50, 100]})
+		self.assertFalse(copy.text)
+		self.assertFalse(copy.is_reply)
 
-	def test_stream_columns_include_voice_note_fields(self):
-		from raven.api.raven_message import get_message_batch
+	def test_forwarded_voice_note_keeps_payload(self):
+		from raven.api.raven_message import forward_message
 
-		original = self._send(self.audio_url, duration=7.25, waveform="0,50,100")
-		row = get_message_batch(original.name)[0]
-		self.assertEqual(row["audio_duration"], 7.25)
-		self.assertEqual(row["audio_waveform"], "0,50,100")
+		original = self._send(self.audio_url, {"duration": 7.25, "waveform": [0, 50, 100]})
+		forward_message(
+			message_receivers=[{"type": "Channel", "name": self.channel.name}], message_id=original.name
+		)
+		copy = frappe.get_all(
+			"Raven Message",
+			filters={"is_forwarded": 1, "channel_id": self.channel.name},
+			fields=["message_type", "json", "file"],
+		)[0]
+		self.assertEqual(copy.message_type, "Voice")
+		self.assertEqual(frappe.parse_json(copy.json), {"duration": 7.25, "waveform": [0, 50, 100]})
+		self.assertEqual(copy.file, self.audio_url)

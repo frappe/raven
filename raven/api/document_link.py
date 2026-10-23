@@ -62,12 +62,18 @@ def get_preview_data(doctype: str, docname: str | int):
 	preview_fields.append(image_field)
 	preview_fields.append("name")
 
-	preview_data = frappe.get_list(doctype, filters={"name": docname}, fields=preview_fields, limit=1)
+	currency_fields = _currency_source_fields(meta, preview_fields) - set(preview_fields)
+
+	preview_data = frappe.get_list(
+		doctype, filters={"name": docname}, fields=[*preview_fields, *currency_fields], limit=1
+	)
 
 	if not preview_data:
 		return
 
 	preview_data = preview_data[0]
+	# get_field_currency looks up the row by doctype and name.
+	preview_data.doctype = doctype
 
 	formatted_preview_data = {
 		"preview_image": preview_data.get(image_field),
@@ -76,15 +82,27 @@ def get_preview_data(doctype: str, docname: str | int):
 		"raven_document_link": get(doctype, docname),
 	}
 
-	for key, val in preview_data.items():
+	for key in preview_fields:
+		val = preview_data.get(key)
 		if val and meta.has_field(key) and key not in [image_field, title_field, "name"]:
-			formatted_preview_data[meta.get_field(key).label] = frappe.format(
-				val,
-				meta.get_field(key).fieldtype,
-				translated=True,
-			)
+			df = meta.get_field(key)
+			formatted_preview_data[df.label] = frappe.format(val, df, doc=preview_data, translated=True)
 
 	return formatted_preview_data
+
+
+def _currency_source_fields(meta, fieldnames: list[str]) -> set[str]:
+	"""Fields a Currency field's options read its currency from: `currency` or `Company:company:default_currency`."""
+	sources = set()
+	for fieldname in fieldnames:
+		df = meta.get_field(fieldname)
+		if not df or df.fieldtype != "Currency" or not df.options:
+			continue
+		parts = df.options.split(":")
+		source = parts[1] if len(parts) == 3 else df.options
+		if meta.has_field(source):
+			sources.add(source)
+	return sources
 
 
 @frappe.whitelist(methods=["POST"])

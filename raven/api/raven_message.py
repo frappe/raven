@@ -1,3 +1,5 @@
+import math
+
 import frappe
 from frappe import _
 from frappe.query_builder import Case, JoinType, Order
@@ -75,13 +77,18 @@ def _sane_dimension(value) -> int | None:
 	return number if 0 < number <= 10000 else None
 
 
+def _file_extension(file_url: str) -> str:
+	return file_url.rsplit(".", 1)[-1].split("?")[0].lower() if "." in file_url else ""
+
+
 def _is_audio(file_url: str) -> bool:
-	ext = file_url.rsplit(".", 1)[-1].split("?")[0].lower() if "." in file_url else ""
-	return ext in AUDIO_EXTENSIONS
+	return _file_extension(file_url) in AUDIO_EXTENSIONS
 
 
 def _sane_duration(value) -> float | None:
 	"""A plausible voice note length in seconds from an untrusted client, or None."""
+	if isinstance(value, bool):
+		return None
 	try:
 		number = float(value)
 	except (TypeError, ValueError):
@@ -89,20 +96,20 @@ def _sane_duration(value) -> float | None:
 	return number if 0 < number <= _MAX_AUDIO_SECONDS else None
 
 
-def _sane_waveform(value) -> str | None:
-	"""Comma-separated bar heights clamped to 0-100 and capped in count, or None."""
-	if not isinstance(value, str) or not value:
+def _sane_waveform(value) -> list[int] | None:
+	"""Bar heights clamped to 0-100 and capped in count; non-numeric bars are dropped."""
+	if not isinstance(value, list):
 		return None
-	try:
-		bars = [round(float(part)) for part in value.split(",")[:_MAX_WAVEFORM_BARS]]
-	except ValueError:
-		return None
-	return ",".join(str(min(100, max(0, bar))) for bar in bars)
+	bars = []
+	for bar in value[:_MAX_WAVEFORM_BARS]:
+		if isinstance(bar, bool) or not isinstance(bar, (int, float)) or not math.isfinite(bar):
+			continue
+		bars.append(min(100, max(0, round(bar))))
+	return bars
 
 
 def _file_message_type(file_url: str) -> str:
-	ext = file_url.rsplit(".", 1)[-1].split("?")[0].lower() if "." in file_url else ""
-	return "Image" if ext in IMAGE_EXTENSIONS else "File"
+	return "Image" if _file_extension(file_url) in IMAGE_EXTENSIONS else "File"
 
 
 def _set_image_dimensions(doc):
@@ -250,8 +257,9 @@ def send_message_with_attachments(
 	it without a File lookup. (A bare URL string per file is also tolerated.)
 	Videos may also carry `width`/`height`, measured by the client's browser at
 	attach time — stored so the message reserves its display box up front.
-	Voice notes may carry `duration` (seconds) and `waveform` (comma-separated
-	bar heights), measured by the client when it recorded the clip.
+	A voice note's file carries `voice: {"duration", "waveform"}`, measured by the
+	client when it recorded the clip; it becomes a `Voice` message with that payload
+	in `json`. Unusable metadata sends the audio as a plain file.
 
 	`send_silently` suppresses notifications for the whole batch (the flag is set on
 	every message before insert).
@@ -313,15 +321,13 @@ def send_message_with_attachments(
 			if width and height:
 				spec["thumbnail_width"] = width
 				spec["thumbnail_height"] = height
-		# Voice note metadata, measured by the client when it recorded the clip.
-		# A waveform without a valid duration is dropped with it.
-		if spec["message_type"] == "File" and isinstance(f, dict) and _is_audio(file_url):
-			duration = _sane_duration(f.get("duration"))
-			waveform = _sane_waveform(f.get("waveform"))
+		# A voice note. Unusable metadata sends it as a plain file, never fails the send.
+		voice = f.get("voice") if isinstance(f, dict) else None
+		if spec["message_type"] == "File" and isinstance(voice, dict) and _is_audio(file_url):
+			duration = _sane_duration(voice.get("duration"))
 			if duration:
-				spec["audio_duration"] = duration
-				if waveform:
-					spec["audio_waveform"] = waveform
+				spec["message_type"] = "Voice"
+				spec["json"] = {"duration": duration, "waveform": _sane_waveform(voice.get("waveform")) or []}
 		specs.append(spec)
 	# A document-only send has no text and no files — it still needs one message
 	# to carry the link, so an empty Text message hosts it (the card IS the content).
@@ -484,8 +490,6 @@ def get_pinned_messages(channel_id: str):
 			"channel_id",
 			"thumbnail_width",
 			"thumbnail_height",
-			"audio_duration",
-			"audio_waveform",
 			"file_thumbnail",
 			"link_doctype",
 			"link_document",
@@ -552,8 +556,6 @@ def get_saved_messages(
 			raven_channel.is_thread,
 			raven_message.thumbnail_width,
 			raven_message.thumbnail_height,
-			raven_message.audio_duration,
-			raven_message.audio_waveform,
 			raven_message.is_bot_message,
 			raven_message.bot,
 			parent_channel.as_("parent_channel_id"),
@@ -931,8 +933,6 @@ FORWARDABLE_FIELDS = [
 	"link_document",
 	"thumbnail_width",
 	"thumbnail_height",
-	"audio_duration",
-	"audio_waveform",
 	"blurhash",
 	"links",
 	"hide_link_preview",
@@ -983,12 +983,14 @@ def _forward_payloads(message_id: str) -> list[dict]:
 		# front. `json` goes with it: it still holds the unquoted body, and the copy
 		# should have one body that carries the quote.
 		if payload.get("is_reply"):
-			quote = build_reply_blockquote(
-				payload.get("replied_message_details"), linked_message=member.get("linked_message")
-			)
-			if quote:
-				payload["text"] = quote + (payload.get("text") or "")
-			payload.pop("json", None)
+			# A voice note has no body to carry the quote; its `json` is the payload.
+			if payload.get("message_type") != "Voice":
+				quote = build_reply_blockquote(
+					payload.get("replied_message_details"), linked_message=member.get("linked_message")
+				)
+				if quote:
+					payload["text"] = quote + (payload.get("text") or "")
+				payload.pop("json", None)
 			# The copy carries the quote in its body, so it is not a reply: leaving the
 			# snapshot on it would be dead data describing another channel's message.
 			payload.pop("is_reply", None)
