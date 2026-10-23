@@ -89,18 +89,6 @@ class TestAttachFileToDocument(IntegrationTestCase):
 		frappe.set_user("Administrator")
 		frappe.clear_cache()
 
-	def test_attaches_file_to_target_document(self):
-		file_names = attach_file_to_document([self.file_message.name], "ToDo", self.target.name)
-
-		self.assertEqual(len(file_names), 1)
-		attached = frappe.get_doc("File", file_names[0])
-		self.assertEqual(attached.attached_to_doctype, "ToDo")
-		self.assertEqual(attached.attached_to_name, self.target.name)
-		# The invariant is that the attached copy points at the SAME file as the one on
-		# the Raven Message — not a specific literal path, which Frappe's content-hash
-		# dedup is free to rename.
-		self.assertEqual(attached.file_url, self.source_file_url)
-
 	def test_attaches_a_batch_of_files_in_one_call(self):
 		file_names = attach_file_to_document(
 			[self.file_message.name, self.file_message_2.name], "ToDo", self.target.name

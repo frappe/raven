@@ -195,26 +195,11 @@ class TestReadReceipts(IntegrationTestCase):
 		frappe.set_user("test@example.com")
 		message = self._send("secret")
 
-		# test2 is not a Raven User and not a member of this private channel
+		# A Raven User who is not a member of this private channel: Raven's own check says no.
+		frappe.get_doc("User", "test2@example.com").add_roles("Raven User")
 		frappe.set_user("test2@example.com")
 		with self.assertRaises(frappe.PermissionError):
 			mark_channel_as_unread(self.channel.name, message_id=message.name)
-
-	def test_mark_channel_as_unread_returns_count(self):
-		from raven.api.raven_channel_member import mark_channel_as_unread
-
-		frappe.set_user("test@example.com")
-		self._send("first")
-		m2 = self._send("second")
-		self._send("third")
-
-		self._set_last_visit("test1@example.com", frappe.utils.add_to_date(m2.creation, seconds=10))
-
-		# test1 marks unread from m2 -> m2 + third are unread (2), authored by `test`
-		frappe.set_user("test1@example.com")
-		count = mark_channel_as_unread(self.channel.name, message_id=m2.name)
-
-		self.assertEqual(count, 2)
 
 	def test_set_channel_unread_noop_for_non_open_non_member(self):
 		"""

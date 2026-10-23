@@ -1,0 +1,43 @@
+name: Web
+
+on:
+  push:
+    branches: [develop, main]
+    paths:
+      - apps/web/**
+      - packages/**
+      - package.json
+      - yarn.lock
+  pull_request:
+    paths:
+      - apps/web/**
+      - packages/**
+      - package.json
+      - yarn.lock
+
+jobs:
+  tests:
+    name: Web
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: yarn
+
+      # From the root: the workspaces share one lockfile and one node_modules.
+      - name: Install
+        run: yarn install --frozen-lockfile
+
+      - name: Typecheck
+        working-directory: apps/web
+        run: yarn tsc -b
+
+      - name: Test
+        working-directory: apps/web
+        run: yarn vitest run

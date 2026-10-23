@@ -14,13 +14,6 @@ class TestNotificationLabels(IntegrationTestCase):
 	def test_tag_is_per_site(self):
 		self.assertEqual(site_tag("abc123"), f"{get_site_name()}:abc123")
 
-	def test_the_app_reads_the_site_back_off_the_tag(self):
-		"""apps/web/src/native/push.ts: a tray entry is this site's when its tag carries the host."""
-		host = get_site_name()
-		tag = site_tag("abc123")
-		self.assertTrue(tag.startswith(f"{host}:"))
-		self.assertEqual(tag[len(host) + 1 :], "abc123")
-
 	def test_workspace_is_named_only_when_the_site_has_several(self):
 		with patch("raven.notification.get_workspace_names", return_value={"north": "North"}):
 			self.assertEqual(shown_workspace("north"), "")

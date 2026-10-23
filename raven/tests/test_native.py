@@ -160,7 +160,9 @@ class TestNative(IntegrationTestCase):
 				if method == "OPTIONS"
 				else {APP_HEADER: "1"}
 			)
-		frappe.local.request = frappe._dict(headers=headers, method=method)
+		# after_response as a real request has it: Frappe's log database hangs its cleanup there, and
+		# a _dict would answer hasattr with None.
+		frappe.local.request = frappe._dict(headers=headers, method=method, after_response=set())
 		if hasattr(frappe.local, "allow_cors"):
 			del frappe.local.allow_cors
 		try:

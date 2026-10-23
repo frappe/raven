@@ -86,7 +86,9 @@ def _site_users() -> list[dict]:
 	user whose single role profile can't take Raven's.
 	"""
 	stack = profiles_can_stack()
-	can_edit_users = frappe.has_permission("User", ptype="write")
+	# Without shares: Frappe shares every User record with its own user, with write rights, and
+	# a doctype-level check passes as soon as one shared record exists.
+	can_edit_users = frappe.has_permission("User", ptype="write", ignore_share_permissions=True)
 	users = [{**row, "in_raven": True, "addable": True} for row in _raven_users_without_workspace()]
 	for row in _system_users_not_in_raven():
 		profile = row.pop("role_profile_name")

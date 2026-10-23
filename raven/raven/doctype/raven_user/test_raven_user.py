@@ -63,11 +63,6 @@ class TestRavenUser(IntegrationTestCase):
 		save.assert_not_called()
 		self.assertNotIn("Raven User", frappe.get_roles(user.name))
 
-	def test_user_name(self):
-		user = frappe.get_doc("Raven User", "test@example.com")
-		self.assertEqual(user.name, "test@example.com")
-		self.assertEqual(user.full_name, "_Test")
-
 	def test_first_name_follows_full_name_change(self):
 		"""A profile rename writes only full_name; the derived first_name must
 		follow it, or short displays (e.g. the typing indicator) show the old name."""

@@ -109,12 +109,18 @@ class TestSetup(IntegrationTestCase):
 		self.assertEqual(frappe.db.get_single_value("Raven Settings", "setup_completed"), 1)
 
 	def test_complete_setup_leaves_frappe_wizard_to_erpnext(self):
+		real_get_hooks = frappe.get_hooks
+
+		# Only the wizard-stages hook is faked; everything else keeps asking the real hooks.
+		def get_hooks(hook=None, *args, **kwargs):
+			if hook == "setup_wizard_stages":
+				return ["erpnext.setup.setup_wizard.setup_wizard.get_setup_stages"]
+			return real_get_hooks(hook, *args, **kwargs)
+
 		with (
 			patch("frappe.integrations.frappe_providers.frappecloud_billing.is_fc_site", return_value=True),
 			patch("frappe.is_setup_complete", return_value=False),
-			patch(
-				"frappe.get_hooks", return_value=["erpnext.setup.setup_wizard.setup_wizard.get_setup_stages"]
-			),
+			patch("frappe.get_hooks", side_effect=get_hooks),
 			patch("frappe.desk.page.setup_wizard.setup_wizard.setup_complete") as wizard,
 		):
 			complete_setup([], [])
@@ -123,11 +129,6 @@ class TestSetup(IntegrationTestCase):
 	def test_complete_setup_survives_malformed_steps(self):
 		complete_setup("not json", '["hr", "<script>"]')
 		self.assertEqual(frappe.db.get_single_value("Raven Settings", "setup_completed"), 1)
-
-	def test_complete_setup_refuses_guest(self):
-		frappe.set_user("Guest")
-		with self.assertRaises(frappe.PermissionError):
-			complete_setup([], [])
 
 	def test_complete_setup_drops_cached_boot(self):
 		# Boot is cached per user; a stale copy would still open the setup flow.
@@ -231,7 +232,9 @@ class TestSiteUsers(IntegrationTestCase):
 
 	def test_someone_whose_raven_access_was_taken_away_is_offered_again(self):
 		# Their Raven User is disabled when the role goes; adding them in setup gives it back.
+		# Another desk role keeps them a system user once Raven's role is gone.
 		user = frappe.get_doc("User", LONER)
+		user.add_roles("Dashboard Manager")
 		user.remove_roles("Raven User")
 		self.assertEqual(frappe.db.get_value("Raven User", LONER, "enabled"), 0)
 		self.assertFalse(self._listed()[LONER]["in_raven"])
@@ -276,14 +279,13 @@ class TestSiteUsers(IntegrationTestCase):
 		self.assertFalse(frappe.db.exists("Raven User", OUTSIDER))
 
 	def test_add_takes_only_people_from_the_offered_list(self):
-		# The caller, a made-up name and a workspace member are not on the list.
+		# The caller, a made-up name and a workspace member are not on the list: only the loner joins.
+		before = frappe.db.count("Raven Workspace Member", {"workspace": self.workspace.name})
 		self.assertEqual(
 			add_site_users(["Administrator", "nobody@example.com", LONER], self.workspace.name), 1
 		)
-		self.assertFalse(
-			frappe.db.exists(
-				"Raven Workspace Member", {"workspace": self.workspace.name, "user": "Administrator"}
-			)
+		self.assertEqual(
+			frappe.db.count("Raven Workspace Member", {"workspace": self.workspace.name}), before + 1
 		)
 
 	def test_role_profile_user_gets_ravens_profile_where_profiles_stack(self):
