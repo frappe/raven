@@ -18,6 +18,8 @@ export interface RepliedMessageDetails {
     message_type: RavenMessage["message_type"]
     owner: string
     creation: string
+    /** Voice notes only: `{ duration, waveform }`. */
+    json?: unknown
 }
 
 /**

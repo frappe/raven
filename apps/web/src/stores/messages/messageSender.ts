@@ -4,7 +4,7 @@ import type { FrappeError } from "frappe-react-sdk"
 import type { Message } from "@raven/types/common/Message"
 import type { OutboxMessage } from "@db"
 import { getAttachmentKind } from "@utils/attachmentPreview"
-import { voiceNoteMessageFields, type VoiceNoteMeta } from "@lib/voiceNote"
+import { parseVoiceJson, type VoiceNoteMeta } from "@lib/voiceNote"
 import _ from "@lib/translate"
 import { channelMessagesStore } from "./store"
 import { channelUnreadStore } from "@stores/unread/store"
@@ -25,7 +25,8 @@ export type OutgoingFile = {
     file_size: number
     width?: number
     height?: number
-} & Partial<VoiceNoteMeta>
+    voice?: VoiceNoteMeta
+}
 
 /**
  * Backend datetime shape (6-digit microseconds) so the placeholder sorts at the
@@ -99,7 +100,7 @@ export const buildOptimisticMessages = (
                     ? optimisticImageThumbnail(file.width, file.height)
                     : { thumbnail_width: file.width, thumbnail_height: file.height }
                 : {}),
-            ...voiceNoteMessageFields(file),
+            ...(file.voice ? { message_type: "Voice" as const, json: file.voice } : {}),
         })
     })
     // Mirror the backend: a document-only send still needs one (empty Text) message
@@ -274,8 +275,7 @@ export const retrySend = async (client: PostClient, channelID: string, batchId: 
         .map((m) => ({
             file_url: (m as { file?: string }).file as string,
             file_size: (m as { file_size?: number }).file_size ?? 0,
-            duration: (m as { audio_duration?: number }).audio_duration,
-            waveform: (m as { audio_waveform?: string }).audio_waveform,
+            voice: m.message_type === "Voice" ? parseVoiceJson(m.json) ?? undefined : undefined,
         }))
     // The reply lives on whichever placeholder carries linked_message (the last one).
     const linkedMessage = placeholders

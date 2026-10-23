@@ -1,8 +1,9 @@
-import { getAttachmentKind } from "@utils/attachmentPreview"
-
 export const WAVEFORM_BARS = 48
+// The server's cap (_MAX_WAVEFORM_BARS); recordings send WAVEFORM_BARS.
+const MAX_WAVEFORM_BARS = 64
 
-export type VoiceNoteMeta = { duration: number; waveform: string }
+/** A voice note's payload, stored in the message's `json`. */
+export type VoiceNoteMeta = { duration: number; waveform: number[] }
 
 /** Peak per bucket, scaled so the loudest bucket is 100. */
 export const downsamplePeaks = (samples: ArrayLike<number>, bars = WAVEFORM_BARS): number[] => {
@@ -23,23 +24,24 @@ export const downsamplePeaks = (samples: ArrayLike<number>, bars = WAVEFORM_BARS
     return loudest === 0 ? peaks.map(() => 0) : peaks.map((peak) => Math.round((peak / loudest) * 100))
 }
 
-export const encodeWaveform = (peaks: number[]) => peaks.join(",")
-
-/** Malformed entries are skipped; values clamp to 0-100. */
-export const parseWaveform = (value: string | null | undefined): number[] => {
-    if (!value) return []
-    return value
-        .split(",")
-        .map(Number)
-        .filter((bar) => Number.isFinite(bar))
-        .map((bar) => Math.min(100, Math.max(0, Math.round(bar))))
+/** A voice note's `json` (object, or string from a fetch); null unless it has a usable duration. */
+export const parseVoiceJson = (json: unknown): VoiceNoteMeta | null => {
+    let value = json
+    if (typeof value === "string") {
+        try {
+            value = JSON.parse(value)
+        } catch {
+            return null
+        }
+    }
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null
+    const { duration, waveform } = value as { duration?: unknown; waveform?: unknown }
+    if (typeof duration !== "number" || !Number.isFinite(duration) || duration <= 0) return null
+    const bars = Array.isArray(waveform)
+        ? waveform
+            .filter((bar): bar is number => typeof bar === "number" && Number.isFinite(bar))
+            .slice(0, MAX_WAVEFORM_BARS)
+            .map((bar) => Math.min(100, Math.max(0, Math.round(bar))))
+        : []
+    return { duration, waveform: bars }
 }
-
-export const isVoiceNote = (message: { file?: string; audio_waveform?: string | null }): boolean =>
-    !!message.file && !!message.audio_waveform && getAttachmentKind(message.file) === "audio"
-
-/** Upload metadata → the message fields the server stores. */
-export const voiceNoteMessageFields = (file: { duration?: number; waveform?: string }) => ({
-    ...(file.duration ? { audio_duration: file.duration } : {}),
-    ...(file.waveform ? { audio_waveform: file.waveform } : {}),
-})

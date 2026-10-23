@@ -7,7 +7,6 @@ import { formatTime } from "@components/features/message/renderers/AudioPlayer"
 import { useIsMobile } from "@hooks/use-mobile"
 import _ from "@lib/translate"
 import { useAttachFile } from "./useFileInput"
-import { measureVoiceNote } from "./measureVoiceNote"
 import { useVoiceRecorder, type RecordingEnd } from "./useVoiceRecorder"
 
 // w-1 bar + gap-0.5
@@ -30,9 +29,7 @@ export const VoiceRecorderBar = ({ channelID, onClose }: { channelID: string; on
         if (reason === "limit") toast.info(_("Voice notes can be up to 10 minutes long"))
         if (!file) return onClose(false)
         setPreparing(true)
-        // A failed decode still attaches the clip; it renders as a plain audio file.
-        const voiceNote = await measureVoiceNote(file)
-        attach([file], voiceNote ? { voiceNote } : undefined)
+        attach([file])
         onClose(true)
     }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { WAVEFORM_BARS, downsamplePeaks, encodeWaveform, isVoiceNote, parseWaveform, voiceNoteMessageFields } from "./voiceNote"
+import { WAVEFORM_BARS, downsamplePeaks, parseVoiceJson } from "./voiceNote"
 
 describe("downsamplePeaks", () => {
     it("returns zeros for silence and for empty input", () => {
@@ -27,33 +27,25 @@ describe("downsamplePeaks", () => {
     })
 })
 
-describe("waveform encoding", () => {
-    it("round-trips", () => {
-        expect(parseWaveform(encodeWaveform([0, 50, 100]))).toEqual([0, 50, 100])
+describe("parseVoiceJson", () => {
+    it("reads objects and JSON strings", () => {
+        expect(parseVoiceJson({ duration: 7.5, waveform: [0, 50, 100] })).toEqual({ duration: 7.5, waveform: [0, 50, 100] })
+        expect(parseVoiceJson('{"duration":3,"waveform":[10]}')).toEqual({ duration: 3, waveform: [10] })
     })
 
-    it("tolerates malformed strings", () => {
-        expect(parseWaveform("")).toEqual([])
-        expect(parseWaveform(undefined)).toEqual([])
-        expect(parseWaveform(null)).toEqual([])
-        expect(parseWaveform("abc")).toEqual([])
-        expect(parseWaveform("10,abc,150,-3")).toEqual([10, 100, 0])
+    it("clamps, rounds, drops non-numeric bars and caps at 64", () => {
+        expect(parseVoiceJson({ duration: 1, waveform: [-5, 150, 42.6, "x", null, Infinity] })).toEqual({ duration: 1, waveform: [0, 100, 43] })
+        expect(parseVoiceJson({ duration: 1, waveform: new Array(500).fill(10) })?.waveform).toHaveLength(64)
     })
-})
 
-describe("isVoiceNote", () => {
-    it("needs an audio file and a waveform", () => {
-        expect(isVoiceNote({ file: "/files/a.m4a", audio_waveform: "1,2" })).toBe(true)
-        expect(isVoiceNote({ file: "/files/a.m4a" })).toBe(false)
-        expect(isVoiceNote({ file: "/files/a.m4a", audio_waveform: "" })).toBe(false)
-        expect(isVoiceNote({ file: "/files/a.png", audio_waveform: "1,2" })).toBe(false)
-        expect(isVoiceNote({ audio_waveform: "1,2" })).toBe(false)
+    it("keeps a voice note with an unusable waveform", () => {
+        expect(parseVoiceJson({ duration: 2, waveform: "abc" })).toEqual({ duration: 2, waveform: [] })
+        expect(parseVoiceJson({ duration: 2 })).toEqual({ duration: 2, waveform: [] })
     })
-})
 
-describe("voiceNoteMessageFields", () => {
-    it("maps upload metadata onto message fields", () => {
-        expect(voiceNoteMessageFields({ duration: 7, waveform: "1,2" })).toEqual({ audio_duration: 7, audio_waveform: "1,2" })
-        expect(voiceNoteMessageFields({})).toEqual({})
+    it("rejects anything without a positive finite duration", () => {
+        for (const junk of [null, undefined, "", "{", "[]", 5, {}, { duration: 0 }, { duration: -1 }, { duration: "3" }, { duration: Infinity }]) {
+            expect(parseVoiceJson(junk)).toBeNull()
+        }
     })
 })
