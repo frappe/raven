@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import { getMessageTeaser } from "./messageUtils"
 
 describe("getMessageTeaser", () => {
@@ -10,5 +10,12 @@ describe("getMessageTeaser", () => {
 
     it("keeps the server's code markers in text teasers", () => {
         expect(getMessageTeaser({ message_type: "Text", content: "run `x` now" })).toBe("run `x` now")
+    })
+
+    it("labels voice notes", () => {
+        // _() reads window.frappe for translations; node has no window.
+        vi.stubGlobal("window", {})
+        expect(getMessageTeaser({ message_type: "Voice", content: "" })).toBe("🎤 Voice note")
+        vi.unstubAllGlobals()
     })
 })
