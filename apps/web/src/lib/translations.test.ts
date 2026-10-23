@@ -23,6 +23,19 @@ describe("loadTranslations", () => {
         expect(window.frappe._messages).toEqual({ Hello: "Merhaba" })
     })
 
+    it("gives up on a fetch that stalls and shows the source strings", async () => {
+        vi.useFakeTimers()
+        // Never answers on its own; rejects only when the loader's signal aborts it.
+        siteFetch.mockImplementation((_path: string, init: RequestInit) => new Promise((_resolve, reject) => {
+            init.signal?.addEventListener("abort", () => reject(new Error("aborted")))
+        }))
+        const loading = loadTranslations({ lang: "tr", translations_version: "abc_1" })
+        await vi.advanceTimersByTimeAsync(8_000)
+        await loading
+        expect(window.frappe._messages).toEqual({})
+        vi.useRealTimers()
+    })
+
     it("falls back to the source strings when the fetch fails", async () => {
         siteFetch.mockRejectedValue(new Error("offline"))
         await loadTranslations({ lang: "tr", translations_version: "abc_1" })

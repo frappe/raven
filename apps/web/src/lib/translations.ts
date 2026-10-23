@@ -17,15 +17,23 @@ export const loadTranslations = async (boot: Boot): Promise<void> => {
     window.frappe._messages = boot.translations_version ? await fetchTranslations(boot) : {}
 }
 
+// Nothing renders until this settles, so a stalled connection must not hold the app.
+const TRANSLATIONS_TIMEOUT_MS = 8_000
+
 const fetchTranslations = async (boot: Boot): Promise<Record<string, string>> => {
     const params = new URLSearchParams({ v: boot.translations_version ?? "", lang: boot.lang ?? "" })
+    // The signal covers the body read as well as the headers.
+    const abort = new AbortController()
+    const timer = setTimeout(() => abort.abort(), TRANSLATIONS_TIMEOUT_MS)
     try {
-        const res = await siteFetch(`/api/method/frappe.translate.get_boot_translations?${params}`, { headers: { Accept: "application/json" } })
+        const res = await siteFetch(`/api/method/frappe.translate.get_boot_translations?${params}`, { headers: { Accept: "application/json" }, signal: abort.signal })
         if (!res.ok) return {}
         const body = (await res.json()) as { message?: Record<string, string> }
         return body.message ?? {}
     } catch {
-        // Offline, or the site is unreachable: the source strings show.
+        // Offline, unreachable, or too slow: the source strings show.
         return {}
+    } finally {
+        clearTimeout(timer)
     }
 }
