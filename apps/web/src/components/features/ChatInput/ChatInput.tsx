@@ -26,13 +26,16 @@ import { ReplyPreviewBanner } from "./ReplyPreviewBanner"
 import { MentionWarningBanner } from "./MentionWarningBanner"
 import { QuietHoursBanner } from "./QuietHoursBanner"
 import { MobileComposerActions } from "./MobileComposerActions"
+import { VoiceNoteButton } from "./VoiceNoteButton"
+import { VoiceRecorderBar } from "./VoiceRecorderBar"
+import { canRecordVoice } from "./recordingFormat"
 import { loadDraft, saveDraft } from "./draft"
 import { useTypingEmitter } from "@stores/typing/useTypingEmitter"
 import { TypingIndicator } from "./TypingIndicator"
 import { useIsMobile } from "@hooks/use-mobile"
 import { useIsKeyboardOpen } from "@hooks/useIsKeyboardOpen"
 import { enqueueSend } from "@stores/messages/messageSender"
-import { editingMessageAtom, linkedDocumentAtom, replyToMessageAtom } from "@utils/channelAtoms"
+import { editingMessageAtom, linkedDocumentAtom, replyToMessageAtom, voiceRecordingAtom } from "@utils/channelAtoms"
 import { getLastEditableMessage } from "@components/features/message/actions/editTarget"
 import { useChannelById } from "@stores/channels/useChannelList"
 import { isInReadOnlyMode } from "@lib/frappe"
@@ -82,6 +85,9 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
     const [linkedDocument, setLinkedDocument] = useAtom(linkedDocumentAtom(channelID))
     const { name: currentUser } = useUserCookieData()
     const isMobile = useIsMobile()
+    const [recording, setRecording] = useAtom(voiceRecordingAtom(channelID))
+    // The flag must not outlive this composer, or reopening the channel would start recording.
+    useEffect(() => () => setRecording(false), [setRecording])
     // The mention warning banner (on-leave / non-member) is channel-only — DMs and DM
     // threads have no membership to manage and you're talking to one person already.
     // A thread composer passes isDirectMessage (its parent's status) since the thread
@@ -146,6 +152,10 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
     )
 
     const editor = useRavenEditor({ submitRef: sendRef, linkRef, filesRef, cancelReplyRef, editLastRef, content: initialDraft || undefined, autofocus: true, placeholder: _("Type a message...") })
+    const closeRecorder = (attached: boolean) => {
+        setRecording(false)
+        if (attached && !isMobile) editor?.commands.focus()
+    }
 
     // On mobile the composer bottom padding is keyboard-aware: closed → clear the home
     // indicator (safe-area inset, with an Android floor); open → just the row's own py-2,
@@ -470,6 +480,12 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                             empty until `editor` is ready) so the composer — and the stream's
                             height — don't jump on channel open. Same class as the editor surface. */}
                         {isMobile ? (
+                            <>
+                            {recording && (
+                                <div className="border-t border-outline-gray-2 bg-surface-base standalone:pb-[max(var(--inset-bottom),0.75rem)]">
+                                    <VoiceRecorderBar channelID={channelID} onClose={closeRecorder} />
+                                </div>
+                            )}
                             // Mobile is a single row: [+] · editor · send. The `[&_.tiptap]` overrides
                             // deliberately replace the editor surface's default EDITOR_CLASS heights
                             // (EDITOR_MIN_H etc.) with a compact one-line-that-grows box — these values
@@ -481,7 +497,7 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                             // open → no override: the row's own py-2 gives a little breathing
                             // room above the keyboard. Native never resizes the page for the
                             // keyboard: --keyboard-height (set by the keyboard plugin) lifts the row.
-                            <div className={cn("flex items-end gap-0 pe-2 ps-1 py-2 border-t border-outline-gray-2 bg-surface-base mb-[var(--keyboard-height,0px)]", isMobile && !keyboardOpen && "standalone:pb-[max(var(--inset-bottom),0.75rem)]")}>
+                            <div className={cn("flex items-end gap-0 pe-2 ps-1 py-2 border-t border-outline-gray-2 bg-surface-base mb-[var(--keyboard-height,0px)]", isMobile && !keyboardOpen && "standalone:pb-[max(var(--inset-bottom),0.75rem)]", recording && "hidden")}>
                                 <div className="flex items-center justify-center h-10">
                                     <MobileComposerActions channelID={channelID} />
                                 </div>
@@ -503,13 +519,18 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                                 </div>
 
                             </div>
+                            </>
                         ) : (
                             <>
+                                {recording && <VoiceRecorderBar channelID={channelID} onClose={closeRecorder} />}
+                                {/* Hidden, not unmounted: the draft, reply and staged files survive recording. */}
+                                <div className={cn(recording && "hidden")}>
                                 <div className={EDITOR_MIN_H}>
                                     <EditorContent editor={editor} />
                                 </div>
                                 <div className="flex items-center gap-1 px-1 pb-1">
                                     <AddFileButton channelID={channelID} onAfterAttach={() => editor?.commands.focus()} />
+                                    {canRecordVoice() && <VoiceNoteButton channelID={channelID} />}
                                     <Tooltip>
                                         <TooltipTrigger asChild>
                                             <Button
@@ -548,6 +569,7 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                                         loading={!!pendingSend}
                                         disabled={nothingToSend}
                                     />
+                                </div>
                                 </div>
                             </>
                         )}

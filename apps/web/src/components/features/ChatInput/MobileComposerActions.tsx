@@ -1,5 +1,5 @@
 import { useRef, useState } from "react"
-import { Plus, Camera, Images, FileBox, type LucideIcon, FilesIcon, ChartBar, Video } from "lucide-react"
+import { Plus, Camera, Images, FileBox, type LucideIcon, FilesIcon, ChartBar, Video, Mic } from "lucide-react"
 import { Button } from "@components/ui/button"
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle, DrawerTrigger } from "@components/ui/drawer"
 import { useSetAtom } from "jotai"
@@ -7,6 +7,9 @@ import { preparingFilesAtom, useAttachFile, type PreparingFile } from "./useFile
 import { CreatePollDialog } from "./CreatePollDialog"
 import AttachFrappeDocumentDialog from "./AttachFrappeDocumentDialog"
 import { isAndroid } from "@utils/platform"
+import { voiceRecordingAtom } from "@utils/channelAtoms"
+import { unlockAudioContext } from "@lib/audioContext"
+import { canRecordVoice } from "./recordingFormat"
 import _ from "@lib/translate"
 
 /** Numbers each native pick, so its rows are cleared together. */
@@ -45,6 +48,7 @@ export const MobileComposerActions = ({
     const [pollOpen, setPollOpen] = useState(false)
     const [docOpen, setDocOpen] = useState(false)
     const onAddFile = useAttachFile(channelID)
+    const setRecording = useSetAtom(voiceRecordingAtom(channelID))
     const setPreparing = useSetAtom(preparingFilesAtom(channelID))
     const cameraInputRef = useRef<HTMLInputElement>(null)
     const videoCaptureRef = useRef<HTMLInputElement>(null)
@@ -86,6 +90,16 @@ export const MobileComposerActions = ({
         ...(isAndroid ? [{ icon: Video, label: _("Video"), onSelect: () => videoCaptureRef.current?.click() }] : []),
         { icon: Images, label: _("Photos"), onSelect: () => (iosApp ? pickNative("photos") : galleryInputRef.current?.click()) },
         { icon: FilesIcon, label: _("Files"), onSelect: () => (iosApp ? pickNative("files") : fileInputRef.current?.click()) },
+        ...(canRecordVoice()
+            ? [{
+                icon: Mic,
+                label: _("Voice note"),
+                onSelect: () => {
+                    unlockAudioContext()
+                    setRecording(true)
+                },
+            }]
+            : []),
         { icon: ChartBar, label: _("Poll"), onSelect: () => setPollOpen(true) },
         { icon: FileBox, label: _("Document"), onSelect: () => setDocOpen(true) },
     ]
