@@ -1,4 +1,4 @@
-export type Message = FileMessage | TextMessage | ImageMessage | PollMessage | SystemMessage
+export type Message = FileMessage | TextMessage | ImageMessage | PollMessage | SystemMessage | VoiceMessage
 
 export interface BaseMessage {
     name: string,
@@ -7,7 +7,7 @@ export interface BaseMessage {
     channel_id: string,
     creation: string,
     modified: string,
-    message_type: 'Text' | 'File' | 'Image' | 'Poll' | 'System',
+    message_type: 'Text' | 'File' | 'Image' | 'Poll' | 'System' | 'Voice',
     message_reactions?: string | null,
     is_continuation: 1 | 0
     /** Stable React key for the stream row (stream selector decoration). A
@@ -33,7 +33,8 @@ export interface BaseMessage {
     might_contain_link_preview?: boolean,
     content?: string,
     isOpenInThread?: boolean,
-    /** Optional JSON payload (e.g. converted_to_channel_*, forwarded_thread). Backend shape TBD. */
+    /** Type-specific payload: a Voice message's `{ duration, waveform }` (read with parseVoiceJson),
+     *  or system payloads (converted_to_channel_*, forwarded_thread). String when fetched, object when live. */
     json?: string | Record<string, unknown>,
     /** Shared id stamped on messages sent together as one batch (e.g. multiple files). Consecutive messages with the same id render as one block. */
     message_batch_id?: string | null,
@@ -47,10 +48,14 @@ export interface FileMessage extends BaseMessage {
     message_type: 'File'
     /** Size of the attached file in bytes (denormalized onto the message at send). */
     file_size?: number,
-    /** Voice note length in seconds (set only on recorded voice notes). */
-    audio_duration?: number,
-    /** Voice note waveform: comma-separated bar heights 0-100. */
-    audio_waveform?: string,
+}
+
+/** A recorded voice note: audio in `file`, `{ duration, waveform }` in `json` (see parseVoiceJson). */
+export interface VoiceMessage extends BaseMessage {
+    text: string,
+    file: string,
+    message_type: 'Voice'
+    file_size?: number,
 }
 
 export interface ImageMessage extends BaseMessage {

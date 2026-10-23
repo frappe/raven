@@ -35,6 +35,7 @@ import { TypingIndicator } from "./TypingIndicator"
 import { useIsMobile } from "@hooks/use-mobile"
 import { useIsKeyboardOpen } from "@hooks/useIsKeyboardOpen"
 import { enqueueSend } from "@stores/messages/messageSender"
+import { buildReplySnapshot } from "@utils/replySnapshot"
 import { editingMessageAtom, linkedDocumentAtom, replyToMessageAtom, voiceRecordingAtom } from "@utils/channelAtoms"
 import { getLastEditableMessage } from "@components/features/message/actions/editTarget"
 import { useChannelById } from "@stores/channels/useChannelList"
@@ -236,24 +237,13 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
         // ClipboardEvent; autolink waits for a delimiter that send never types).
         if (!isEmpty) linkifyBeforeSend(editor)
         const content = isEmpty ? "" : editor.getHTML()
-        const outgoingFiles = files.map((f) => ({ file_url: f.fileURL, file_size: f.size, width: f.width, height: f.height, duration: f.duration, waveform: f.waveform }))
+        const outgoingFiles = files.map((f) => ({ file_url: f.fileURL, file_size: f.size, width: f.width, height: f.height }))
         const batchId = randomUUID()
 
         // Reply context: send the linked message id + a snapshot of it so the reply
         // preview renders immediately (the snapshot matches ReplyMessage's expected shape).
         const linkedMessage = replyTo?.name
-        const repliedMessageDetails = replyTo
-            ? JSON.stringify({
-                // No `text` (HTML): the server's snapshot doesn't store it and the
-                // preview renders `content`, so this stays byte-compatible with what
-                // the server sends back when the send is confirmed.
-                content: replyTo.content ?? "",
-                file: (replyTo as typeof replyTo & { file?: string }).file ?? "",
-                message_type: replyTo.message_type,
-                owner: replyTo.owner,
-                creation: replyTo.creation,
-            })
-            : undefined
+        const repliedMessageDetails = buildReplySnapshot(replyTo)
 
         // Shows the message on screen, saves it to the outbox, then sends it.
         enqueueSend(call, { channelID, batchId, owner: currentUser, content, files: outgoingFiles, linkedMessage, repliedMessageDetails, sendSilently: opts?.sendSilently, linkedDocument: linkedDocument ?? undefined })
