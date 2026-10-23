@@ -1,4 +1,5 @@
 [pre_model_sync]
+raven.patches.v3_0.clean_duplicate_workspace_members
 
 [post_model_sync]
 raven.patches.v1_2.create_raven_users
@@ -26,3 +27,4 @@ raven.patches.v3_0.add_native_oauth_redirect #2026-10-17 create the client where
 raven.patches.v3_0.mark_existing_users_onboarded
 raven.patches.v3_0.mark_existing_sites_set_up
 raven.patches.v3_0.create_role_profiles
+raven.patches.v3_0.add_unique_constraint_on_workspace_members
