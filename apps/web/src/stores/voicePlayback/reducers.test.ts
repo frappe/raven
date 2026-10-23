@@ -51,13 +51,6 @@ describe("voice playback reducers", () => {
         expect(nextSpeed(2)).toBe(1)
     })
 
-    it("shows the speed pill once started or when speed is not 1", () => {
-        expect(selectNote(initialPlayback(), "a").showSpeed).toBe(false)
-        expect(selectNote(play(initialPlayback(), "a", 0), "a").showSpeed).toBe(true)
-        expect(selectNote(seek(initialPlayback(), "a", 2), "a").showSpeed).toBe(true)
-        expect(selectNote(setSpeed(initialPlayback(), 2), "a").showSpeed).toBe(true)
-    })
-
     it("setSpeed to the same value is a no-op", () => {
         const state = initialPlayback(1.5)
         expect(setSpeed(state, 1.5)).toBe(state)

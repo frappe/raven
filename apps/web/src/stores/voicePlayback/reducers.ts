@@ -10,7 +10,7 @@ export type PlaybackState = {
     speed: Speed
 }
 
-export type NotePlayback = { playing: boolean; position: number; error: boolean; speed: Speed; showSpeed: boolean }
+export type NotePlayback = { playing: boolean; position: number; error: boolean; speed: Speed }
 
 export const initialPlayback = (speed: Speed = 1): PlaybackState => ({
     activeId: null,
@@ -28,9 +28,9 @@ const withPosition = (positions: ReadonlyMap<string, number>, id: string, second
     return next
 }
 
-/** Start or resume `id`; saves where the previously active note stopped. */
+/** Start or resume `id`; saves where a still-playing previous note stopped (pause/end already did otherwise). */
 export const play = (state: PlaybackState, id: string, previousPosition: number): PlaybackState => {
-    const switching = state.activeId !== null && state.activeId !== id
+    const switching = state.playing && state.activeId !== null && state.activeId !== id
     const errors = state.errors.has(id) ? new Set([...state.errors].filter((e) => e !== id)) : state.errors
     return {
         ...state,
@@ -85,6 +85,5 @@ export const selectNote = (state: PlaybackState, id: string): NotePlayback => {
         position,
         error: state.errors.has(id),
         speed: state.speed,
-        showSpeed: playing || position > 0 || state.speed !== 1,
     }
 }

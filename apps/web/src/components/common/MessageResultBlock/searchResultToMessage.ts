@@ -1,5 +1,6 @@
 import { Message, BaseMessage } from "@raven/types/common/Message"
 import { SearchResult } from "@hooks/useSqliteSearch"
+import _ from "@lib/translate"
 
 /**
  * Map a sqlite-search row to a Message so MessageContent + MessageResultBlock
@@ -41,6 +42,10 @@ export function searchResultToMessage(r: SearchResult): Message {
             text: r.content,
             file: r.internal_link ?? '',
         }
+    }
+    // The search index has neither the audio nor its payload; a label beats a blank row.
+    if (messageType === 'Voice') {
+        return { ...base, message_type: 'Text', text: `<p>🎤 ${_("Voice note")}</p>` }
     }
     if (messageType === 'Poll') {
         return {

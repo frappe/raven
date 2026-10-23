@@ -7,6 +7,7 @@ import { formatTime } from "@components/features/message/renderers/AudioPlayer"
 import { useIsMobile } from "@hooks/use-mobile"
 import _ from "@lib/translate"
 import type { OutgoingFile } from "@stores/messages/messageSender"
+import { voicePlaybackStore } from "@stores/voicePlayback/store"
 import { useVoiceDraft } from "./useVoiceDraft"
 import { VoiceReviewRow } from "./VoiceReviewRow"
 import { useVoiceRecorder, type RecordingEnd } from "./useVoiceRecorder"
@@ -36,6 +37,8 @@ export const VoiceComposer = ({ onSend, onClose }: { onSend: (file: OutgoingFile
     elapsedRef.current = elapsed
 
     useEffect(() => {
+        // The mic would record a voice note that's playing.
+        voicePlaybackStore.pause()
         start().then((error) => {
             if (!error) return
             if (error === "blocked") toast.error(_("Microphone access is blocked. Allow it in your browser or device settings."))
