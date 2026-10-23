@@ -8,12 +8,14 @@ on:
       - packages/**
       - package.json
       - yarn.lock
+      - .github/workflows/web.yml
   pull_request:
     paths:
       - apps/web/**
       - packages/**
       - package.json
       - yarn.lock
+      - .github/workflows/web.yml
 
 jobs:
   tests:

@@ -112,7 +112,12 @@ class IntegrationTestRavenDocumentNotification(IntegrationTestCase):
 		notification.insert()
 
 		# The log call is asserted rather than the row: newer Frappe queues Error Log writes.
+		# The mock still does what the real insert would: run the Error Log's own hook, so the
+		# recursion guard is what keeps the enqueue quiet.
 		with patch("frappe.enqueue") as enqueue, patch("frappe.log_error") as log_error:
+			log_error.side_effect = lambda *args, **kwargs: run_document_notification(
+				frappe.new_doc("Error Log"), "after_insert"
+			)
 			send_raven_notifications(frappe.new_doc("ToDo"), [notification], "ToDo", "x")
 
 		enqueue.assert_not_called()
