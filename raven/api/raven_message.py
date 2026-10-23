@@ -108,6 +108,27 @@ def _sane_waveform(value) -> list[int] | None:
 	return bars
 
 
+def attach_voice_payloads(rows: list[dict], id_field: str = "name") -> list[dict]:
+	"""
+	Add `json` to the Voice rows of a list query that doesn't select it. One extra
+	query, only for voice notes: a text message's `json` is its whole editor document.
+	"""
+	voice_ids = [row[id_field] for row in rows if row.get("message_type") == "Voice"]
+	if not voice_ids:
+		return rows
+	# The caller has already authorized these rows. Raven Message's list permission is
+	# owner-only, so a permission-checked query would drop other people's notes.
+	payloads = dict(
+		frappe.get_all(
+			"Raven Message", filters={"name": ["in", voice_ids]}, fields=["name", "json"], as_list=True
+		)
+	)
+	for row in rows:
+		if row.get("message_type") == "Voice":
+			row["json"] = payloads.get(row[id_field])
+	return rows
+
+
 def _file_message_type(file_url: str) -> str:
 	return "Image" if _file_extension(file_url) in IMAGE_EXTENSIONS else "File"
 
@@ -474,34 +495,36 @@ def get_pinned_messages(channel_id: str):
 	pinnedMessagesString = frappe.db.get_value("Raven Channel", channel_id, "pinned_messages_string")
 	pinnedMessages = pinnedMessagesString.split("\n") if pinnedMessagesString else []
 
-	return frappe.db.get_all(
-		"Raven Message",
-		filters={"name": ["in", pinnedMessages]},
-		fields=[
-			"name",
-			"owner",
-			"creation",
-			"bot",
-			"text",
-			"file",
-			"message_type",
-			"message_reactions",
-			"_liked_by",
-			"channel_id",
-			"thumbnail_width",
-			"thumbnail_height",
-			"file_thumbnail",
-			"link_doctype",
-			"link_document",
-			"replied_message_details",
-			"hide_link_preview",
-			"is_bot_message",
-			"content",
-			"is_edited",
-			"is_thread",
-			"is_forwarded",
-		],
-		order_by="creation desc",
+	return attach_voice_payloads(
+		frappe.db.get_all(
+			"Raven Message",
+			filters={"name": ["in", pinnedMessages]},
+			fields=[
+				"name",
+				"owner",
+				"creation",
+				"bot",
+				"text",
+				"file",
+				"message_type",
+				"message_reactions",
+				"_liked_by",
+				"channel_id",
+				"thumbnail_width",
+				"thumbnail_height",
+				"file_thumbnail",
+				"link_doctype",
+				"link_document",
+				"replied_message_details",
+				"hide_link_preview",
+				"is_bot_message",
+				"content",
+				"is_edited",
+				"is_thread",
+				"is_forwarded",
+			],
+			order_by="creation desc",
+		)
 	)
 
 
@@ -583,7 +606,7 @@ def get_saved_messages(
 	else:
 		query = query.orderby(raven_message.creation, order=Order.asc)
 
-	return query.run(as_dict=True)
+	return attach_voice_payloads(query.run(as_dict=True))
 
 
 @frappe.whitelist()

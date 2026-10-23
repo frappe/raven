@@ -182,3 +182,38 @@ class TestVoiceNoteSend(IntegrationTestCase):
 		self.assertEqual(copy.message_type, "Voice")
 		self.assertEqual(frappe.parse_json(copy.json), {"duration": 7.25, "waveform": [0, 50, 100]})
 		self.assertEqual(copy.file, self.audio_url)
+
+	def test_attach_voice_payloads_fills_only_voice_rows(self):
+		from raven.api.raven_message import attach_voice_payloads
+
+		voice = self._send(self.audio_url, {"duration": 7.25, "waveform": [1, 2]})
+		text = send_message_with_attachments(channel_id=self.channel.name, content="<p>hi</p>")[0]
+		rows = frappe.get_all(
+			"Raven Message",
+			filters={"name": ["in", [voice.name, text.name]]},
+			fields=["name", "message_type"],
+		)
+		by_name = {row.name: row for row in attach_voice_payloads(rows)}
+		self.assertEqual(
+			frappe.parse_json(by_name[voice.name].json), {"duration": 7.25, "waveform": [1, 2]}
+		)
+		self.assertNotIn("json", by_name[text.name])
+
+	def test_saved_messages_carry_the_voice_payload(self):
+		from frappe.desk.like import _toggle_like
+
+		from raven.api.raven_message import get_saved_messages
+
+		voice = self._send(self.audio_url, {"duration": 7.25, "waveform": [1, 2]})
+		_toggle_like("Raven Message", voice.name, "Yes", user="test1@example.com")
+		saved = next(row for row in get_saved_messages() if row.name == voice.name)
+		self.assertEqual(frappe.parse_json(saved.json), {"duration": 7.25, "waveform": [1, 2]})
+
+	def test_attach_voice_payloads_reads_other_users_notes(self):
+		from raven.api.raven_message import attach_voice_payloads
+
+		voice = self._send(self.audio_url, {"duration": 7.25, "waveform": [1, 2]})
+		# Another member reads it: message list permissions are owner-only, so the helper must not apply them.
+		frappe.set_user("test@example.com")
+		rows = attach_voice_payloads([frappe._dict(name=voice.name, message_type="Voice")])
+		self.assertEqual(frappe.parse_json(rows[0].json), {"duration": 7.25, "waveform": [1, 2]})

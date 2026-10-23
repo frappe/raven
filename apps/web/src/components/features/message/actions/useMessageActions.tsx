@@ -239,7 +239,8 @@ export const useMessageActions = (
         // the search or notification pane can still forward it.
         // Polls can't be copied without either sharing or orphaning their poll doc; a
         // System notice (joins/leaves) means nothing anywhere else.
-        if (message.message_type !== "Poll" && message.message_type !== "System" && onServer) {
+        // Voice notes have no text to copy.
+        if (message.message_type !== "Poll" && message.message_type !== "System" && message.message_type !== "Voice" && onServer) {
             clipboard.push({
                 id: "forward",
                 label: _("Forward"),

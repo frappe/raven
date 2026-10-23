@@ -1,6 +1,7 @@
 import { OfflineState } from "@components/common/OfflineState"
 import { useOnlineStatus } from "@stores/connectionState"
 import { memo, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { voicePlaybackStore } from "@stores/voicePlayback/store"
 import { FrappeConfig, FrappeContext } from "frappe-react-sdk"
 import { useHotkeys } from "react-hotkeys-hook"
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso"
@@ -162,6 +163,8 @@ export default function ThreadsList({
     onThreadClick,
     activeThreadID,
 }: ThreadsListProps) {
+    // Leaving the list stops its voice notes; they start over next time.
+    useEffect(() => () => voicePlaybackStore.stopAll(), [])
     const online = useOnlineStatus()
     const { rows, leavingIds, isLoading, error, hasMore, loadMore, refresh } = useThreadList(threadType, {
         channel: channelFilter,
