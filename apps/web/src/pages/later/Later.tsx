@@ -20,7 +20,7 @@ import _ from "@lib/translate"
 
 type LaterTab = 'in-progress' | 'saved' | 'completed'
 
-const TABS: { key: LaterTab; label: string }[] = [
+const tabs = (): { key: LaterTab; label: string }[] => [
     { key: 'in-progress', label: _('In Progress') },
     { key: 'saved', label: _('Saved') },
     { key: 'completed', label: _('Completed') },
@@ -120,7 +120,7 @@ const Later = () => {
                                 className="min-w-0 shrink-0"
                             >
                                 <TabsList variant="subtle" size="md">
-                                    {TABS.map(t => (
+                                    {tabs().map(t => (
                                         <TabsTrigger key={t.key} value={t.key}>
                                             {t.label}
                                         </TabsTrigger>

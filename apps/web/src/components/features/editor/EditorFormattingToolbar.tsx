@@ -53,7 +53,7 @@ interface FormatButton {
 }
 
 // Grouped so the toolbar reads as: marks (incl. code + code block) | lists & quote | link.
-const GROUPS: FormatButton[][] = [
+const groups = (): FormatButton[][] => [
     [
         { mark: "bold", icon: Bold, label: _("Bold"), shortcut: combo(MOD, "B"), run: (e) => e.chain().focus().toggleBold().run() },
         { mark: "italic", icon: Italic, label: _("Italic"), shortcut: combo(MOD, "I"), run: (e) => e.chain().focus().toggleItalic().run() },
@@ -115,7 +115,7 @@ export const EditorFormattingToolbar = ({ editor, linkSignal = 0, onLinkConsumed
 
     return (
         <div className="flex items-center gap-0.5 overflow-x-auto bg-surface-gray-1 px-1.5 py-1">
-            {GROUPS.map((group, i) => (
+            {groups().map((group, i) => (
                 <Fragment key={i}>
                     {i > 0 && <Separator orientation="vertical" className="mx-1 h-4!" />}
                     {group.map(({ mark, icon: Icon, label, shortcut, run }) => (

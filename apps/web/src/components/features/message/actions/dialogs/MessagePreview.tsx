@@ -17,13 +17,13 @@ const KIND_ICON: Record<Exclude<AttachmentKind, "image">, LucideIcon> = {
     file: File,
 }
 
-const KIND_LABEL: Record<AttachmentKind, string> = {
+const kindLabel = (kind: AttachmentKind): string => ({
     image: _("Image"),
     video: _("Video"),
     audio: _("Audio"),
     pdf: _("PDF"),
     file: _("File"),
-}
+})[kind]
 
 /** Plain text for previews — backend `content` joins blocks with spaces, so derive from HTML when present. */
 const getMessagePreviewText = (message: Message): string => {
@@ -61,7 +61,7 @@ export const MessagePreview = ({ message }: { message: Message }) => {
         const kind = getAttachmentKind(file)
         const name = getFileName(file)
         const size = media.file_size ? formatBytes(media.file_size) : null
-        const meta = [KIND_LABEL[kind], size].filter(Boolean).join(" · ")
+        const meta = [kindLabel(kind), size].filter(Boolean).join(" · ")
         const Icon = kind === "image" ? null : KIND_ICON[kind]
         return (
             <>

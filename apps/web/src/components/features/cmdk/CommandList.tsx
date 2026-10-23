@@ -5,7 +5,7 @@ import { useTheme } from '@components/theme-provider'
 import { useMemo } from 'react'
 import _ from '@lib/translate'
 import { Moon, Sun } from 'lucide-react'
-import { AVAILABILITY_OPTIONS, useSetAvailability } from '@hooks/useSetAvailability'
+import { availabilityOptions, useSetAvailability } from '@hooks/useSetAvailability'
 import { getStatusIndicatorColor } from '@components/features/message/UserAvatar'
 import { cn } from '@lib/utils'
 
@@ -29,7 +29,7 @@ const QuickActions = ({ text }: { text: string }) => {
         // The same quick availability switch as the avatar menu and the
         // footer's long-press drawer — one entry per status, so "away" or
         // "dnd" lands directly on the right one.
-        ...AVAILABILITY_OPTIONS.map((option) => ({
+        ...availabilityOptions().map((option) => ({
             value: `set-status-${option.value}`,
             label: _('Set status to {0}', [option.label]),
             icon: <div className='size-4 flex items-center justify-center'><span className={cn('size-2 rounded-full', getStatusIndicatorColor(option.value))} /></div>,

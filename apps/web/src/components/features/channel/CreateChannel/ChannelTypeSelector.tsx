@@ -15,7 +15,7 @@ interface ChannelTypeSelectorProps {
     onChange: (value: RavenChannel['type']) => void
 }
 
-const CHANNEL_TYPES: { value: RavenChannel['type']; label: string; description: string }[] = [
+const channelTypes = (): { value: RavenChannel['type']; label: string; description: string }[] => [
     { value: 'Public', label: _('Public'), description: _('Anyone can view but is not a member by default') },
     { value: 'Private', label: _('Private'), description: _('Join by invitation only') },
     { value: 'Open', label: _('Open'), description: _('Everyone is a member') },
@@ -37,7 +37,7 @@ export const ChannelTypeSelector = ({ value, onChange }: ChannelTypeSelectorProp
                     className="flex flex-col gap-2"
                     aria-label={_('Select channel type')}
                 >
-                    {CHANNEL_TYPES.map((type) => (
+                    {channelTypes().map((type) => (
                         <FormItem key={type.value} className="flex">
                             <FormControl>
                                 <RadioGroupItem value={type.value} className="peer sr-only" />

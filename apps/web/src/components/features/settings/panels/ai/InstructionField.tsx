@@ -31,7 +31,7 @@ interface InstructionFieldForm {
     dynamic_instructions: 0 | 1
 }
 
-const variables = [
+const variables = () => [
     { variable: "first_name", description: _("The first name of the user") },
     { variable: "full_name", description: _("The full name of the user") },
     { variable: "email", description: _("The email of the user") },
@@ -89,7 +89,7 @@ const DynamicInstructionField = ({ allowUsingTemplate, instructionRequired, auto
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {variables.map((v) => <VariableRow key={v.variable} variable={v.variable} description={v.description} />)}
+                    {variables().map((v) => <VariableRow key={v.variable} variable={v.variable} description={v.description} />)}
                 </TableBody>
             </Table>
         </div>

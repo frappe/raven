@@ -43,7 +43,7 @@ const InstructionsPanel = lazy(() => import('./panels/Instructions/Instructions'
 const DocumentProcessorsPanel = lazy(() => import('./panels/DocumentProcessors/DocumentProcessors').then((m) => ({ default: m.DocumentProcessors })));
 const KeyboardShortcutsPanel = lazy(() => import('./panels/KeyboardShortcuts').then((m) => ({ default: m.KeyboardShortcuts })));
 
-const SETTINGS_TAB_GROUPS: { id: string, label: string }[] = [
+const settingsTabGroups = (): { id: string, label: string }[] => [
     { id: "settings", label: _("Settings") },
     { id: "workspace", label: _("Workspace") },
     { id: "integrations", label: _("Integrations") },
@@ -58,9 +58,9 @@ const HR_ICON = <svg width="61" height="61" viewBox="0 0 61 61" fill="none" xmln
 </svg>
 
 
-const SETTINGS_TABS: {
+const settingsTabs = (): {
     id: string
-    group: (typeof SETTINGS_TAB_GROUPS)[number]["id"]
+    group: ReturnType<typeof settingsTabGroups>[number]["id"]
     label: string
     icon: React.ElementType
     /** The panel, as a LAZY component type (see the lazy() block above) —
@@ -73,7 +73,7 @@ const SETTINGS_TABS: {
     panelTitle?: string
     /** Panel header description (also shown by the loading fallback for built panels). */
     description?: string
-}[] = [
+}[] => [
         // Core settings
         {
             id: "profile",
@@ -265,7 +265,7 @@ const SETTINGS_TABS: {
         }
     ]
 
-export type SettingsTabId = (typeof SETTINGS_TABS)[number]["id"]
+export type SettingsTabId = ReturnType<typeof settingsTabs>[number]["id"]
 
 const RavenSettingsDialog = () => {
 
@@ -287,11 +287,11 @@ const RavenSettingsDialog = () => {
             <SettingsDialog
                 onClose={() => setOpenTab("")}
                 defaultValue={"profile"} value={openTab}
-                onValueChange={(value) => setOpenTab(value as (typeof SETTINGS_TABS)[number]["id"])}>
+                onValueChange={(value) => setOpenTab(value as SettingsTabId)}>
                 <SettingsTabs>
-                    {SETTINGS_TAB_GROUPS.map((group) => (
+                    {settingsTabGroups().map((group) => (
                         <SettingsTabGroup key={group.id} header={group.label}>
-                            {SETTINGS_TABS.filter((tab) => tab.group === group.id).map((tab) => {
+                            {settingsTabs().filter((tab) => tab.group === group.id).map((tab) => {
 
                                 if (tab.id === "profile") {
                                     return <SettingsTabItem key={tab.id} value={tab.id}
@@ -318,7 +318,7 @@ const RavenSettingsDialog = () => {
                     ))}
                 </SettingsTabs>
                 <SettingsPanels>
-                    {SETTINGS_TABS.map((tab) => (
+                    {settingsTabs().map((tab) => (
                         <SettingsPanel key={tab.id} value={tab.id}>
                             <Suspense fallback={<PanelLoading title={tab.panelTitle ?? tab.label} description={tab.description} />}>
                                 {/* Every tab has a panel component now (built-out ones and

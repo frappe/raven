@@ -59,7 +59,7 @@ export const Users = () => {
     }, [enableUser])
 
     const columns = useMemo<ColumnDef<UserData>[]>(() => {
-        if (!canManageAccess) return userColumns
+        if (!canManageAccess) return userColumns()
         const actions: RowActions = {
             onManageAccess: openAccess,
             // You can't disable yourself: that would log you out mid-click.
@@ -67,7 +67,7 @@ export const Users = () => {
             onDisable: canEditAccounts ? openDisable : undefined,
             currentUser,
         }
-        return [...userColumns, actionsColumn(actions)]
+        return [...userColumns(), actionsColumn(actions)]
     }, [canManageAccess, canEditAccounts, openAccess, enable, openDisable, currentUser])
     const [search, setSearch] = useState("")
     // Filtering is in memory. Deferring keeps typing smooth on big user lists.
@@ -139,7 +139,7 @@ export const Users = () => {
     )
 }
 
-const userColumns: ColumnDef<UserData>[] = [
+const userColumns = (): ColumnDef<UserData>[] => [
     {
         id: "full_name",
         accessorKey: "full_name",
