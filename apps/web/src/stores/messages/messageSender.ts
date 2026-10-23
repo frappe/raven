@@ -157,6 +157,7 @@ export const enqueueSend = (
 
     // Sending means you're caught up — clear the unread badge instantly (the read tracker
     // still posts track_visit to the server when the message scrolls into view).
+    channelUnreadStore.releaseRead(channelID)
     channelUnreadStore.markRead(channelID, creation, true)
 
     putOutbox({
