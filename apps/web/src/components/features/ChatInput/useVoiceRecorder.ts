@@ -114,9 +114,12 @@ export const useVoiceRecorder = (onFinish: (file: File | null, reason: Recording
         generationRef.current++
         unclaim()
         const length = Date.now() - session.startedAt
+        // A cancel or unmount while the recorder flushes bumps this: the clip was thrown away.
+        const generation = generationRef.current
         const done = () => {
             release(session)
             setStatus("idle")
+            if (generation !== generationRef.current) return
             const type = session.recorder.mimeType || session.format.mimeType
             const blob = new Blob(session.chunks, { type })
             // Too short to be intended, or the recorder failed before capturing anything.

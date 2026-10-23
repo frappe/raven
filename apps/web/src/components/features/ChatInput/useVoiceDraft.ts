@@ -24,7 +24,8 @@ export type VoiceDraft = {
 const toOutgoing = (draft: VoiceDraft, uploaded: Uploaded): OutgoingFile => ({
     file_url: uploaded.fileURL,
     file_size: uploaded.fileSize,
-    ...(draft.voice ? { voice: draft.voice } : {}),
+    // Undecodable here is still a voice note: the recorder's length and a flat waveform.
+    voice: draft.voice ?? { duration: draft.seconds, waveform: [] },
 })
 
 /**

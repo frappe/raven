@@ -63,6 +63,8 @@ interface ChatInputProps {
     parentChannelID?: string | null,
     /** Thread composers can't schedule — v1 scope: the scheduled-messages dialog has no thread context to display. */
     disableSchedule?: boolean,
+    /** Mounted but hidden under another layer (the mobile thread): a recording there is discarded. */
+    covered?: boolean,
 }
 
 /**
@@ -82,7 +84,7 @@ interface ChatInputProps {
 // Inert composer parts while recording: they read as disabled.
 const RECORDING_DISABLED = "[&_*]:text-ink-gray-4 [&_button]:bg-transparent!"
 
-const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDirectMessage, parentChannelID, disableSchedule }, ref) => {
+const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDirectMessage, parentChannelID, disableSchedule, covered = false }, ref) => {
     const { call } = useContext(FrappeContext) as FrappeConfig
     const [files, setFiles] = useAtom(uploadedFilesAtom(channelID))
     const [pendingSend, setPendingSend] = useAtom(pendingSendAtom(channelID))
@@ -299,7 +301,7 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
     // one dispatch gate, so Enter, the button, and held sends all agree.
     const quietSendMode = useQuietSendMode()
 
-    const voice = useVoiceRecording({ channelID, editor, quietSendMode, stopTyping })
+    const voice = useVoiceRecording({ channelID, editor, quietSendMode, stopTyping, covered })
     const { recording } = voice
 
     const handleSend = useCallback((opts?: { sendSilently?: boolean }) => {

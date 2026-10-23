@@ -15,17 +15,21 @@ import { buildReplySnapshot } from "@utils/replySnapshot"
 import type { VoiceComposerHandle, VoiceSendOptions } from "./VoiceComposer"
 
 /** The composer's side of a voice note: opening the recorder (tap or hold), closing it, sending the note. */
-export const useVoiceRecording = ({ channelID, editor, quietSendMode, stopTyping }: {
+export const useVoiceRecording = ({ channelID, editor, quietSendMode, stopTyping, covered }: {
     channelID: string
     editor: Editor | null
     quietSendMode: QuietSendMode
     stopTyping: () => void
+    /** The composer is hidden under another layer: its Stop is out of reach. */
+    covered: boolean
 }) => {
     const { call } = useContext(FrappeContext) as FrappeConfig
     const { name: currentUser } = useUserCookieData()
     const [replyTo, setReplyTo] = useAtom(replyToMessageAtom(channelID))
     const isMobile = useIsMobile()
     const [recording, setRecording] = useState(false)
+    // Covered mid-recording: unmounting the recorder discards the take and releases the mic.
+    if (covered && recording) setRecording(false)
     const composerRef = useRef<VoiceComposerHandle>(null)
     // Desktop: where the recorder renders the composer's Send button while it's up.
     const [sendSlot, setSendSlot] = useState<HTMLElement | null>(null)
