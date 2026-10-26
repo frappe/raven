@@ -7,8 +7,9 @@ export type LocationMeta = {
 }
 
 export const MAP_TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-export const MAP_ATTRIBUTION = "© OpenStreetMap contributors"
-export const THUMBNAIL_ZOOM = 16
+// Constant, never user input, so Leaflet's HTML rendering is safe.
+export const MAP_ATTRIBUTION_HTML =
+    '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>'
 
 export type MapTile = { url: string; left: number; top: number; size: number }
 

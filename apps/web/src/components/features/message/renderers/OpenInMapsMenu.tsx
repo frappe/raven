@@ -1,4 +1,5 @@
 import type { ReactElement } from "react"
+import { SheetRow } from "@components/features/schedule-send/ScheduleSendSheet"
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from "@components/ui/drawer"
 import {
     DropdownMenu,
@@ -8,9 +9,6 @@ import {
 } from "@components/ui/dropdown-menu"
 import _ from "@lib/translate"
 import { openExternal, type MapsOption } from "../../../../native/openMaps"
-
-const sheetRowClass =
-    "flex min-h-11 w-full items-center rounded-lg px-3 text-left text-base text-ink-gray-8 active:bg-surface-gray-2 md:text-sm"
 
 const choose = (option: MapsOption, close: () => void) => {
     close()
@@ -39,7 +37,6 @@ export const OpenInMapsMenu = ({
                 {options.map((option) => (
                     <DropdownMenuItem
                         key={option.id}
-                        className="min-h-11 text-base md:min-h-0 md:text-sm"
                         onSelect={() => choose(option, () => onOpenChange(false))}
                     >
                         {option.label}
@@ -62,11 +59,11 @@ export const MapsSheet = ({
         <DrawerContent onOpenAutoFocus={(event) => event.preventDefault()}>
             <DrawerTitle className="sr-only">{_("Open location in maps")}</DrawerTitle>
             <DrawerDescription className="sr-only">{_("Choose a maps app")}</DrawerDescription>
-            <div className="flex flex-col gap-1 p-2 pb-4">
+            <div className="flex flex-col gap-1 p-3 pb-6">
                 {options.map((option) => (
-                    <button key={option.id} type="button" className={sheetRowClass} onClick={() => choose(option, onClose)}>
+                    <SheetRow key={option.id} onClick={() => choose(option, onClose)}>
                         {option.label}
-                    </button>
+                    </SheetRow>
                 ))}
             </div>
         </DrawerContent>

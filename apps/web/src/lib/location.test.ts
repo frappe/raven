@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {
-    MAP_ATTRIBUTION,
+    MAP_ATTRIBUTION_HTML,
     MAP_TILE_URL,
     appleMapsAppUrl,
     appleMapsUrl,
@@ -58,7 +58,10 @@ describe("tilesFor", () => {
 describe("map constants", () => {
     it("use OpenStreetMap", () => {
         expect(MAP_TILE_URL).toBe("https://tile.openstreetmap.org/{z}/{x}/{y}.png")
-        expect(MAP_ATTRIBUTION).toBe("© OpenStreetMap contributors")
+        expect(MAP_ATTRIBUTION_HTML).toBe(
+            '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>'
+        )
+        expect(MAP_ATTRIBUTION_HTML).toContain("https://www.openstreetmap.org/copyright")
     })
 })
 
