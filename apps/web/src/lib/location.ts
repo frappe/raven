@@ -114,6 +114,9 @@ export const googleMapsAppUrl = (meta: LocationMeta): string =>
 export const wazeAppUrl = (meta: LocationMeta): string =>
     `waze://?ll=${coordinates(meta)}&navigate=no`
 
+export const wazeWebUrl = (meta: LocationMeta): string =>
+    `https://www.waze.com/ul?ll=${coordinates(meta)}`
+
 export const geoUri = (meta: LocationMeta): string =>
     `geo:${coordinates(meta)}?q=${coordinates(meta)}(Location)`
 

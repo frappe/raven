@@ -11,6 +11,7 @@ import {
     parseLocationJson,
     tilesFor,
     wazeAppUrl,
+    wazeWebUrl,
     type LocationMeta,
 } from "./location"
 
@@ -71,6 +72,7 @@ describe("map URLs", () => {
         expect(geoUri(meta)).toBe("geo:12.97561,77.60659?q=12.97561,77.60659(Location)")
         expect(googleMapsAppUrl(meta)).toBe("comgooglemaps://?q=12.97561,77.60659&center=12.97561,77.60659")
         expect(wazeAppUrl(meta)).toBe("waze://?ll=12.97561,77.60659&navigate=no")
+        expect(wazeWebUrl(meta)).toBe("https://www.waze.com/ul?ll=12.97561,77.60659")
         expect(appleMapsAppUrl(meta)).toBe("maps://?ll=12.97561,77.60659&q=Location")
     })
     it("ignores a name carried in the payload", () => {

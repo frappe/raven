@@ -63,6 +63,9 @@ export interface VoiceMessage extends BaseMessage {
 export interface LocationMessage extends BaseMessage {
     text: string,
     message_type: 'Location'
+    /** Snapshot image attached at send. */
+    file?: string,
+    file_size?: number,
 }
 
 export interface ImageMessage extends BaseMessage {
