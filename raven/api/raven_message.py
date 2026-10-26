@@ -1,4 +1,5 @@
 import math
+import urllib.parse
 
 import frappe
 from frappe import _
@@ -60,6 +61,10 @@ AUDIO_EXTENSIONS = {"mp3", "wav", "ogg", "oga", "m4a", "aac", "flac", "opus", "w
 _MAX_AUDIO_SECONDS = 660
 _MAX_WAVEFORM_BARS = 64
 
+_MAX_LOCATION_NAME = 120
+_MAX_LOCATION_ADDRESS = 300
+_MAX_LOCATION_ACCURACY = 100_000
+
 # Inline-image display caps (mirror the web client's reserved box). The stored
 # aspect ratio is what prevents reflow; the absolute thumbnail size only needs
 # to be reasonable. The client mirrors these values for its optimistic
@@ -108,23 +113,88 @@ def _sane_waveform(value) -> list[int] | None:
 	return bars
 
 
-def attach_voice_payloads(rows: list[dict], id_field: str = "name") -> list[dict]:
+def _sane_number(value) -> float | None:
+	"""A finite number from an untrusted client, or None."""
+	if isinstance(value, bool):
+		return None
+	try:
+		number = float(value)
+	except (TypeError, ValueError):
+		return None
+	return number if math.isfinite(number) else None
+
+
+def _sane_coordinate(value, limit: float) -> float | None:
+	"""A coordinate within ±limit, rounded to ~0.1 m, or None."""
+	number = _sane_number(value)
+	if number is None or not -limit <= number <= limit:
+		return None
+	return round(number, 6)
+
+
+def _sane_location_text(value, limit: int) -> str:
+	"""Plain text from an untrusted client: tags stripped, trimmed, capped."""
+	return frappe.utils.strip_html_tags(str(value or "")).strip()[:limit]
+
+
+def _sane_location(value) -> dict | None:
+	"""A plausible location payload from an untrusted client, or None."""
+	if not isinstance(value, dict):
+		return None
+	latitude = _sane_coordinate(value.get("latitude"), 90)
+	longitude = _sane_coordinate(value.get("longitude"), 180)
+	if latitude is None or longitude is None:
+		return None
+
+	location = {"latitude": latitude, "longitude": longitude}
+	accuracy = _sane_number(value.get("accuracy"))
+	if accuracy is not None and 0 < accuracy <= _MAX_LOCATION_ACCURACY:
+		location["accuracy"] = accuracy
+	name = _sane_location_text(value.get("name"), _MAX_LOCATION_NAME)
+	if name:
+		location["name"] = name
+	address = _sane_location_text(value.get("address"), _MAX_LOCATION_ADDRESS)
+	if address:
+		location["address"] = address
+	return location
+
+
+def _maps_url(location: dict, maps: str | None = None) -> str:
+	"""The maps link for a location, in the sender's app; Google unless Apple is asked for."""
+	latitude = location["latitude"]
+	longitude = location["longitude"]
+	if maps == "apple":
+		label = urllib.parse.quote(location.get("name") or "Location", safe="-_.!~*'()")
+		return f"https://maps.apple.com/?ll={latitude},{longitude}&q={label}"
+	return f"https://www.google.com/maps/search/?api=1&query={latitude},{longitude}"
+
+
+def _location_text(url: str) -> str:
+	"""A plain link for clients that can't draw the location card."""
+	escaped = frappe.utils.escape_html(url)
+	return f'<p><a href="{escaped}">{escaped}</a></p>'
+
+
+_JSON_PAYLOAD_TYPES = ("Voice", "Location")
+
+
+def attach_json_payloads(rows: list[dict], id_field: str = "name") -> list[dict]:
 	"""
-	Add `json` to the Voice rows of a list query that doesn't select it. One extra
-	query, only for voice notes: a text message's `json` is its whole editor document.
+	Add `json` to the Voice and Location rows of a list query that doesn't select it.
+	One extra query, only for those types: a text message's `json` is its whole editor document.
 	"""
-	voice_ids = [row[id_field] for row in rows if row.get("message_type") == "Voice"]
-	if not voice_ids:
+	payload_ids = [row[id_field] for row in rows if row.get("message_type") in _JSON_PAYLOAD_TYPES]
+	if not payload_ids:
 		return rows
 	# The caller has already authorized these rows. Raven Message's list permission is
-	# owner-only, so a permission-checked query would drop other people's notes.
+	# owner-only, so a permission-checked query would drop other people's messages.
 	payloads = dict(
 		frappe.get_all(
-			"Raven Message", filters={"name": ["in", voice_ids]}, fields=["name", "json"], as_list=True
+			"Raven Message", filters={"name": ["in", payload_ids]}, fields=["name", "json"], as_list=True
 		)
 	)
 	for row in rows:
-		if row.get("message_type") == "Voice":
+		if row.get("message_type") in _JSON_PAYLOAD_TYPES:
 			row["json"] = payloads.get(row[id_field])
 	return rows
 
@@ -266,6 +336,7 @@ def send_message_with_attachments(
 	send_silently: bool = False,
 	link_doctype: str | None = None,
 	link_document: str | None = None,
+	location: dict | str | None = None,
 ):
 	"""
 	v3 composer send. Creates one message per (already-uploaded) file first —
@@ -282,6 +353,11 @@ def send_message_with_attachments(
 	client when it recorded the clip; it becomes a `Voice` message with that payload
 	in `json`. Unusable metadata sends the audio as a plain file.
 
+	`location` is one point (`{"latitude", "longitude", "accuracy"?, "name"?,
+	"address"?}`) and must be the whole send: no content, files or linked document.
+	`maps` (`"apple"` or `"google"`) only picks the link stored in `text` for clients
+	that can't draw the card; it is not kept in `json`.
+
 	`send_silently` suppresses notifications for the whole batch (the flag is set on
 	every message before insert).
 
@@ -296,6 +372,8 @@ def send_message_with_attachments(
 	if isinstance(files, str):
 		files = frappe.parse_json(files)
 	files = files or []
+	if isinstance(location, str):
+		location = frappe.parse_json(location)
 
 	content = content or ""
 	has_text = bool(frappe.utils.strip_html_tags(content).strip())
@@ -307,7 +385,13 @@ def send_message_with_attachments(
 
 	has_linked_document = bool(link_doctype and link_document)
 
-	if not has_body and not files and not has_linked_document:
+	if location is not None:
+		if has_body or files or has_linked_document:
+			frappe.throw(_("A location is sent on its own"))
+		sane_location = _sane_location(location)
+		if not sane_location:
+			frappe.throw(_("Invalid location"))
+	elif not has_body and not files and not has_linked_document:
 		frappe.throw(_("Cannot send an empty message"))
 
 	validate_files_uploaded_by_user([f["file_url"] if isinstance(f, dict) else f for f in files])
@@ -322,6 +406,14 @@ def send_message_with_attachments(
 	# then the text. Each file carries its url + size (size is read straight from
 	# the client's upload response, so no per-file File lookup is needed here).
 	specs = []
+	if location is not None:
+		specs.append(
+			{
+				"message_type": "Location",
+				"json": sane_location,
+				"text": _location_text(_maps_url(sane_location, location.get("maps"))),
+			}
+		)
 	for f in files:
 		file_url = f["file_url"] if isinstance(f, dict) else f
 		file_size = f.get("file_size") if isinstance(f, dict) else None
@@ -495,7 +587,7 @@ def get_pinned_messages(channel_id: str):
 	pinnedMessagesString = frappe.db.get_value("Raven Channel", channel_id, "pinned_messages_string")
 	pinnedMessages = pinnedMessagesString.split("\n") if pinnedMessagesString else []
 
-	return attach_voice_payloads(
+	return attach_json_payloads(
 		frappe.db.get_all(
 			"Raven Message",
 			filters={"name": ["in", pinnedMessages]},
@@ -606,7 +698,7 @@ def get_saved_messages(
 	else:
 		query = query.orderby(raven_message.creation, order=Order.asc)
 
-	return attach_voice_payloads(query.run(as_dict=True))
+	return attach_json_payloads(query.run(as_dict=True))
 
 
 @frappe.whitelist()
@@ -1006,8 +1098,9 @@ def _forward_payloads(message_id: str) -> list[dict]:
 		# front. `json` goes with it: it still holds the unquoted body, and the copy
 		# should have one body that carries the quote.
 		if payload.get("is_reply"):
-			# A voice note has no body to carry the quote; its `json` is the payload.
-			if payload.get("message_type") != "Voice":
+			# Voice and Location keep their own body: prepending the quote to a link
+			# would mangle it, and `json` is the content.
+			if payload.get("message_type") not in _JSON_PAYLOAD_TYPES:
 				quote = build_reply_blockquote(
 					payload.get("replied_message_details"), linked_message=member.get("linked_message")
 				)

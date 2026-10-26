@@ -64,7 +64,7 @@ class RavenMessage(Document):
 		mentions: DF.Table[RavenMention]
 		message_batch_id: DF.Data | None
 		message_reactions: DF.JSON | None
-		message_type: DF.Literal["Text", "Image", "File", "Poll", "System", "Voice"]
+		message_type: DF.Literal["Text", "Image", "File", "Poll", "System", "Voice", "Location"]
 		notification: DF.Data | None
 		poll_id: DF.Link | None
 		replied_message_details: DF.JSON | None
@@ -272,6 +272,9 @@ class RavenMessage(Document):
 				_("Direct modification of message_reactions is not allowed. Use the Reactions API.")
 			)
 
+		if not self.is_new() and self.message_type == "Location" and self.has_value_changed("text"):
+			frappe.throw(_("A location can't be edited"))
+
 	def validate_linked_message(self):
 		"""
 		If there is a linked message, the linked message should be in the same channel
@@ -329,9 +332,9 @@ class RavenMessage(Document):
 				"owner": details.owner,
 				"creation": datetime.datetime.strftime(details.creation, "%Y-%m-%d %H:%M:%S"),
 			}
-			# A voice note's preview shows its length. Fetched only then: a text message's
-			# `json` is its whole editor document.
-			if details.message_type == "Voice":
+			# A voice note's preview shows its length; a location's shows its point.
+			# Fetched only then: a text message's `json` is its whole editor document.
+			if details.message_type in ("Voice", "Location"):
 				snapshot["json"] = json_dict(frappe.db.get_value("Raven Message", self.linked_message, "json"))
 			self.replied_message_details = frappe.as_json(snapshot)
 
@@ -723,6 +726,9 @@ class RavenMessage(Document):
 			if isinstance(duration, (int, float)) and duration > 0:
 				return f"🎤 Sent a voice note ({int(duration // 60)}:{int(duration % 60):02d})"
 			return "🎤 Sent a voice note"
+		elif self.message_type == "Location":
+			name = json_dict(self.json).get("name")
+			return f"📍 Shared a location - {name}" if name else "📍 Shared a location"
 		elif self.text:
 			return self.content
 

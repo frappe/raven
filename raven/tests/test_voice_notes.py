@@ -183,8 +183,8 @@ class TestVoiceNoteSend(IntegrationTestCase):
 		self.assertEqual(frappe.parse_json(copy.json), {"duration": 7.25, "waveform": [0, 50, 100]})
 		self.assertEqual(copy.file, self.audio_url)
 
-	def test_attach_voice_payloads_fills_only_voice_rows(self):
-		from raven.api.raven_message import attach_voice_payloads
+	def test_attach_json_payloads_fills_only_voice_rows(self):
+		from raven.api.raven_message import attach_json_payloads
 
 		voice = self._send(self.audio_url, {"duration": 7.25, "waveform": [1, 2]})
 		text = send_message_with_attachments(channel_id=self.channel.name, content="<p>hi</p>")[0]
@@ -193,7 +193,7 @@ class TestVoiceNoteSend(IntegrationTestCase):
 			filters={"name": ["in", [voice.name, text.name]]},
 			fields=["name", "message_type"],
 		)
-		by_name = {row.name: row for row in attach_voice_payloads(rows)}
+		by_name = {row.name: row for row in attach_json_payloads(rows)}
 		self.assertEqual(
 			frappe.parse_json(by_name[voice.name].json), {"duration": 7.25, "waveform": [1, 2]}
 		)
@@ -209,11 +209,11 @@ class TestVoiceNoteSend(IntegrationTestCase):
 		saved = next(row for row in get_saved_messages() if row.name == voice.name)
 		self.assertEqual(frappe.parse_json(saved.json), {"duration": 7.25, "waveform": [1, 2]})
 
-	def test_attach_voice_payloads_reads_other_users_notes(self):
-		from raven.api.raven_message import attach_voice_payloads
+	def test_attach_json_payloads_reads_other_users_notes(self):
+		from raven.api.raven_message import attach_json_payloads
 
 		voice = self._send(self.audio_url, {"duration": 7.25, "waveform": [1, 2]})
 		# Another member reads it: message list permissions are owner-only, so the helper must not apply them.
 		frappe.set_user("test@example.com")
-		rows = attach_voice_payloads([frappe._dict(name=voice.name, message_type="Voice")])
+		rows = attach_json_payloads([frappe._dict(name=voice.name, message_type="Voice")])
 		self.assertEqual(frappe.parse_json(rows[0].json), {"duration": 7.25, "waveform": [1, 2]})
