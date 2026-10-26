@@ -1,5 +1,4 @@
 import math
-import urllib.parse
 
 import frappe
 from frappe import _
@@ -8,6 +7,7 @@ from frappe.query_builder.functions import Coalesce, Count
 from frappe.utils import cint
 
 from raven.api.chat_stream import message_columns
+from raven.api.location import location_link_html, maps_url, sane_location
 from raven.api.raven_channel import create_direct_message_channel, get_peer_user_id_from_dm_users
 from raven.api.search import channel_access_condition
 from raven.utils import desk_has_raven_icon, get_channel_member
@@ -61,10 +61,6 @@ AUDIO_EXTENSIONS = {"mp3", "wav", "ogg", "oga", "m4a", "aac", "flac", "opus", "w
 _MAX_AUDIO_SECONDS = 660
 _MAX_WAVEFORM_BARS = 64
 
-_MAX_LOCATION_NAME = 120
-_MAX_LOCATION_ADDRESS = 300
-_MAX_LOCATION_ACCURACY = 100_000
-
 # Inline-image display caps (mirror the web client's reserved box). The stored
 # aspect ratio is what prevents reflow; the absolute thumbnail size only needs
 # to be reasonable. The client mirrors these values for its optimistic
@@ -113,68 +109,6 @@ def _sane_waveform(value) -> list[int] | None:
 	return bars
 
 
-def _sane_number(value) -> float | None:
-	"""A finite number from an untrusted client, or None."""
-	if isinstance(value, bool):
-		return None
-	try:
-		number = float(value)
-	except (TypeError, ValueError):
-		return None
-	return number if math.isfinite(number) else None
-
-
-def _sane_coordinate(value, limit: float) -> float | None:
-	"""A coordinate within ±limit, rounded to ~0.1 m, or None."""
-	number = _sane_number(value)
-	if number is None or not -limit <= number <= limit:
-		return None
-	return round(number, 6)
-
-
-def _sane_location_text(value, limit: int) -> str:
-	"""Plain text from an untrusted client: tags stripped, trimmed, capped."""
-	return frappe.utils.strip_html_tags(str(value or "")).strip()[:limit]
-
-
-def _sane_location(value) -> dict | None:
-	"""A plausible location payload from an untrusted client, or None."""
-	if not isinstance(value, dict):
-		return None
-	latitude = _sane_coordinate(value.get("latitude"), 90)
-	longitude = _sane_coordinate(value.get("longitude"), 180)
-	if latitude is None or longitude is None:
-		return None
-
-	location = {"latitude": latitude, "longitude": longitude}
-	accuracy = _sane_number(value.get("accuracy"))
-	if accuracy is not None and 0 < accuracy <= _MAX_LOCATION_ACCURACY:
-		location["accuracy"] = accuracy
-	name = _sane_location_text(value.get("name"), _MAX_LOCATION_NAME)
-	if name:
-		location["name"] = name
-	address = _sane_location_text(value.get("address"), _MAX_LOCATION_ADDRESS)
-	if address:
-		location["address"] = address
-	return location
-
-
-def _maps_url(location: dict, maps: str | None = None) -> str:
-	"""The maps link for a location, in the sender's app; Google unless Apple is asked for."""
-	latitude = location["latitude"]
-	longitude = location["longitude"]
-	if maps == "apple":
-		label = urllib.parse.quote(location.get("name") or "Location", safe="-_.!~*'()")
-		return f"https://maps.apple.com/?ll={latitude},{longitude}&q={label}"
-	return f"https://www.google.com/maps/search/?api=1&query={latitude},{longitude}"
-
-
-def _location_text(url: str) -> str:
-	"""A plain link for clients that can't draw the location card."""
-	escaped = frappe.utils.escape_html(url)
-	return f'<p><a href="{escaped}">{escaped}</a></p>'
-
-
 _JSON_PAYLOAD_TYPES = ("Voice", "Location")
 
 
@@ -197,6 +131,14 @@ def attach_json_payloads(rows: list[dict], id_field: str = "name") -> list[dict]
 		if row.get("message_type") in _JSON_PAYLOAD_TYPES:
 			row["json"] = payloads.get(row[id_field])
 	return rows
+
+
+def _attachment_url(file: dict | str) -> str:
+	return file["file_url"] if isinstance(file, dict) else file
+
+
+def _attachment_size(file: dict | str) -> int:
+	return (file.get("file_size") if isinstance(file, dict) else None) or 0
 
 
 def _file_message_type(file_url: str) -> str:
@@ -353,10 +295,11 @@ def send_message_with_attachments(
 	client when it recorded the clip; it becomes a `Voice` message with that payload
 	in `json`. Unusable metadata sends the audio as a plain file.
 
-	`location` is one point (`{"latitude", "longitude", "accuracy"?, "name"?,
-	"address"?}`) and must be the whole send: no content, files or linked document.
-	`maps` (`"apple"` or `"google"`) only picks the link stored in `text` for clients
-	that can't draw the card; it is not kept in `json`.
+	`location` is one point (`{"latitude", "longitude"}`) and must be the whole send:
+	no content, no linked document, and at most one file — the pre-rendered map
+	snapshot, which must be an image and lands in `file` / `file_size`. `maps`
+	(`"apple"` or `"google"`) only picks the link stored in `text` for clients that
+	can't draw the card; it is not kept in `json`.
 
 	`send_silently` suppresses notifications for the whole batch (the flag is set on
 	every message before insert).
@@ -386,15 +329,21 @@ def send_message_with_attachments(
 	has_linked_document = bool(link_doctype and link_document)
 
 	if location is not None:
-		if has_body or files or has_linked_document:
+		snapshot = files[0] if files else None
+		if (
+			has_body
+			or len(files) > 1
+			or has_linked_document
+			or (snapshot and _file_message_type(_attachment_url(snapshot)) != "Image")
+		):
 			frappe.throw(_("A location is sent on its own"))
-		sane_location = _sane_location(location)
-		if not sane_location:
+		clean_location = sane_location(location)
+		if not clean_location:
 			frappe.throw(_("Invalid location"))
 	elif not has_body and not files and not has_linked_document:
 		frappe.throw(_("Cannot send an empty message"))
 
-	validate_files_uploaded_by_user([f["file_url"] if isinstance(f, dict) else f for f in files])
+	validate_files_uploaded_by_user([_attachment_url(f) for f in files])
 
 	# Every message from a send carries the client_id as its batch id: it groups
 	# multi-message sends in the UI AND lets the client match the realtime echo of
@@ -407,16 +356,20 @@ def send_message_with_attachments(
 	# the client's upload response, so no per-file File lookup is needed here).
 	specs = []
 	if location is not None:
-		specs.append(
-			{
-				"message_type": "Location",
-				"json": sane_location,
-				"text": _location_text(_maps_url(sane_location, location.get("maps"))),
-			}
-		)
-	for f in files:
-		file_url = f["file_url"] if isinstance(f, dict) else f
-		file_size = f.get("file_size") if isinstance(f, dict) else None
+		location_spec = {
+			"message_type": "Location",
+			"json": clean_location,
+			"text": location_link_html(maps_url(clean_location, location.get("maps"))),
+		}
+		if files:
+			location_spec["file"] = _attachment_url(files[0])
+			location_spec["file_size"] = _attachment_size(files[0])
+		specs.append(location_spec)
+	# A location's file is its snapshot, carried on the Location message itself.
+	attachment_files = files if location is None else []
+	for f in attachment_files:
+		file_url = _attachment_url(f)
+		file_size = _attachment_size(f)
 		spec = {
 			"message_type": _file_message_type(file_url),
 			"file": file_url,

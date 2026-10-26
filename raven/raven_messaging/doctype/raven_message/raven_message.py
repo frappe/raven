@@ -179,12 +179,17 @@ class RavenMessage(Document):
 
 	def queue_link_preview_processing(self):
 		"""
-		Make sure every link in this message gets a Raven Link Preview doc.
+		Make sure every link in this message gets a Raven Link Preview doc,
+		except a location's fallback link.
 		Runs as a background job so a message save never waits on it.
 		Skip when the links did not change. Reaction saves, metadata edits
 		and AI token streaming also pass through on_update.
 		"""
 		if frappe.flags.in_patch or frappe.flags.in_migrate or frappe.flags.in_install:
+			return
+		# Clients never show a location's fallback link preview: its Google
+		# page previews the server's location, not the pin.
+		if self.message_type == "Location":
 			return
 		if not self.links_table:
 			return
@@ -332,9 +337,9 @@ class RavenMessage(Document):
 				"owner": details.owner,
 				"creation": datetime.datetime.strftime(details.creation, "%Y-%m-%d %H:%M:%S"),
 			}
-			# A voice note's preview shows its length; a location's shows its point.
-			# Fetched only then: a text message's `json` is its whole editor document.
-			if details.message_type in ("Voice", "Location"):
+			# A voice note's preview shows its length. Fetched only then: a
+			# text message's `json` is its whole editor document.
+			if details.message_type == "Voice":
 				snapshot["json"] = json_dict(frappe.db.get_value("Raven Message", self.linked_message, "json"))
 			self.replied_message_details = frappe.as_json(snapshot)
 
@@ -727,8 +732,7 @@ class RavenMessage(Document):
 				return f"🎤 Sent a voice note ({int(duration // 60)}:{int(duration % 60):02d})"
 			return "🎤 Sent a voice note"
 		elif self.message_type == "Location":
-			name = json_dict(self.json).get("name")
-			return f"📍 Shared a location - {name}" if name else "📍 Shared a location"
+			return "📍 Shared a location"
 		elif self.text:
 			return self.content
 
