@@ -1,12 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import {
-    SNAPSHOT_SIZE,
+    SNAPSHOT_HEIGHT,
+    SNAPSHOT_WIDTH,
     drawSnapshot,
     snapshotDrawPlan,
     snapshotFileName,
     withTimeout,
 } from "./snapshot"
-import { PIN_COLOR } from "./pinShape"
 
 const zoomOf = (url: string): number => Number(url.split("/")[3])
 
@@ -15,13 +15,15 @@ afterEach(() => vi.useRealTimers())
 const META = { latitude: 12.9756, longitude: 77.6066 }
 
 describe("snapshotDrawPlan", () => {
-    it("centres the point on the 128 px canvas", () => {
-        const { tiles, pin } = snapshotDrawPlan(META, 17)
-        expect(SNAPSHOT_SIZE).toBe(128)
-        expect(pin).toEqual({ x: 64, y: 64 })
+    it("covers the 240 × 160 canvas", () => {
+        const { tiles } = snapshotDrawPlan(META, 17)
+        expect(SNAPSHOT_WIDTH).toBe(240)
+        expect(SNAPSHOT_HEIGHT).toBe(160)
         expect(tiles.every((tile) => tile.size === 256)).toBe(true)
         expect(Math.min(...tiles.map((tile) => tile.left))).toBeLessThanOrEqual(0)
-        expect(Math.max(...tiles.map((tile) => tile.left + tile.size))).toBeGreaterThanOrEqual(128)
+        expect(Math.max(...tiles.map((tile) => tile.left + tile.size))).toBeGreaterThanOrEqual(240)
+        expect(Math.min(...tiles.map((tile) => tile.top))).toBeLessThanOrEqual(0)
+        expect(Math.max(...tiles.map((tile) => tile.top + tile.size))).toBeGreaterThanOrEqual(160)
     })
 
     it("fetches tiles at the map's zoom", () => {
@@ -63,28 +65,12 @@ describe("withTimeout", () => {
 })
 
 describe("drawSnapshot", () => {
-    beforeEach(() => vi.stubGlobal("Path2D", class {}))
-    afterEach(() => vi.unstubAllGlobals())
-
     const contextOf = () => ({
         drawImage: vi.fn(),
-        save: vi.fn(),
-        restore: vi.fn(),
-        translate: vi.fn(),
-        beginPath: vi.fn(),
-        arc: vi.fn(),
-        fill: vi.fn(),
-        fillRect: vi.fn(),
-        fillText: vi.fn(),
-        measureText: vi.fn(() => ({ width: 0 })),
-        fillStyle: "",
-        font: "",
     })
 
-    it("paints the tiles and the pin, with no text or chip", () => {
+    it("paints only the tiles", () => {
         const context = contextOf()
-        const fills: string[] = []
-        context.fill.mockImplementation(() => fills.push(context.fillStyle))
         const plan = snapshotDrawPlan(META, 17)
         const images = plan.tiles.map(() => ({}) as HTMLImageElement)
         drawSnapshot(context as unknown as CanvasRenderingContext2D, plan, images)
@@ -92,9 +78,5 @@ describe("drawSnapshot", () => {
         expect(context.drawImage.mock.calls).toEqual(
             plan.tiles.map((tile, index) => [images[index], tile.left, tile.top, tile.size, tile.size]),
         )
-        expect(fills).toEqual([PIN_COLOR, "#ffffff"])
-        expect(context.fillText).not.toHaveBeenCalled()
-        expect(context.fillRect).not.toHaveBeenCalled()
-        expect(context.measureText).not.toHaveBeenCalled()
     })
 })

@@ -1,12 +1,13 @@
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react"
 import type { Circle, Map as LeafletMap, Marker } from "leaflet"
+import { PinMarker } from "@components/common/PinMarker"
+import { cn } from "@lib/utils"
 import { Spinner } from "@components/ui/spinner"
 import { MAP_ATTRIBUTION_HTML, MAP_TILE_URL, type LocationMeta } from "@lib/location"
 import _ from "@lib/translate"
 import type { PositionFix } from "../../../../native/geolocation"
 import { MapNotice } from "./MapNotice"
 import { centreOf, isPanKey } from "./pickerPanel"
-import { PIN_DOT, PIN_PATH, PIN_VIEWBOX } from "./pinShape"
 
 export type MapHandle = { recenter(): void; getCentre(): LocationMeta; getZoom(): number }
 
@@ -21,20 +22,6 @@ type LocationMapProps = {
 export const INITIAL_ZOOM = 17
 // No default marker images: a plain DOM dot, sized by CSS.
 const FIX_DOT_HTML = `<div style="width:14px;height:14px;border-radius:9999px;background:var(--ink-blue-6);border:2px solid var(--white);box-shadow:var(--elevation-sm)"></div>`
-
-const CentrePin = ({ lifted }: { lifted: boolean }) => (
-    <svg
-        aria-hidden="true"
-        width="28"
-        height="36"
-        viewBox={PIN_VIEWBOX}
-        className="pointer-events-none absolute left-1/2 top-1/2 z-700 text-ink-red-6 transition-transform duration-150"
-        style={{ transform: lifted ? "translate(-50%, calc(-100% - 8px))" : "translate(-50%, -100%)" }}
-    >
-        <path d={PIN_PATH} fill="currentColor" />
-        <circle {...PIN_DOT} className="fill-white" />
-    </svg>
-)
 
 /** Leaflet is imported on demand, so it stays out of the composer bundle. */
 export const LocationMap = ({ fix, isMobile, onCentre, onDragStart, ref }: LocationMapProps) => {
@@ -171,7 +158,18 @@ export const LocationMap = ({ fix, isMobile, onCentre, onDragStart, ref }: Locat
     return (
         <div className="relative h-full w-full bg-surface-gray-2">
             <div ref={containerRef} className="absolute inset-0" />
-            {status === "ready" && <CentrePin lifted={moving} />}
+            {status === "ready" && (
+                <>
+                    {/* The lifted pin's shadow marks where it will drop; it fades with the pin's 150 ms drop. */}
+                    <span
+                        className={cn(
+                            "pointer-events-none absolute left-1/2 top-1/2 z-700 h-1 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black-300 blur-[1px] transition-opacity duration-150",
+                            moving ? "opacity-100" : "opacity-0",
+                        )}
+                    />
+                    <PinMarker lifted={moving} className="z-700" />
+                </>
+            )}
             {status === "loading" && (
                 <div className="absolute inset-0 z-700 flex items-center justify-center">
                     <Spinner size="lg" />

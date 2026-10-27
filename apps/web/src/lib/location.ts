@@ -7,6 +7,8 @@ export type LocationMeta = {
 }
 
 export const MAP_TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+// OSM's accepted short credit, shown beside snapshots (not translated: it's the licence credit).
+export const MAP_CREDIT_TEXT = "© OpenStreetMap"
 // Constant, never user input, so Leaflet's HTML rendering is safe.
 export const MAP_ATTRIBUTION_HTML =
     '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>'

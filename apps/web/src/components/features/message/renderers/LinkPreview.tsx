@@ -7,6 +7,10 @@ import type { Message } from "@raven/types/common/Message"
 import _ from "@lib/translate"
 import { useCopyToClipboard } from "usehooks-ts"
 import { toast } from "sonner"
+import { isBlockedPreviewDomain } from "@lib/blockedPreviewDomains"
+import { firstLink } from "@lib/firstLink"
+import { matchMapLink } from "@lib/mapLinks"
+import { MapLinkCard } from "./MapLinkCard"
 import { matchRavenLink, RavenLinkCard } from "./RavenLinkPreview"
 import { MessageLinkPreviewCard } from "./LinkPreviewCard"
 import { useHasBeenInView } from "@hooks/useHasBeenInView"
@@ -23,7 +27,8 @@ import { BRAND, BrandIcon, type BrandSpec } from "./BrandIcons"
  *
  * Provider model: the first provider whose matcher recognises the URL renders
  * its embed — YouTube (videos incl. Music tracks, playlists), Spotify, Apple
- * Music + Podcasts, Loom, Vimeo, SoundCloud, Reddit. Every embed is a fixed-size
+ * Music + Podcasts, Loom, Vimeo, SoundCloud, Reddit. Google and Apple map links
+ * render as image-only map cards from their preview image. Every embed is a fixed-size
  * lazy iframe (or a click-to-play facade), so message heights stay deterministic
  * for the scroll engine and offscreen messages cost nothing. Links no embed
  * matches fall through to the generic preview card (LinkPreviewCard, fed by
@@ -57,9 +62,6 @@ export const MessageLinkPreview = ({ message }: { message: Message }) => {
         return <MessageLinkPreviewCard href={href} />
     }, [href])
 }
-
-/** First non-empty line — the only link that gets a preview (Slack behaviour). */
-const firstLink = (links?: string) => links?.split("\n").map((l) => l.trim()).find(Boolean)
 
 /**
  * Shared box for provider embeds: media-root (so the Left-Right layout mirrors
@@ -520,25 +522,6 @@ export const matchGoogleMeet = (href: string): { href: string; detail: string } 
  * host. Read lazily on FIRST use and cached: boot isn't populated yet when this
  * module is imported in dev, and it never changes within a page load.
  */
-/**
- * Domain-wide preview blocks from Raven Settings, via boot (same lazy
- * read as the Frappe Meet hosts below). Suffix matching, like the
- * provider registry: blocking frappe.io covers its subdomains.
- */
-let blockedPreviewDomains: string[] | null = null
-const isBlockedPreviewDomain = (href: string): boolean => {
-    if (blockedPreviewDomains === null) {
-        blockedPreviewDomains = (window.frappe?.boot?.link_preview_blocked_domains ?? []) as string[]
-    }
-    if (blockedPreviewDomains.length === 0) return false
-    try {
-        const host = new URL(href).hostname.toLowerCase()
-        return blockedPreviewDomains.some((domain) => host === domain || host.endsWith(`.${domain}`))
-    } catch {
-        return false
-    }
-}
-
 let frappeMeetHosts: string[] | null = null
 const getFrappeMeetHosts = (): string[] => {
     if (frappeMeetHosts) return frappeMeetHosts
@@ -616,6 +599,10 @@ const PROVIDERS: Array<(href: string) => ReactElement | null> = [
     (href) => {
         const raven = matchRavenLink(href)
         return raven ? <RavenLinkCard link={raven} /> : null
+    },
+    (href) => {
+        const provider = matchMapLink(href)
+        return provider ? <MapLinkCard href={href} provider={provider} /> : null
     },
     (href) => {
         const yt = matchYouTube(href)
