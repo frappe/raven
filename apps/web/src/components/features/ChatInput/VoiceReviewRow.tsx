@@ -4,7 +4,6 @@ import { formatTime } from "@components/features/message/renderers/AudioPlayer"
 import { VoiceWaveform } from "@components/features/message/renderers/VoiceWaveform"
 import { useIsMobile } from "@hooks/use-mobile"
 import _ from "@lib/translate"
-import { WAVEFORM_BARS } from "@lib/voiceNote"
 import { voicePlaybackStore } from "@stores/voicePlayback/store"
 import { useVoicePlayback } from "@stores/voicePlayback/useVoicePlayback"
 import type { VoiceDraft } from "./useVoiceDraft"
@@ -25,7 +24,6 @@ export const VoiceReviewRow = ({ draft, sending, onSend }: VoiceReviewRowProps) 
     const { playing, position } = useVoicePlayback(draft.url)
     const duration = draft.voice?.duration ?? draft.seconds
     const bars = draft.voice?.waveform ?? []
-    const barCount = bars.length || WAVEFORM_BARS
     const failed = draft.upload.status === "failed"
     const buttonSize = isMobile ? "lg" : "sm"
 
@@ -50,8 +48,7 @@ export const VoiceReviewRow = ({ draft, sending, onSend }: VoiceReviewRowProps) 
                 bars={bars}
                 // Natural width: in a wide desktop row the 48 bars would otherwise spread far apart.
                 className="max-w-60"
-                // Whole bars only, so the bars re-render when one flips, not every frame.
-                progress={duration > 0 ? Math.floor((position / duration) * barCount) / barCount : 0}
+                progress={duration > 0 ? position / duration : 0}
                 label={_("Seek")}
                 onSeek={(fraction) => voicePlaybackStore.seek(draft.url, fraction * duration)}
                 onToggle={togglePlayback}
