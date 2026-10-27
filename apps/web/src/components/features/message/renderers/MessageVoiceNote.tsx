@@ -25,7 +25,7 @@ export const MessageVoiceNote = ({ message }: { message: Message }) => {
     const barCount = voice.waveform.length || WAVEFORM_BARS
 
     return (
-        <div data-message-id={message.name} data-media-root="" className="flex h-12 w-full max-w-[420px] items-center gap-2.5 rounded-xl border border-outline-gray-2 bg-surface-base pe-2.5 ps-2">
+        <div data-message-id={message.name} data-media-root="" className="flex h-12 w-full max-w-[420px] items-center gap-2.5 rounded-md border border-outline-gray-2 bg-surface-base pe-2.5 ps-2">
             {/* A failed load shows on the button, so the row keeps its layout. */}
             <Button
                 variant={playing ? "solid" : "subtle"}
