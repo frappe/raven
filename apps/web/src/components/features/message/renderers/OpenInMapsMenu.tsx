@@ -4,10 +4,12 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuLabel,
     DropdownMenuTrigger,
 } from "@components/ui/dropdown-menu"
 import _ from "@lib/translate"
 import { openExternal, type MapsOption } from "../../../../native/openMaps"
+import { BrandIcon, MAPS_BRAND } from "./BrandIcons"
 
 const choose = (option: MapsOption, close: () => void) => {
     close()
@@ -37,8 +39,10 @@ export const OpenInMapsMenu = ({
                 onCloseAutoFocus()
             }}
         >
+            <DropdownMenuLabel>{_("Open in")}</DropdownMenuLabel>
             {options.map((option) => (
                 <DropdownMenuItem key={option.id} onSelect={() => choose(option, onClose)}>
+                    <BrandIcon brand={MAPS_BRAND[option.id]} className="size-4 shrink-0" />
                     {option.label}
                 </DropdownMenuItem>
             ))}
@@ -56,11 +60,15 @@ export const MapsSheet = ({
 }) => (
     <Drawer open onOpenChange={(open) => !open && onClose()}>
         <DrawerContent onOpenAutoFocus={(event) => event.preventDefault()}>
-            <DrawerTitle className="sr-only">{_("Open location in maps")}</DrawerTitle>
             <DrawerDescription className="sr-only">{_("Choose a maps app")}</DrawerDescription>
             <div className="flex flex-col gap-1 p-3 pb-6">
+                {/* Section heading style, as in the schedule-send sheet. */}
+                <DrawerTitle className="px-3 pb-1 pt-2 text-left text-xs font-medium uppercase tracking-wide text-ink-gray-5">
+                    {_("Open in")}
+                </DrawerTitle>
                 {options.map((option) => (
                     <SheetRow key={option.id} onClick={() => choose(option, onClose)}>
+                        <BrandIcon brand={MAPS_BRAND[option.id]} className="size-6 shrink-0" />
                         {option.label}
                     </SheetRow>
                 ))}

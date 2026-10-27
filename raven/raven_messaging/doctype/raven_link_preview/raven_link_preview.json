@@ -65,7 +65,7 @@
    "fieldname": "provider",
    "fieldtype": "Select",
    "label": "Provider",
-   "options": "Other\nWikipedia\nFrappe\nSite Document Link\nRaven Link\nFrappe Meet\nGoogle Meet\nZoom\nYouTube\nYouTube Music\nSpotify\nApple Music\nApple Podcasts\nSoundCloud\nLoom\nVimeo\nReddit\nFigma\nX\nGitHub\nHacker News"
+   "options": "Other\nWikipedia\nFrappe\nSite Document Link\nRaven Link\nFrappe Meet\nGoogle Meet\nZoom\nGoogle Maps\nApple Maps\nYouTube\nYouTube Music\nSpotify\nApple Music\nApple Podcasts\nSoundCloud\nLoom\nVimeo\nReddit\nFigma\nX\nGitHub\nHacker News"
   },
   {
    "default": "Pending",
@@ -116,7 +116,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-16 10:00:00.000000",
+ "modified": "2026-10-28 00:21:56.757784",
  "modified_by": "Administrator",
  "module": "Raven Messaging",
  "name": "Raven Link Preview",

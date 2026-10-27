@@ -107,27 +107,6 @@ def _sane_waveform(value) -> list[int] | None:
 _JSON_PAYLOAD_TYPES = ("Voice", "Location")
 
 
-def attach_json_payloads(rows: list[dict], id_field: str = "name") -> list[dict]:
-	"""
-	Add `json` to the Voice and Location rows of a list query that doesn't select it.
-	One extra query, only for those types: a text message's `json` is its whole editor document.
-	"""
-	payload_ids = [row[id_field] for row in rows if row.get("message_type") in _JSON_PAYLOAD_TYPES]
-	if not payload_ids:
-		return rows
-	# The caller has already authorized these rows. Raven Message's list permission is
-	# owner-only, so a permission-checked query would drop other people's messages.
-	payloads = dict(
-		frappe.get_all(
-			"Raven Message", filters={"name": ["in", payload_ids]}, fields=["name", "json"], as_list=True
-		)
-	)
-	for row in rows:
-		if row.get("message_type") in _JSON_PAYLOAD_TYPES:
-			row["json"] = payloads.get(row[id_field])
-	return rows
-
-
 def _attachment_url(file: dict | str) -> str:
 	return file["file_url"] if isinstance(file, dict) else file
 
@@ -535,36 +514,35 @@ def get_pinned_messages(channel_id: str):
 	pinnedMessagesString = frappe.db.get_value("Raven Channel", channel_id, "pinned_messages_string")
 	pinnedMessages = pinnedMessagesString.split("\n") if pinnedMessagesString else []
 
-	return attach_json_payloads(
-		frappe.db.get_all(
-			"Raven Message",
-			filters={"name": ["in", pinnedMessages]},
-			fields=[
-				"name",
-				"owner",
-				"creation",
-				"bot",
-				"text",
-				"file",
-				"message_type",
-				"message_reactions",
-				"_liked_by",
-				"channel_id",
-				"thumbnail_width",
-				"thumbnail_height",
-				"file_thumbnail",
-				"link_doctype",
-				"link_document",
-				"replied_message_details",
-				"hide_link_preview",
-				"is_bot_message",
-				"content",
-				"is_edited",
-				"is_thread",
-				"is_forwarded",
-			],
-			order_by="creation desc",
-		)
+	return frappe.db.get_all(
+		"Raven Message",
+		filters={"name": ["in", pinnedMessages]},
+		fields=[
+			"name",
+			"owner",
+			"creation",
+			"bot",
+			"text",
+			"json",
+			"file",
+			"message_type",
+			"message_reactions",
+			"_liked_by",
+			"channel_id",
+			"thumbnail_width",
+			"thumbnail_height",
+			"file_thumbnail",
+			"link_doctype",
+			"link_document",
+			"replied_message_details",
+			"hide_link_preview",
+			"is_bot_message",
+			"content",
+			"is_edited",
+			"is_thread",
+			"is_forwarded",
+		],
+		order_by="creation desc",
 	)
 
 
@@ -609,6 +587,7 @@ def get_saved_messages(
 			raven_message.owner,
 			raven_message.creation,
 			raven_message.text,
+			raven_message.json,
 			raven_message.content,
 			raven_message.channel_id,
 			raven_message.file,
@@ -646,7 +625,7 @@ def get_saved_messages(
 	else:
 		query = query.orderby(raven_message.creation, order=Order.asc)
 
-	return attach_json_payloads(query.run(as_dict=True))
+	return query.run(as_dict=True)
 
 
 @frappe.whitelist()

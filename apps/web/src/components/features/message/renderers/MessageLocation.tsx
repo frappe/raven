@@ -54,7 +54,7 @@ export const MessageLocation = ({ message }: { message: Message }) => {
 
     return (
         <div data-message-id={message.name} className="relative">
-            <LocationCard ref={cardRef} snapshotUrl={snapshotUrl} pin credit onOpen={openMaps} />
+            <LocationCard ref={cardRef} snapshotUrl={snapshotUrl} onOpen={openMaps} />
             {menuOpen && (
                 <OpenInMapsMenu
                     options={webMapsOptions(location)}

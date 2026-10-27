@@ -22,7 +22,7 @@ const isFiniteNumber = (value: unknown): value is number =>
 
 // Mirror of _sane_coordinate in raven/api/location.py — keep in sync.
 /** A finite latitude/longitude pair inside the WGS84 bounds. */
-const inCoordinateRange = (latitude: number, longitude: number): boolean =>
+export const inCoordinateRange = (latitude: number, longitude: number): boolean =>
     isFiniteNumber(latitude) &&
     latitude >= -90 &&
     latitude <= 90 &&

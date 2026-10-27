@@ -15,7 +15,6 @@ import { MessageLocation } from "./MessageLocation"
 import RichTextRenderer, { isJumbomojiHtml, parseBodySegments } from "./RichTextRenderer"
 import { messageBubbleClass } from "./MessageRow"
 import { cn } from "@lib/utils"
-import { isMapLinkOnly } from "@lib/mapLinks"
 import { MessageLinkPreview } from "./LinkPreview"
 import { PollMessageContent } from "./PollMessageContent"
 import SearchTextRenderer from "./SearchTextRenderer"
@@ -82,15 +81,7 @@ const BubbledBody = ({ html }: { html: string }) => {
  * message and for a batch's caption-bearing member, so editing works the same way
  * everywhere the body is shown.
  */
-export const EditableMessageBody = ({
-    message,
-    bubble = false,
-    hideIdle = false,
-}: {
-    message: Message
-    bubble?: boolean
-    hideIdle?: boolean
-}) => {
+export const EditableMessageBody = ({ message, bubble = false }: { message: Message; bubble?: boolean }) => {
     // Subscribe to a derived boolean (is THIS message being edited?) rather than the
     // raw id, so toggling an edit only re-renders the affected body — not every body
     // sharing the channel's editing atom.
@@ -102,7 +93,6 @@ export const EditableMessageBody = ({
     )
     // The editor is never bubbled — it takes the full width while editing.
     if (isEditing) return <EditMessageComposer message={message} />
-    if (hideIdle) return null
     if (message.is_edited === 1 && message.text?.trim()) return <EditedMessageBody text={message.text} bubble={bubble} />
     return <MessageBody content={message.text} bubble={bubble} />
 }
@@ -186,7 +176,6 @@ const MessageMedia = ({ message, fileUrl }: { message: Message; fileUrl: string 
 export const MessageContent = ({ message, showLinkPreview = true, showLinkedDocument = true, showReactions = true, interactivePoll = true, bubble }: { message: Message, showLinkPreview?: boolean, showLinkedDocument?: boolean, showReactions?: boolean, interactivePoll?: boolean, bubble?: "start" | "end" }) => {
     const messageFile = "file" in message ? (message.file as string | undefined) : undefined
     const isLocation = message.message_type === "Location"
-    const mapLinkOnly = showLinkPreview && isMapLinkOnly(message)
 
     // String from fetches, OBJECT from realtime/ack payloads — the shared
     // parser accepts both (a bare JSON.parse dropped live receivers' quotes).
@@ -239,7 +228,7 @@ export const MessageContent = ({ message, showLinkPreview = true, showLinkedDocu
             ) : (
                 // Render the HTML body (message.text), NOT message.content — the
                 // latter is the backend's derived plain-text (search/teasers).
-                <EditableMessageBody message={message} bubble={!!bubble} hideIdle={mapLinkOnly} />
+                <EditableMessageBody message={message} bubble={!!bubble} />
             )}
 
             {/* Preview for the first link in the body (YouTube embed for now) */}

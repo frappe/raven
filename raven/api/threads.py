@@ -4,7 +4,6 @@ from frappe.query_builder import Order
 from frappe.query_builder.functions import Coalesce, Count
 
 from raven.api.raven_channel import get_peer_user_id_from_dm_users, is_channel_member
-from raven.api.raven_message import attach_json_payloads
 from raven.utils import (
 	create_members_added_system_message,
 	get_channel_members,
@@ -71,6 +70,7 @@ def get_all_threads(
 			message.channel_id,
 			message.message_type,
 			message.text,
+			message.json,
 			message.content,
 			message.file,
 			message.poll_id,
@@ -117,7 +117,7 @@ def get_all_threads(
 
 	query = query.orderby(channel.last_message_timestamp, order=Order.desc)
 
-	threads = attach_json_payloads(query.run(as_dict=True), id_field="thread_message_id")
+	threads = query.run(as_dict=True)
 
 	# v2 renders participants in the list, so it fetches them inline (the default). v3 sends
 	# fetch_members=False and lazy-loads members per row on view (get_thread_details →
@@ -166,6 +166,7 @@ def get_other_threads(
 			main_thread_message.channel_id,
 			main_thread_message.message_type,
 			main_thread_message.text,
+			main_thread_message.json,
 			main_thread_message.content,
 			main_thread_message.file,
 			main_thread_message.poll_id,
@@ -216,7 +217,7 @@ def get_other_threads(
 
 	query = query.orderby(thread_channel.last_message_timestamp, order=Order.desc)
 
-	threads = attach_json_payloads(query.run(as_dict=True), id_field="thread_message_id")
+	threads = query.run(as_dict=True)
 
 	# v2 fetches members inline (default); v3 sends fetch_members=False and lazy-loads on
 	# row view (see get_all_threads) to avoid the per-thread fan-out.

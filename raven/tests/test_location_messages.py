@@ -6,8 +6,8 @@ from frappe.tests import IntegrationTestCase
 from raven.api.location import maps_url, sane_location
 from raven.api.raven_message import (
 	_forward_payloads,
-	attach_json_payloads,
 	get_all_files_shared_in_channel,
+	get_pinned_messages,
 	send_message_with_attachments,
 )
 
@@ -221,12 +221,13 @@ class TestLocationSend(IntegrationTestCase):
 			"📍 Shared a location",
 		)
 
-	def test_json_attached_for_location_rows(self):
+	def test_pinned_location_carries_its_json(self):
 		[loc] = send_message_with_attachments(
 			channel_id=self.channel.name, location={"latitude": 1, "longitude": 2}
 		)
-		rows = attach_json_payloads([frappe._dict(name=loc.name, message_type="Location")])
-		self.assertEqual(frappe.parse_json(rows[0]["json"])["latitude"], 1.0)
+		frappe.db.set_value("Raven Channel", self.channel.name, "pinned_messages_string", loc.name)
+		[pinned] = get_pinned_messages(self.channel.name)
+		self.assertEqual(frappe.parse_json(pinned.json)["latitude"], 1.0)
 
 	def test_reply_snapshot_has_no_location_json(self):
 		[loc] = send_message_with_attachments(

@@ -1,29 +1,5 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
-import type { Message } from "@raven/types/common/Message"
-import { isMapLinkOnly, mapPreviewImage, matchMapLink } from "./mapLinks"
-
-const message = (overrides: Partial<Message> = {}): Message =>
-    ({
-        name: "m1",
-        owner: "a@x.com",
-        _liked_by: "",
-        channel_id: "ch",
-        creation: "",
-        modified: "",
-        message_type: "Text",
-        text: "",
-        is_reply: 0,
-        is_edited: 0,
-        is_forwarded: 0,
-        is_thread: 0,
-        is_pinned: 0,
-        ...overrides,
-    }) as Message
-
-afterEach(() => vi.unstubAllGlobals())
-
-const GOOGLE_IMAGE = "https://maps.google.com/maps/api/staticmap?center=1,2&zoom=18&size=256x160"
-const APPLE_IMAGE = "https://snapshot.apple-mapkit.com/api/v1/snapshot?center=1,2"
+import { describe, expect, it } from "vitest"
+import { mapLinkDetails, mapPreviewImage, matchMapLink } from "./mapLinks"
 
 describe("matchMapLink", () => {
     it.each([
@@ -60,16 +36,98 @@ describe("matchMapLink", () => {
     })
 })
 
+const GOOGLE_PLACE =
+    "https://www.google.com/maps/place/Neelkanth+Corporate+IT+Park/@19.0822784,72.8955153,17z/data=!3m1"
+const APPLE_PLACE =
+    "https://maps.apple.com/place?address=Baba+Jamsandekar+Marg%2C+Mumbai&coordinate=18.996882%2C72.827781&name=Lodha+Vista"
+
+describe("mapLinkDetails", () => {
+    it("reads a Google place name and its @ coordinates", () => {
+        expect(mapLinkDetails(GOOGLE_PLACE, "google")).toEqual({
+            name: "Neelkanth Corporate IT Park",
+            address: null,
+            coordinates: { latitude: 19.0822784, longitude: 72.8955153 },
+        })
+    })
+
+    it("reads Google coordinates from the query", () => {
+        expect(
+            mapLinkDetails("https://www.google.com/maps/search/?api=1&query=19.079944,72.895628", "google"),
+        ).toEqual({
+            name: null,
+            address: null,
+            coordinates: { latitude: 19.079944, longitude: 72.895628 },
+        })
+    })
+
+    it("reads a Google query name when it is not a coordinate pair", () => {
+        expect(mapLinkDetails("https://www.google.com/maps/search/?api=1&query=Some+Cafe", "google")).toEqual({
+            name: "Some Cafe",
+            address: null,
+            coordinates: null,
+        })
+    })
+
+    it("has nothing for a Google short link", () => {
+        expect(mapLinkDetails("https://maps.app.goo.gl/xyz", "google")).toEqual({
+            name: null,
+            address: null,
+            coordinates: null,
+        })
+    })
+
+    it("reads an Apple place name, address and coordinate", () => {
+        expect(mapLinkDetails(APPLE_PLACE, "apple")).toEqual({
+            name: "Lodha Vista",
+            address: "Baba Jamsandekar Marg, Mumbai",
+            coordinates: { latitude: 18.996882, longitude: 72.827781 },
+        })
+    })
+
+    it("reads Apple's q and ll", () => {
+        expect(mapLinkDetails("https://maps.apple.com/?ll=19.07,72.89&q=Location", "apple")).toEqual({
+            name: "Location",
+            address: null,
+            coordinates: { latitude: 19.07, longitude: 72.89 },
+        })
+    })
+
+    it("falls back to Apple's fetched title", () => {
+        expect(mapLinkDetails("https://maps.apple/p/abc", "apple", "Lodha Vista")).toEqual({
+            name: "Lodha Vista",
+            address: null,
+            coordinates: null,
+        })
+    })
+
+    it("rejects out-of-range coordinates", () => {
+        expect(mapLinkDetails("https://www.google.com/maps/place/X/@91,0,17z", "google").coordinates).toBeNull()
+        expect(mapLinkDetails("https://maps.apple.com/place?coordinate=91,0", "apple").coordinates).toBeNull()
+    })
+
+    it("does not use an out-of-range coordinate-looking q as a name", () => {
+        expect(mapLinkDetails("https://www.google.com/maps/search/?api=1&query=100,200", "google").name).toBeNull()
+    })
+
+    it("collapses whitespace and caps text at 200 characters", () => {
+        expect(mapLinkDetails("https://www.google.com/maps/search/?api=1&query=Some+++Cafe", "google").name).toBe(
+            "Some Cafe",
+        )
+        expect(
+            mapLinkDetails(`https://www.google.com/maps/search/?api=1&query=${"a".repeat(500)}`, "google").name,
+        ).toHaveLength(200)
+    })
+})
+
+const GOOGLE_IMAGE = "https://maps.google.com/maps/api/staticmap?center=1,2&zoom=18&size=240x160"
+const APPLE_IMAGE = "https://snapshot.apple-mapkit.com/api/v1/snapshot?center=1,2"
+
 describe("mapPreviewImage", () => {
-    it("accepts a Google street-level static map", () => {
-        expect(mapPreviewImage("google", { image: GOOGLE_IMAGE, image_width: 1200, image_height: 800 })).toEqual({
-            url: GOOGLE_IMAGE,
-            aspect: 1.5,
-        })
-        expect(mapPreviewImage("google", { image: GOOGLE_IMAGE.replace("maps.google.com", "maps.googleapis.com") })).toEqual({
-            url: GOOGLE_IMAGE.replace("maps.google.com", "maps.googleapis.com"),
-            aspect: 3 / 2,
-        })
+    it("accepts Google street-level static maps", () => {
+        expect(mapPreviewImage("google", { image: GOOGLE_IMAGE })).toBe(GOOGLE_IMAGE)
+        expect(
+            mapPreviewImage("google", { image: GOOGLE_IMAGE.replace("maps.google.com", "maps.googleapis.com") }),
+        ).toBe(GOOGLE_IMAGE.replace("maps.google.com", "maps.googleapis.com"))
     })
 
     it("rejects a Google image that is not street-level", () => {
@@ -83,57 +141,13 @@ describe("mapPreviewImage", () => {
         expect(mapPreviewImage("google", { image: GOOGLE_IMAGE.replace("/maps/api/staticmap", "/img") })).toBeNull()
     })
 
-    it("accepts an Apple MapKit snapshot", () => {
-        expect(mapPreviewImage("apple", { image: APPLE_IMAGE, image_width: 800, image_height: 500 })).toEqual({
-            url: APPLE_IMAGE,
-            aspect: 1.6,
-        })
+    it("accepts an Apple MapKit snapshot only", () => {
+        expect(mapPreviewImage("apple", { image: APPLE_IMAGE })).toBe(APPLE_IMAGE)
         expect(mapPreviewImage("apple", { image: APPLE_IMAGE.replace("snapshot.apple-mapkit.com", "evil.com") })).toBeNull()
     })
 
-    it("needs an image and defaults unknown dimensions to 8:5", () => {
+    it("needs an image", () => {
         expect(mapPreviewImage("google", null)).toBeNull()
-        expect(mapPreviewImage("google", {})).toBeNull()
-        expect(mapPreviewImage("apple", { image: APPLE_IMAGE, image_width: 0, image_height: 0 })?.aspect).toBe(3 / 2)
-    })
-
-    it("clamps extreme aspects", () => {
-        expect(mapPreviewImage("apple", { image: APPLE_IMAGE, image_width: 1, image_height: 10000 })?.aspect).toBe(0.5)
-        expect(mapPreviewImage("apple", { image: APPLE_IMAGE, image_width: 10000, image_height: 1 })?.aspect).toBe(2.5)
-    })
-})
-
-describe("isMapLinkOnly", () => {
-    const link = "https://maps.apple.com/?ll=1,2"
-
-    it("is true for a message that is only the map link", () => {
-        expect(isMapLinkOnly(message({ links: link, content: link }))).toBe(true)
-    })
-
-    it("is false when the message has words", () => {
-        expect(isMapLinkOnly(message({ links: link, content: `${link} meet here` }))).toBe(false)
-    })
-
-    it("is false when previews are hidden", () => {
-        expect(isMapLinkOnly(message({ links: link, content: link, hide_link_preview: 1 }))).toBe(false)
-    })
-
-    it("is false for a non-map link", () => {
-        expect(isMapLinkOnly(message({ links: "https://example.com", content: "https://example.com" }))).toBe(false)
-    })
-
-    it("is false when the message also carries an inline image", () => {
-        expect(
-            isMapLinkOnly(
-                message({ links: link, content: link, text: `<p><a href="${link}">${link}</a></p><p><img src="gif"></p>` }),
-            ),
-        ).toBe(false)
-    })
-
-    it("is false when the map domain is blocked", async () => {
-        vi.stubGlobal("window", { frappe: { boot: { link_preview_blocked_domains: ["apple.com"] } } })
-        vi.resetModules()
-        const fresh = await import("./mapLinks")
-        expect(fresh.isMapLinkOnly(message({ links: link, content: link }))).toBe(false)
+        expect(mapPreviewImage("apple", {})).toBeNull()
     })
 })

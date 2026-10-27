@@ -1,15 +1,13 @@
 import { useEffect, useMemo, useRef, useState, type ReactElement } from "react"
-import { Play, Link2, Video } from "lucide-react"
+import { Play, Link2 } from "lucide-react"
 import { cn } from "@lib/utils"
 import { useTheme } from "@components/theme-provider"
-import { Button } from "@components/ui/button"
 import type { Message } from "@raven/types/common/Message"
 import _ from "@lib/translate"
-import { useCopyToClipboard } from "usehooks-ts"
-import { toast } from "sonner"
 import { isBlockedPreviewDomain } from "@lib/blockedPreviewDomains"
 import { firstLink } from "@lib/firstLink"
 import { matchMapLink } from "@lib/mapLinks"
+import { LinkActionCard } from "./LinkActionCard"
 import { MapLinkCard } from "./MapLinkCard"
 import { matchRavenLink, RavenLinkCard } from "./RavenLinkPreview"
 import { MessageLinkPreviewCard } from "./LinkPreviewCard"
@@ -553,40 +551,6 @@ export const matchFrappeMeet = (href: string): { href: string; detail: string } 
     }
 }
 
-/**
- * Join card for meeting links: brand glyph, the meeting's human identity
- * (formatted meeting number / room / code — not the raw URL),
- * and a Join button — brand-coloured when the brand has a colour (inline
- * style, so the ui Button's own hover bg is replaced by an opacity dip).
- * Fixed height, no fetch, opens in a new tab.
- */
-const MeetingCard = ({ href, brand, label, detail }: { href: string; brand?: BrandSpec; label: string; detail: string }) => {
-
-    const [, copy] = useCopyToClipboard()
-
-    const handleCopy = () => {
-        copy(detail)
-        toast.success(_("Copied meeting ID"))
-    }
-    return <div data-media-root="" className="w-full sm:max-w-sm max-w-xs my-2">
-        <div className="flex items-center gap-3 rounded-md border border-outline-gray-2 bg-surface-gray-1 dark:bg-surface-elevation-2 p-3">
-            {brand ? <BrandIcon brand={brand} className="shrink-0 size-9" /> : <Video className="size-8 shrink-0 text-ink-gray-6" />}
-            <div className="min-w-0 flex-1 space-y-0.5">
-                <div className="text-base-medium text-ink-gray-9">{label}</div>
-                <div className="truncate text-sm leading-snug text-ink-gray-6 cursor-pointer" onClick={handleCopy} role="button" tabIndex={0}>{detail}</div>
-            </div>
-            <Button
-                asChild
-                variant="solid"
-                size="md"
-                className={cn("shrink-0")}
-            >
-                <a href={href} target="_blank" rel="noopener noreferrer">{_("Join")}</a>
-            </Button>
-        </div>
-    </div>
-}
-
 /* ------------------------------- Providers ------------------------------- */
 
 /**
@@ -703,6 +667,20 @@ const PROVIDERS: Array<(href: string) => ReactElement | null> = [
     },
     (href) => {
         const frappeMeet = matchFrappeMeet(href)
-        return frappeMeet ? <MeetingCard href={href} brand={BRAND.frappeMeet} label={_("Frappe Meet")} detail={frappeMeet.detail} /> : null
+        return frappeMeet ? (
+            <MeetingCard href={href} brand={BRAND.frappeMeet} label={_("Frappe Meet")} detail={frappeMeet.detail} />
+        ) : null
     },
 ]
+
+/** A meeting link: brand, the meeting's identity (copyable) and Join. */
+const MeetingCard = ({ href, brand, label, detail }: { href: string; brand: BrandSpec; label: string; detail: string }) => (
+    <LinkActionCard
+        href={href}
+        brand={brand}
+        label={label}
+        detail={detail}
+        actionLabel={_("Join")}
+        copiedMessage={_("Copied meeting ID")}
+    />
+)
