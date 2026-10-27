@@ -553,7 +553,6 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                                     {/* While recording every action but Send is inert */}
                                     <div inert={recording} className={cn("flex items-center gap-1", recording && RECORDING_DISABLED)}>
                                         <AddFileButton channelID={channelID} onAfterAttach={() => editor?.commands.focus()} />
-                                        {canRecordVoice() && <VoiceNoteButton onRecord={voice.start} />}
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <Button
@@ -580,6 +579,12 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                                         <Separator orientation="vertical" className="mx-1 h-4!" />
                                         <CreatePollDialog channelID={channelID} />
                                         <AttachFrappeDocumentDialog channelID={channelID} />
+                                        {canRecordVoice() && (
+                                            <>
+                                                <Separator orientation="vertical" className="mx-1 h-4!" />
+                                                <VoiceNoteButton onRecord={voice.start} />
+                                            </>
+                                        )}
                                     </div>
                                     <div className="flex-1" />
                                     {recording ? (
