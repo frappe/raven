@@ -9,7 +9,7 @@ import {
     type MicErrorKind,
     type RecordingFormat,
 } from "./recordingFormat"
-import { createRecordingMeter } from "./recordingMeterStore"
+import { TICK_MS, createRecordingMeter } from "./recordingMeterStore"
 
 export type RecordingEnd = "stopped" | "limit" | "interrupted"
 export type VoiceRecorderStatus = "idle" | "requesting" | "recording"
@@ -28,7 +28,6 @@ type Session = {
 
 type Claim = { preempt: () => void }
 
-const TICK_MS = 100
 // Enough to fill the widest composer; the bar shows only what fits.
 const LEVEL_SAMPLES = 256
 

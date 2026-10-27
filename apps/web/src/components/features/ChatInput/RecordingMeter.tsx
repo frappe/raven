@@ -1,24 +1,47 @@
-import { useRef, useSyncExternalStore } from "react"
+import { useEffect, useRef, useSyncExternalStore } from "react"
 import { useResizeObserver } from "usehooks-ts"
 import { formatTime } from "@components/features/message/renderers/AudioPlayer"
+import { useIsMobile } from "@hooks/use-mobile"
 import { cn } from "@lib/utils"
-import { scaleToLoudest } from "@lib/voiceNote"
-import type { RecordingMeter as Meter } from "./recordingMeterStore"
+import { TICK_MS, type RecordingMeter as Meter } from "./recordingMeterStore"
 
-// w-1 bar + gap-0.5
-const BAR_PITCH_PX = 6
-const BAR_GAP_PX = 2
+// VoiceWaveform's bars: 3px wide, 1px apart on mobile and 2px on desktop.
+const BAR_WIDTH_PX = 3
 
 /** Dot, timer and live levels: the only part of the recorder that re-renders on each tick. */
 export const RecordingMeter = ({ meter, live, compact }: { meter: Meter; live: boolean; compact: boolean }) => {
-    const { elapsed, levels } = useSyncExternalStore(meter.subscribe, meter.get)
+    const { elapsed, heights, count } = useSyncExternalStore(meter.subscribe, meter.get)
     const barsRef = useRef<HTMLDivElement>(null)
+    const stripRef = useRef<HTMLDivElement>(null)
     const { width = 0 } = useResizeObserver({ ref: barsRef as React.RefObject<HTMLElement> })
-    // Bars that fit: the last one needs no trailing gap.
-    const capacity = Math.floor((width + BAR_GAP_PX) / BAR_PITCH_PX)
-    // Bars enter from the right; empty slots hold the left until the meter fills, so the spacing never shifts.
-    const emptySlots = Math.max(0, capacity - levels.length)
-    const shown = [...new Array<number>(emptySlots).fill(0), ...levels.slice(Math.max(0, levels.length - capacity))]
+    const pitch = BAR_WIDTH_PX + (useIsMobile() ? 1 : 2)
+    // Enough bars to fill the meter, plus the newest one sliding in past the right edge.
+    const slots = Math.ceil(width / pitch) + 1
+    // Empty slots hold the left until the meter fills.
+    const emptySlots = Math.max(0, slots - heights.length)
+    const shown = heights.slice(Math.max(0, heights.length - slots))
+    // Tick number of the first shown bar: keyed by it, a bar keeps its node, so a tick only adds one and drops one.
+    const firstTick = count - shown.length
+
+    // Between ticks the strip glides one bar left, so bars move instead of stepping.
+    // A transform from the frame clock: no re-render or layout per frame.
+    useEffect(() => {
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+        let frame = 0
+        let written = ""
+        const glide = () => {
+            const { tickedAt } = meter.get()
+            if (stripRef.current && tickedAt) {
+                const progress = Math.min(1, (performance.now() - tickedAt) / TICK_MS)
+                const transform = `translateX(${(1 - progress) * pitch}px)`
+                // Settled until the next tick: skip the identical write.
+                if (transform !== written) stripRef.current.style.transform = written = transform
+            }
+            frame = requestAnimationFrame(glide)
+        }
+        frame = requestAnimationFrame(glide)
+        return () => cancelAnimationFrame(frame)
+    }, [meter, pitch])
 
     return (
         <>
@@ -28,19 +51,19 @@ export const RecordingMeter = ({ meter, live, compact }: { meter: Meter; live: b
             <span className="shrink-0 text-base md:text-sm tabular-nums text-ink-gray-8">{formatTime(elapsed / 1000)}</span>
             <div
                 ref={barsRef}
-                // The bars spread so both ends sit flush (the leftover is under one bar's width).
                 // Compact: the review waveform's width, so the recorder stays small in a wide composer.
-                className={cn("flex h-6 min-w-0 items-center justify-between gap-0.5 overflow-hidden", compact ? "w-60 shrink" : "flex-1")}
+                className={cn("relative h-6 min-w-0 overflow-hidden", compact ? "w-60 shrink" : "flex-1")}
                 aria-hidden
             >
-                {/* Newest on the right */}
-                {scaleToLoudest(shown).map((height, index) =>
-                    index < emptySlots ? (
-                        <span key={index} className="w-1 shrink-0" />
-                    ) : (
-                        <span key={index} className="w-1 shrink-0 rounded-full bg-ink-gray-5" style={{ height: `${Math.max(12, height)}%` }} />
-                    ),
-                )}
+                {/* Newest on the right; the oldest slides out past the left edge */}
+                <div ref={stripRef} className="absolute inset-y-0 right-0 flex items-center gap-px will-change-transform md:gap-0.5">
+                    {Array.from({ length: emptySlots }, (_, index) => (
+                        <span key={`empty-${index}`} className="w-[3px] shrink-0" />
+                    ))}
+                    {shown.map((height, index) => (
+                        <span key={firstTick + index} className="w-[3px] shrink-0 rounded-full bg-surface-gray-4" style={{ height: `${Math.max(12, height)}%` }} />
+                    ))}
+                </div>
             </div>
         </>
     )
