@@ -1,4 +1,3 @@
-import type { ReactElement } from "react"
 import { SheetRow } from "@components/features/schedule-send/ScheduleSendSheet"
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from "@components/ui/drawer"
 import {
@@ -15,35 +14,35 @@ const choose = (option: MapsOption, close: () => void) => {
     void openExternal(option.url, option.fallbackUrl)
 }
 
-/**
- * The card wrapper and its desktop dropdown. The root stays mounted so the
- * card keeps its state; content only mounts while open.
- */
+/** The desktop dropdown, anchored on an inert trigger covering the card, so a flipped menu clears it. */
 export const OpenInMapsMenu = ({
     options,
-    open,
-    onOpenChange,
-    trigger,
+    onClose,
+    onCloseAutoFocus,
 }: {
     options: MapsOption[]
-    open: boolean
-    onOpenChange: (open: boolean) => void
-    trigger: ReactElement
+    onClose: () => void
+    onCloseAutoFocus: () => void
 }) => (
-    <DropdownMenu open={open} onOpenChange={onOpenChange}>
-        <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
-        {open && (
-            <DropdownMenuContent align="start" sideOffset={6} className="min-w-48">
-                {options.map((option) => (
-                    <DropdownMenuItem
-                        key={option.id}
-                        onSelect={() => choose(option, () => onOpenChange(false))}
-                    >
-                        {option.label}
-                    </DropdownMenuItem>
-                ))}
-            </DropdownMenuContent>
-        )}
+    <DropdownMenu open onOpenChange={(open) => !open && onClose()}>
+        <DropdownMenuTrigger asChild>
+            <span className="pointer-events-none absolute inset-0" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+            align="start"
+            sideOffset={6}
+            className="min-w-48"
+            onCloseAutoFocus={(event) => {
+                event.preventDefault()
+                onCloseAutoFocus()
+            }}
+        >
+            {options.map((option) => (
+                <DropdownMenuItem key={option.id} onSelect={() => choose(option, onClose)}>
+                    {option.label}
+                </DropdownMenuItem>
+            ))}
+        </DropdownMenuContent>
     </DropdownMenu>
 )
 

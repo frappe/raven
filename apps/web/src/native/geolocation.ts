@@ -36,13 +36,14 @@ const webPosition = (options: PositionOptions): Promise<PositionResult> =>
 
 // @capacitor/geolocation's OS-PLUG-GLOC error table.
 const GLOC_DENIED = 3
+const GLOC_DISABLED = 7
 const GLOC_RESTRICTED = 8
 const GLOC_TIMEOUT = 10
 
 const nativeErrorCode = (error: unknown): number | null => {
     const record = (error ?? {}) as { code?: unknown; message?: unknown }
     const text =
-        typeof record.code === "string" ? record.code : typeof record.message === "string" ? record.message : String(error)
+        [record.code, record.message].find((value): value is string => typeof value === "string") ?? ""
     const match = /OS-PLUG-GLOC-(\d{4})/.exec(text)
     return match ? Number(match[1]) : null
 }
@@ -50,7 +51,7 @@ const nativeErrorCode = (error: unknown): number | null => {
 const nativeError = (error: unknown): FixError => {
     const code = nativeErrorCode(error)
     if (code === GLOC_TIMEOUT) return "timeout"
-    if (code === GLOC_DENIED || code === GLOC_RESTRICTED) return "denied"
+    if (code === GLOC_DENIED || code === GLOC_DISABLED || code === GLOC_RESTRICTED) return "denied"
     return "unavailable"
 }
 
@@ -70,7 +71,7 @@ const nativeRun = async (): Promise<PositionResult> => {
     try {
         const { Geolocation } = await import("@capacitor/geolocation")
         const permission = await Geolocation.requestPermissions()
-        if (permission.location === "denied") return { error: "denied" }
+        if (permission.coarseLocation === "denied") return { error: "denied" }
         const attempt = async (options: PositionOptions): Promise<PositionResult> => {
             try {
                 const position = await Geolocation.getCurrentPosition(options)
@@ -79,6 +80,8 @@ const nativeRun = async (): Promise<PositionResult> => {
                 return { error: nativeError(error) }
             }
         }
+        // Android "Approximate" grants coarse only; a high-accuracy request would re-prompt.
+        if (permission.location !== "granted") return attempt(LOW_ACCURACY)
         return withFallback(attempt)
     } catch (error) {
         return { error: nativeError(error) }

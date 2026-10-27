@@ -55,8 +55,31 @@ describe("uploadSnapshotWithin", () => {
             token: { abandoned: false },
         })
 
-        await expect(result).resolves.toEqual({ file_url: "/files/location.webp", file_size: 12 })
+        await expect(result).resolves.toEqual({
+            snapshot: { file_url: "/files/location.webp", file_size: 12 },
+            name: "file-1",
+        })
         expect(remove).not.toHaveBeenCalled()
+    })
+
+    it("removes an upload that resolves after the caller abandons the token", async () => {
+        vi.useFakeTimers()
+        let finishUpload: ((file: typeof UPLOADED) => void) | undefined
+        const remove = vi.fn(removed())
+        const token = { abandoned: false }
+        const result = uploadSnapshotWithin({
+            render: inTime(),
+            upload: () => new Promise((resolve) => { finishUpload = resolve }),
+            remove,
+            ms: 5000,
+            token,
+        })
+
+        await vi.advanceTimersByTimeAsync(0)
+        token.abandoned = true
+        finishUpload?.(UPLOADED)
+        await expect(result).resolves.toBeNull()
+        expect(remove).toHaveBeenCalledWith("file-1")
     })
 
     it("ignores a delete rejection", async () => {

@@ -3,13 +3,13 @@ import math
 import frappe
 
 
-def _sane_number(value) -> float | None:
+def sane_number(value) -> float | None:
 	"""A finite number from an untrusted client, or None."""
 	if isinstance(value, bool):
 		return None
 	try:
 		number = float(value)
-	except (TypeError, ValueError):
+	except (TypeError, ValueError, OverflowError):
 		return None
 	return number if math.isfinite(number) else None
 
@@ -17,7 +17,7 @@ def _sane_number(value) -> float | None:
 # Mirror of inCoordinateRange in apps/web/src/lib/location.ts — keep in sync.
 def _sane_coordinate(value, limit: float) -> float | None:
 	"""A coordinate within ±limit, rounded to ~0.1 m, or None."""
-	number = _sane_number(value)
+	number = sane_number(value)
 	if number is None or not -limit <= number <= limit:
 		return None
 	return round(number, 6)

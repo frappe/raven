@@ -92,11 +92,10 @@ export const tilesFor = (
     return tiles
 }
 
-const coordinates = (meta: Pick<LocationMeta, "latitude" | "longitude">): string =>
-    `${meta.latitude},${meta.longitude}`
+const coordinates = (meta: LocationMeta): string => `${meta.latitude},${meta.longitude}`
 
 /** `"12.97561, 77.60659"` (5 decimal places). */
-export const formatCoordinates = (meta: Pick<LocationMeta, "latitude" | "longitude">): string =>
+export const formatCoordinates = (meta: LocationMeta): string =>
     `${meta.latitude.toFixed(5)}, ${meta.longitude.toFixed(5)}`
 
 // Mirror of maps_url in raven/api/location.py — keep in sync.

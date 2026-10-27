@@ -12,10 +12,13 @@ import {
     tilesFor,
     wazeAppUrl,
     wazeWebUrl,
-    type LocationMeta,
 } from "./location"
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.doUnmock("@utils/platform")
+    vi.resetModules()
+})
 
 describe("parseLocationJson", () => {
     it("reads objects and JSON strings", () => {
@@ -78,11 +81,19 @@ describe("map URLs", () => {
         expect(wazeWebUrl(meta)).toBe("https://www.waze.com/ul?ll=12.97561,77.60659")
         expect(appleMapsAppUrl(meta)).toBe("maps://?ll=12.97561,77.60659&q=Location")
     })
-    it("ignores a name carried in the payload", () => {
-        const named = { ...meta, name: "MG Road" } as LocationMeta
-        expect(appleMapsUrl(named)).toContain("q=Location")
-        expect(appleMapsAppUrl(named)).toContain("q=Location")
-        expect(geoUri(named)).toContain("(Location)")
+    it("picks Apple Maps on iOS", async () => {
+        vi.doMock("@utils/platform", () => ({ isIOS: true }))
+        vi.resetModules()
+        const { senderMapsProvider, senderMapsUrl } = await import("./location")
+        expect(senderMapsProvider()).toBe("apple")
+        expect(senderMapsUrl(meta)).toBe(appleMapsUrl(meta))
+    })
+    it("picks Google Maps elsewhere", async () => {
+        vi.doMock("@utils/platform", () => ({ isIOS: false }))
+        vi.resetModules()
+        const { senderMapsProvider, senderMapsUrl } = await import("./location")
+        expect(senderMapsProvider()).toBe("google")
+        expect(senderMapsUrl(meta)).toBe(googleMapsUrl(meta))
     })
 })
 

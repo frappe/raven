@@ -1,8 +1,9 @@
-import { useLayoutEffect, useRef, useState } from "react"
+import { useContext, useLayoutEffect, useRef, useState } from "react"
+import { FrappeContext, type FrappeConfig } from "frappe-react-sdk"
 import type { LocationMeta } from "@lib/location"
 import { siteSupportsLocationMessages } from "@lib/locationSupport"
-import type { Snapshot } from "./snapshot"
-import { useSnapshotUpload } from "./useSnapshotUpload"
+import { SNAPSHOT_TIMEOUT_MS, renderLocationSnapshot, type Snapshot } from "./snapshot"
+import { uploadSnapshotWithin, type UploadToken, type UploadedSnapshot } from "./useSnapshotUpload"
 
 type PickerSendOptions = {
     onSend: (location: LocationMeta, snapshot: Snapshot | null) => void
@@ -13,15 +14,14 @@ type PickerSendOptions = {
 
 /** The picker's send flow: uploads a snapshot, then hands the location over. */
 export const usePickerSend = ({ onSend, onClose, getLocation, getZoom }: PickerSendOptions) => {
-    const uploadSnapshot = useSnapshotUpload()
+    const { file: fileApi, db } = useContext(FrappeContext) as FrappeConfig
     const [sending, setSending] = useState(false)
     const sendingRef = useRef(false)
-    const cancelledRef = useRef(false)
+    const tokenRef = useRef<UploadToken | null>(null)
 
     useLayoutEffect(() => {
-        cancelledRef.current = false
         return () => {
-            cancelledRef.current = true
+            if (tokenRef.current) tokenRef.current.abandoned = true
         }
     }, [])
 
@@ -32,10 +32,28 @@ export const usePickerSend = ({ onSend, onClose, getLocation, getZoom }: PickerS
         setSending(true)
         // Read the map at send time: a pan may still be in flight.
         const zoom = getZoom()
+        // Tokens are per send, so StrictMode's remount can't cancel a later send.
+        const token: UploadToken = { abandoned: false }
+        tokenRef.current = token
         // An older site sends a plain link, so the snapshot step is skipped.
-        const snapshot = siteSupportsLocationMessages() ? await uploadSnapshot(location, zoom) : null
-        if (cancelledRef.current) return
-        onSend(location, snapshot)
+        let uploaded: UploadedSnapshot | null = null
+        if (siteSupportsLocationMessages()) {
+            uploaded = await uploadSnapshotWithin({
+                render: () => renderLocationSnapshot(location, zoom),
+                upload: async (file) => {
+                    const response = await fileApi.uploadFile(file, { doctype: "Raven Message", isPrivate: true })
+                    return response.data.message
+                },
+                remove: (name) => db.deleteDoc("File", name),
+                ms: SNAPSHOT_TIMEOUT_MS,
+                token,
+            })
+        }
+        if (token.abandoned) {
+            if (uploaded) void db.deleteDoc("File", uploaded.name).catch(() => {})
+            return
+        }
+        onSend(location, uploaded?.snapshot ?? null)
         onClose()
     }
 

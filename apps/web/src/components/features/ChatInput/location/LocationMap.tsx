@@ -6,14 +6,14 @@ import _ from "@lib/translate"
 import type { PositionFix } from "../../../../native/geolocation"
 import { MapNotice } from "./MapNotice"
 import { centreOf, isPanKey } from "./pickerPanel"
-import { PIN_PATH, PIN_VIEWBOX } from "./pinShape"
+import { PIN_DOT, PIN_PATH, PIN_VIEWBOX } from "./pinShape"
 
 export type MapHandle = { recenter(): void; getCentre(): LocationMeta; getZoom(): number }
 
 type LocationMapProps = {
     fix: PositionFix
     isMobile: boolean
-    onCentre: (centre: LocationMeta, moving: boolean) => void
+    onCentre: (centre: LocationMeta) => void
     onDragStart: () => void
     ref: Ref<MapHandle>
 }
@@ -32,7 +32,7 @@ const CentrePin = ({ lifted }: { lifted: boolean }) => (
         style={{ transform: lifted ? "translate(-50%, calc(-100% - 8px))" : "translate(-50%, -100%)" }}
     >
         <path d={PIN_PATH} fill="currentColor" />
-        <circle cx="14" cy="13.5" r="5" className="fill-white" />
+        <circle {...PIN_DOT} className="fill-white" />
     </svg>
 )
 
@@ -64,13 +64,10 @@ export const LocationMap = ({ fix, isMobile, onCentre, onDragStart, ref }: Locat
         setStatus("loading")
 
         const readCentre = () => centreOf(map?.getCenter().wrap() ?? { lat: 0, lng: 0 })
-        const handleMoveStart = () => {
-            setMoving(true)
-            centreRef.current(readCentre(), true)
-        }
+        const handleMoveStart = () => setMoving(true)
         const handleMoveEnd = () => {
             setMoving(false)
-            centreRef.current(readCentre(), false)
+            centreRef.current(readCentre())
         }
 
         const setup = async () => {
@@ -87,6 +84,8 @@ export const LocationMap = ({ fix, isMobile, onCentre, onDragStart, ref }: Locat
                     touchZoom: "center",
                     doubleClickZoom: "center",
                     boxZoom: false,
+                    // Caps a fling's glide at ~265 px; Leaflet's default is unbounded.
+                    inertiaMaxSpeed: 600,
                 })
                 map.attributionControl.setPrefix(false)
                 L.tileLayer(MAP_TILE_URL, {

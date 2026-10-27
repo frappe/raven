@@ -37,7 +37,7 @@ export const useLocationShare = ({ channelID, quietSendMode, stopTyping, replyTo
             batchId: randomUUID(),
             owner: sessionUser().name,
             content: supported ? "" : locationFallbackHtml(location),
-            files: supported && snapshot ? [snapshot] : [],
+            files: snapshot ? [snapshot] : [],
             linkedMessage: replyTo?.name,
             repliedMessageDetails: buildReplySnapshot(replyTo),
             sendSilently: quietSendMode === "auto" ? true : undefined,

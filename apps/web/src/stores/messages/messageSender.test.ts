@@ -41,7 +41,7 @@ vi.mock("@stores/unread/store", () => ({
 
 const CREATION = "2026-10-23 10:00:00.000000"
 
-const SNAPSHOT = { file_url: "/private/files/location-1-2.webp", file_size: 900 }
+const SNAPSHOT = { file_url: "/private/files/location.webp", file_size: 900 }
 
 const outboxRecord = (overrides: Partial<OutboxMessage> = {}): OutboxMessage => ({
     client_id: "b",
@@ -83,8 +83,8 @@ describe("buildOptimisticMessages", () => {
     })
 
     it("puts the snapshot on the Location placeholder", () => {
-        const [m] = buildOptimisticMessages("ch", "b", "me", "", [{ file_url: "/private/files/location-1-2.webp", file_size: 900 }], CREATION, undefined, undefined, { latitude: 1, longitude: 2 })
-        expect(m).toMatchObject({ message_type: "Location", file: "/private/files/location-1-2.webp", file_size: 900 })
+        const [m] = buildOptimisticMessages("ch", "b", "me", "", [{ file_url: "/private/files/location.webp", file_size: 900 }], CREATION, undefined, undefined, { latitude: 1, longitude: 2 })
+        expect(m).toMatchObject({ message_type: "Location", file: "/private/files/location.webp", file_size: 900 })
     })
 
     it("sends a Location without a snapshot", () => {

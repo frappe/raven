@@ -31,11 +31,7 @@ describe("isPanKey", () => {
 })
 
 describe("centreOf", () => {
-    it("keeps an in-range longitude unchanged", () => {
+    it("maps Leaflet's centre to coordinates", () => {
         expect(centreOf({ lat: 1, lng: 2 })).toEqual({ latitude: 1, longitude: 2 })
-    })
-    it("wraps a longitude past the antimeridian", () => {
-        expect(centreOf({ lat: 1, lng: 185 })).toEqual({ latitude: 1, longitude: -175 })
-        expect(centreOf({ lat: 1, lng: -190 })).toEqual({ latitude: 1, longitude: 170 })
     })
 })

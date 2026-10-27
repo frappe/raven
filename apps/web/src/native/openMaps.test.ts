@@ -1,26 +1,33 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { appleMapsUrl, geoUri, googleMapsUrl, wazeWebUrl } from "@lib/location"
-import { androidMapsOption, iosMapsOptions, openPlan, opensOnClick, webMapsOptions } from "./openMaps"
+import { androidMapsOption, iosMapsOptions, openPlan, webMapsOptions } from "./openMaps"
 
 const meta = { latitude: 1, longitude: 2 }
 
 beforeEach(() => {
     vi.stubGlobal("window", {})
-    vi.stubGlobal("document", { visibilityState: "visible", addEventListener: vi.fn() })
 })
 afterEach(() => {
+    vi.useRealTimers()
     vi.unstubAllGlobals()
     vi.doUnmock("@capacitor/app-launcher")
     vi.resetModules()
 })
 
-const nativeModule = async (openUrl: ReturnType<typeof vi.fn>) => {
-    vi.stubGlobal("window", { Capacitor: { isNativePlatform: () => true } })
+const nativeModule = async (openUrl: ReturnType<typeof vi.fn>, appLauncher = true) => {
+    vi.stubGlobal("window", {
+        Capacitor: { isNativePlatform: () => true, isPluginAvailable: () => appLauncher },
+    })
     vi.doMock("@capacitor/app-launcher", () => ({ AppLauncher: { openUrl } }))
     vi.resetModules()
     const { openExternal } = await import("./openMaps")
     return openExternal
 }
+
+const nativeWindow = (plugins: string[] = ["AppLauncher"]) =>
+    vi.stubGlobal("window", {
+        Capacitor: { isNativePlatform: () => true, isPluginAvailable: (name: string) => plugins.includes(name) },
+    })
 
 describe("iosMapsOptions", () => {
     it("lists Apple first and only installed apps", () => {
@@ -67,17 +74,6 @@ describe("openPlan", () => {
     })
 })
 
-describe("opensOnClick", () => {
-    it.each([
-        ["mouse", false],
-        ["touch", true],
-        ["pen", true],
-        [null, true],
-    ] as const)("%s -> %s", (pointerType, expected) => {
-        expect(opensOnClick(pointerType)).toBe(expected)
-    })
-})
-
 describe("openExternal", () => {
     const appUrl = "comgooglemaps://?q=1,2&center=1,2"
     const fallbackUrl = googleMapsUrl(meta)
@@ -110,12 +106,57 @@ describe("openExternal", () => {
         expect(openUrl.mock.calls).toEqual([[{ url: appUrl }], [{ url: fallbackUrl }]])
     })
 
+    it("ignores a second launch within a second", async () => {
+        vi.useFakeTimers()
+        const resolvers: Array<(value: { completed: boolean }) => void> = []
+        const openUrl = vi.fn(() => new Promise<{ completed: boolean }>((resolve) => resolvers.push(resolve)))
+        const openExternal = await nativeModule(openUrl)
+
+        const first = openExternal(appUrl)
+        await vi.advanceTimersByTimeAsync(0)
+        expect(openUrl).toHaveBeenCalledTimes(1)
+
+        void openExternal(appUrl)
+        await vi.advanceTimersByTimeAsync(0)
+        expect(openUrl).toHaveBeenCalledTimes(1)
+
+        resolvers.forEach((resolve) => resolve({ completed: true }))
+        await first
+        await vi.advanceTimersByTimeAsync(1000)
+
+        void openExternal(appUrl)
+        await vi.advanceTimersByTimeAsync(0)
+        expect(openUrl).toHaveBeenCalledTimes(2)
+    })
+
     it("stays put when there is no fallback", async () => {
         const openUrl = vi.fn(async () => ({ completed: false }))
         const openExternal = await nativeModule(openUrl)
 
         await expect(openExternal(appUrl)).resolves.toBeUndefined()
         expect(openUrl).toHaveBeenCalledTimes(1)
+    })
+
+    it("opens the https fallback in the system browser without AppLauncher", async () => {
+        const open = vi.fn()
+        const openUrl = vi.fn()
+        const importPlugin = vi.fn()
+        vi.stubGlobal("window", {
+            Capacitor: { isNativePlatform: () => true, isPluginAvailable: () => false },
+            open,
+        })
+        vi.doMock("@capacitor/app-launcher", () => {
+            importPlugin()
+            return { AppLauncher: { openUrl } }
+        })
+        vi.resetModules()
+        const { openExternal } = await import("./openMaps")
+
+        await openExternal(appUrl, fallbackUrl)
+
+        expect(open).toHaveBeenCalledWith(fallbackUrl, "_blank", "noopener")
+        expect(importPlugin).not.toHaveBeenCalled()
+        expect(openUrl).not.toHaveBeenCalled()
     })
 
     it("opens a new tab on the web and never loads the plugin", async () => {
@@ -134,18 +175,33 @@ describe("openExternal", () => {
 })
 
 describe("installedIosMapsApps", () => {
-    it("detects installed apps once per session", async () => {
+    it("reports no apps when the binary lacks AppLauncher", async () => {
+        const importPlugin = vi.fn()
+        nativeWindow([])
+        vi.doMock("@capacitor/app-launcher", () => {
+            importPlugin()
+            return { AppLauncher: { canOpenUrl: vi.fn() } }
+        })
+        vi.resetModules()
+        const { installedIosMapsApps } = await import("./openMaps")
+
+        await expect(installedIosMapsApps()).resolves.toEqual({ google: false, waze: false })
+        expect(importPlugin).not.toHaveBeenCalled()
+    })
+
+    it("reports the apps the device can open", async () => {
         const canOpenUrl = vi.fn(async ({ url }: { url: string }) => ({ value: url === "comgooglemaps://" }))
+        nativeWindow()
         vi.doMock("@capacitor/app-launcher", () => ({ AppLauncher: { canOpenUrl } }))
         vi.resetModules()
         const { installedIosMapsApps } = await import("./openMaps")
 
         await expect(installedIosMapsApps()).resolves.toEqual({ google: true, waze: false })
-        await expect(installedIosMapsApps()).resolves.toEqual({ google: true, waze: false })
         expect(canOpenUrl).toHaveBeenCalledTimes(2)
     })
 
     it("treats detection errors as not installed", async () => {
+        nativeWindow()
         vi.doMock("@capacitor/app-launcher", () => ({
             AppLauncher: { canOpenUrl: vi.fn(async () => { throw new Error("not available") }) },
         }))
@@ -153,39 +209,5 @@ describe("installedIosMapsApps", () => {
         const { installedIosMapsApps } = await import("./openMaps")
 
         await expect(installedIosMapsApps()).resolves.toEqual({ google: false, waze: false })
-    })
-
-    it("clears the cache when the app returns to the foreground", async () => {
-        const canOpenUrl = vi.fn(async ({ url }: { url: string }) => ({ value: url === "comgooglemaps://" }))
-        vi.doMock("@capacitor/app-launcher", () => ({ AppLauncher: { canOpenUrl } }))
-        const listeners: Array<() => void> = []
-        const addEventListener = vi.fn((_event: string, listener: () => void) => listeners.push(listener))
-        vi.stubGlobal("document", { visibilityState: "visible", addEventListener })
-        vi.resetModules()
-        const { installedIosMapsApps } = await import("./openMaps")
-
-        await installedIosMapsApps()
-        expect(addEventListener).toHaveBeenCalledTimes(1)
-
-        listeners.forEach((listener) => listener())
-        await expect(installedIosMapsApps()).resolves.toEqual({ google: true, waze: false })
-        expect(canOpenUrl).toHaveBeenCalledTimes(4)
-    })
-
-    it("keeps the cache while the app is hidden", async () => {
-        const canOpenUrl = vi.fn(async ({ url }: { url: string }) => ({ value: url === "comgooglemaps://" }))
-        vi.doMock("@capacitor/app-launcher", () => ({ AppLauncher: { canOpenUrl } }))
-        const listeners: Array<() => void> = []
-        const addEventListener = vi.fn((_event: string, listener: () => void) => listeners.push(listener))
-        const documentStub = { visibilityState: "visible", addEventListener }
-        vi.stubGlobal("document", documentStub)
-        vi.resetModules()
-        const { installedIosMapsApps } = await import("./openMaps")
-
-        await installedIosMapsApps()
-        documentStub.visibilityState = "hidden"
-        listeners.forEach((listener) => listener())
-        await expect(installedIosMapsApps()).resolves.toEqual({ google: true, waze: false })
-        expect(canOpenUrl).toHaveBeenCalledTimes(2)
     })
 })

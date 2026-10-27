@@ -9,7 +9,7 @@ import {
     type LocationMeta,
 } from "@lib/location"
 import _ from "@lib/translate"
-import { isNative } from "./platform"
+import { hasNativePlugin, isNative } from "./platform"
 
 export type MapsOption = {
     id: "apple" | "google" | "waze"
@@ -25,9 +25,6 @@ export type OpenPlan = "geo" | "ios" | "sheet" | "menu"
 /** How a location opens on each platform; mobile only changes the web flow. */
 export const openPlan = (platform: "ios" | "android" | "web", isMobile: boolean): OpenPlan =>
     platform === "android" ? "geo" : platform === "ios" ? "ios" : isMobile ? "sheet" : "menu"
-
-/** Mouse opens on Radix pointerdown; touch, pen and keyboard clicks open on click. */
-export const opensOnClick = (pointerType: string | null): boolean => pointerType !== "mouse"
 
 type MapsAppId = MapsOption["id"]
 
@@ -75,6 +72,7 @@ export const webMapsOptions = (meta: LocationMeta): MapsOption[] => [
 ]
 
 const detectInstalledMapsApps = async (): Promise<InstalledIosMapsApps> => {
+    if (!hasNativePlugin("AppLauncher")) return { google: false, waze: false }
     try {
         const { AppLauncher } = await import("@capacitor/app-launcher")
         const isInstalled = async (url: string): Promise<boolean> => {
@@ -91,23 +89,10 @@ const detectInstalledMapsApps = async (): Promise<InstalledIosMapsApps> => {
     }
 }
 
-let installedCache: Promise<InstalledIosMapsApps> | undefined
-let foregroundListenerRegistered = false
+let launching = false
 
-// Installed apps can change while the app is backgrounded (e.g. after an App Store install).
-const refreshWhenVisible = () => {
-    if (foregroundListenerRegistered) return
-    foregroundListenerRegistered = true
-    document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible") installedCache = undefined
-    })
-}
-
-/** Which known iOS maps apps can open; detected on first tap and re-checked on the next foreground. */
-export const installedIosMapsApps = (): Promise<InstalledIosMapsApps> => {
-    refreshWhenVisible()
-    return (installedCache ??= detectInstalledMapsApps())
-}
+/** Which known iOS maps apps can open; detected on each tap. */
+export const installedIosMapsApps = (): Promise<InstalledIosMapsApps> => detectInstalledMapsApps()
 
 /** Open a URL through the plugin; false when no app handled it. */
 const openUrlHandled = async (url: string): Promise<boolean> => {
@@ -123,6 +108,15 @@ const openUrlHandled = async (url: string): Promise<boolean> => {
 export const openExternal = async (url: string, fallbackUrl?: string): Promise<void> => {
     if (!isNative()) {
         window.open(url, "_blank", "noopener")
+        return
+    }
+    if (launching) return
+    launching = true
+    setTimeout(() => {
+        launching = false
+    }, 1000)
+    if (!hasNativePlugin("AppLauncher")) {
+        window.open(fallbackUrl ?? url, "_blank", "noopener")
         return
     }
     const opened = await openUrlHandled(url)

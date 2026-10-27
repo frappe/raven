@@ -102,21 +102,42 @@ describe("web geolocation", () => {
         await vi.advanceTimersByTimeAsync(30000)
 
         await expect(result).resolves.toEqual({ error: "timeout" })
+        expect(vi.getTimerCount()).toBe(0)
 
         succeed?.(position(8))
         await vi.advanceTimersByTimeAsync(0)
 
         await expect(result).resolves.toEqual({ error: "timeout" })
+        expect(getCurrentPosition).toHaveBeenCalledTimes(1)
     })
 })
 
 describe("native geolocation", () => {
     it("returns denied when the permission prompt is denied", async () => {
-        const requestPermissions = vi.fn(async () => ({ location: "denied" }))
+        const requestPermissions = vi.fn(async () => ({ location: "denied", coarseLocation: "denied" }))
         const { currentPosition, getCurrentPosition } = await nativeModule({ requestPermissions })
 
         await expect(currentPosition()).resolves.toEqual({ error: "denied" })
         expect(getCurrentPosition).not.toHaveBeenCalled()
+    })
+
+    it("asks for a coarse fix when Android grants approximate only", async () => {
+        const requestPermissions = vi.fn(async () => ({ location: "denied", coarseLocation: "granted" }))
+        const { currentPosition, getCurrentPosition } = await nativeModule({ requestPermissions })
+
+        await expect(currentPosition()).resolves.toEqual({
+            fix: { latitude: 12.9716, longitude: 77.5946, accuracy: 5 },
+        })
+        expect(getCurrentPosition).toHaveBeenCalledTimes(1)
+        expect(getCurrentPosition.mock.calls[0][0]).toEqual(LOW_ACCURACY)
+    })
+
+    it("maps an OS-PLUG-GLOC-0007 error to denied", async () => {
+        const getCurrentPosition = vi.fn().mockRejectedValue({ code: "OS-PLUG-GLOC-0007" })
+        const { currentPosition } = await nativeModule({ getCurrentPosition })
+
+        await expect(currentPosition()).resolves.toEqual({ error: "denied" })
+        expect(getCurrentPosition).toHaveBeenCalledTimes(1)
     })
 
     it("maps an OS-PLUG-GLOC-0003 error to denied", async () => {
@@ -144,7 +165,7 @@ describe("native geolocation", () => {
     })
 
     it("returns unavailable when both attempts fail", async () => {
-        const getCurrentPosition = vi.fn().mockRejectedValue({ code: "OS-PLUG-GLOC-0007" })
+        const getCurrentPosition = vi.fn().mockRejectedValue({ code: "OS-PLUG-GLOC-0001" })
         const { currentPosition } = await nativeModule({ getCurrentPosition })
 
         await expect(currentPosition()).resolves.toEqual({ error: "unavailable" })

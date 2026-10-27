@@ -7,7 +7,7 @@ from frappe.query_builder.functions import Coalesce, Count
 from frappe.utils import cint
 
 from raven.api.chat_stream import message_columns
-from raven.api.location import location_link_html, maps_url, sane_location
+from raven.api.location import location_link_html, maps_url, sane_location, sane_number
 from raven.api.raven_channel import create_direct_message_channel, get_peer_user_id_from_dm_users
 from raven.api.search import channel_access_condition
 from raven.utils import desk_has_raven_icon, get_channel_member
@@ -88,13 +88,8 @@ def _is_audio(file_url: str) -> bool:
 
 def _sane_duration(value) -> float | None:
 	"""A plausible voice note length in seconds from an untrusted client, or None."""
-	if isinstance(value, bool):
-		return None
-	try:
-		number = float(value)
-	except (TypeError, ValueError):
-		return None
-	return number if 0 < number <= _MAX_AUDIO_SECONDS else None
+	number = sane_number(value)
+	return number if number is not None and 0 < number <= _MAX_AUDIO_SECONDS else None
 
 
 def _sane_waveform(value) -> list[int] | None:

@@ -1,5 +1,5 @@
 import { tilesFor, type LocationMeta, type MapTile } from "@lib/location"
-import { PIN_COLOR, PIN_HEIGHT, PIN_PATH, PIN_WIDTH } from "./pinShape"
+import { PIN_COLOR, PIN_DOT, PIN_HEIGHT, PIN_PATH, PIN_WIDTH } from "./pinShape"
 
 export const SNAPSHOT_SIZE = 128
 export const SNAPSHOT_TIMEOUT_MS = 5000
@@ -54,7 +54,7 @@ const drawPin = (context: CanvasRenderingContext2D, x: number, y: number) => {
     context.fillStyle = PIN_COLOR
     context.fill(new Path2D(PIN_PATH))
     context.beginPath()
-    context.arc(PIN_WIDTH / 2, 13.5, 5, 0, Math.PI * 2)
+    context.arc(PIN_DOT.cx, PIN_DOT.cy, PIN_DOT.r, 0, Math.PI * 2)
     context.fillStyle = PIN_DOT_COLOR
     context.fill()
     context.restore()
@@ -75,14 +75,11 @@ export const drawSnapshot = (
 const toBlob = (canvas: HTMLCanvasElement): Promise<Blob | null> =>
     new Promise((resolve) => canvas.toBlob(resolve, "image/webp", 0.8))
 
-/** The upload's name: coordinates at 6 decimals and the browser's extension. */
-export const snapshotFileName = (meta: LocationMeta, type: string): string => {
-    const extension = type === "image/png" ? "png" : "webp"
-    return `location-${meta.latitude.toFixed(6)}-${meta.longitude.toFixed(6)}.${extension}`
-}
+/** The upload's name: never the coordinates, which would leak through file paths. */
+export const snapshotFileName = (type: string): string =>
+    type === "image/png" ? "location.png" : "location.webp"
 
-const fileFor = (blob: Blob, meta: LocationMeta): File =>
-    new File([blob], snapshotFileName(meta, blob.type), { type: blob.type })
+const fileFor = (blob: Blob): File => new File([blob], snapshotFileName(blob.type), { type: blob.type })
 
 /** A small map image of the point, or null when any tile, canvas or encode step fails. */
 export const renderLocationSnapshot = async (meta: LocationMeta, zoom: number): Promise<File | null> => {
@@ -96,7 +93,7 @@ export const renderLocationSnapshot = async (meta: LocationMeta, zoom: number): 
         if (!context) return null
         drawSnapshot(context, plan, images)
         const blob = await toBlob(canvas)
-        return blob ? fileFor(blob, meta) : null
+        return blob ? fileFor(blob) : null
     } catch {
         return null
     }

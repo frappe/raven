@@ -63,6 +63,7 @@ class TestLocationSanitizer(IntegrationTestCase):
 			("abc", 0),
 			(None, 0),
 			(0, float("inf")),
+			(10**400, 0),
 		)
 		for lat, lng in bad_coordinates:
 			self.assertIsNone(sane_location({"latitude": lat, "longitude": lng}), (lat, lng))
@@ -133,6 +134,11 @@ class TestLocationSend(IntegrationTestCase):
 		frappe.set_user("Administrator")
 		frappe.clear_cache()
 
+	def _message_created_calls(self, publish):
+		return [
+			call for call in publish.call_args_list if call.args and call.args[0] == "message_created"
+		]
+
 	def test_send_creates_location_message(self):
 		[msg] = send_message_with_attachments(
 			channel_id=self.channel.name,
@@ -156,10 +162,8 @@ class TestLocationSend(IntegrationTestCase):
 			doc.content,
 			"https://www.google.com/maps/search/?api=1&query=12.97561,77.60659",
 		)
-		self.assertEqual(
-			doc.links.strip(),
-			"https://www.google.com/maps/search/?api=1&query=12.97561,77.60659",
-		)
+		self.assertFalse(doc.links)
+		self.assertEqual(doc.links_table, [])
 
 	def test_link_text_ignores_name(self):
 		[msg] = send_message_with_attachments(
@@ -304,8 +308,30 @@ class TestLocationSend(IntegrationTestCase):
 			}
 		).insert(ignore_permissions=True)
 
+	def test_location_with_snapshot_publishes_after_commit(self):
+		snapshot = self._upload_image("after-commit.webp")
+		with patch(
+			"raven.raven_messaging.doctype.raven_message.raven_message.frappe.publish_realtime"
+		) as publish:
+			send_message_with_attachments(
+				channel_id=self.channel.name,
+				location={"latitude": 1, "longitude": 2},
+				files=[{"file_url": snapshot.file_url, "file_size": 1}],
+			)
+		[created] = self._message_created_calls(publish)
+		self.assertTrue(created.kwargs["after_commit"])
+
+	def test_location_without_snapshot_publishes(self):
+		with patch(
+			"raven.raven_messaging.doctype.raven_message.raven_message.frappe.publish_realtime"
+		) as publish:
+			send_message_with_attachments(
+				channel_id=self.channel.name, location={"latitude": 1, "longitude": 2}
+			)
+		self.assertEqual(len(self._message_created_calls(publish)), 1)
+
 	def test_location_with_snapshot(self):
-		snapshot = self._upload_image("location-1-2.webp")
+		snapshot = self._upload_image("location.webp")
 		[msg] = send_message_with_attachments(
 			channel_id=self.channel.name,
 			location={"latitude": 1, "longitude": 2},
@@ -315,8 +341,20 @@ class TestLocationSend(IntegrationTestCase):
 		self.assertEqual(
 			(doc.message_type, doc.file, doc.file_size), ("Location", snapshot.file_url, 1234)
 		)
+		self.assertFalse(doc.thumbnail_width)
 		files = get_all_files_shared_in_channel(self.channel.name)
 		self.assertNotIn(msg.name, [f.get("name") or f.get("message_id") for f in files])
+
+	def test_snapshot_must_be_uploaded_by_sender(self):
+		frappe.set_user("test@example.com")
+		theirs = self._upload_image("theirs.webp")
+		frappe.set_user("test1@example.com")
+		with self.assertRaises(frappe.PermissionError):
+			send_message_with_attachments(
+				channel_id=self.channel.name,
+				location={"latitude": 1, "longitude": 2},
+				files=[{"file_url": theirs.file_url, "file_size": 1}],
+			)
 
 	def test_location_snapshot_rules(self):
 		img = self._upload_image("a.webp")
@@ -345,3 +383,24 @@ class TestLocationSend(IntegrationTestCase):
 		doc.text = "<p>edited</p>"
 		with self.assertRaises(frappe.ValidationError):
 			doc.save()
+
+	def test_location_json_not_editable(self):
+		[msg] = send_message_with_attachments(
+			channel_id=self.channel.name, location={"latitude": 1, "longitude": 2}
+		)
+		doc = frappe.get_doc("Raven Message", msg.name)
+		doc.json = frappe.as_json({"latitude": 3, "longitude": 4})
+		with self.assertRaises(frappe.ValidationError):
+			doc.save()
+
+	def test_inserting_invalid_location_json_rejected(self):
+		with self.assertRaises(frappe.ValidationError):
+			frappe.get_doc(
+				{
+					"doctype": "Raven Message",
+					"channel_id": self.channel.name,
+					"message_type": "Location",
+					"text": "<p>somewhere</p>",
+					"json": frappe.as_json({"latitude": 200, "longitude": 0}),
+				}
+			).insert()

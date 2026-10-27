@@ -82,8 +82,8 @@ const LocationPickerContent = ({ isMobile, onClose, onSend }: LocationPickerCont
         void send()
     }
 
-    const ready = state === "ready" && !!fix
-    const panel = ready && fix && centre ? pickerPanel({ centre, fix, dragged }) : null
+    const ready = state === "ready" && fix !== undefined
+    const panel = ready && centre ? pickerPanel({ centre, fix, dragged }) : null
     const canSend = ready && !!centre && !sending
 
     let mapArea
@@ -97,7 +97,7 @@ const LocationPickerContent = ({ isMobile, onClose, onSend }: LocationPickerCont
                 onRetry={retry}
             />
         )
-    } else if (!ready || !fix) {
+    } else if (!ready) {
         mapArea = <MapNotice isMobile={isMobile} message={_("Couldn't find your location")} onRetry={retry} />
     } else {
         mapArea = (
@@ -193,36 +193,38 @@ type LocationPickerProps = {
 export const LocationPicker = ({ open, onOpenChange, onSend }: LocationPickerProps) => {
     const isMobile = useIsMobile()
 
+    // Fetch Leaflet while the fix is pending; LocationMap's imports then resolve from the module cache.
+    useEffect(() => {
+        import("leaflet").catch(() => {})
+        import("leaflet/dist/leaflet.css").catch(() => {})
+    }, [])
+
     if (isMobile) {
         return (
             <Drawer open={open} onOpenChange={onOpenChange}>
-                {open && (
-                    <DrawerContent
-                        className="h-dvh max-h-dvh rounded-none border-0 pt-[var(--inset-top)]"
-                        onOpenAutoFocus={(event) => event.preventDefault()}
-                    >
-                        <LocationPickerContent
-                            isMobile
-                            onClose={() => onOpenChange(false)}
-                            onSend={onSend}
-                        />
-                    </DrawerContent>
-                )}
+                <DrawerContent
+                    className="h-dvh max-h-dvh rounded-none border-0 pt-[var(--inset-top)]"
+                    onOpenAutoFocus={(event) => event.preventDefault()}
+                >
+                    <LocationPickerContent
+                        isMobile
+                        onClose={() => onOpenChange(false)}
+                        onSend={onSend}
+                    />
+                </DrawerContent>
             </Drawer>
         )
     }
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            {open && (
-                <DialogContent>
-                    <LocationPickerContent
-                        isMobile={false}
-                        onClose={() => onOpenChange(false)}
-                        onSend={onSend}
-                    />
-                </DialogContent>
-            )}
+            <DialogContent>
+                <LocationPickerContent
+                    isMobile={false}
+                    onClose={() => onOpenChange(false)}
+                    onSend={onSend}
+                />
+            </DialogContent>
         </Dialog>
     )
 }

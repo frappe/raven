@@ -57,7 +57,7 @@ export const MobileComposerActions = ({
     const videoCaptureRef = useRef<HTMLInputElement>(null)
     const galleryInputRef = useRef<HTMLInputElement>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
-    // A tile's overlay opens once the sheet is gone: two overlays would fight for focus.
+    // A tile's follow-up starts once the sheet is gone: overlays fight for focus, and the recorder's start-up stalls the exit.
     const afterClose = useRef<(() => void) | null>(null)
     const sheetBody = useCallback(
         () => () => {

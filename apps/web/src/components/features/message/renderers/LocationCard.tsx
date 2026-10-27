@@ -1,26 +1,25 @@
-import { forwardRef, useState, type ComponentPropsWithoutRef, type Ref } from "react"
+import { useState, type ComponentPropsWithoutRef, type Ref } from "react"
 import { ExternalLink, MapPin } from "lucide-react"
-import type { LocationMeta } from "@lib/location"
 import { cn } from "@lib/utils"
 import _ from "@lib/translate"
 
 const cardClass =
     "flex w-full max-w-[420px] items-center gap-3 rounded-xl border border-outline-gray-2 bg-surface-base p-1.5"
 
+const interactiveClass =
+    "cursor-pointer text-left outline-none transition-colors hover:bg-surface-gray-1 hover:border-outline-gray-3 active:bg-surface-gray-2 focus-visible:focus-ring"
+
 type LocationCardProps = {
-    meta: LocationMeta | null
     snapshotUrl?: string
     onOpen?: () => void
+    ref?: Ref<HTMLButtonElement>
 } & Omit<ComponentPropsWithoutRef<"button">, "onClick" | "type" | "children">
 
 /** The compact Location row: snapshot or pin, "Location", and an open-in-maps affordance. */
-export const LocationCard = forwardRef<HTMLElement, LocationCardProps>(function LocationCard(
-    { meta, snapshotUrl, onOpen, ...triggerProps },
-    ref,
-) {
+export const LocationCard = ({ snapshotUrl, onOpen, ref, ...buttonProps }: LocationCardProps) => {
     const [failedSnapshot, setFailedSnapshot] = useState<string | null>(null)
-    const showSnapshot = meta !== null && !!snapshotUrl && snapshotUrl !== failedSnapshot
-    const interactive = meta !== null && !!onOpen
+    const showSnapshot = !!snapshotUrl && snapshotUrl !== failedSnapshot
+    const interactive = !!onOpen
     const card = (
         <>
             <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface-gray-2">
@@ -47,17 +46,17 @@ export const LocationCard = forwardRef<HTMLElement, LocationCardProps>(function 
     if (interactive) {
         return (
             <button
-                ref={ref as Ref<HTMLButtonElement>}
-                {...triggerProps}
+                {...buttonProps}
+                ref={ref}
                 type="button"
                 aria-label={_("Open location in maps")}
                 onClick={onOpen}
-                className={cn(cardClass, "cursor-pointer text-left outline-none transition-colors hover:bg-surface-gray-1 hover:border-outline-gray-3 active:bg-surface-gray-2 focus-visible:focus-ring")}
+                className={cn(cardClass, interactiveClass)}
             >
                 {card}
             </button>
         )
     }
 
-    return <div ref={ref as Ref<HTMLDivElement>} className={cardClass}>{card}</div>
-})
+    return <div className={cardClass}>{card}</div>
+}

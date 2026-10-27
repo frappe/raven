@@ -6,6 +6,7 @@ import {
     snapshotFileName,
     withTimeout,
 } from "./snapshot"
+import { PIN_COLOR } from "./pinShape"
 
 const zoomOf = (url: string): number => Number(url.split("/")[3])
 
@@ -38,15 +39,13 @@ describe("snapshotDrawPlan", () => {
 })
 
 describe("snapshotFileName", () => {
-    it("uses six decimals for the coordinates", () => {
-        const name = snapshotFileName({ latitude: 12.975612, longitude: 77.606634 }, "image/webp")
-        expect(name).toBe("location-12.975612-77.606634.webp")
+    it("carries no digits: coordinates must not reach a file path", () => {
+        expect(snapshotFileName("image/webp")).toBe("location.webp")
+        expect(snapshotFileName("image/webp")).not.toMatch(/\d/)
     })
 
     it("uses png when the browser encodes png", () => {
-        expect(snapshotFileName({ latitude: 1, longitude: 2 }, "image/png")).toBe(
-            "location-1.000000-2.000000.png",
-        )
+        expect(snapshotFileName("image/png")).toBe("location.png")
     })
 })
 
@@ -84,15 +83,16 @@ describe("drawSnapshot", () => {
 
     it("paints the tiles and the pin, with no text or chip", () => {
         const context = contextOf()
+        const fills: string[] = []
+        context.fill.mockImplementation(() => fills.push(context.fillStyle))
         const plan = snapshotDrawPlan(META, 17)
-        drawSnapshot(
-            context as unknown as CanvasRenderingContext2D,
-            plan,
-            plan.tiles.map(() => ({}) as HTMLImageElement),
-        )
+        const images = plan.tiles.map(() => ({}) as HTMLImageElement)
+        drawSnapshot(context as unknown as CanvasRenderingContext2D, plan, images)
 
-        expect(context.drawImage).toHaveBeenCalledTimes(plan.tiles.length)
-        expect(context.fill).toHaveBeenCalledTimes(2)
+        expect(context.drawImage.mock.calls).toEqual(
+            plan.tiles.map((tile, index) => [images[index], tile.left, tile.top, tile.size, tile.size]),
+        )
+        expect(fills).toEqual([PIN_COLOR, "#ffffff"])
         expect(context.fillText).not.toHaveBeenCalled()
         expect(context.fillRect).not.toHaveBeenCalled()
         expect(context.measureText).not.toHaveBeenCalled()

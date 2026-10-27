@@ -3,9 +3,13 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 // isNative reads the bridge global; node has no window.
 afterEach(() => vi.unstubAllGlobals())
 
-const nativeWindow = (boot: Record<string, unknown>, platform = "ios") =>
+const nativeWindow = (boot: Record<string, unknown>, platform = "ios", plugins: string[] = []) =>
     vi.stubGlobal("window", {
-        Capacitor: { isNativePlatform: () => true, getPlatform: () => platform },
+        Capacitor: {
+            isNativePlatform: () => true,
+            getPlatform: () => platform,
+            isPluginAvailable: (name: string) => plugins.includes(name),
+        },
         frappe: { boot },
     })
 
@@ -38,10 +42,16 @@ describe("siteSupportsLocationMessages", () => {
 })
 
 describe("canShareLocation", () => {
-    it("is true in the native app", async () => {
-        nativeWindow({})
+    it("is true in the native app with the Geolocation plugin", async () => {
+        nativeWindow({}, "ios", ["Geolocation"])
         const { canShareLocation } = await freshModule()
         expect(canShareLocation()).toBe(true)
+    })
+
+    it("is false in a native binary without the Geolocation plugin", async () => {
+        nativeWindow({})
+        const { canShareLocation } = await freshModule()
+        expect(canShareLocation()).toBe(false)
     })
 
     it("needs a secure context and the geolocation API on the web", async () => {
