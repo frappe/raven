@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react"
 import { MainPageSkeleton } from "@components/features/main-page/MainPageSkeleton"
 import { useIsMobile } from "@hooks/use-mobile"
 import { useLoadUsers } from "@hooks/useLoadUsers"
+import { useStopVoiceOnNavigate } from "@stores/voicePlayback/useStopVoiceOnNavigate"
 import _ from "@lib/translate"
 import { Outlet } from "react-router"
 import PrimarySidebar from "./PrimarySidebar/PrimarySidebar"
@@ -62,6 +63,7 @@ const AppShell = () => {
     return (
         <ProtectedRoute>
             <AppListeners>
+                <StopVoiceOnNavigate />
                 <AppShellLayout>
                     <Outlet />
                 </AppShellLayout>
@@ -77,6 +79,12 @@ const AppShell = () => {
 
 // Native only: the ternary keeps the chunk out of browser builds entirely.
 const NativeBridge = import.meta.env.VITE_NATIVE ? lazy(() => import("../../native/NativeBridge")) : () => null
+
+/** Its own leaf: reading the route here keeps navigation from re-rendering AppListeners. */
+const StopVoiceOnNavigate = () => {
+    useStopVoiceOnNavigate()
+    return null
+}
 
 const AppListeners = ({ children }: { children: React.ReactNode }) => {
 

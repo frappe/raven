@@ -60,6 +60,7 @@ export function ChatContentView({
 
     // Skeleton while loading, archived/not-member banner (with Join), or the composer.
     const composerGate = useComposerGate(channelID)
+
     const composerBlocked = composerGate.state !== "composer"
 
     // Mobile stacked navigation: the channel stays MOUNTED under an open thread layer,
@@ -139,7 +140,7 @@ export function ChatContentView({
                             {/* key by channel: remount per channel so the editor re-autofocuses and
                                 draft text doesn't bleed across channels (file/send state already
                                 lives in channel-keyed atoms, so a remount is safe). */}
-                            <ChatInput key={channelID} channelID={channelID} />
+                            <ChatInput key={channelID} channelID={channelID} covered={isMobile && hasThread} />
                         </ComposerArea>
                     </div>
                 </FileDropZone>
