@@ -247,7 +247,8 @@ export const useMessageActions = (
                 onSelect: () => setDialog({ type: "forward", message }),
             })
         }
-        if (message.text || message.content) {
+        // A location's text is the fallback link — nothing worth copying.
+        if (message.message_type !== "Location" && (message.text || message.content)) {
             clipboard.push({
                 id: "copy",
                 label: _("Copy"),

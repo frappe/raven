@@ -71,7 +71,7 @@
    "fieldname": "message_type",
    "fieldtype": "Select",
    "label": "Message Type",
-   "options": "Text\nImage\nFile\nPoll\nSystem\nVoice"
+   "options": "Text\nImage\nFile\nPoll\nSystem\nVoice\nLocation"
   },
   {
    "fieldname": "message_reactions",
@@ -235,7 +235,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-23 12:00:00.000000",
+ "modified": "2026-10-25 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Raven Messaging",
  "name": "Raven Message",

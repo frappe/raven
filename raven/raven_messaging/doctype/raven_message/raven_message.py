@@ -10,6 +10,7 @@ from frappe.model.document import Document
 from frappe.utils import get_datetime, get_system_timezone
 from pytz import timezone, utc
 
+from raven.api.location import sane_location
 from raven.api.raven_channel import get_peer_user_id_from_dm_users
 from raven.links import detect_provider, normalize_url
 from raven.notification import (
@@ -64,7 +65,7 @@ class RavenMessage(Document):
 		mentions: DF.Table[RavenMention]
 		message_batch_id: DF.Data | None
 		message_reactions: DF.JSON | None
-		message_type: DF.Literal["Text", "Image", "File", "Poll", "System", "Voice"]
+		message_type: DF.Literal["Text", "Image", "File", "Poll", "System", "Voice", "Location"]
 		notification: DF.Data | None
 		poll_id: DF.Link | None
 		replied_message_details: DF.JSON | None
@@ -118,7 +119,9 @@ class RavenMessage(Document):
 		# save. extract_mentions clears the same way.
 		self.links_table = []
 
-		for link in soup.find_all("a"):
+		# A location's link is a fallback for old clients, not a link to preview or search.
+		anchors = [] if self.message_type == "Location" else soup.find_all("a")
+		for link in anchors:
 			href = link.get("href")
 			if href:
 				# Store the normalized URL and provider on each row now, at
@@ -271,6 +274,15 @@ class RavenMessage(Document):
 			frappe.throw(
 				_("Direct modification of message_reactions is not allowed. Use the Reactions API.")
 			)
+
+		before = self.get_doc_before_save()
+		if before and before.message_type == "Location":
+			if any(self.has_value_changed(field) for field in ("text", "json", "file", "message_type")):
+				frappe.throw(_("A location can't be edited"))
+
+		if self.is_new() and self.message_type == "Location":
+			if not sane_location(json_dict(self.json)):
+				frappe.throw(_("Invalid location"))
 
 	def validate_linked_message(self):
 		"""
@@ -723,6 +735,8 @@ class RavenMessage(Document):
 			if isinstance(duration, (int, float)) and duration > 0:
 				return f"🎤 Sent a voice note ({int(duration // 60)}:{int(duration % 60):02d})"
 			return "🎤 Sent a voice note"
+		elif self.message_type == "Location":
+			return "📍 Shared a location"
 		elif self.text:
 			return self.content
 
@@ -960,6 +974,9 @@ class RavenMessage(Document):
 				after_commit = True
 				if not self.file:
 					return
+			elif self.message_type == "Location" and self.file:
+				# A location's snapshot is a private file linked in this transaction.
+				after_commit = True
 
 			if self.message_type == "Poll" or (self.link_doctype and self.link_document):
 				# If the message is a poll, then we need to wait for the poll to be created

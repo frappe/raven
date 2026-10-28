@@ -9,7 +9,7 @@ import type { Message } from "@raven/types/common/Message"
  * file messages aren't editable.
  */
 export const resolveEditTarget = (message: Message): Message | null => {
-    if (message.message_type === "Poll") return null
+    if (message.message_type === "Poll" || message.message_type === "Location") return null
     if (message.message_batch_id) {
         const members = channelMessagesStore.batchMembers(message.channel_id, message.message_batch_id)
         return members.find((member) => member.text) ?? null

@@ -7,6 +7,7 @@ from frappe.query_builder.functions import Coalesce, Count
 from frappe.utils import cint
 
 from raven.api.chat_stream import message_columns
+from raven.api.location import location_link_html, maps_url, sane_location, sane_number
 from raven.api.raven_channel import create_direct_message_channel, get_peer_user_id_from_dm_users
 from raven.api.search import channel_access_condition
 from raven.utils import desk_has_raven_icon, get_channel_member
@@ -87,13 +88,8 @@ def _is_audio(file_url: str) -> bool:
 
 def _sane_duration(value) -> float | None:
 	"""A plausible voice note length in seconds from an untrusted client, or None."""
-	if isinstance(value, bool):
-		return None
-	try:
-		number = float(value)
-	except (TypeError, ValueError):
-		return None
-	return number if 0 < number <= _MAX_AUDIO_SECONDS else None
+	number = sane_number(value)
+	return number if number is not None and 0 < number <= _MAX_AUDIO_SECONDS else None
 
 
 def _sane_waveform(value) -> list[int] | None:
@@ -108,25 +104,15 @@ def _sane_waveform(value) -> list[int] | None:
 	return bars
 
 
-def attach_voice_payloads(rows: list[dict], id_field: str = "name") -> list[dict]:
-	"""
-	Add `json` to the Voice rows of a list query that doesn't select it. One extra
-	query, only for voice notes: a text message's `json` is its whole editor document.
-	"""
-	voice_ids = [row[id_field] for row in rows if row.get("message_type") == "Voice"]
-	if not voice_ids:
-		return rows
-	# The caller has already authorized these rows. Raven Message's list permission is
-	# owner-only, so a permission-checked query would drop other people's notes.
-	payloads = dict(
-		frappe.get_all(
-			"Raven Message", filters={"name": ["in", voice_ids]}, fields=["name", "json"], as_list=True
-		)
-	)
-	for row in rows:
-		if row.get("message_type") == "Voice":
-			row["json"] = payloads.get(row[id_field])
-	return rows
+_JSON_PAYLOAD_TYPES = ("Voice", "Location")
+
+
+def _attachment_url(file: dict | str) -> str:
+	return file["file_url"] if isinstance(file, dict) else file
+
+
+def _attachment_size(file: dict | str) -> int:
+	return (file.get("file_size") if isinstance(file, dict) else None) or 0
 
 
 def _file_message_type(file_url: str) -> str:
@@ -266,6 +252,7 @@ def send_message_with_attachments(
 	send_silently: bool = False,
 	link_doctype: str | None = None,
 	link_document: str | None = None,
+	location: dict | str | None = None,
 ):
 	"""
 	v3 composer send. Creates one message per (already-uploaded) file first —
@@ -282,6 +269,12 @@ def send_message_with_attachments(
 	client when it recorded the clip; it becomes a `Voice` message with that payload
 	in `json`. Unusable metadata sends the audio as a plain file.
 
+	`location` is one point (`{"latitude", "longitude"}`) and must be the whole send:
+	no content, no linked document, and at most one file — the pre-rendered map
+	snapshot, which must be an image and lands in `file` / `file_size`. `maps`
+	(`"apple"` or `"google"`) only picks the link stored in `text` for clients that
+	can't draw the card; it is not kept in `json`.
+
 	`send_silently` suppresses notifications for the whole batch (the flag is set on
 	every message before insert).
 
@@ -296,6 +289,8 @@ def send_message_with_attachments(
 	if isinstance(files, str):
 		files = frappe.parse_json(files)
 	files = files or []
+	if isinstance(location, str):
+		location = frappe.parse_json(location)
 
 	content = content or ""
 	has_text = bool(frappe.utils.strip_html_tags(content).strip())
@@ -307,10 +302,22 @@ def send_message_with_attachments(
 
 	has_linked_document = bool(link_doctype and link_document)
 
-	if not has_body and not files and not has_linked_document:
+	if location is not None:
+		snapshot = files[0] if files else None
+		if (
+			has_body
+			or len(files) > 1
+			or has_linked_document
+			or (snapshot and _file_message_type(_attachment_url(snapshot)) != "Image")
+		):
+			frappe.throw(_("A location is sent on its own"))
+		clean_location = sane_location(location)
+		if not clean_location:
+			frappe.throw(_("Invalid location"))
+	elif not has_body and not files and not has_linked_document:
 		frappe.throw(_("Cannot send an empty message"))
 
-	validate_files_uploaded_by_user([f["file_url"] if isinstance(f, dict) else f for f in files])
+	validate_files_uploaded_by_user([_attachment_url(f) for f in files])
 
 	# Every message from a send carries the client_id as its batch id: it groups
 	# multi-message sends in the UI AND lets the client match the realtime echo of
@@ -322,9 +329,21 @@ def send_message_with_attachments(
 	# then the text. Each file carries its url + size (size is read straight from
 	# the client's upload response, so no per-file File lookup is needed here).
 	specs = []
-	for f in files:
-		file_url = f["file_url"] if isinstance(f, dict) else f
-		file_size = f.get("file_size") if isinstance(f, dict) else None
+	if location is not None:
+		location_spec = {
+			"message_type": "Location",
+			"json": clean_location,
+			"text": location_link_html(maps_url(clean_location, location.get("maps"))),
+		}
+		if files:
+			location_spec["file"] = _attachment_url(files[0])
+			location_spec["file_size"] = _attachment_size(files[0])
+		specs.append(location_spec)
+	# A location's file is its snapshot, carried on the Location message itself.
+	attachment_files = files if location is None else []
+	for f in attachment_files:
+		file_url = _attachment_url(f)
+		file_size = _attachment_size(f)
 		spec = {
 			"message_type": _file_message_type(file_url),
 			"file": file_url,
@@ -495,36 +514,35 @@ def get_pinned_messages(channel_id: str):
 	pinnedMessagesString = frappe.db.get_value("Raven Channel", channel_id, "pinned_messages_string")
 	pinnedMessages = pinnedMessagesString.split("\n") if pinnedMessagesString else []
 
-	return attach_voice_payloads(
-		frappe.db.get_all(
-			"Raven Message",
-			filters={"name": ["in", pinnedMessages]},
-			fields=[
-				"name",
-				"owner",
-				"creation",
-				"bot",
-				"text",
-				"file",
-				"message_type",
-				"message_reactions",
-				"_liked_by",
-				"channel_id",
-				"thumbnail_width",
-				"thumbnail_height",
-				"file_thumbnail",
-				"link_doctype",
-				"link_document",
-				"replied_message_details",
-				"hide_link_preview",
-				"is_bot_message",
-				"content",
-				"is_edited",
-				"is_thread",
-				"is_forwarded",
-			],
-			order_by="creation desc",
-		)
+	return frappe.db.get_all(
+		"Raven Message",
+		filters={"name": ["in", pinnedMessages]},
+		fields=[
+			"name",
+			"owner",
+			"creation",
+			"bot",
+			"text",
+			"json",
+			"file",
+			"message_type",
+			"message_reactions",
+			"_liked_by",
+			"channel_id",
+			"thumbnail_width",
+			"thumbnail_height",
+			"file_thumbnail",
+			"link_doctype",
+			"link_document",
+			"replied_message_details",
+			"hide_link_preview",
+			"is_bot_message",
+			"content",
+			"is_edited",
+			"is_thread",
+			"is_forwarded",
+		],
+		order_by="creation desc",
 	)
 
 
@@ -569,6 +587,7 @@ def get_saved_messages(
 			raven_message.owner,
 			raven_message.creation,
 			raven_message.text,
+			raven_message.json,
 			raven_message.content,
 			raven_message.channel_id,
 			raven_message.file,
@@ -606,7 +625,7 @@ def get_saved_messages(
 	else:
 		query = query.orderby(raven_message.creation, order=Order.asc)
 
-	return attach_voice_payloads(query.run(as_dict=True))
+	return query.run(as_dict=True)
 
 
 @frappe.whitelist()
@@ -1006,8 +1025,9 @@ def _forward_payloads(message_id: str) -> list[dict]:
 		# front. `json` goes with it: it still holds the unquoted body, and the copy
 		# should have one body that carries the quote.
 		if payload.get("is_reply"):
-			# A voice note has no body to carry the quote; its `json` is the payload.
-			if payload.get("message_type") != "Voice":
+			# Voice and Location keep their own body: prepending the quote to a link
+			# would mangle it, and `json` is the content.
+			if payload.get("message_type") not in _JSON_PAYLOAD_TYPES:
 				quote = build_reply_blockquote(
 					payload.get("replied_message_details"), linked_message=member.get("linked_message")
 				)

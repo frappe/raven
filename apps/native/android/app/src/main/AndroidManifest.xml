@@ -84,4 +84,8 @@
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
     <!-- RavenHaptics drives the vibrator directly. -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Location sharing: sent only when the user picks a spot; GPS stays optional. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
 </manifest>

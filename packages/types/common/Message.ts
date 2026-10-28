@@ -1,4 +1,4 @@
-export type Message = FileMessage | TextMessage | ImageMessage | PollMessage | SystemMessage | VoiceMessage
+export type Message = FileMessage | TextMessage | ImageMessage | PollMessage | SystemMessage | VoiceMessage | LocationMessage
 
 export interface BaseMessage {
     name: string,
@@ -7,7 +7,7 @@ export interface BaseMessage {
     channel_id: string,
     creation: string,
     modified: string,
-    message_type: 'Text' | 'File' | 'Image' | 'Poll' | 'System' | 'Voice',
+    message_type: 'Text' | 'File' | 'Image' | 'Poll' | 'System' | 'Voice' | 'Location',
     message_reactions?: string | null,
     is_continuation: 1 | 0
     /** Stable React key for the stream row (stream selector decoration). A
@@ -34,7 +34,8 @@ export interface BaseMessage {
     content?: string,
     isOpenInThread?: boolean,
     /** Type-specific payload: a Voice message's `{ duration, waveform }` (read with parseVoiceJson),
-     *  or system payloads (converted_to_channel_*, forwarded_thread). String when fetched, object when live. */
+     *  a Location message's point (read with parseLocationJson), or system payloads
+     *  (converted_to_channel_*, forwarded_thread). String when fetched, object when live. */
     json?: string | Record<string, unknown>,
     /** Shared id stamped on messages sent together as one batch (e.g. multiple files). Consecutive messages with the same id render as one block. */
     message_batch_id?: string | null,
@@ -55,6 +56,15 @@ export interface VoiceMessage extends BaseMessage {
     text: string,
     file: string,
     message_type: 'Voice'
+    file_size?: number,
+}
+
+/** A shared location: `{ latitude, longitude }` in `json` (see parseLocationJson). */
+export interface LocationMessage extends BaseMessage {
+    text: string,
+    message_type: 'Location'
+    /** Snapshot image attached at send. */
+    file?: string,
     file_size?: number,
 }
 

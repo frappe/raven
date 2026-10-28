@@ -11,7 +11,7 @@ export type SavedMessageRow = {
     content?: string
     channel_id: string
     file?: string
-    /** Voice notes only: `{ duration, waveform }`. */
+    /** Voice notes only: `{ duration, waveform }`. Locations: `{ latitude, longitude }`. */
     json?: string | Record<string, unknown>
     message_type?: BaseMessage['message_type']
     message_reactions?: string
@@ -47,6 +47,10 @@ export function savedRowToMessage(r: SavedMessageRow): Message {
 
     if (messageType === 'Voice') {
         return { ...base, message_type: 'Voice', text: '', file: r.file ?? '', json: r.json }
+    }
+    // The snapshot is optional; its absence must not read as an empty attachment.
+    if (messageType === 'Location') {
+        return { ...base, message_type: 'Location', text: r.text ?? '', ...(r.file ? { file: r.file } : {}), json: r.json }
     }
     if (messageType === 'File' || messageType === 'Image') {
         return { ...base, message_type: messageType, text: r.text ?? '', file: r.file ?? '' }
