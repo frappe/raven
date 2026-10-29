@@ -157,13 +157,13 @@ const matchYouTube = (href: string): { videoID: string; isMusic: boolean } | nul
 }
 
 /** youtube.com/playlist?list=… (incl. YouTube Music playlists) → videoseries embed. */
-const matchYouTubePlaylist = (href: string): { listID: string } | null => {
+const matchYouTubePlaylist = (href: string): { listID: string; isMusic: boolean } | null => {
     try {
         const url = new URL(href)
         const host = url.hostname.replace(/^(www|m|music)\./, "")
         if (host !== "youtube.com" || url.pathname !== "/playlist") return null
         const list = url.searchParams.get("list")
-        return list && /^[\w-]{10,}$/.test(list) ? { listID: list } : null
+        return list && /^[\w-]{10,}$/.test(list) ? { listID: list, isMusic: url.hostname.startsWith("music.") } : null
     } catch {
         return null
     }
@@ -186,8 +186,10 @@ const IOS_APP = !!import.meta.env.VITE_NATIVE && window.Capacitor?.getPlatform?.
  * the square art with pillarbox bars (maxres is 16:9 → ~21.9% bars per side,
  * hqdefault is 4:3 → 12.5%), and object-cover on a square box crops exactly that
  * much per side — the bars trim themselves away in either case.
+ *
+ * A playlist (iOS only) has no videoID: its thumbnail is the first video's, from the stored preview.
  */
-const YouTubeEmbed = ({ videoID, square, href }: { videoID: string; square?: boolean; href: string }) => {
+const YouTubeEmbed = ({ videoID, square, href }: { videoID?: string; square?: boolean; href: string }) => {
     const [playing, setPlaying] = useState(false)
     // Best-available thumbnail: maxresdefault only exists for newer/HD videos, so
     // fall back to hqdefault (always present). A missing maxres surfaces either as
@@ -202,6 +204,7 @@ const YouTubeEmbed = ({ videoID, square, href }: { videoID: string; square?: boo
     const { ref, hasBeenInView } = useHasBeenInView()
     const preview = useLinkPreview(hasBeenInView ? href : undefined)
     const title = preview?.status === "Fetched" ? preview.title : ""
+    const thumbID = videoID ?? (preview?.status === "Fetched" ? preview.image?.match(/\/vi\/([\w-]+)\//)?.[1] : undefined)
     return (
         <div
             ref={ref}
@@ -211,7 +214,7 @@ const YouTubeEmbed = ({ videoID, square, href }: { videoID: string; square?: boo
                 square ? "aspect-square max-w-xs" : "aspect-video max-w-md lg:max-w-lg",
             )}
         >
-            {playing ? (
+            {playing && videoID ? (
                 <iframe
                     className="size-full"
                     src={`https://www.youtube-nocookie.com/embed/${videoID}?autoplay=1`}
@@ -228,17 +231,19 @@ const YouTubeEmbed = ({ videoID, square, href }: { videoID: string; square?: boo
                     // A pressed look, not just hover: on iOS the tap leaves the app at once.
                     className="group relative block size-full cursor-pointer"
                 >
-                    <img
-                        src={`https://i.ytimg.com/vi/${videoID}/${thumb}.jpg`}
-                        alt=""
-                        loading="lazy"
-                        decoding="async"
-                        onError={fallback}
-                        onLoad={(e) => {
-                            if (thumb === "maxresdefault" && e.currentTarget.naturalWidth <= 120) fallback()
-                        }}
-                        className="size-full object-cover transition-[filter] duration-100 group-active:brightness-75"
-                    />
+                    {thumbID && (
+                        <img
+                            src={`https://i.ytimg.com/vi/${thumbID}/${thumb}.jpg`}
+                            alt=""
+                            loading="lazy"
+                            decoding="async"
+                            onError={fallback}
+                            onLoad={(e) => {
+                                if (thumb === "maxresdefault" && e.currentTarget.naturalWidth <= 120) fallback()
+                            }}
+                            className="size-full object-cover transition-[filter] duration-100 group-active:brightness-75"
+                        />
+                    )}
                     <span className="absolute inset-0 m-auto flex size-14 items-center justify-center rounded-full bg-black-700 transition duration-100 group-hover:bg-black-800 group-active:scale-90 group-active:bg-black-900">
                         <Play className="size-6 fill-white text-white" />
                     </span>
@@ -624,6 +629,8 @@ const PROVIDERS: Array<(href: string) => ReactElement | null> = [
     },
     (href) => {
         const playlist = matchYouTubePlaylist(href)
+        // iOS: the video facade, whose tap opens the playlist outside the app.
+        if (playlist && IOS_APP) return <YouTubeEmbed key={playlist.listID} square={playlist.isMusic} href={href} />
         return playlist ? (
             <EmbedFrame
                 src={`https://www.youtube-nocookie.com/embed/videoseries?list=${playlist.listID}`}
