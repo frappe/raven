@@ -102,6 +102,20 @@ describe("initNativePush on a site without push", () => {
     })
 })
 
+describe("initNativePush on a site with push on", () => {
+    beforeEach(() => {
+        localStorage.clear()
+        vi.clearAllMocks()
+    })
+
+    it("subscribes an unchanged token again, so a row the server dropped comes back", async () => {
+        localStorage.setItem("raven-native-fcm-token", "device-token")
+        await start("1", "granted")
+        await vi.waitFor(() => expect(subscribedTokens()).toEqual(["device-token"]))
+        expect(localStorage.getItem("raven-native-fcm-token")).toBe("device-token")
+    })
+})
+
 describe("disableNativePush", () => {
     it("records the site as turned off, unless it is only a sign-out", async () => {
         prefs.delete("pushWanted.https://a.com")
