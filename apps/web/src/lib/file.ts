@@ -1,15 +1,13 @@
 import { siteFetch, siteOrigin } from '@lib/site'
+import { getFileName } from '@raven/lib/utils/operations'
 /**
  * Function to return extension of a file
  * @param filename name of the file with extension
  * @returns extension
  */
 export const getFileExtension = (filename: string) => {
-
-    const fileNameWithoutQuery = filename?.split('?')[0]
-
-    const extension = fileNameWithoutQuery?.split('.').pop()?.toLocaleLowerCase() ?? ''
-    return extension;
+    const name = getFileName(filename)
+    return name.includes('.') ? name.split('.').pop()?.toLocaleLowerCase() ?? '' : ''
 }
 
 /**
@@ -71,20 +69,23 @@ export const getFileType = (ext: string) => {
 /**
  * Absolute, shareable URL for a Raven file, minus the `?fid=…` access token — a
  * link carrying it is scoped to one recipient, so pasting it elsewhere hands over
- * a URL that stops working. The backend strips it the same way when forwarding
- * (raven_message.py:861).
+ * a URL that stops working. Every other query parameter stays: a download link
+ * like `/api/method/download_file?file_url=…` needs its query to find the file.
  *
  * `origin` is a parameter (not read straight off `window`) so the pure logic is
  * testable in vitest's node environment.
  */
-export const getAbsoluteFileURL = (fileURL: string, origin: string = siteOrigin()): string =>
-	new URL(fileURL.split('?')[0], origin).href
+export const getAbsoluteFileURL = (fileURL: string, origin: string = siteOrigin()): string => {
+	const url = new URL(fileURL, origin)
+	if (url.searchParams.has('fid')) url.searchParams.delete('fid')
+	return url.href
+}
 
 /** Triggers a browser download of a (session-authenticated) file URL. */
 export const downloadFile = (url: string, fileName?: string) => {
     // WebView has no download manager; hand the file to the OS share sheet instead.
     if (import.meta.env.VITE_NATIVE) {
-        void import('../native/share').then(({ shareFileNative }) => shareFileNative(getAbsoluteFileURL(url), fileName || url.split("/").pop() || "file"))
+        void import('../native/share').then(({ shareFileNative }) => shareFileNative(getAbsoluteFileURL(url), fileName || getFileName(url) || "file"))
         return
     }
     const anchor = document.createElement('a')
