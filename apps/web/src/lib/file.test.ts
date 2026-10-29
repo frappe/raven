@@ -22,6 +22,17 @@ describe("getAbsoluteFileURL", () => {
         expect(getAbsoluteFileURL("//cdn.example.com/a.pdf", ORIGIN)).toBe("https://cdn.example.com/a.pdf")
     })
 
+    it("keeps the query of a download link", () => {
+        const link = "/api/method/download_file?file_url=/private/files/HB7AW64I_54957.jpg&file_name=54957.jpg"
+        expect(getAbsoluteFileURL(link, ORIGIN)).toBe(`https://raven.test${link}`)
+    })
+
+    it("strips only the fid when there is more in the query", () => {
+        expect(getAbsoluteFileURL("/private/files/report.pdf?fid=abc123&v=2", ORIGIN)).toBe(
+            "https://raven.test/private/files/report.pdf?v=2",
+        )
+    })
+
     it("encodes spaces in the filename", () => {
         expect(getAbsoluteFileURL("/files/my report.pdf", ORIGIN)).toBe("https://raven.test/files/my%20report.pdf")
     })

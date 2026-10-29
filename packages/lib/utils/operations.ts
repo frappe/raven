@@ -14,9 +14,8 @@ export const replaceCurrentUserFromDMChannelName = (channelName: string, current
  * @returns extension
  */
 export const getFileExtension = (filename: string) => {
-
-    const extension = filename?.split('.').pop()?.split('?')[0].toLocaleLowerCase() ?? ''
-    return extension;
+    const name = getFileName(filename)
+    return name.includes('.') ? name.split('.').pop()?.toLocaleLowerCase() ?? '' : ''
 }
 
 export const VIDEO_FORMATS = ['mp4', 'webm']
@@ -42,15 +41,16 @@ export const isImageFile = (ext: string) => {
 }
 
 /**
- * Function to return name of a file name without extension
- * @param filename name of the file with extension
- * @returns name of the file without extension
+ * The name of a file from its URL or path, with its extension. A download link names the
+ * file in its query, e.g. `/api/method/download_file?file_url=/private/files/a.jpg&file_name=a.jpg`.
+ * @param fileURL a file URL, a path, or a bare file name
+ * @returns the file name, or an empty string
  */
-export const getFileName = (filename: string) => {
-
-    const name = filename?.split('/')?.pop()
-
-    return name?.split('?')[0] ?? ''
+export function getFileName(fileURL: string) {
+    const [path, query = ''] = (fileURL ?? '').split('?')
+    const params = new URLSearchParams(query)
+    const named = params.get('file_name') || params.get('file_url')?.split('?')[0].split('/').pop()
+    return named || path.split('/').pop() || ''
 }
 
 export const getFileMimeType = (fileName: string) => {
