@@ -623,7 +623,8 @@ const PROVIDERS: Array<(href: string) => ReactElement | null> = [
         return yt ? <YouTubeEmbed key={yt.videoID} videoID={yt.videoID} square={yt.isMusic} href={href} /> : null
     },
     (href) => {
-        const playlist = matchYouTubePlaylist(href)
+        // iOS: no embed, so the generic card shows the playlist and opens it outside the app.
+        const playlist = IOS_APP ? null : matchYouTubePlaylist(href)
         return playlist ? (
             <EmbedFrame
                 src={`https://www.youtube-nocookie.com/embed/videoseries?list=${playlist.listID}`}
