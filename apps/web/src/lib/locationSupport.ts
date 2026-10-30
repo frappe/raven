@@ -9,10 +9,3 @@ export const canShareLocation = (): boolean => {
         : !!window.isSecureContext && "geolocation" in navigator
     return canShare
 }
-
-/** Web always serves the location client; the installed app needs the site to advertise the feature. */
-export const siteSupportsLocationMessages = (): boolean => {
-    if (!isNative()) return true
-    const features = window.frappe?.boot?.raven_features
-    return Array.isArray(features) && features.includes("location_messages")
-}

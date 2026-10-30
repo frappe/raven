@@ -58,7 +58,6 @@ def _sane_entries(value) -> list[dict]:
 	return entries
 
 
-# Mirror of parseContactJson in apps/web/src/lib/contact.ts — keep in sync.
 def sane_contact(value) -> dict | None:
 	"""A plausible contact payload from an untrusted client, or None."""
 	if not isinstance(value, dict):

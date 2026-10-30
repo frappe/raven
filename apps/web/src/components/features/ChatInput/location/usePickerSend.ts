@@ -1,7 +1,7 @@
 import { useContext, useLayoutEffect, useRef, useState } from "react"
 import { FrappeContext, type FrappeConfig } from "frappe-react-sdk"
 import type { LocationMeta } from "@lib/location"
-import { siteSupportsLocationMessages } from "@lib/locationSupport"
+import { siteHasFeature } from "../../../../native/platform"
 import { SNAPSHOT_TIMEOUT_MS, renderLocationSnapshot, type Snapshot } from "./snapshot"
 import { uploadSnapshotWithin, type UploadToken, type UploadedSnapshot } from "./useSnapshotUpload"
 
@@ -37,7 +37,7 @@ export const usePickerSend = ({ onSend, onClose, getLocation, getZoom }: PickerS
         tokenRef.current = token
         // An older site sends a plain link, so the snapshot step is skipped.
         let uploaded: UploadedSnapshot | null = null
-        if (siteSupportsLocationMessages()) {
+        if (siteHasFeature("location_messages")) {
             uploaded = await uploadSnapshotWithin({
                 render: () => renderLocationSnapshot(location, zoom),
                 upload: async (file) => {

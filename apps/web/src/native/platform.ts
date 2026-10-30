@@ -17,6 +17,15 @@ export const isNative = (): boolean =>
 export const hasNativePlugin = (name: string): boolean =>
     isNative() && window.Capacitor?.isPluginAvailable?.(name) === true
 
+export type RavenFeature = "location_messages" | "contact_messages"
+
+// Web is served by the site; the installed app needs the site to advertise the feature.
+export const siteHasFeature = (feature: RavenFeature): boolean => {
+    if (!isNative()) return true
+    const features = window.frappe?.boot?.raven_features
+    return Array.isArray(features) && features.includes(feature)
+}
+
 export const nativePlatform = (): "ios" | "android" | "web" => {
     const p = typeof window !== "undefined" ? window.Capacitor?.getPlatform?.() : undefined
     return p === "ios" || p === "android" ? p : "web"

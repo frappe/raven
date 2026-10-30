@@ -201,6 +201,34 @@ class TestContactSend(IntegrationTestCase):
 		with self.assertRaises(frappe.ValidationError):
 			doc.save()
 
+	def test_direct_insert_stores_sanitised_json(self):
+		doc = frappe.get_doc(
+			{
+				"doctype": "Raven Message",
+				"channel_id": self.channel.name,
+				"message_type": "Contact",
+				"text": "<p>Priya</p>",
+				"json": {
+					"name": "<b>Priya</b>",
+					"phones": [{"value": "1", "label": {"x": 1}}] + [{"value": str(i)} for i in range(25)],
+					"extra": "x" * 1000,
+				},
+			}
+		).insert()
+		stored = frappe.parse_json(frappe.db.get_value("Raven Message", doc.name, "json"))
+		self.assertEqual(stored["name"], "Priya")
+		self.assertNotIn("extra", stored)
+		self.assertEqual(len(stored["phones"]), 10)
+		self.assertEqual(stored["phones"][0], {"value": "1"})
+
+	def test_text_cannot_become_contact(self):
+		[msg] = send_message_with_attachments(channel_id=self.channel.name, content="<p>hi</p>")
+		doc = frappe.get_doc("Raven Message", msg.name)
+		doc.message_type = "Contact"
+		doc.json = frappe.as_json({"name": "Priya", "phones": [{"value": "1", "label": {"x": 1}}]})
+		with self.assertRaises(frappe.ValidationError):
+			doc.save()
+
 	def test_reply_silent_idempotent(self):
 		parent = send_message_with_attachments(channel_id=self.channel.name, content="<p>who?</p>")[0]
 		kwargs = dict(

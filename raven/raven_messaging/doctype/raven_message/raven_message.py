@@ -278,22 +278,24 @@ class RavenMessage(Document):
 				_("Direct modification of message_reactions is not allowed. Use the Reactions API.")
 			)
 
+		# A location or contact is fixed once sent, and no message can be retyped into one.
 		before = self.get_doc_before_save()
-		if before and before.message_type == "Location":
+		if before and {before.message_type, self.message_type} & {"Location", "Contact"}:
 			if any(self.has_value_changed(field) for field in ("text", "json", "file", "message_type")):
-				frappe.throw(_("A location can't be edited"))
+				frappe.throw(_("A location or contact can't be changed"))
 
-		if before and before.message_type == "Contact":
-			if any(self.has_value_changed(field) for field in ("text", "json", "file", "message_type")):
-				frappe.throw(_("A contact can't be edited"))
-
+		# Store the sanitised payload: a direct insert skips the send API.
 		if self.is_new() and self.message_type == "Location":
-			if not sane_location(json_dict(self.json)):
+			clean = sane_location(json_dict(self.json))
+			if not clean:
 				frappe.throw(_("Invalid location"))
+			self.json = clean
 
 		if self.is_new() and self.message_type == "Contact":
-			if not sane_contact(json_dict(self.json)):
+			clean = sane_contact(json_dict(self.json))
+			if not clean:
 				frappe.throw(_("Invalid contact"))
+			self.json = clean
 
 	def validate_linked_message(self):
 		"""

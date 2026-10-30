@@ -394,6 +394,27 @@ class TestLocationSend(IntegrationTestCase):
 		with self.assertRaises(frappe.ValidationError):
 			doc.save()
 
+	def test_direct_insert_stores_sanitised_location(self):
+		doc = frappe.get_doc(
+			{
+				"doctype": "Raven Message",
+				"channel_id": self.channel.name,
+				"message_type": "Location",
+				"text": "<p>somewhere</p>",
+				"json": {"latitude": 1, "longitude": 2, "extra": "x" * 1000},
+			}
+		).insert()
+		stored = frappe.parse_json(frappe.db.get_value("Raven Message", doc.name, "json"))
+		self.assertNotIn("extra", stored)
+
+	def test_text_cannot_become_location(self):
+		[msg] = send_message_with_attachments(channel_id=self.channel.name, content="<p>hi</p>")
+		doc = frappe.get_doc("Raven Message", msg.name)
+		doc.message_type = "Location"
+		doc.json = frappe.as_json({"latitude": 1, "longitude": 2})
+		with self.assertRaises(frappe.ValidationError):
+			doc.save()
+
 	def test_inserting_invalid_location_json_rejected(self):
 		with self.assertRaises(frappe.ValidationError):
 			frappe.get_doc(
