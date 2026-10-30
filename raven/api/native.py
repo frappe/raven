@@ -9,7 +9,7 @@ APP_ORIGINS = ("capacitor://localhost", "https://localhost")
 # exist on the user's own device.
 APP_HEADER = "X-Raven-App"
 # Features the app checks on every launch. A list so later features add entries.
-RAVEN_FEATURES = ["location_messages"]
+RAVEN_FEATURES = ["location_messages", "contact_messages"]
 
 
 @frappe.whitelist()

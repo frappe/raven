@@ -10,6 +10,7 @@ from frappe.model.document import Document
 from frappe.utils import get_datetime, get_system_timezone
 from pytz import timezone, utc
 
+from raven.api.contact import sane_contact
 from raven.api.location import sane_location
 from raven.api.raven_channel import get_peer_user_id_from_dm_users
 from raven.links import detect_provider, normalize_url
@@ -65,7 +66,9 @@ class RavenMessage(Document):
 		mentions: DF.Table[RavenMention]
 		message_batch_id: DF.Data | None
 		message_reactions: DF.JSON | None
-		message_type: DF.Literal["Text", "Image", "File", "Poll", "System", "Voice", "Location"]
+		message_type: DF.Literal[
+			"Text", "Image", "File", "Poll", "System", "Voice", "Location", "Contact"
+		]
 		notification: DF.Data | None
 		poll_id: DF.Link | None
 		replied_message_details: DF.JSON | None
@@ -280,9 +283,17 @@ class RavenMessage(Document):
 			if any(self.has_value_changed(field) for field in ("text", "json", "file", "message_type")):
 				frappe.throw(_("A location can't be edited"))
 
+		if before and before.message_type == "Contact":
+			if any(self.has_value_changed(field) for field in ("text", "json", "file", "message_type")):
+				frappe.throw(_("A contact can't be edited"))
+
 		if self.is_new() and self.message_type == "Location":
 			if not sane_location(json_dict(self.json)):
 				frappe.throw(_("Invalid location"))
+
+		if self.is_new() and self.message_type == "Contact":
+			if not sane_contact(json_dict(self.json)):
+				frappe.throw(_("Invalid contact"))
 
 	def validate_linked_message(self):
 		"""
@@ -341,9 +352,9 @@ class RavenMessage(Document):
 				"owner": details.owner,
 				"creation": datetime.datetime.strftime(details.creation, "%Y-%m-%d %H:%M:%S"),
 			}
-			# A voice note's preview shows its length. Fetched only then: a text message's
-			# `json` is its whole editor document.
-			if details.message_type == "Voice":
+			# A voice note's preview shows its length, and a contact reply needs its card.
+			# Fetched only then: a text message's `json` is its whole editor document.
+			if details.message_type in ("Voice", "Contact"):
 				snapshot["json"] = json_dict(frappe.db.get_value("Raven Message", self.linked_message, "json"))
 			self.replied_message_details = frappe.as_json(snapshot)
 
@@ -737,6 +748,9 @@ class RavenMessage(Document):
 			return "🎤 Sent a voice note"
 		elif self.message_type == "Location":
 			return "📍 Shared a location"
+		elif self.message_type == "Contact":
+			name = json_dict(self.json).get("name")
+			return f"👤 Shared a contact: {name}" if name else "👤 Shared a contact"
 		elif self.text:
 			return self.content
 
@@ -974,8 +988,9 @@ class RavenMessage(Document):
 				after_commit = True
 				if not self.file:
 					return
-			elif self.message_type == "Location" and self.file:
-				# A location's snapshot is a private file linked in this transaction.
+			elif self.message_type in ("Location", "Contact") and self.file:
+				# A location's snapshot or a contact's photo is a private file linked in this
+				# transaction.
 				after_commit = True
 
 			if self.message_type == "Poll" or (self.link_doctype and self.link_document):

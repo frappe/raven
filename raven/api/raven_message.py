@@ -7,6 +7,7 @@ from frappe.query_builder.functions import Coalesce, Count
 from frappe.utils import cint
 
 from raven.api.chat_stream import message_columns
+from raven.api.contact import contact_fallback_html, sane_contact
 from raven.api.location import location_link_html, maps_url, sane_location, sane_number
 from raven.api.raven_channel import create_direct_message_channel, get_peer_user_id_from_dm_users
 from raven.api.search import channel_access_condition
@@ -104,7 +105,7 @@ def _sane_waveform(value) -> list[int] | None:
 	return bars
 
 
-_JSON_PAYLOAD_TYPES = ("Voice", "Location")
+_JSON_PAYLOAD_TYPES = ("Voice", "Location", "Contact")
 
 
 def _attachment_url(file: dict | str) -> str:
@@ -253,6 +254,7 @@ def send_message_with_attachments(
 	link_doctype: str | None = None,
 	link_document: str | None = None,
 	location: dict | str | None = None,
+	contact: dict | str | None = None,
 ):
 	"""
 	v3 composer send. Creates one message per (already-uploaded) file first —
@@ -275,6 +277,12 @@ def send_message_with_attachments(
 	(`"apple"` or `"google"`) only picks the link stored in `text` for clients that
 	can't draw the card; it is not kept in `json`.
 
+	`contact` is one contact card (`{"name", "phones", "emails"}`) and must be the
+	whole send: no content, no linked document, and at most one file — the contact
+	photo, which must be an image and lands in `file` / `file_size`. The sanitized
+	payload is stored in `json`; `text` carries plain lines for clients that can't
+	draw the card.
+
 	`send_silently` suppresses notifications for the whole batch (the flag is set on
 	every message before insert).
 
@@ -291,6 +299,8 @@ def send_message_with_attachments(
 	files = files or []
 	if isinstance(location, str):
 		location = frappe.parse_json(location)
+	if isinstance(contact, str):
+		contact = frappe.parse_json(contact)
 
 	content = content or ""
 	has_text = bool(frappe.utils.strip_html_tags(content).strip())
@@ -302,6 +312,8 @@ def send_message_with_attachments(
 
 	has_linked_document = bool(link_doctype and link_document)
 
+	if location is not None and contact is not None:
+		frappe.throw(_("A contact can't be sent with other content"))
 	if location is not None:
 		snapshot = files[0] if files else None
 		if (
@@ -310,10 +322,22 @@ def send_message_with_attachments(
 			or has_linked_document
 			or (snapshot and _file_message_type(_attachment_url(snapshot)) != "Image")
 		):
-			frappe.throw(_("A location is sent on its own"))
+			frappe.throw(_("A location can't be sent with other content"))
 		clean_location = sane_location(location)
 		if not clean_location:
 			frappe.throw(_("Invalid location"))
+	elif contact is not None:
+		photo = files[0] if files else None
+		if (
+			has_body
+			or len(files) > 1
+			or has_linked_document
+			or (photo and _file_message_type(_attachment_url(photo)) != "Image")
+		):
+			frappe.throw(_("A contact can't be sent with other content"))
+		clean_contact = sane_contact(contact)
+		if not clean_contact:
+			frappe.throw(_("Invalid contact"))
 	elif not has_body and not files and not has_linked_document:
 		frappe.throw(_("Cannot send an empty message"))
 
@@ -339,8 +363,18 @@ def send_message_with_attachments(
 			location_spec["file"] = _attachment_url(files[0])
 			location_spec["file_size"] = _attachment_size(files[0])
 		specs.append(location_spec)
-	# A location's file is its snapshot, carried on the Location message itself.
-	attachment_files = files if location is None else []
+	elif contact is not None:
+		contact_spec = {
+			"message_type": "Contact",
+			"json": clean_contact,
+			"text": contact_fallback_html(clean_contact),
+		}
+		if files:
+			contact_spec["file"] = _attachment_url(files[0])
+			contact_spec["file_size"] = _attachment_size(files[0])
+		specs.append(contact_spec)
+	# A location's snapshot or a contact's photo rides on the message itself.
+	attachment_files = files if location is None and contact is None else []
 	for f in attachment_files:
 		file_url = _attachment_url(f)
 		file_size = _attachment_size(f)
