@@ -22,14 +22,15 @@ RAVEN_USER_BOOT_FIELDS = (
 def boot_session(bootinfo):
 
 	# Boot runs on every page load, also when a failed migrate left the schema behind the code.
-	# as_dict holds only fields the schema has; _dict reads any other field as None.
-	raven_settings = frappe._dict(frappe.get_single("Raven Settings").as_dict())
+	# as_dict() is a frappe._dict of the fields the schema has; any other field reads as None.
+	raven_settings = frappe.get_single("Raven Settings").as_dict()
 
 	# Scheduled messages run as Server Scripts. The settings panel warns when those are off.
 	bootinfo.server_script_enabled = is_safe_exec_enabled()
 
 	# Opens the first-admin setup flow in the web app.
-	# A site that predates the field is set up (mark_existing_sites_set_up).
+	# A site that predates the field is set up: mark_existing_sites_set_up runs before model
+	# sync, so a failed migrate leaves either no field or a stored 1.
 	setup_completed = raven_settings.get("setup_completed", 1)
 	bootinfo.raven_setup_pending = 1 if not setup_completed and is_setup_admin() else 0
 
