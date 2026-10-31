@@ -23,10 +23,11 @@ import { Island } from "@components/layout/Island"
 
 type ThreadTab = 'participating' | 'ai' | 'other'
 
-const TABS: { key: ThreadTab; label: string }[] = [
-    { key: 'participating', label: 'Participating' },
-    { key: 'other', label: 'Other' },
-    { key: 'ai', label: 'AI Agents' },
+/** A function, so the labels are translated when used, not when the module loads. */
+const threadTabs = (): { key: ThreadTab; label: string }[] => [
+    { key: 'participating', label: _('Participating') },
+    { key: 'other', label: _('Other') },
+    { key: 'ai', label: _('AI Agents') },
 ]
 
 /** The thread pane (Outlet) reads this off the location state — the parent channel of the
@@ -103,9 +104,9 @@ export default function Threads() {
                     <div className="flex flex-row items-center gap-1 md:justify-between">
                         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ThreadTab)} className="min-w-0 shrink-0">
                             <TabsList variant="subtle" size="md">
-                                {TABS.map(tab => (
+                                {threadTabs().map(tab => (
                                     <TabsTrigger key={tab.key} value={tab.key}>
-                                        {_(tab.label)}
+                                        {tab.label}
                                     </TabsTrigger>
                                 ))}
                             </TabsList>

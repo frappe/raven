@@ -29,10 +29,11 @@ import { cn } from "@lib/utils"
 
 type NotificationTab = "all" | "mentions" | "reactions"
 
-const TABS: { key: NotificationTab; label: string; type: "mention" | "reaction" | null }[] = [
-    { key: "all", label: "All", type: null },
-    { key: "mentions", label: "Mentions", type: "mention" },
-    { key: "reactions", label: "Reactions", type: "reaction" },
+/** A function, so the labels are translated when used, not when the module loads. */
+const notificationTabs = (): { key: NotificationTab; label: string; type: "mention" | "reaction" | null }[] => [
+    { key: "all", label: _("All"), type: null },
+    { key: "mentions", label: _("Mentions"), type: "mention" },
+    { key: "reactions", label: _("Reactions"), type: "reaction" },
 ]
 
 /** Module-level Footer so Virtuoso's component type stays stable across renders.
@@ -200,9 +201,9 @@ export default function Notifications() {
                         <div className="shrink-0 px-2 p-2">
                             <Tabs value={activeTab} onValueChange={(v) => onTabChange(v as NotificationTab)}>
                                 <TabsList variant="subtle" className="w-full">
-                                    {TABS.map((t) => (
+                                    {notificationTabs().map((t) => (
                                         <TabsTrigger key={t.key} value={t.key} className="flex-1">
-                                            {_(t.label)}
+                                            {t.label}
                                         </TabsTrigger>
                                     ))}
                                 </TabsList>

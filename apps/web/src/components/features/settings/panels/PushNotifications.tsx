@@ -108,7 +108,7 @@ const PushNotificationFields = () => {
                 inputProps={{ placeholder: DEFAULT_RAVEN_CLOUD_URL, autoComplete: "off", maxLength: 300 }}
                 formDescription={
                     <>
-                        {_("You can keep this as \"{0}\" if you are using the default Raven Cloud instance.", [DEFAULT_RAVEN_CLOUD_URL])}
+                        {_('You can keep this as "{0}" if you are using the default Raven Cloud instance.', [DEFAULT_RAVEN_CLOUD_URL])}
                         <br />
                         {_("Only change this if you are using a custom Raven Cloud instance.")}
                     </>

@@ -167,7 +167,7 @@ const CommandPalette = ({ inDrawer = false }: { inDrawer?: boolean }) => {
 
     return (
         <Command
-            label="Global Command Menu"
+            label={_("Global Command Menu")}
             filter={customFilter}
             value={selected}
             onValueChange={setSelected}

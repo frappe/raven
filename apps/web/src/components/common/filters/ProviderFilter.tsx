@@ -21,11 +21,12 @@ export type ProviderOption = {
  * One option per provider, each with its own logo, grouped under category
  * headers. No merged options: filtering YouTube Music apart from YouTube
  * (or one meeting app apart from another) is the point of the filter.
- * Shared with the mobile filter sheet, which renders these as chip groups.
+ * Shared with the mobile filter sheet, which renders these as chip groups. A function, so
+ * the labels are translated when used, not when the module loads. Brand names stay as they are.
  */
-export const PROVIDER_CATEGORIES: Array<{ label: string; options: ProviderOption[] }> = [
+export const providerCategories = (): Array<{ label: string; options: ProviderOption[] }> => [
     {
-        label: 'Media',
+        label: _("Media"),
         options: [
             { id: 'YouTube', label: 'YouTube', brand: BRAND.youtube },
             { id: 'YouTube Music', label: 'YouTube Music', brand: BRAND.youtubeMusic },
@@ -38,7 +39,7 @@ export const PROVIDER_CATEGORIES: Array<{ label: string; options: ProviderOption
         ],
     },
     {
-        label: 'Social',
+        label: _("Social"),
         options: [
             { id: 'X', label: 'X', brand: BRAND.x },
             { id: 'Reddit', label: 'Reddit', brand: BRAND.reddit },
@@ -46,17 +47,17 @@ export const PROVIDER_CATEGORIES: Array<{ label: string; options: ProviderOption
         ],
     },
     {
-        label: 'Sites',
+        label: _("Sites"),
         options: [
             { id: 'Frappe', label: 'Frappe', brand: BRAND.frappe },
             { id: 'GitHub', label: 'GitHub', brand: BRAND.github },
             { id: 'Figma', label: 'Figma', brand: BRAND.figma },
             { id: 'Wikipedia', label: 'Wikipedia', brand: BRAND.wikipedia },
-            { id: 'Other', label: 'Other sites', icon: Globe2Icon },
+            { id: 'Other', label: _("Other sites"), icon: Globe2Icon },
         ],
     },
     {
-        label: 'Meetings',
+        label: _("Meetings"),
         options: [
             { id: 'Frappe Meet', label: 'Frappe Meet', brand: BRAND.frappeMeet },
             { id: 'Google Meet', label: 'Google Meet', brand: BRAND.googleMeet },
@@ -64,16 +65,16 @@ export const PROVIDER_CATEGORIES: Array<{ label: string; options: ProviderOption
         ],
     },
     {
-        label: 'Workspace',
+        label: _("Workspace"),
         options: [
             { id: 'Raven Link', label: 'Raven', brand: BRAND.raven },
-            { id: 'Site Document Link', label: 'This site', icon: LaptopIcon },
+            { id: 'Site Document Link', label: _("This site"), icon: LaptopIcon },
         ],
     },
 ]
 
 /** Flat option list — the active-filter badge reads glyphs from here. */
-export const ALL_PROVIDER_OPTIONS = PROVIDER_CATEGORIES.flatMap((category) => category.options)
+export const allProviderOptions = () => providerCategories().flatMap((category) => category.options)
 
 /**
  * Selection as stable, readable names — same rule as formatFileTypeNames.
@@ -81,9 +82,9 @@ export const ALL_PROVIDER_OPTIONS = PROVIDER_CATEGORIES.flatMap((category) => ca
  * surfaces (the badge row) where six names would wrap into a paragraph.
  */
 export const formatProviderNames = (ids: string[], maxNamed?: number): string => {
-    const names = ALL_PROVIDER_OPTIONS
+    const names = allProviderOptions()
         .filter((option) => ids.includes(option.id))
-        .map((option) => _(option.label))
+        .map((option) => option.label)
     if (maxNamed && names.length > maxNamed) {
         return _('{0} and {1} more', [names.slice(0, maxNamed).join(', '), String(names.length - maxNamed)])
     }
@@ -184,10 +185,10 @@ export function ProviderFilter({ value, onValueChange, placeholder, iconTrigger,
                     // Twenty-odd rows is too tall for any screen — the list scrolls.
                     className={cn("min-w-(--radix-popover-trigger-width) max-h-80 overflow-y-auto p-1 shadow-2xl", FILTER_DROPDOWN_WIDTH)}
                 >
-                    {PROVIDER_CATEGORIES.map((category) => (
+                    {providerCategories().map((category) => (
                         <div key={category.label} className='gap-0.5 flex flex-col'>
                             <div className="px-2 pt-2 text-xs-medium pb-0.5 text-ink-gray-4">
-                                {_(category.label)}
+                                {category.label}
                             </div>
                             {category.options.map((option) => {
                                 const checked = selected.includes(option.id)
@@ -207,7 +208,7 @@ export function ProviderFilter({ value, onValueChange, placeholder, iconTrigger,
                                         ) : Icon ? (
                                             <Icon className={cn("size-4 shrink-0", checked ? "text-ink-gray-8" : "text-ink-gray-4")} />
                                         ) : null}
-                                        <span className="min-w-0 flex-1 truncate text-start leading-snug">{_(option.label)}</span>
+                                        <span className="min-w-0 flex-1 truncate text-start leading-snug">{option.label}</span>
                                     </button>
                                 )
                             })}

@@ -4,7 +4,7 @@ import { Badge } from '@components/ui/badge'
 import { SearchFilters } from './types'
 import { useClearSearchFilters } from './useClearSearchFilters'
 import { formatFileTypeNames } from '@components/common/filters/FileTypeFilter'
-import { ALL_PROVIDER_OPTIONS } from '@components/common/filters/ProviderFilter'
+import { allProviderOptions } from '@components/common/filters/ProviderFilter'
 import { BrandIcon } from '@components/features/message/renderers/BrandIcons'
 import { UserAvatar } from '@components/features/message/UserAvatar'
 import { ChannelIcon } from '@components/common/ChannelIcon/ChannelIcon'
@@ -28,7 +28,7 @@ const MAX_BADGE_GLYPHS = 6
  * separation enough), and the CIRCLES overlap like avatars do.
  */
 const ProviderGlyphGroup = ({ ids }: { ids: string[] }) => {
-    const options = ALL_PROVIDER_OPTIONS.filter((option) => ids.includes(option.id))
+    const options = allProviderOptions().filter((option) => ids.includes(option.id))
     const shown = options.slice(0, MAX_BADGE_GLYPHS)
     const extra = options.length - shown.length
 
@@ -41,7 +41,7 @@ const ProviderGlyphGroup = ({ ids }: { ids: string[] }) => {
                     return (
                         <span
                             key={option.id}
-                            title={_(option.label)}
+                            title={option.label}
                             className="flex size-6 items-center justify-center rounded-full bg-surface-base"
                         >
                             {option.brand ? (

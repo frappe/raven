@@ -138,19 +138,18 @@ const SystemMessage: React.FC<SystemMessageProps> = ({ message, time, data }) =>
                 return _("{0} joined.", [resolveName(structured.user)])
             case "user_left":
                 if (structured.new_admin) {
-                    return _("{0} left and {1} is the new admin of this channel.", [
-                        resolveName(structured.user),
-                        resolveName(structured.new_admin),
-                    ])
+                    const [user, newAdmin] = [resolveName(structured.user), resolveName(structured.new_admin)]
+                    return _("{0} left and {1} is the new admin of this channel.", [user, newAdmin])
                 }
                 return _("{0} left.", [resolveName(structured.user)])
             case "member_removed":
                 if (structured.new_admin) {
-                    return _("{0} was removed by {1} and {2} is the new admin of this channel.", [
+                    const [user, removedBy, newAdmin] = [
                         resolveName(structured.user),
                         resolveName(structured.removed_by),
                         resolveName(structured.new_admin),
-                    ])
+                    ]
+                    return _("{0} was removed by {1} and {2} is the new admin of this channel.", [user, removedBy, newAdmin])
                 }
                 return _("{0} removed {1}.", [resolveName(structured.removed_by), resolveName(structured.user)])
             case "admin_status_changed":

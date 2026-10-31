@@ -13,13 +13,14 @@ import {
 } from 'lucide-react'
 import { settingsDialogOpenTab } from '../settings/settingsDialogAtom'
 
-const ITEMS = [
-    { value: 'profile', label: 'Profile', icon: User },
-    { value: 'appearance', label: 'Appearance', icon: Palette },
-    { value: 'preferences', label: 'Preferences', icon: SlidersHorizontal },
-    { value: 'workspaces', label: 'Workspaces', icon: Building2 },
-    { value: 'channels', label: 'Channels', icon: Hash },
-    { value: 'emojis', label: 'Custom Emojis', icon: Smile },
+/** A function, so the labels are translated when used, not when the module loads. */
+const settingsItems = () => [
+    { value: 'profile', label: _('Profile'), icon: User },
+    { value: 'appearance', label: _('Appearance'), icon: Palette },
+    { value: 'preferences', label: _('Preferences'), icon: SlidersHorizontal },
+    { value: 'workspaces', label: _('Workspaces'), icon: Building2 },
+    { value: 'channels', label: _('Channels'), icon: Hash },
+    { value: 'emojis', label: _('Custom Emojis'), icon: Smile },
 ] as const
 
 const SettingsList = ({ text }: { text: string }) => {
@@ -27,9 +28,10 @@ const SettingsList = ({ text }: { text: string }) => {
     const setSettingsDrawerOpenTab = useSetAtom(settingsDialogOpenTab)
 
     const filteredItems = useMemo(() => {
-        if (!text) return ITEMS
+        const items = settingsItems()
+        if (!text) return items
         const query = text.toLowerCase()
-        return ITEMS.filter(item =>
+        return items.filter(item =>
             item.label.toLowerCase().includes(query) ||
             'settings'.includes(query)
         )
@@ -51,7 +53,7 @@ const SettingsList = ({ text }: { text: string }) => {
                 className='cursor-pointer'
             >
                 <Icon className="h-4 w-4" />
-                {_(item.label)}
+                {item.label}
             </CommandItem>
         )
     })

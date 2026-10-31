@@ -92,7 +92,7 @@ const InstructionListView = ({ onOpen, onCreate }: { onOpen: (id: string) => voi
                                 <EmptyHeader>
                                     <EmptyTitle>{_("AI Instruction Templates")}</EmptyTitle>
                                     <EmptyDescription>
-                                        {_("Most bots require the same kind of instructions to perform their tasks, like \"format dates as DD-MM-YYYY\" or \"the current user is")}
+                                        {_('Most bots require the same kind of instructions to perform their tasks, like "format dates as DD-MM-YYYY" or "the current user is')}
                                         <code>{"{{user}}"}</code>
                                         {_("\".")}
                                         <br />

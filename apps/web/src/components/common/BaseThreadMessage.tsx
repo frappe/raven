@@ -71,7 +71,7 @@ export const BaseThreadMessage = ({
                 ) : <div className="h-6" />}
                 {count > 0 ? (
                     <span className={cn("text-xs text-ink-gray-8", isUnread ? "font-bold" : "font-semibold")}>
-                        {_(`${count} ${count === 1 ? 'Reply' : 'Replies'}`)}
+                        {count === 1 ? _("1 Reply") : _("{0} Replies", [String(count)])}
                     </span>
                 ) : null}
             </div>

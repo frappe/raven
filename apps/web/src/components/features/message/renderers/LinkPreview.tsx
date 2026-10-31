@@ -290,9 +290,10 @@ const matchSpotify = (href: string): { kind: SpotifyKind; id: string } | null =>
 /* --------------------------- Apple Music/Podcasts --------------------------- */
 
 /** music.apple.com / podcasts.apple.com → their embed.* hosts + embeddable kinds. */
-const APPLE_HOSTS: Record<string, { embedHost: string; kinds: string[]; title: string; brand: BrandSpec }> = {
-    "music.apple.com": { embedHost: "embed.music.apple.com", kinds: ["album", "playlist", "song"], title: "Apple Music player", brand: BRAND.appleMusic },
-    "podcasts.apple.com": { embedHost: "embed.podcasts.apple.com", kinds: ["podcast"], title: "Apple Podcasts player", brand: BRAND.applePodcasts },
+// title is a function so it is translated when used, not when the module loads.
+const APPLE_HOSTS: Record<string, { embedHost: string; kinds: string[]; title: () => string; brand: BrandSpec }> = {
+    "music.apple.com": { embedHost: "embed.music.apple.com", kinds: ["album", "playlist", "song"], title: () => _("Apple Music player"), brand: BRAND.appleMusic },
+    "podcasts.apple.com": { embedHost: "embed.podcasts.apple.com", kinds: ["podcast"], title: () => _("Apple Podcasts player"), brand: BRAND.applePodcasts },
 }
 
 /**
@@ -318,7 +319,7 @@ const matchApple = (href: string): { src: string; compact: boolean; title: strin
         return {
             src: `https://${config.embedHost}${url.pathname}${itemParam}`,
             compact: kind === "song" || !!itemParam,
-            title: config.title,
+            title: config.title(),
             brand: config.brand,
         }
     } catch {
@@ -660,7 +661,7 @@ const PROVIDERS: Array<(href: string) => ReactElement | null> = [
         return apple ? (
             <EmbedFrame
                 src={apple.src}
-                title={_(apple.title)}
+                title={apple.title}
                 className={apple.compact ? "h-[175px]" : "h-[450px]"}
                 allow={APPLE_ALLOW}
                 sandbox={APPLE_SANDBOX}

@@ -123,7 +123,7 @@ const filterAllowedFiles = (files: File[]): File[] => {
             return false
         }
         if (allowed.length && !allowed.includes(getFileExtension(file.name))) {
-            toast.error(_('{0} can\'t be uploaded. Allowed file types: {1}.', [file.name, allowed.join(', ')]))
+            toast.error(_("{0} can't be uploaded. Allowed file types: {1}.", [file.name, allowed.join(', ')]))
             return false
         }
         return true
@@ -204,7 +204,7 @@ export const useAttachFile = (channelID: string) => {
                 // uploadingFilesAtom drains — no per-file bookkeeping needed here.
             }).catch(() => {
                 if (!isStillTracked(f.id)) return
-                toast.error("There was an error while uploading the file " + f.file.name)
+                toast.error(_("There was an error while uploading the file {0}", [f.file.name]))
                 setUploadingFiles((prevFiles) => prevFiles.map((item) => item.id === f.id ? { ...item, status: 'error' as const } : item))
             })
         }

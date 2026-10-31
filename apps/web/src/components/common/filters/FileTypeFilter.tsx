@@ -21,25 +21,26 @@ export const expandFileTypeGroups = (groups: string[]): string[] => {
     return [...out]
 }
 
-/** Shared with the mobile filter sheet, which renders these as chips. */
-export const FILE_TYPE_OPTIONS = [
-    { id: 'pdf', label: 'PDFs', icon: FileText },
-    { id: 'doc', label: 'Documents', icon: FileText },
-    { id: 'ppt', label: 'Presentations', icon: Presentation },
-    { id: 'xls', label: 'Spreadsheets', icon: FileSpreadsheet },
-    { id: 'image', label: 'Images', icon: Image },
+/** Shared with the mobile filter sheet, which renders these as chips. A function, so the
+ *  labels are translated when used, not when the module loads. */
+export const fileTypeOptions = () => [
+    { id: "pdf", label: _("PDFs"), icon: FileText },
+    { id: "doc", label: _("Documents"), icon: FileText },
+    { id: "ppt", label: _("Presentations"), icon: Presentation },
+    { id: "xls", label: _("Spreadsheets"), icon: FileSpreadsheet },
+    { id: "image", label: _("Images"), icon: Image },
 ]
 
 /**
- * Selected ids as "PDFs, Images". Listed in FILE_TYPE_OPTIONS order rather than the order
+ * Selected ids as "PDFs, Images". Listed in fileTypeOptions order rather than the order
  * boxes were ticked, so the wording is stable — the trigger and the active-filter badge
  * both read from here and can't word the same selection differently. `maxNamed` caps the
  * list: past it the tail becomes "and N more".
  */
 export const formatFileTypeNames = (ids: string[], maxNamed?: number): string => {
-    const names = FILE_TYPE_OPTIONS
+    const names = fileTypeOptions()
         .filter((option) => ids.includes(option.id))
-        .map((option) => _(option.label))
+        .map((option) => option.label)
     if (maxNamed && names.length > maxNamed) {
         return _('{0} and {1} more', [names.slice(0, maxNamed).join(', '), String(names.length - maxNamed)])
     }
@@ -83,7 +84,7 @@ export function FileTypeFilter({ value, onValueChange, placeholder, triggerClass
     }, [selected, onValueChange])
 
     // Name the selection while there are few enough to read, then switch to a count. The
-    // names are listed in FILE_TYPE_OPTIONS order, not click order, so the label doesn't
+    // names are listed in fileTypeOptions order, not click order, so the label doesn't
     // reshuffle as boxes are ticked; the span's `truncate` clips the last one when the
     // trigger is too narrow for all three.
     const triggerLabel = checkedCount === 0
@@ -124,7 +125,7 @@ export function FileTypeFilter({ value, onValueChange, placeholder, triggerClass
                     onOpenAutoFocus={(event) => event.preventDefault()}
                     className={cn("min-w-(--radix-popover-trigger-width) p-1 shadow-2xl flex flex-col gap-0.5", FILTER_DROPDOWN_WIDTH)}
                 >
-                    {FILE_TYPE_OPTIONS.map((fileType) => {
+                    {fileTypeOptions().map((fileType) => {
                         const IconComponent = fileType.icon
                         const checked = selected.includes(fileType.id)
                         return (
@@ -141,7 +142,7 @@ export function FileTypeFilter({ value, onValueChange, placeholder, triggerClass
                                 {/* The row itself is the hit target; the box only reflects state. */}
                                 <Checkbox checked={checked} tabIndex={-1} className="pointer-events-none" />
                                 <IconComponent className={cn("size-4 shrink-0", checked ? "text-ink-gray-8" : "text-ink-gray-4")} />
-                                <span className="min-w-0 flex-1 truncate text-start leading-snug">{_(fileType.label)}</span>
+                                <span className="min-w-0 flex-1 truncate text-start leading-snug">{fileType.label}</span>
                             </button>
                         )
                     })}

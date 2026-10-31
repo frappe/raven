@@ -49,7 +49,7 @@ const ChannelSettingsDrawer = ({ peerUser }: ChannelSettingsDrawerProps) => {
                         variant="ghost"
                         onClick={handleClose}
                         isIconButton
-                        aria-label="Close drawer"
+                        aria-label={_("Close drawer")}
                         className='md:inline-flex hidden'
                     >
                         <X />

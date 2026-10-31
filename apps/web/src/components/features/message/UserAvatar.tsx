@@ -221,7 +221,7 @@ export const UserAvatar = memo<UserAvatarProps>(({
                         "absolute flex items-center justify-center rounded-full bg-surface-base border border-outline-gray-1",
                         sizeClasses.botContainer
                     )}
-                    aria-label="Bot account"
+                    aria-label={_("Bot account")}
                     role="img">
                     <BotIcon
                         className={cn("text-ink-gray-8", sizeClasses.bot)}

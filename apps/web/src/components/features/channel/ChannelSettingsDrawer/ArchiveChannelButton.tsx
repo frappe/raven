@@ -63,11 +63,11 @@ export function ArchiveChannelButton({ channel }: ArchiveChannelButtonProps) {
         { revalidate: false },
       );
       if (result.is_archived === 1) {
-        toast.success(_(`Channel {0} archived`, [channel.channel_name]), {
+        toast.success(_("Channel {0} archived", [channel.channel_name]), {
           icon: <ArchiveIcon className="size-4" />
         });
       } else {
-        toast.success(_(`Channel {0} restored`, [channel.channel_name]), {
+        toast.success(_("Channel {0} restored", [channel.channel_name]), {
           icon: <ArchiveRestoreIcon className="size-4" />
         });
       }
@@ -97,9 +97,7 @@ export function ArchiveChannelButton({ channel }: ArchiveChannelButtonProps) {
       <AlertDialogContent className="sm:max-w-xl">
         <AlertDialogHeader>
           <AlertDialogTitle>
-            {_("{0} this channel?", [
-              channel.is_archived === 0 ? _("Archive") : _("Unarchive"),
-            ])}
+            {channel.is_archived === 0 ? _("Archive this channel?") : _("Unarchive this channel?")}
           </AlertDialogTitle>
           <AlertDialogDescription asChild>
             {channel.is_archived === 0 ? (
@@ -142,9 +140,7 @@ export function ArchiveChannelButton({ channel }: ArchiveChannelButtonProps) {
             size="md"
             disabled={loading}
             onClick={toggleArchiveChannel}
-            aria-label={_("{0} this channel?", [
-              channel.is_archived === 0 ? _("Archive") : _("Unarchive"),
-            ])}
+            aria-label={channel.is_archived === 0 ? _("Archive this channel?") : _("Unarchive this channel?")}
           >
             {loading ? (
               <>

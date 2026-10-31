@@ -49,9 +49,9 @@ const MyChannelsFilter = ({ filters, setFilters }: { filters: any, setFilters: (
                 <SelectValue placeholder={_('Select a group')} />
             </SelectTrigger>
             <SelectContent align="start" className="min-w-56 max-w-72">
-                <SelectItem value="All Channels">All Channels</SelectItem>
-                <SelectItem value="Joined Channels">Joined Channels</SelectItem>
-                <SelectItem value="Other Channels">Other Channels</SelectItem>
+                <SelectItem value="All Channels">{_("All Channels")}</SelectItem>
+                <SelectItem value="Joined Channels">{_("Joined Channels")}</SelectItem>
+                <SelectItem value="Other Channels">{_("Other Channels")}</SelectItem>
             </SelectContent>
         </Select>
     )
@@ -68,10 +68,10 @@ const ChannelTypeFilter = ({ filters, setFilters }: { filters: any, setFilters: 
                 <SelectValue placeholder={_('Select a channel type')} />
             </SelectTrigger>
             <SelectContent align="start" className="min-w-56 max-w-72">
-                <SelectItem value="All Types">All Types</SelectItem>
-                <SelectItem value="Public">Public</SelectItem>
-                <SelectItem value="Private">Private</SelectItem>
-                <SelectItem value="Open">Open</SelectItem>
+                <SelectItem value="All Types">{_("All Types")}</SelectItem>
+                <SelectItem value="Public">{_("Public")}</SelectItem>
+                <SelectItem value="Private">{_("Private")}</SelectItem>
+                <SelectItem value="Open">{_("Open")}</SelectItem>
             </SelectContent>
         </Select>
     )

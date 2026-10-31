@@ -29,3 +29,33 @@ export const textDirection = (text: string | null | undefined): "ltr" | "rtl" | 
     if (!letter) return undefined
     return RIGHT_TO_LEFT_LETTER.test(letter) ? "rtl" : "ltr"
 }
+
+/**
+ * Month and day names, and "2 hours ago", for the languages Raven is translated into. Each one
+ * is its own small file, loaded only for that language. English is built into dayjs.
+ * Keyed by Frappe's language codes.
+ */
+const DATE_LOCALES: Record<string, () => Promise<{ default: { name: string } }>> = {
+    ar: () => import("dayjs/locale/ar"),
+    de: () => import("dayjs/locale/de"),
+    es: () => import("dayjs/locale/es"),
+    fa: () => import("dayjs/locale/fa"),
+    fr: () => import("dayjs/locale/fr"),
+    hi: () => import("dayjs/locale/hi"),
+    id: () => import("dayjs/locale/id"),
+    "pt-BR": () => import("dayjs/locale/pt-br"),
+    tr: () => import("dayjs/locale/tr"),
+    zh: () => import("dayjs/locale/zh-cn"),
+}
+
+/** The dayjs locale name for a language, loaded if it is not English. "en" when there is none. */
+export const loadDateLocale = async (lang = "en"): Promise<string> => {
+    const load = DATE_LOCALES[lang] ?? DATE_LOCALES[lang.split("-")[0]]
+    if (!load) return "en"
+    try {
+        return (await load()).default.name
+    } catch {
+        // Offline before the file was cached: dates show in English.
+        return "en"
+    }
+}
