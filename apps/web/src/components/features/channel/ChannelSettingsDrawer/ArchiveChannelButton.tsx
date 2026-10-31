@@ -15,7 +15,7 @@ import {
 } from "@components/ui/alert-dialog";
 import ErrorBanner from "@components/ui/error-banner";
 import { PrefActionRow } from "@components/features/profile/PrefRows";
-import _ from "@lib/translate";
+import _, { withElements } from "@lib/translate";
 import {
   ChannelList,
   ChannelListItem,
@@ -122,8 +122,9 @@ export function ArchiveChannelButton({ channel }: ArchiveChannelButtonProps) {
             ) : (
               <div className="space-y-4">
                 <p className="pt-1">
-                  {_("Are you sure you want to unarchive ")}
-                  <strong>{channel.channel_name}</strong>?
+                  {withElements(_("Are you sure you want to unarchive {0}?"), [
+                    <strong key="name">{channel.channel_name}</strong>,
+                  ])}
                 </p>
               </div>
             )}

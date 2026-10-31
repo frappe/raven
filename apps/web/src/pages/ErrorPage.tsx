@@ -1,6 +1,6 @@
 import { useNavigate, useRouteError } from "react-router-dom"
 import { Button } from "@components/ui/button"
-import _ from "@lib/translate"
+import _, { withElements } from "@lib/translate"
 
 /**
  * Router-level error boundary (the root route's errorElement) — the last-resort
@@ -36,17 +36,17 @@ const ErrorPage = () => {
                     {isStaleBuild ? (
                         _("Reload to pick up the latest version - everything will be right where you left it.")
                     ) : (
-                        <>
-                            {_("This one leads to a better Raven - help us climb by reporting the error on")}{" "}
+                        withElements(_("This one leads to a better Raven - help us climb by reporting the error on {0}."), [
                             <a
+                                key="link"
                                 href="https://github.com/frappe/raven/issues"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="underline underline-offset-2"
                             >
                                 GitHub
-                            </a>.
-                        </>
+                            </a>,
+                        ])
                     )}
                 </p>
                 {!isStaleBuild && message && (

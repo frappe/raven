@@ -7,7 +7,7 @@ import { getDateObject } from "@lib/date";
 import { timeFormatAtom } from "@utils/preferences";
 import { useUsersById } from "@hooks/useMessageRowLookups";
 import { useIsMobile } from "@hooks/use-mobile";
-import _ from "@lib/translate";
+import _, { withElements } from "@lib/translate";
 import { useAtomValue } from "jotai";
 import React, { useMemo } from "react";
 
@@ -102,37 +102,32 @@ const SystemMessage: React.FC<SystemMessageProps> = ({ message, time, data }) =>
                 // Long lists: "…and N others" reveals who the others are (ids
                 // from the payload, names resolved live). Desktop opens on
                 // hover; touch has no hover, so mobile uses a tap-open popover
-                // with the same content. The sentence is split around the
-                // trigger, so it's composed from two translated fragments.
+                // with the same content. The trigger goes into the same sentence
+                // the short lists use, as its {2}, so translators see one sentence.
                 const restIDs = structured.members.slice(3)
                 const othersLabel = (
                     <span className="cursor-pointer underline decoration-outline-gray-3 decoration-dotted underline-offset-2">
                         {_("{0} others", [String(restIDs.length)])}
                     </span>
                 )
-                return (
-                    <>
-                        {_("{0} added {1} and", [adder, names.slice(0, 3).join(", ")])}{" "}
-                        {isMobile ? (
-                            <Popover>
-                                <PopoverTrigger asChild>{othersLabel}</PopoverTrigger>
-                                <PopoverContent align="start" className="w-56 p-0">
-                                    <OthersRoster ids={restIDs} />
-                                </PopoverContent>
-                            </Popover>
-                        ) : (
-                            <HoverCard openDelay={200}>
-                                <HoverCardTrigger asChild>{othersLabel}</HoverCardTrigger>
-                                {/* stopPropagation: wheel inside the card must scroll the card,
-                                    not the chat stream underneath. */}
-                                <HoverCardContent align="start" className="w-56 p-0" onWheel={(e) => e.stopPropagation()}>
-                                    <OthersRoster ids={restIDs} />
-                                </HoverCardContent>
-                            </HoverCard>
-                        )}
-                        .
-                    </>
+                const others = isMobile ? (
+                    <Popover>
+                        <PopoverTrigger asChild>{othersLabel}</PopoverTrigger>
+                        <PopoverContent align="start" className="w-56 p-0">
+                            <OthersRoster ids={restIDs} />
+                        </PopoverContent>
+                    </Popover>
+                ) : (
+                    <HoverCard openDelay={200}>
+                        <HoverCardTrigger asChild>{othersLabel}</HoverCardTrigger>
+                        {/* stopPropagation: wheel inside the card must scroll the card,
+                            not the chat stream underneath. */}
+                        <HoverCardContent align="start" className="w-56 p-0" onWheel={(e) => e.stopPropagation()}>
+                            <OthersRoster ids={restIDs} />
+                        </HoverCardContent>
+                    </HoverCard>
                 )
+                return <>{withElements(_("{0} added {1} and {2}."), [adder, names.slice(0, 3).join(", "), others])}</>
             }
             case "user_joined":
                 return _("{0} joined.", [resolveName(structured.user)])

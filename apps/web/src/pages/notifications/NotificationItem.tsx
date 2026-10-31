@@ -11,7 +11,7 @@ import { ChannelIcon } from "@components/common/ChannelIcon/ChannelIcon"
 import { formatRelativeDate } from "@lib/date"
 import { formatNameList } from "@lib/nameList"
 import { getMessageTeaser } from "@utils/messageUtils"
-import _ from "@lib/translate"
+import _, { withElements } from "@lib/translate"
 import { lineSign } from "@lib/locale"
 import { useDirection } from "@components/ui/direction"
 import RichTextRenderer from "@components/features/message/renderers/RichTextRenderer"
@@ -31,13 +31,14 @@ const ChannelContext = ({
     if (!notification.is_direct_message) {
         return (
             <div className="flex min-w-0 items-center gap-1 text-p-xs text-ink-gray-5">
-                <span className="shrink-0">{_("in")}</span>
-                <span className="flex min-w-0 items-center gap-1">
-                    <span className="flex h-lh shrink-0 items-center">
-                        <ChannelIcon type={notification.channel_type} className="size-3.5" />
-                    </span>
-                    <span className="truncate">{notification.channel_name}</span>
-                </span>
+                {withElements(_("in {0}"), [
+                    <span key="channel" className="flex min-w-0 items-center gap-1">
+                        <span className="flex h-lh shrink-0 items-center">
+                            <ChannelIcon type={notification.channel_type} className="size-3.5" />
+                        </span>
+                        <span className="truncate">{notification.channel_name}</span>
+                    </span>,
+                ])}
             </div>
         )
     }

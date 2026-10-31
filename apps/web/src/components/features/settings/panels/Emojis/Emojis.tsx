@@ -22,7 +22,7 @@ import { RavenCustomEmoji } from '@raven/types/RavenMessaging/RavenCustomEmoji'
 import { getDateObject } from '@lib/date'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@components/ui/empty'
 import { SearchIcon, SmilePlus } from 'lucide-react'
-import _ from '@lib/translate'
+import _, { withElements } from '@lib/translate'
 import AddCustomEmojiDialog from './AddEmojiDialog'
 import DeleteEmojiDialog from './DeleteEmojiDialog'
 
@@ -37,8 +37,9 @@ const CustomEmojiEmptyState = ({ setOpen }: { setOpen: (open: boolean) => void }
                 <EmptyDescription>
                     {_("Personalize your chats with custom emojis.")}
                     <br />
-                    {_("Upload your own or download from")}{" "}
-                    <a href='https://emoji.gg' target='_blank' rel='noreferrer' className='text-ink-blue-link underline'>Emoji.gg</a>.
+                    {withElements(_("Upload your own or download from {0}."), [
+                        <a key="link" href='https://emoji.gg' target='_blank' rel='noreferrer' className='text-ink-blue-link underline'>Emoji.gg</a>,
+                    ])}
                 </EmptyDescription>
             </EmptyHeader>
             <EmptyContent>
@@ -178,11 +179,11 @@ export const Emojis = () => {
                 <SettingsPanelDescription>
                     {_("Add custom emojis to use for your reactions. PNG, SVG and GIFs supported.")}
                     <br />
-                    {_("Need help finding one? Download from")}{" "}
-                    <a href="https://emoji.gg" target="_blank" rel="noreferrer" className="text-ink-blue-link underline">
-                        Emoji.gg
-                    </a>
-                    .
+                    {withElements(_("Need help finding one? Download from {0}."), [
+                        <a key="link" href="https://emoji.gg" target="_blank" rel="noreferrer" className="text-ink-blue-link underline">
+                            Emoji.gg
+                        </a>,
+                    ])}
                 </SettingsPanelDescription>
             </SettingsPanelHeader>
             <SettingsPanelContent className="min-h-0 gap-4">

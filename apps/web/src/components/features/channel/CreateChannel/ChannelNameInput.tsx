@@ -68,7 +68,7 @@ export const ChannelNameInput = ({ value, onChange, channelType, placeholder, 'a
                 aria-live="polite"
                 aria-atomic="true"
             >
-                <span className="sr-only">{50 - value.length} {_('characters remaining')}</span>
+                <span className="sr-only">{_("{0} characters remaining", [String(50 - value.length)])}</span>
                 <span aria-hidden="true">{50 - value.length}</span>
             </div>
         </div>
