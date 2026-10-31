@@ -20,6 +20,7 @@ import { useIsMobile } from "@hooks/use-mobile"
 import { cn } from "@lib/utils"
 import _ from "@lib/translate"
 import { useDirection } from "@components/ui/direction"
+import { lineSign } from "@lib/locale"
 import { MessageAction, useMessageActions } from "./useMessageActions"
 import { MessageHoverToolbar } from "./MessageHoverToolbar"
 import { ReactionPickerPanel } from "./ReactionPicker"
@@ -46,13 +47,15 @@ const LONG_PRESS_SLOP_PX = 10
  *  as iOS's delayed touch highlighting). */
 const PRESS_HIGHLIGHT_MS = 150
 
-/** Touches starting this close to the LEFT screen edge are never reply-swipes — that
- *  zone belongs to the iOS back-swipe gesture, and message rows are full-bleed on
+/** Touches starting this close to EITHER screen edge are never reply-swipes — that
+ *  zone belongs to the iOS back-swipe gesture (on the side of the device's language,
+ *  which can differ from Raven's, so both sides are kept clear), and message rows are full-bleed on
  *  mobile, so without it a back-swipe that begins over a message turns into an
  *  accidental reply drag (and going back gets frustratingly hard). */
 const SWIPE_REPLY_EDGE_GUARD_PX = 32
 
-/** Swipe-to-reply (mobile): rightward travel that commits the reply on release. */
+/** Swipe-to-reply (mobile): travel toward the end of the line (right, or left in Arabic)
+ *  that commits the reply on release. */
 const SWIPE_REPLY_COMMIT_PX = 48
 /** The row follows the finger only up to this cap. */
 const SWIPE_REPLY_MAX_PX = 88
@@ -280,12 +283,14 @@ export const MessageActionMenu = ({
         pointerId: number
         startX: number
         startY: number
+        /** 1 left to right, -1 right to left: distances below are along the line. */
+        sign: 1 | -1
         element: HTMLElement
         message: Message
         active: boolean
         /** Past the commit distance right now (drives the one mid-drag haptic). */
         crossed: boolean
-        /** Rightward px/ms across the last move — the flick signal. */
+        /** px/ms toward the end of the line across the last move — the flick signal. */
         velocity: number
         lastX: number
         lastTime: number
@@ -349,8 +354,8 @@ export const MessageActionMenu = ({
         suppressClicksUntilRef.current = performance.now() + OPEN_GESTURE_GUARD_MS
 
         // Decide from the FINAL travel (the crossed flag can lag coalesced moves
-        // on a fast swipe) — commit on distance OR a rightward flick.
-        const dx = event.clientX - swipe.startX
+        // on a fast swipe) — commit on distance OR a flick toward the line's end.
+        const dx = (event.clientX - swipe.startX) * swipe.sign
         const commit =
             event.type !== "pointercancel" &&
             (dx >= SWIPE_REPLY_COMMIT_PX ||
@@ -393,18 +398,20 @@ export const MessageActionMenu = ({
 
         // Arm swipe-to-reply for the same touch (activation happens in move) — unless
         // the user can't reply here (canInteract: non-member or archived, from the
-        // composer gate), it starts in the left-edge back-gesture zone, or it starts
+        // composer gate), it starts in an edge back-gesture zone, or it starts
         // inside horizontally scrollable content (code blocks, carousels), which
         // owns its own swipes.
         if (
             canInteract &&
             event.clientX > SWIPE_REPLY_EDGE_GUARD_PX &&
+            event.clientX < window.innerWidth - SWIPE_REPLY_EDGE_GUARD_PX &&
             !startsInHorizontalScroller(event.target as HTMLElement, block.element)
         ) {
             swipeReplyRef.current = {
                 pointerId: event.pointerId,
                 startX: event.clientX,
                 startY: event.clientY,
+                sign: lineSign(direction),
                 element: block.element,
                 message: block.message,
                 active: false,
@@ -424,11 +431,11 @@ export const MessageActionMenu = ({
 
         const swipe = swipeReplyRef.current
         if (!swipe || swipe.pointerId !== event.pointerId) return
-        const dx = event.clientX - swipe.startX
+        const dx = (event.clientX - swipe.startX) * swipe.sign
         const dy = event.clientY - swipe.startY
 
         if (!swipe.active) {
-            // Vertical-dominant or leftward-dominant travel: not a reply swipe.
+            // Vertical-dominant or backward-dominant travel: not a reply swipe.
             if (Math.abs(dy) > SWIPE_REPLY_SLOP_PX && Math.abs(dy) > Math.abs(dx)) {
                 swipeReplyRef.current = null
                 return
@@ -444,25 +451,26 @@ export const MessageActionMenu = ({
                 // post-gesture click this retargets is already suppressed).
                 wrapperRef.current?.setPointerCapture(event.pointerId)
                 swipe.element.style.transition = "none"
-                // Park the reply glyph at the row's left edge, vertically centred.
+                // Park the reply glyph at the row's starting edge, vertically centred:
+                // the left, or the right in Arabic. The glyph is 32px wide.
                 const glyph = replyGlyphRef.current
                 if (glyph) {
                     const rect = swipe.element.getBoundingClientRect()
                     glyph.style.transition = "none"
                     glyph.style.top = `${rect.top + rect.height / 2 - 16}px`
-                    glyph.style.left = `${rect.left + 8}px`
+                    glyph.style.left = `${swipe.sign === 1 ? rect.left + 8 : rect.right - 8 - 32}px`
                 }
             }
         }
 
         if (swipe.active) {
             const dt = event.timeStamp - swipe.lastTime
-            if (dt > 0) swipe.velocity = (event.clientX - swipe.lastX) / dt
+            if (dt > 0) swipe.velocity = ((event.clientX - swipe.lastX) * swipe.sign) / dt
             swipe.lastX = event.clientX
             swipe.lastTime = event.timeStamp
 
             const offset = Math.min(Math.max(dx, 0), SWIPE_REPLY_MAX_PX)
-            swipe.element.style.transform = `translateX(${offset}px)`
+            swipe.element.style.transform = `translateX(${offset * swipe.sign}px)`
             const glyph = replyGlyphRef.current
             if (glyph) glyph.style.opacity = String(Math.min(offset / SWIPE_REPLY_COMMIT_PX, 1))
             const crossed = offset >= SWIPE_REPLY_COMMIT_PX

@@ -20,6 +20,8 @@ import { downloadFile, getFileExtension, shareFile } from "@lib/file"
 import { formatBytes } from "@raven/lib/utils/operations"
 import { cn } from "@lib/utils"
 import _ from "@lib/translate"
+import { lineSign } from "@lib/locale"
+import { useDirection } from "@components/ui/direction"
 import { attachmentPreviewAtom, type Attachment, type AttachmentPreviewState } from "@utils/attachmentPreview"
 import FileTypeIcon from "@components/common/FileIcons/FileTypeIcon"
 import { FileImage } from "@components/common/FileImage"
@@ -196,8 +198,10 @@ const AttachmentPreviewContent = ({
         }
         openedRef.current = true
     }, [index, open, galleryStrip])
-    useHotkeys("left", () => step(-1), { enabled: open && hasMany, preventDefault: true }, [open, hasMany])
-    useHotkeys("right", () => step(1), { enabled: open && hasMany, preventDefault: true }, [open, hasMany])
+    // In Arabic the next item is to the left, so the arrow keys and swipes swap.
+    const sign = lineSign(useDirection())
+    useHotkeys("left", () => step(sign === 1 ? -1 : 1), { enabled: open && hasMany, preventDefault: true }, [open, hasMany, sign])
+    useHotkeys("right", () => step(sign), { enabled: open && hasMany, preventDefault: true }, [open, hasMany, sign])
 
     // Touch swipe to page (mobile). Only fires on touch devices, so desktop
     // is unaffected. A child can opt out by stopping touchstart propagation
@@ -212,7 +216,7 @@ const AttachmentPreviewContent = ({
         touchStart.current = null
         if (!start || !hasMany) return
         const touch = event.changedTouches[0]
-        const dx = touch.clientX - start.x
+        const dx = (touch.clientX - start.x) * sign
         const dy = touch.clientY - start.y
         // Horizontal-dominant swipe past the threshold = page; ignore vertical
         if (Math.abs(dx) > SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy)) {

@@ -3,6 +3,9 @@ type Boot = { lang?: string; layout_direction?: string }
 /** The page direction from the boot. A boot without it (an older server) stays left to right. */
 export const layoutDirection = (boot: Boot): "ltr" | "rtl" => (boot.layout_direction === "rtl" ? "rtl" : "ltr")
 
+/** 1 left to right, -1 right to left. A horizontal distance times this is measured along the line. */
+export const lineSign = (direction: string): 1 | -1 => (direction === "rtl" ? -1 : 1)
+
 /**
  * Puts the user's language and direction on the html tag. The server page already has them,
  * but the dev server, the offline shell and the native app start from a plain html file.

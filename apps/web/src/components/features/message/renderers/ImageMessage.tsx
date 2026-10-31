@@ -7,6 +7,8 @@ import { Button } from "@components/ui/button"
 import { Badge } from "@components/ui/badge"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip"
 import _ from "@lib/translate"
+import { lineSign } from "@lib/locale"
+import { useDirection } from "@components/ui/direction"
 import { ReservedImage } from "./ReservedImage"
 
 export interface ImageFile {
@@ -54,8 +56,10 @@ export const ImageCarousel = ({ images, onImageClick }: { images: ImageFile[], o
     }
 
     // Keyboard navigation — only while this specific carousel is hovered
-    useHotkeys("left", prevImage, { enabled: isHovered, preventDefault: true })
-    useHotkeys("right", nextImage, { enabled: isHovered, preventDefault: true })
+    // In Arabic the next image is to the left, so the arrow keys and swipes swap.
+    const sign = lineSign(useDirection())
+    useHotkeys("left", sign === 1 ? prevImage : nextImage, { enabled: isHovered, preventDefault: true })
+    useHotkeys("right", sign === 1 ? nextImage : prevImage, { enabled: isHovered, preventDefault: true })
 
     // Touch swipe to page — same discrete start/end delta as the lightbox (two
     // events per swipe, nothing per-frame). Horizontal-dominant only, so normal
@@ -70,7 +74,7 @@ export const ImageCarousel = ({ images, onImageClick }: { images: ImageFile[], o
         touchStart.current = null
         if (!start) return
         const touch = event.changedTouches[0]
-        const dx = touch.clientX - start.x
+        const dx = (touch.clientX - start.x) * sign
         const dy = touch.clientY - start.y
         if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
             if (dx < 0) nextImage()

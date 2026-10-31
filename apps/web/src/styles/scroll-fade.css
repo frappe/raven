@@ -140,7 +140,11 @@
   --_scroll-fade-size-r: var(--scroll-fade-r-size,
       var(--scroll-fade-size, min(12%, calc(var(--spacing) * 10))));
   --_scroll-fade-floor: var(--scroll-fade-floor, 0.25);
-  --scroll-fade-inline: linear-gradient(to right,
+  /* The timeline counts from the start of the line in both directions, so "l" is the
+     start edge and "r" the end. Right to left, the start is on the right: the mask runs
+     the other way. */
+  --_scroll-fade-to: to right;
+  --scroll-fade-inline: linear-gradient(var(--_scroll-fade-to),
       rgb(0 0 0 / var(--_scroll-fade-floor)) 0,
       rgb(0 0 0 / calc(var(--_scroll-fade-floor) + (1 - var(--_scroll-fade-floor)) * 0.043)) calc(var(--scroll-fade-l, 0px) * 0.125),
       rgb(0 0 0 / calc(var(--_scroll-fade-floor) + (1 - var(--_scroll-fade-floor)) * 0.156)) calc(var(--scroll-fade-l, 0px) * 0.25),
@@ -175,5 +179,9 @@
       0 var(--scroll-fade-reveal, calc(var(--spacing) * 24)),
       calc(100% - var(--scroll-fade-reveal, calc(var(--spacing) * 24))) 100%;
     animation-fill-mode: both;
+  }
+
+  &:dir(rtl) {
+    --_scroll-fade-to: to left;
   }
 }

@@ -15,6 +15,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@components/ui/table"
 import { EnterKeyBehaviourAtom } from "@utils/preferences"
 import _ from "@lib/translate"
+import { useDirection } from "@components/ui/direction"
 
 // Platform-correct key labels, same test the formatting toolbar uses.
 const isMac = typeof navigator !== "undefined" && /Mac|iP(hone|ad|od)/.test(navigator.platform)
@@ -33,6 +34,10 @@ type Group = { title: string; note?: string; shortcuts: Shortcut[] }
 /** Other → Keyboard Shortcuts: every shortcut the web app registers, grouped by where it works. */
 export const KeyboardShortcuts = () => {
     const enterSends = useAtomValue(EnterKeyBehaviourAtom) === "send-message"
+    // In Arabic the next image is to the left, so the image keys swap.
+    const rightToLeft = useDirection() === "rtl"
+    const PreviousImageKey = rightToLeft ? ArrowRightIcon : ArrowLeftIcon
+    const NextImageKey = rightToLeft ? ArrowLeftIcon : ArrowRightIcon
 
     const groups: Group[] = [
         {
@@ -159,8 +164,8 @@ export const KeyboardShortcuts = () => {
             title: _("Viewing images"),
             note: _("In the attachment viewer, or while hovering a gallery of images in a message."),
             shortcuts: [
-                { keys: <Key><ArrowLeftIcon /></Key>, icon: <ImageIcon />, label: _("Previous image"), description: _("Show the previous image.") },
-                { keys: <Key><ArrowRightIcon /></Key>, icon: <ImageIcon />, label: _("Next image"), description: _("Show the next image.") },
+                { keys: <Key><PreviousImageKey /></Key>, icon: <ImageIcon />, label: _("Previous image"), description: _("Show the previous image.") },
+                { keys: <Key><NextImageKey /></Key>, icon: <ImageIcon />, label: _("Next image"), description: _("Show the next image.") },
             ],
         },
         {

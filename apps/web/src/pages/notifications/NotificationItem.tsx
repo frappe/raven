@@ -12,6 +12,8 @@ import { formatRelativeDate } from "@lib/date"
 import { formatNameList } from "@lib/nameList"
 import { getMessageTeaser } from "@utils/messageUtils"
 import _ from "@lib/translate"
+import { lineSign } from "@lib/locale"
+import { useDirection } from "@components/ui/direction"
 import RichTextRenderer from "@components/features/message/renderers/RichTextRenderer"
 import type { UserData } from "@db"
 import type { SelectedNotification } from "./NotificationChat"
@@ -58,14 +60,15 @@ const AvatarBadge = ({ icon: Icon, label, className }: { icon: LucideIcon; label
     </span>
 )
 
-/** Swipe-right-to-mark-read (touch): the same gesture language and feel as
- * swipe-to-reply on message rows — same slop, flick, edge guard and haptic.
+/** Swipe-to-mark-read (touch), toward the end of the line (right, or left in Arabic):
+ * the same gesture language and feel as swipe-to-reply on message rows — same slop,
+ * flick, edge guard and haptic.
  * Only UNREAD rows arm the gesture; read rows have nothing to mark. */
 const SWIPE_READ_EDGE_GUARD_PX = 32
 const SWIPE_READ_COMMIT_PX = 56
 const SWIPE_READ_MAX_PX = 88
 const SWIPE_READ_SLOP_PX = 12
-const SWIPE_READ_FLICK_VELOCITY = 0.5 // px/ms rightward
+const SWIPE_READ_FLICK_VELOCITY = 0.5 // px/ms toward the end of the line
 const SWIPE_READ_FLICK_MIN_PX = 20
 /** Suppress the click synthesized from the drag — it would OPEN the notification. */
 const SWIPE_READ_CLICK_GUARD_MS = 300
@@ -117,23 +120,28 @@ const NotificationRowLayout = ({
         pointerId: number
         startX: number
         startY: number
+        /** 1 left to right, -1 right to left: distances below are along the line. */
+        sign: 1 | -1
         active: boolean
         velocity: number
         lastX: number
         lastTime: number
     } | null>(null)
     const suppressClickUntilRef = useRef(0)
+    const direction = useDirection()
 
     const canSwipeRead = !isRead && !!onMarkRead
 
     const onPointerDown = (event: React.PointerEvent) => {
         if (!canSwipeRead || event.pointerType !== "touch") return
-        // The left screen edge belongs to the iOS back-swipe gesture.
-        if (event.clientX <= SWIPE_READ_EDGE_GUARD_PX) return
+        // The screen edges belong to the iOS back-swipe gesture. It sits on the side of the
+        // device's language, which can differ from Raven's, so both are kept clear.
+        if (event.clientX <= SWIPE_READ_EDGE_GUARD_PX || event.clientX >= window.innerWidth - SWIPE_READ_EDGE_GUARD_PX) return
         swipeRef.current = {
             pointerId: event.pointerId,
             startX: event.clientX,
             startY: event.clientY,
+            sign: lineSign(direction),
             active: false,
             velocity: 0,
             lastX: event.clientX,
@@ -144,11 +152,11 @@ const NotificationRowLayout = ({
     const onPointerMove = (event: React.PointerEvent) => {
         const swipe = swipeRef.current
         if (!swipe || swipe.pointerId !== event.pointerId) return
-        const dx = event.clientX - swipe.startX
+        const dx = (event.clientX - swipe.startX) * swipe.sign
         const dy = event.clientY - swipe.startY
 
         if (!swipe.active) {
-            // Vertical-dominant or leftward travel: it's a scroll, stand down.
+            // Vertical-dominant or backward travel: it's a scroll, stand down.
             if (Math.abs(dy) > SWIPE_READ_SLOP_PX && Math.abs(dy) > Math.abs(dx)) {
                 swipeRef.current = null
                 return
@@ -167,7 +175,7 @@ const NotificationRowLayout = ({
 
         if (swipe.active) {
             const dt = event.timeStamp - swipe.lastTime
-            if (dt > 0) swipe.velocity = (event.clientX - swipe.lastX) / dt
+            if (dt > 0) swipe.velocity = ((event.clientX - swipe.lastX) * swipe.sign) / dt
             swipe.lastX = event.clientX
             swipe.lastTime = event.timeStamp
 
@@ -177,7 +185,7 @@ const NotificationRowLayout = ({
             const offset = swipeDismisses
                 ? Math.max(dx, 0)
                 : Math.min(Math.max(dx, 0), SWIPE_READ_MAX_PX)
-            if (rowRef.current) rowRef.current.style.transform = `translateX(${offset}px)`
+            if (rowRef.current) rowRef.current.style.transform = `translateX(${offset * swipe.sign}px)`
             if (glyphRef.current) glyphRef.current.style.opacity = String(Math.min(offset / SWIPE_READ_COMMIT_PX, 1))
         }
     }
@@ -190,8 +198,8 @@ const NotificationRowLayout = ({
 
         suppressClickUntilRef.current = performance.now() + SWIPE_READ_CLICK_GUARD_MS
 
-        // Commit on distance OR a rightward flick (same rule as swipe-to-reply).
-        const dx = event.clientX - swipe.startX
+        // Commit on distance OR a flick toward the line's end (same rule as swipe-to-reply).
+        const dx = (event.clientX - swipe.startX) * swipe.sign
         const commit =
             event.type !== "pointercancel" &&
             (dx >= SWIPE_READ_COMMIT_PX ||
@@ -201,12 +209,12 @@ const NotificationRowLayout = ({
         const glyph = glyphRef.current
         if (commit && swipeDismisses) {
             // The swipe finishes what it started: the row keeps travelling off
-            // the right edge while the leave pipeline (expedited — no linger for
+            // the end edge while the leave pipeline (expedited — no linger for
             // swipes) collapses the gap behind it. No snap-back, no cleanup:
             // the row is about to unmount.
             if (row) {
                 row.style.transition = "transform 200ms ease-out, opacity 200ms ease-out"
-                row.style.transform = `translateX(${(row.parentElement?.clientWidth ?? 400) + 32}px)`
+                row.style.transform = `translateX(${((row.parentElement?.clientWidth ?? 400) + 32) * swipe.sign}px)`
                 row.style.opacity = "0"
             }
         } else {
