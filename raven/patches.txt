@@ -1,7 +1,9 @@
 [pre_model_sync]
 raven.patches.v3_0.clean_duplicate_workspace_members
+raven.patches.v3_0.mark_existing_sites_set_up
 
 [post_model_sync]
+raven.patches.v3_0.mark_existing_users_onboarded
 raven.patches.v1_2.create_raven_users
 raven.patches.v1_3.create_raven_message_indexes #23
 raven.patches.v1_3.update_all_messages_to_include_message_content #2
@@ -24,7 +26,5 @@ raven.patches.v2_7.add_unique_constraint_on_poll_votes
 raven.patches.v3_0.backfill_link_normalization #3
 raven.patches.v3_0.set_link_preview_status
 raven.patches.v3_0.add_native_oauth_redirect #2026-10-17 create the client where none exists
-raven.patches.v3_0.mark_existing_users_onboarded
-raven.patches.v3_0.mark_existing_sites_set_up
 raven.patches.v3_0.create_role_profiles
 raven.patches.v3_0.add_unique_constraint_on_workspace_members
