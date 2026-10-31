@@ -12,16 +12,20 @@ scan({
 
 import { initPushNotifications, isStandalone } from "@lib/push";
 import { loadTranslations } from "@lib/translations";
-import { applyLocale } from "@lib/locale";
+import { applyLocale, layoutDirection } from "@lib/locale";
+import { DirectionProvider } from "@components/ui/direction";
 
 const render = () => {
   // After boot lands: the push config (firebase_client_config) comes from it.
   initPushNotifications()
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
-      <ThemeProvider>
-        <App />
-      </ThemeProvider>
+      {/* Radix does not read the page's dir: submenus, arrow keys, sliders and scrollbars need this. */}
+      <DirectionProvider dir={layoutDirection(window.frappe?.boot ?? {})}>
+        <ThemeProvider>
+          <App />
+        </ThemeProvider>
+      </DirectionProvider>
     </StrictMode>,
   )
 }

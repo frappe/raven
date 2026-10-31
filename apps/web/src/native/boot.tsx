@@ -2,6 +2,8 @@ import { StrictMode, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import type { FrappeConfig } from "frappe-react-sdk"
 import { ThemeProvider } from "@components/theme-provider"
+import { DirectionProvider } from "@components/ui/direction"
+import { layoutDirection } from "@lib/locale"
 import { setActiveSite } from "@lib/site"
 import { bootFromCache, loadBoot, translationsReady } from "./appBoot"
 import { NativeSocket } from "./nativeSocket"
@@ -22,7 +24,10 @@ const render = (node: ReactNode) => {
     root ??= createRoot(document.getElementById("root")!)
     root.render(
         <StrictMode>
-            <ThemeProvider>{node}</ThemeProvider>
+            {/* Radix does not read the page's dir. The site picker, before any boot, is left to right. */}
+            <DirectionProvider dir={layoutDirection(window.frappe?.boot ?? {})}>
+                <ThemeProvider>{node}</ThemeProvider>
+            </DirectionProvider>
         </StrictMode>,
     )
     hideNativeSplash()
