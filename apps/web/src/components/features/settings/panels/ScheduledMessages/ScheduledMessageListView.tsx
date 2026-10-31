@@ -72,7 +72,7 @@ const ScheduledMessageListView = ({ onOpen, onCreate }: { onOpen: (id: string) =
                 meta: { gridWidth: "minmax(200px,2fr)" } satisfies ListViewColumnMeta,
                 cell: ({ row }) => (
                     <div className="flex min-w-0 items-center gap-2">
-                        <button type="button" onClick={() => onOpen(row.original.name)} className="min-w-0 cursor-pointer truncate text-left font-medium hover:underline underline-offset-4">
+                        <button type="button" onClick={() => onOpen(row.original.name)} className="min-w-0 cursor-pointer truncate text-start font-medium hover:underline underline-offset-4">
                             {row.original.event_name}
                         </button>
                         <Badge variant="subtle" theme={row.original.disabled ? "gray" : "green"}>

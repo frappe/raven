@@ -79,7 +79,7 @@ const PushNotificationFields = () => {
         <>
             <div className="text-p-sm text-ink-gray-7">
                 <p>{_("Push notifications are sent through Raven Cloud. To set it up:")}</p>
-                <ol className="mt-2 list-decimal space-y-1 pl-5">
+                <ol className="mt-2 list-decimal space-y-1 ps-5">
                     <li>
                         <a
                             href={DEFAULT_RAVEN_CLOUD_URL}

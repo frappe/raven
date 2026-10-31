@@ -114,7 +114,7 @@ export const ImageCarousel = ({ images, onImageClick }: { images: ImageFile[], o
                             variant="subtle"
                             size="sm"
                             isIconButton
-                            className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
+                            className="absolute start-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
                             onClick={(e) => {
                                 e.stopPropagation()
                                 prevImage()
@@ -127,7 +127,7 @@ export const ImageCarousel = ({ images, onImageClick }: { images: ImageFile[], o
                             variant="subtle"
                             size="sm"
                             isIconButton
-                            className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
+                            className="absolute end-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
                             onClick={(e) => {
                                 e.stopPropagation()
                                 nextImage()
@@ -141,7 +141,7 @@ export const ImageCarousel = ({ images, onImageClick }: { images: ImageFile[], o
 
                 {/* Image counter */}
                 {images.length > 1 && (
-                    <Badge size="md" variant="solid" theme="gray" className="absolute top-2 right-2 z-10">
+                    <Badge size="md" variant="solid" theme="gray" className="absolute top-2 end-2 z-10">
                         {currentIndex + 1} / {images.length}
                     </Badge>
                 )}

@@ -91,8 +91,8 @@ const ThemeSwitcher = () => {
                     >
                         {option.value === "system" ? (
                             <div className="flex w-full min-w-0">
-                                <ThemePreviewWindow theme="light" roundedClass="rounded-tl-[10.5px]" />
-                                <ThemePreviewWindow theme="dark" roundedClass="rounded-tr-[10.5px]" />
+                                <ThemePreviewWindow theme="light" roundedClass="rounded-ss-[10.5px]" />
+                                <ThemePreviewWindow theme="dark" roundedClass="rounded-se-[10.5px]" />
                             </div>
                         ) : (
                             <ThemePreviewWindow theme={option.value} roundedClass="rounded-t-[10.5px]" />
@@ -118,8 +118,8 @@ const ThemePreviewWindow = ({ theme, roundedClass }: { theme: "light" | "dark", 
     const dividerClass = isLight ? "border-gray-100" : "border-gray-800"
     const cardClass = isLight ? "bg-white border-gray-200" : "bg-gray-900 border-gray-700"
 
-    return <div className={`flex flex-1 min-w-0 pl-5 pt-3.5 ${isLight ? "bg-surface-gray-2" : "bg-surface-gray-3"} ${roundedClass}`}>
-        <div className={`w-full rounded-tl-sm border border-b-0 ${frameClass}`}>
+    return <div className={`flex flex-1 min-w-0 ps-5 pt-3.5 ${isLight ? "bg-surface-gray-2" : "bg-surface-gray-3"} ${roundedClass}`}>
+        <div className={`w-full rounded-ss-sm border border-b-0 ${frameClass}`}>
             <div className={`flex gap-[3px] py-[3px] px-1 border-b ${dividerClass}`}>
                 <div className="size-1.5 bg-[#FF5F57] rounded-full" />
                 <div className="size-1.5 bg-[#FEBC2D] rounded-full" />
@@ -129,7 +129,7 @@ const ThemePreviewWindow = ({ theme, roundedClass }: { theme: "light" | "dark", 
                 chat island (header / messages / composer) floating on the canvas gutter. */}
             <div className="flex h-20">
                 {/* 1. Primary rail — workspace switcher (thin) */}
-                <div className={`flex w-2.5 flex-col items-center gap-1 border-r py-1.5 ${subtleSurfaceClass} ${dividerClass}`}>
+                <div className={`flex w-2.5 flex-col items-center gap-1 border-e py-1.5 ${subtleSurfaceClass} ${dividerClass}`}>
                     <div className={`size-1.5 rounded-[2px] ${mutedLineStrongClass}`} />
                     <div className={`size-1.5 rounded-[2px] ${mutedLineClass}`} />
                     <div className={`size-1.5 rounded-[2px] ${mutedLineClass}`} />
@@ -209,8 +209,8 @@ const ChatStylePreview = ({ style }: { style: "Simple" | "Left-Right" }) => {
     const messages = style === "Simple" ? SIMPLE_MESSAGES : LEFT_RIGHT_MESSAGES
 
     return (
-        <div className="flex pl-5 pt-3.5 bg-surface-gray-2 rounded-t-[10.5px]">
-            <div className="w-full rounded-tl-sm border border-b-0 border-outline-gray-2 bg-surface-base">
+        <div className="flex ps-5 pt-3.5 bg-surface-gray-2 rounded-t-[10.5px]">
+            <div className="w-full rounded-ss-sm border border-b-0 border-outline-gray-2 bg-surface-base">
                 <div className="flex gap-[3px] py-[3px] px-1 border-b border-outline-gray-2">
                     <div className="size-1.5 bg-[#FF5F57] rounded-full" />
                     <div className="size-1.5 bg-[#FEBC2D] rounded-full" />
@@ -218,7 +218,7 @@ const ChatStylePreview = ({ style }: { style: "Simple" | "Left-Right" }) => {
                 </div>
                 <div className="flex h-28">
                     {/* Primary rail — workspace switcher */}
-                    <div className="flex w-2.5 flex-col items-center gap-1 border-r border-outline-gray-2 bg-surface-gray-2 py-1.5">
+                    <div className="flex w-2.5 flex-col items-center gap-1 border-e border-outline-gray-2 bg-surface-gray-2 py-1.5">
                         <div className="size-1.5 rounded-[2px] bg-surface-gray-4" />
                         <div className="size-1.5 rounded-[2px] bg-surface-gray-3" />
                         <div className="size-1.5 rounded-[2px] bg-surface-gray-3" />

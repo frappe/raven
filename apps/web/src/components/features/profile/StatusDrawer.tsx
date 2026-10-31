@@ -23,7 +23,7 @@ export const StatusDrawer = ({
     return (
         <Drawer open={open} onOpenChange={onOpenChange}>
             <DrawerContent>
-                <DrawerHeader className="px-4 pb-2 pt-0 text-left">
+                <DrawerHeader className="px-4 pb-2 pt-0 text-start">
                     <DrawerTitle>{_("Set availability")}</DrawerTitle>
                     <DrawerDescription className="sr-only">
                         {_("Choose how you appear to others")}
@@ -34,7 +34,7 @@ export const StatusDrawer = ({
                         <li key={option.value}>
                             <button
                                 type="button"
-                                className="flex w-full items-center gap-3 rounded-md px-2 py-3 text-left active:bg-surface-gray-2"
+                                className="flex w-full items-center gap-3 rounded-md px-2 py-3 text-start active:bg-surface-gray-2"
                                 onClick={() => {
                                     // Fire-and-close: the request settles in the background
                                     // and reports through the hook's toast either way.

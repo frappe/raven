@@ -63,55 +63,55 @@ const getSizeClasses = (size: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl') => {
         case 'xs':
             return {
                 avatar: 'h-5 w-5 rounded-full',
-                indicator: 'h-2 w-2 -bottom-0.5 -right-0.5 border',
+                indicator: 'h-2 w-2 -bottom-0.5 -end-0.5 border',
                 manualAvailableDot: 'h-0.5 w-0.5',
                 bot: 'h-1.5 w-1.5',
-                botContainer: 'h-2.5 w-2.5 -bottom-0.5 -right-0.5',
+                botContainer: 'h-2.5 w-2.5 -bottom-0.5 -end-0.5',
                 font: '!text-[8px] font-bold'
             }
         case 'sm':
             return {
                 avatar: 'h-6 w-6 rounded-full',
-                indicator: 'h-2.5 w-2.5 -bottom-0.5 -right-0.5',
+                indicator: 'h-2.5 w-2.5 -bottom-0.5 -end-0.5',
                 manualAvailableDot: 'h-0.5 w-0.5',
                 bot: 'h-2 w-2 size-2',
-                botContainer: 'h-3 w-3 -bottom-0.5 -right-0.5',
+                botContainer: 'h-3 w-3 -bottom-0.5 -end-0.5',
                 font: 'text-[10px]'
             }
         case 'md':
             return {
                 avatar: 'h-8 w-8 rounded-full',
-                indicator: 'h-2.5 w-2.5 -bottom-0.5 -right-0.5',
+                indicator: 'h-2.5 w-2.5 -bottom-0.5 -end-0.5',
                 manualAvailableDot: 'h-0.75 w-0.75',
                 bot: 'h-2.5 w-2.5',
-                botContainer: 'h-3.5 w-3.5 -bottom-0.5 -right-0.5',
+                botContainer: 'h-3.5 w-3.5 -bottom-0.5 -end-0.5',
                 font: 'text-sm'
             }
         case 'lg':
             return {
                 avatar: 'h-12 w-12 rounded-full',
-                indicator: 'h-4 w-4 -bottom-0.5 -right-0.5',
+                indicator: 'h-4 w-4 -bottom-0.5 -end-0.5',
                 manualAvailableDot: 'h-1 w-1',
                 bot: 'h-3 w-3',
-                botContainer: 'h-4 w-4 -bottom-1 -right-1',
+                botContainer: 'h-4 w-4 -bottom-1 -end-1',
                 font: 'text-base'
             }
         case 'xl':
             return {
                 avatar: 'h-16 w-16 rounded-full',
-                indicator: 'h-4 w-4 -bottom-0 right-0 border-2 border-outline-base',
+                indicator: 'h-4 w-4 -bottom-0 end-0 border-2 border-outline-base',
                 manualAvailableDot: 'h-2 w-2',
                 bot: 'h-4 w-4',
-                botContainer: 'h-7 w-7 -bottom-1 -right-1 border-2 border-outline-base',
+                botContainer: 'h-7 w-7 -bottom-1 -end-1 border-2 border-outline-base',
                 font: 'text-3xl font-semibold',
             }
         case '2xl':
             return {
                 avatar: 'h-24 w-24 rounded-full',
-                indicator: 'h-5 w-5 bottom-0.5 right-0 border-2 border-outline-base',
+                indicator: 'h-5 w-5 bottom-0.5 end-0 border-2 border-outline-base',
                 manualAvailableDot: 'h-2.5 w-2.5',
                 bot: 'h-6 w-6',
-                botContainer: 'h-9 w-9 -bottom-1 -right-1 border-2 border-outline-base',
+                botContainer: 'h-9 w-9 -bottom-1 -end-1 border-2 border-outline-base',
                 font: 'text-4xl font-semibold',
             }
     }

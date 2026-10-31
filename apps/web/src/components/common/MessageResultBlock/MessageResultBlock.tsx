@@ -56,7 +56,7 @@ const MessageResultBlockInner = ({ message, user, channel, dmChannel, peer, work
                 onClick={onClick}
                 onKeyDown={handleKeyDown}
                 className={cn(
-                    "group flex gap-3 px-2 py-3 md:py-2 rounded transition-colors text-left select-none",
+                    "group flex gap-3 px-2 py-3 md:py-2 rounded transition-colors text-start select-none",
                     onClick && "cursor-pointer hover:bg-surface-gray-3 active:bg-surface-gray-3 focus-visible:bg-surface-gray-3 focus-visible:outline-none",
                     // NotificationItem's unread tint; the active class wins when both apply.
                     unread && "bg-surface-gray-2/10",
@@ -66,7 +66,7 @@ const MessageResultBlockInner = ({ message, user, channel, dmChannel, peer, work
                 {user && (
                     <div className="relative shrink-0 self-start">
                         <UserAvatar user={user} size="md" showStatusIndicator={false} />
-                        {unread && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-surface-blue-5" />}
+                        {unread && <span className="absolute -top-0.5 -end-0.5 w-2 h-2 rounded-full bg-surface-blue-5" />}
                     </div>
                 )}
                 <div className="flex-1 min-w-0">
@@ -85,14 +85,14 @@ const MessageResultBlockInner = ({ message, user, channel, dmChannel, peer, work
                             <>
                                 <span className="text-ink-gray-4 shrink-0">·</span>
                                 <ChannelIcon type={channel.type} className="h-3 w-3 shrink-0 self-center text-ink-gray-4" />
-                                <span className="text-ink-gray-4 truncate min-w-0 -ml-0.5">{channel.channel_name}</span>
+                                <span className="text-ink-gray-4 truncate min-w-0 -ms-0.5">{channel.channel_name}</span>
                             </>
                         )}
                         {dmChannel && (
                             <>
                                 <span className="text-ink-gray-4 shrink-0">·</span>
                                 <MessageSquareMore className="h-3 w-3 shrink-0 self-center text-ink-gray-4" />
-                                <span className="text-ink-gray-4 truncate min-w-0 -ml-0.5">{peerName}</span>
+                                <span className="text-ink-gray-4 truncate min-w-0 -ms-0.5">{peerName}</span>
                             </>
                         )}
                     </div>

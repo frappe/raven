@@ -45,7 +45,7 @@ export const ChannelNameInput = ({ value, onChange, channelType, placeholder, 'a
 
     return (
         <div className="relative">
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-gray-4" aria-hidden="true">
+            <div className="absolute start-3 top-1/2 -translate-y-1/2 text-ink-gray-4" aria-hidden="true">
                 <ChannelIcon type={channelType} className="h-4 w-4" />
             </div>
             <Input
@@ -54,7 +54,7 @@ export const ChannelNameInput = ({ value, onChange, channelType, placeholder, 'a
                 onChange={handleChange}
                 maxLength={50}
                 placeholder={placeholder ?? _('e.g. marketing, design-team, project-alpha')}
-                className="pl-9 pr-12"
+                className="ps-9 pe-12"
                 // No autoFocus attribute — the form is lazy-loaded, so the attribute
                 // fires too late on a cold open; CreateChannelForm focuses via ref
                 // in a mount effect instead (desktop only).
@@ -64,7 +64,7 @@ export const ChannelNameInput = ({ value, onChange, channelType, placeholder, 'a
             />
             <div
                 id="channel-name-counter"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-gray-4 font-regular"
+                className="absolute end-3 top-1/2 -translate-y-1/2 text-xs text-ink-gray-4 font-regular"
                 aria-live="polite"
                 aria-atomic="true"
             >

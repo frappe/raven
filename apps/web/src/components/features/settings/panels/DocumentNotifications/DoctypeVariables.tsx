@@ -54,8 +54,8 @@ export const DoctypeVariables = ({ doctype, withoutJinja }: { doctype: string; w
                 {_("Variables you can use — click to copy.")}
             </p>
             <div className="relative max-w-xs">
-                <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-gray-4" aria-hidden />
-                <Input inputSize="sm" className="pl-9" placeholder={_("Search")} value={search} onChange={(e) => setSearch(e.target.value)} />
+                <SearchIcon className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-gray-4" aria-hidden />
+                <Input inputSize="sm" className="ps-9" placeholder={_("Search")} value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
             <Table>
                 <TableHeader>
@@ -71,7 +71,7 @@ export const DoctypeVariables = ({ doctype, withoutJinja }: { doctype: string; w
                             <TableCell><code className="text-p-sm text-ink-gray-7">{v.variable}</code></TableCell>
                             <TableCell>
                                 <span className="text-ink-gray-6">{v.label}</span>
-                                <Badge variant="subtle" className="ml-2">{v.fieldtype}</Badge>
+                                <Badge variant="subtle" className="ms-2">{v.fieldtype}</Badge>
                             </TableCell>
                             <TableCell>
                                 <Button

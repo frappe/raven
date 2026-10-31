@@ -106,7 +106,7 @@ export function FileTypeFilter({ value, onValueChange, placeholder, triggerClass
                         className={cn(FILTER_TRIGGER_STYLES, triggerClassName)}
                     >
                         <span className={cn(
-                            "min-w-0 flex-1 truncate text-left leading-snug",
+                            "min-w-0 flex-1 truncate text-start leading-snug",
                             checkedCount === 0 && "text-ink-gray-4",
                         )}>
                             {triggerLabel}
@@ -141,7 +141,7 @@ export function FileTypeFilter({ value, onValueChange, placeholder, triggerClass
                                 {/* The row itself is the hit target; the box only reflects state. */}
                                 <Checkbox checked={checked} tabIndex={-1} className="pointer-events-none" />
                                 <IconComponent className={cn("size-4 shrink-0", checked ? "text-ink-gray-8" : "text-ink-gray-4")} />
-                                <span className="min-w-0 flex-1 truncate text-left leading-snug">{_(fileType.label)}</span>
+                                <span className="min-w-0 flex-1 truncate text-start leading-snug">{_(fileType.label)}</span>
                             </button>
                         )
                     })}

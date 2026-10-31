@@ -144,7 +144,7 @@ const ChannelList = ({
     }
 
     return (
-        <div className="mt-1 mb-2 ml-8 mr-2 flex flex-col gap-2">
+        <div className="mt-1 mb-2 ms-8 me-2 flex flex-col gap-2">
             {channels.length > SEARCH_THRESHOLD && (
                 <InputGroup size="sm" variant="outline">
                     <InputGroupAddon><SearchIcon /></InputGroupAddon>

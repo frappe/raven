@@ -76,7 +76,7 @@ const ChannelSuggestionRow = ({ channel }: { channel: ChannelListItem }) => {
             <ChannelIcon type={channel.type} className="size-4 shrink-0 text-ink-gray-5" />
             <span className="min-w-0 truncate">{channel.channel_name || channel.name}</span>
             {workspaceName && (
-                <span className="ml-auto shrink-0 pl-2 text-sm text-ink-gray-5">{workspaceName}</span>
+                <span className="ms-auto shrink-0 ps-2 text-sm text-ink-gray-5">{workspaceName}</span>
             )}
         </>
     )

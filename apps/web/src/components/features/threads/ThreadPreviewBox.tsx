@@ -39,7 +39,7 @@ export const ThreadPreviewBox = ({
                 )}
             >
                 {/* Connecting line from avatar down to the participants / reply-count row. */}
-                <div className="absolute top-20 left-7 w-7 h-[calc(100%-6.75rem)] border-l border-b border-outline-gray-2 rounded-bl-lg z-0" />
+                <div className="absolute top-20 start-7 w-7 h-[calc(100%-6.75rem)] border-s border-b border-outline-gray-2 rounded-es-lg z-0" />
 
                 {/* Header: Channel name and date */}
                 {channelDetails.channelName && (

@@ -306,7 +306,7 @@ export const ImageStack = ({ images, onImageClick }: { images: ImageFile[]; onIm
                     // contrast on light images, and the hairline light ring draws the
                     // edge when the photo is as dark as the scrim. black-*/white-* are
                     // the overlay token scales (same ones the dialog backdrops use).
-                    <span className="absolute bottom-2 right-2 z-40 inline-flex items-center rounded-full bg-black-600 px-2 py-0.5 text-xs font-medium text-white ring-1 ring-white-300 backdrop-blur-sm">
+                    <span className="absolute bottom-2 end-2 z-40 inline-flex items-center rounded-full bg-black-600 px-2 py-0.5 text-xs font-medium text-white ring-1 ring-white-300 backdrop-blur-sm">
                         +{remaining}
                     </span>
                 )}

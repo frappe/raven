@@ -299,7 +299,7 @@ const AttachmentPreviewContent = ({
                                 event.stopPropagation()
                                 step(-1)
                             }}
-                            className="absolute left-4 top-1/2 z-10 -translate-y-1/2"
+                            className="absolute start-4 top-1/2 z-10 -translate-y-1/2"
                             title={_("Previous")}
                         >
                             <ChevronLeft />
@@ -313,7 +313,7 @@ const AttachmentPreviewContent = ({
                                 event.stopPropagation()
                                 step(1)
                             }}
-                            className="absolute right-4 top-1/2 z-10 -translate-y-1/2"
+                            className="absolute end-4 top-1/2 z-10 -translate-y-1/2"
                             title={_("Next")}
                         >
                             <ChevronRight />
@@ -456,8 +456,8 @@ const AttachmentPreviewContent = ({
                             // stray vertical scroll). StripItem pins them to top.
                             components={{ Item: StripItem }}
                             itemContent={(thumbIndex, attachment) => (
-                                // pr-2 is the inter-tile gap Virtuoso can measure.
-                                <div className="pr-2">
+                                // pe-2 is the inter-tile gap Virtuoso can measure.
+                                <div className="pe-2">
                                     <FilmstripThumb
                                         attachment={attachment}
                                         isActive={thumbIndex === index}

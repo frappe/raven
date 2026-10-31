@@ -206,7 +206,7 @@ export const PreferencesDrawer = ({ open, onOpenChange }: { open: boolean; onOpe
                                     spread; one tap applies the whole set. */}
                                 {showSuggestions && (
                                     <div className="flex items-center">
-                                        <span className="text-base text-ink-gray-6 pr-1">{_("Suggested:")}</span>
+                                        <span className="text-base text-ink-gray-6 pe-1">{_("Suggested:")}</span>
                                         <Button
                                             variant="ghost"
                                             size="lg"

@@ -98,7 +98,7 @@ export const TypingIndicator = ({ channelID }: { channelID: string }) => {
             className={cn(
                 // pt-1 is INSIDE the bg-painted box: breathing room above the text,
                 // not a transparent slit showing the message underneath.
-                "pointer-events-none absolute bottom-full left-0 right-0 z-40 flex py-1 items-center px-3 pt-1 md:px-4",
+                "pointer-events-none absolute bottom-full start-0 end-0 z-40 flex py-1 items-center px-3 pt-1 md:px-4",
                 occupied && "bg-surface-base",
             )}
             aria-live="polite"

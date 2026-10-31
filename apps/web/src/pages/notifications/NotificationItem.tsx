@@ -48,7 +48,7 @@ const ChannelContext = ({
 const AvatarBadge = ({ icon: Icon, label, className }: { icon: LucideIcon; label: string; className?: string }) => (
     <span
         className={cn(
-            "absolute -bottom-1 -right-1 flex size-4 items-center justify-center rounded-full border border-outline-gray-1 bg-surface-base",
+            "absolute -bottom-1 -end-1 flex size-4 items-center justify-center rounded-full border border-outline-gray-1 bg-surface-base",
             className,
         )}
         aria-label={label}
@@ -71,7 +71,7 @@ const SWIPE_READ_FLICK_MIN_PX = 20
 const SWIPE_READ_CLICK_GUARD_MS = 300
 
 const rowShellClasses = (isRead: boolean | number, isActive: boolean) => cn(
-    "group flex w-full items-start gap-3 px-2 py-3 md:py-2 text-p-sm rounded transition-colors relative text-left select-none",
+    "group flex w-full items-start gap-3 px-2 py-3 md:py-2 text-p-sm rounded transition-colors relative text-start select-none",
     "hover:bg-surface-gray-3 active:bg-surface-gray-3",
     isActive && "bg-surface-elevation-3 hover:bg-surface-elevation-3 active:bg-surface-elevation-3 shadow-sm"
 )
@@ -280,7 +280,7 @@ const NotificationRowLayout = ({
                     <div
                         ref={glyphRef}
                         aria-hidden
-                        className="pointer-events-none absolute left-4 top-1/2 z-0 flex size-8 -translate-y-1/2 items-center justify-center rounded-full bg-surface-gray-3 text-ink-gray-7 opacity-0"
+                        className="pointer-events-none absolute start-4 top-1/2 z-0 flex size-8 -translate-y-1/2 items-center justify-center rounded-full bg-surface-gray-3 text-ink-gray-7 opacity-0"
                     >
                         <CheckCheck className="size-4" />
                     </div>
@@ -482,16 +482,16 @@ export const ReactionItem = memo(({
             avatar={
                 <div className="relative mt-0.5 h-8 w-8 shrink-0">
                     {reactorsData[0] && (
-                        <div className={cn("absolute", total > 1 ? "top-0 left-0 w-6 h-6" : "inset-0")}>
+                        <div className={cn("absolute", total > 1 ? "top-0 start-0 w-6 h-6" : "inset-0")}>
                             <UserAvatar user={reactorsData[0]} size={total > 1 ? "xs" : "md"} showStatusIndicator={false} showBotIndicator={false} />
                         </div>
                     )}
                     {reactorsData[1] && total > 1 && (
-                        <div className="absolute bottom-0 right-0 w-5 h-5 ring-1 ring-surface-gray-1 rounded-full overflow-hidden">
+                        <div className="absolute bottom-0 end-0 w-5 h-5 ring-1 ring-surface-gray-1 rounded-full overflow-hidden">
                             <UserAvatar user={reactorsData[1]} size="xs" showStatusIndicator={false} showBotIndicator={false} />
                         </div>
                     )}
-                    <AvatarBadge icon={SmilePlus} label={_("Reaction")} className={total > 1 ? "-bottom-2 -right-1.5" : undefined} />
+                    <AvatarBadge icon={SmilePlus} label={_("Reaction")} className={total > 1 ? "-bottom-2 -end-1.5" : undefined} />
                 </div>
             }
             name={reactorText}
@@ -501,7 +501,7 @@ export const ReactionItem = memo(({
             <p className="flex items-center gap-1.5 text-p-sm text-ink-gray-8">
                 {renderReactedSentence(displayReactions)}
             </p>
-            <div className="mt-2 border-l-2 border-outline-gray-2 pl-2 text-p-xs text-ink-gray-5 line-clamp-2 [&_p]:my-0 [&_.mention]:pointer-events-none">
+            <div className="mt-2 border-s-2 border-outline-gray-2 ps-2 text-p-xs text-ink-gray-5 line-clamp-2 [&_p]:my-0 [&_.mention]:pointer-events-none">
                 <NotificationBody notification={notification} />
             </div>
         </NotificationRowLayout>

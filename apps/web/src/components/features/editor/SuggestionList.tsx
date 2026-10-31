@@ -47,7 +47,7 @@ export function SuggestionList<T>({ items, selectedIndex, onSelect, onHover, ren
                     ref={index === selectedIndex ? selectedRef : undefined}
                     type="button"
                     className={cn(
-                        "flex select-none items-center gap-2 rounded px-2 py-1.5 text-left text-base text-ink-gray-7",
+                        "flex select-none items-center gap-2 rounded px-2 py-1.5 text-start text-base text-ink-gray-7",
                         index === selectedIndex ? "bg-surface-gray-3" : "hover:bg-surface-gray-2",
                     )}
                     onMouseEnter={() => onHover(index)}

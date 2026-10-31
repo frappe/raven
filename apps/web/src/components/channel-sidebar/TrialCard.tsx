@@ -87,7 +87,7 @@ export const TrialCard = ({ trial, onAction, opening, onDismiss }: TrialCardProp
             className="rounded-6 border-outline-gray-1 bg-surface-base p-3 has-[>svg]:gap-x-1.5"
         >
             <Icon aria-hidden />
-            <AlertTitle className={cn("text-p-sm-medium text-ink-gray-8", showDismiss && "pr-6")}>{content.title}</AlertTitle>
+            <AlertTitle className={cn("text-p-sm-medium text-ink-gray-8", showDismiss && "pe-6")}>{content.title}</AlertTitle>
             <AlertDescription className="col-span-2 col-start-1 mt-1 text-p-xs text-ink-gray-6">
                 {content.description}
             </AlertDescription>
@@ -108,7 +108,7 @@ export const TrialCard = ({ trial, onAction, opening, onDismiss }: TrialCardProp
                     isIconButton
                     aria-label={_("Dismiss")}
                     onClick={onDismiss}
-                    className="absolute right-1.5 top-1.5"
+                    className="absolute end-1.5 top-1.5"
                 >
                     <X />
                 </Button>

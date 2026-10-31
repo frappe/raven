@@ -202,7 +202,7 @@ const options: HTMLReactParserOptions = {
         // EditedMessageBody. A data-* marker for the same reason as spoilers:
         // classes don't survive the strip above.
         if (node.name === "span" && node.attribs?.["data-edited"] !== undefined) {
-            return <span className="ml-1 text-sm text-ink-gray-5">{domToReact(node.children as DOMNode[], options)}</span>
+            return <span className="ms-1 text-sm text-ink-gray-5">{domToReact(node.children as DOMNode[], options)}</span>
         }
 
         // Custom emoji: an inline <img data-type="customEmoji">. Render it sized like an

@@ -13,7 +13,7 @@ const SearchButton = () => {
         <div className="lg:w-130 md:w-72 w-full z-50 cursor-pointer">
 
             <button
-                className="flex justify-between items-center px-2 bg-surface-gray-2 border-none h-7 w-full rounded-sm text-sm text-left text-ink-gray-4 cursor-pointer"
+                className="flex justify-between items-center px-2 bg-surface-gray-2 border-none h-7 w-full rounded-sm text-sm text-start text-ink-gray-4 cursor-pointer"
                 onClick={() => setOpen(true)}
             >
                 <div className="flex items-center gap-2">

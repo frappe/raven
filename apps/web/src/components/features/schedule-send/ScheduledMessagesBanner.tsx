@@ -42,7 +42,7 @@ export const ScheduledMessagesBanner = ({ channelID }: { channelID: string }) =>
     }
 
     return (
-        <div className="flex items-center gap-1.5 rounded-md bg-surface-gray-2 dark:bg-surface-elevation-2 py-1 pl-3 pr-1 md:mx-0 mx-1">
+        <div className="flex items-center gap-1.5 rounded-md bg-surface-gray-2 dark:bg-surface-elevation-2 py-1 ps-3 pe-1 md:mx-0 mx-1">
             <span className="flex h-lh shrink-0 items-center" aria-hidden="true">
                 {failed > 0
                     ? <CircleAlertIcon className="size-4 text-ink-red-5" />

@@ -53,7 +53,7 @@ export const MessageActionFieldsBuilder = () => {
                             <TableRow key={field.id}>
                                 <TableCell>
                                     <span className="text-base-medium text-ink-gray-8">{field.label}</span>
-                                    <Badge variant="subtle" className="ml-2">{field.type}</Badge>
+                                    <Badge variant="subtle" className="ms-2">{field.type}</Badge>
                                 </TableCell>
                                 <TableCell><code className="text-p-sm text-ink-gray-6">{field.fieldname}</code></TableCell>
                                 <TableCell>{field.is_required ? _("Yes") : "—"}</TableCell>

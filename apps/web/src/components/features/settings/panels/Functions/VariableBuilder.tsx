@@ -155,7 +155,7 @@ const VariableBuilderField = ({ json, onChange, isNested }: { json: ObjectVariab
                                 <span className="text-sm font-medium text-ink-gray-6">{_("Options:")} {value.enum.join(", ")}</span>
                             )}
                         </div>
-                        <div className="flex shrink-0 items-center gap-4 pr-2">
+                        <div className="flex shrink-0 items-center gap-4 pe-2">
                             <Button
                                 type="button"
                                 variant="ghost"
@@ -180,7 +180,7 @@ const VariableBuilderField = ({ json, onChange, isNested }: { json: ObjectVariab
                         </div>
                     </div>
                     {value.type === "object" && (
-                        <div className="ml-8 mt-2 rounded-md bg-surface-base p-2">
+                        <div className="ms-8 mt-2 rounded-md bg-surface-base p-2">
                             <VariableBuilderField
                                 isNested
                                 json={value}

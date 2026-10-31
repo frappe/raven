@@ -76,7 +76,7 @@ export const InlineScheduledMessageEditor = ({ row, onDone, onCancel }: InlineSc
                             </span>
                         </div>
                         <div className="flex items-center md:justify-start justify-end gap-2">
-                            <span className="mr-auto px-1 text-xs text-ink-gray-4 hidden md:block">{_("Esc to cancel")}</span>
+                            <span className="me-auto px-1 text-xs text-ink-gray-4 hidden md:block">{_("Esc to cancel")}</span>
                             <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
                                 {_("Cancel")}
                             </Button>

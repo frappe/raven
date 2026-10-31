@@ -172,7 +172,7 @@ export const AddMembersStep = ({ selectedUsers, onSelectUsers, workspace, exclud
                                 {/* pr-2.5: clears the flush overlay scrollbar (the card
                                     has no right padding); pb INSIDE the scroll — the
                                     card itself is pb-0. */}
-                                <div className="flex flex-col gap-2.5 pt-2 pl-2 pb-2 pr-2.5">
+                                <div className="flex flex-col gap-2.5 pt-2 ps-2 pb-2 pe-2.5">
                                     {selectedUsers.map((user) => (
                                         <div key={user.name} className="flex items-center gap-2">
                                             <UserAvatar user={user} size="xs" className="shrink-0" showStatusIndicator={false} />
@@ -230,7 +230,7 @@ export const AddMembersStep = ({ selectedUsers, onSelectUsers, workspace, exclud
                                         onClick={() => toggleUser(user)}
                                         aria-pressed={isSelected}
                                         className={cn(
-                                            'flex w-full cursor-pointer items-center gap-2.5 rounded py-1.5 pl-1.5 pr-3 text-left transition-colors hover:bg-surface-gray-2',
+                                            'flex w-full cursor-pointer items-center gap-2.5 rounded py-1.5 ps-1.5 pe-3 text-start transition-colors hover:bg-surface-gray-2',
                                             isSelected && 'bg-surface-gray-1',
                                         )}
                                     >

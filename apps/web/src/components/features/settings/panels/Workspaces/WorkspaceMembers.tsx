@@ -120,11 +120,11 @@ const WorkspaceMembers = ({ workspaceID }: { workspaceID: string }) => {
         <div className="flex flex-col gap-3 h-full min-h-0">
             <div className="flex items-center gap-2">
                 <div className="relative flex-1">
-                    <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-gray-4" aria-hidden="true" />
+                    <SearchIcon className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-gray-4" aria-hidden="true" />
                     <Input
                         inputSize="sm"
                         type="search"
-                        className="pl-9"
+                        className="ps-9"
                         placeholder={_("Search by name or email")}
                         aria-label={_("Search members")}
                         value={search}

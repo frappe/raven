@@ -10,7 +10,7 @@ import { MessageListSkeleton } from "@components/features/dm-channel/DirectMessa
 export const MessagePermalinkSkeleton = () => (
     <div className="flex h-full w-full">
         {/* Channel sidebar (desktop only — mobile lands straight on the chat) */}
-        <div className="hidden w-(--sidebar-width) shrink-0 flex-col gap-1 border-r border-outline-gray-2 bg-surface-sidebar px-2 py-3 md:flex">
+        <div className="hidden w-(--sidebar-width) shrink-0 flex-col gap-1 border-e border-outline-gray-2 bg-surface-sidebar px-2 py-3 md:flex">
             <Skeleton className="mb-3 h-6 w-36" />
             {Array.from({ length: 12 }).map((_, index) => (
                 <div key={index} className="flex h-7 items-center gap-2 px-2">

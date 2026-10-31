@@ -282,7 +282,7 @@ const DrillIn = ({
             <DrawerTrigger asChild>
                 <button
                     type="button"
-                    className="flex w-full shrink-0 cursor-pointer items-center gap-2 p-3 px-4 rounded-md text-left active:bg-surface-gray-1"
+                    className="flex w-full shrink-0 cursor-pointer items-center gap-2 p-3 px-4 rounded-md text-start active:bg-surface-gray-1"
                 >
                     <span className="text-base text-ink-gray-7">{label}</span>
                     {/* A flex container, not a text span: the value can carry an
@@ -300,7 +300,7 @@ const DrillIn = ({
                 // be seen. Tapping the field still opens it.
                 onOpenAutoFocus={(event) => event.preventDefault()}
             >
-                <DrawerTitle className="px-4 py-2 text-left text-2xl-semibold text-ink-gray-9">
+                <DrawerTitle className="px-4 py-2 text-start text-2xl-semibold text-ink-gray-9">
                     {title}
                 </DrawerTitle>
 <DrawerDescription className="sr-only">{_("Search and pick an option to filter results")}</DrawerDescription>

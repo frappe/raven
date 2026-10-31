@@ -146,13 +146,13 @@ export function DataTable<TData>({
         const direction = getColumnSortDirection(column)
 
         if (direction === "asc") {
-            return <ArrowUpIcon className="ml-2 h-4 w-4" />
+            return <ArrowUpIcon className="ms-2 h-4 w-4" />
         }
         if (direction === "desc") {
-            return <ArrowDownIcon className="ml-2 h-4 w-4" />
+            return <ArrowDownIcon className="ms-2 h-4 w-4" />
         }
         // No active sort: show neutral icon (only if sortable)
-        return <ChevronsUpDownIcon className="ml-2 h-4 w-4 opacity-50" />
+        return <ChevronsUpDownIcon className="ms-2 h-4 w-4 opacity-50" />
     }
 
     /**
@@ -176,7 +176,7 @@ export function DataTable<TData>({
         if (sortable) {
             return (
                 <Button
-                    className="flex items-center hover:text-ink-gray-8 transition-colors -ml-2 px-2 py-1 rounded"
+                    className="flex items-center hover:text-ink-gray-8 transition-colors -ms-2 px-2 py-1 rounded"
                     onClick={() => handleSortClick(column)}
                     variant="ghost"
                     size="sm"

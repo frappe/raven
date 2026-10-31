@@ -51,6 +51,25 @@
   --inset-right: env(safe-area-inset-right, 0px);
 }
 
+/* 1 left to right, -1 right to left. Slides along the line multiply by it, since
+   translateX does not flip on its own. */
+:root {
+  --line-direction: 1;
+}
+
+:root[dir="rtl"] {
+  --line-direction: -1;
+}
+
+/* Icons that point along the line mirror in right to left, wherever they are used:
+   back and forward, reply, send, log in and out. Arrow keys drawn on a key stay as they
+   are, and an icon with its own rtl: class (a chevron that also rotates open) is left alone.
+   :dir() follows the nearest dir, so an icon inside a Radix menu follows the menu. */
+:is(.lucide-chevron-left, .lucide-chevron-right, .lucide-arrow-left, .lucide-arrow-right,
+  .lucide-reply, .lucide-forward, .lucide-send, .lucide-send-horizontal, .lucide-log-in, .lucide-log-out):dir(rtl):not(kbd *, [class*="rtl:"]) {
+  scale: -1 1;
+}
+
 /* Reading/content tier for names + list-row labels: larger on mobile (15px) than
    desktop (13px), built ONLY from existing Espresso tokens (no --text-* overrides).
    Single source of truth — apply to sender names, thread row labels, CommandMenu
@@ -69,8 +88,8 @@
 }
 
 /* Mobile page-stack transition: a stacked layer (an open chat/thread over its list)
-   slides in from the right like a native push. The layers stay mounted and toggle
-   `hidden` — browsers restart CSS animations when display flips from none, so the
+   slides in from the right like a native push, or from the left in Arabic. The layers
+   stay mounted and toggle `hidden` — browsers restart CSS animations when display flips from none, so the
    slide re-plays on every open with no JS. Desktop (md+) never animates these, and
    going BACK is deliberately instant: the iOS back-swipe is already animated by the
    OS, and our first live frame must simply match its snapshot. */
@@ -82,7 +101,7 @@
 
 @keyframes layer-slide-in {
   from {
-    transform: translateX(100%);
+    transform: translateX(calc(100% * var(--line-direction)));
   }
 
   to {
@@ -206,12 +225,12 @@
 }
 
 @keyframes setup-join-left {
-  from { opacity: 0; transform: translateX(-10px); }
+  from { opacity: 0; transform: translateX(calc(-10px * var(--line-direction))); }
   to { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes setup-join-right {
-  from { opacity: 0; transform: translateX(10px); }
+  from { opacity: 0; transform: translateX(calc(10px * var(--line-direction))); }
   to { opacity: 1; transform: translateX(0); }
 }
 

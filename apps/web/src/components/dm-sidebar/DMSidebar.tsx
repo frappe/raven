@@ -337,7 +337,7 @@ function DMRowShell({
     return (
         <div
             className={cn(
-                "flex w-full items-center gap-3 px-2 py-2 md:py-2 text-sm rounded transition-colors relative text-left",
+                "flex w-full items-center gap-3 px-2 py-2 md:py-2 text-sm rounded transition-colors relative text-start",
                 "select-none",
                 "hover:bg-surface-gray-3 active:bg-surface-gray-3",
                 isActive && "bg-surface-elevation-3 hover:bg-surface-elevation-3 active:bg-surface-elevation-3 shadow-sm"

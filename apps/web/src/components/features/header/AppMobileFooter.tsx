@@ -96,7 +96,7 @@ const AppMobileFooterButton = ({ icon, title, isActive, badgeCount, showDot }: {
                     channels are ambient, not an inbox, so "there's activity" is
                     the honest signal; counts stay on the personal queues. */}
             {showDot && !badgeCount && (
-                <span className="absolute -top-1 -right-2 size-2 rounded-full bg-surface-red-6" aria-hidden="true" />
+                <span className="absolute -top-1 -end-2 size-2 rounded-full bg-surface-red-6" aria-hidden="true" />
             )}
         </div>
         <span className='text-xs-medium text-center'>{title}</span>
@@ -110,7 +110,7 @@ const UnreadBadge = ({ count }: { count?: number }) => {
     // Pill, not a fixed circle: a single digit stays circular (min-w == height),
     // but "9+" / two digits grow horizontally with px-1 so the glyphs aren't
     // crushed against the boundary. h-4 keeps the cap height stable either way.
-    return <span className="absolute -top-1.5 -right-3 h-4 min-w-4 px-1 flex items-center justify-center rounded-full bg-surface-red-6 dark:bg-surface-red-6 text-ink-base dark:text-ink-red-1 text-[10px] leading-none">
+    return <span className="absolute -top-1.5 -end-3 h-4 min-w-4 px-1 flex items-center justify-center rounded-full bg-surface-red-6 dark:bg-surface-red-6 text-ink-base dark:text-ink-red-1 text-[10px] leading-none">
         {count > 9 ? "9+" : count}
     </span>
 

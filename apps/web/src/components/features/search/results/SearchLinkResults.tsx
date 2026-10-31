@@ -110,7 +110,7 @@ const LinkResultRowInner = ({ link, user, channel, dmChannel, peer, workspace, o
                 onClick={onClick}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } }}
                 className={cn(
-                    "group flex gap-3 px-4 md:px-2 py-3 md:py-2 rounded-none md:rounded transition-colors text-left select-none cursor-pointer hover:bg-surface-gray-3 active:bg-surface-gray-3 focus-visible:bg-surface-gray-3 focus-visible:outline-none",
+                    "group flex gap-3 px-4 md:px-2 py-3 md:py-2 rounded-none md:rounded transition-colors text-start select-none cursor-pointer hover:bg-surface-gray-3 active:bg-surface-gray-3 focus-visible:bg-surface-gray-3 focus-visible:outline-none",
                     className
                 )}
             >
@@ -129,14 +129,14 @@ const LinkResultRowInner = ({ link, user, channel, dmChannel, peer, workspace, o
                             <>
                                 <span className="text-ink-gray-4 shrink-0">·</span>
                                 <ChannelIcon type={channel.type} className="h-3 w-3 shrink-0 self-center text-ink-gray-4" />
-                                <span className="text-ink-gray-4 truncate min-w-0 -ml-0.5">{channel.channel_name}</span>
+                                <span className="text-ink-gray-4 truncate min-w-0 -ms-0.5">{channel.channel_name}</span>
                             </>
                         )}
                         {dmChannel && (
                             <>
                                 <span className="text-ink-gray-4 shrink-0">·</span>
                                 <MessageSquareMore className="h-3 w-3 shrink-0 self-center text-ink-gray-4" />
-                                <span className="text-ink-gray-4 truncate min-w-0 -ml-0.5">{peerName}</span>
+                                <span className="text-ink-gray-4 truncate min-w-0 -ms-0.5">{peerName}</span>
                             </>
                         )}
                     </div>

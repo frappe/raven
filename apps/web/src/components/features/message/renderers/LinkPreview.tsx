@@ -248,7 +248,7 @@ const YouTubeEmbed = ({ videoID, square, href }: { videoID?: string; square?: bo
                         <Play className="size-6 fill-white text-white" />
                     </span>
                     {title && (
-                        <span className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-black-800 to-transparent p-2 pb-6 text-left">
+                        <span className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-black-800 to-transparent p-2 pb-6 text-start">
                             <p className="line-clamp-1 text-p-sm font-medium text-white">{title}</p>
                         </span>
                     )}

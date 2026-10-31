@@ -16,7 +16,7 @@ export const ChannelFilters = ({ filters, setFilters, workspaces }: { filters: a
         <div className="flex items-center gap-2 w-full">
             <div className="relative w-full">
                 <Search
-                    className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-ink-gray-4"
+                    className="absolute start-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-ink-gray-4"
                     aria-hidden="true"
                 />
                 <Input
@@ -26,7 +26,7 @@ export const ChannelFilters = ({ filters, setFilters, workspaces }: { filters: a
                     onChange={(e) =>
                         setFilters({ ...filters, searchQuery: e.target.value })
                     }
-                    className="pl-9"
+                    className="ps-9"
                     type="text"
                     aria-label={_("Search channels")}
                     aria-describedby="search-description"

@@ -86,7 +86,7 @@ const AISettingsFields = () => {
                     />
                     {openaiEnabled && !canEditProviders ? <ProviderSetByAdmin /> : null}
                     {openaiEnabled && canEditProviders ? (
-                        <div className="flex flex-col gap-4 pl-1">
+                        <div className="flex flex-col gap-4 ps-1">
                             <DataField
                                 name="openai_organisation_id"
                                 label={_("OpenAI Organization ID")}
@@ -126,7 +126,7 @@ const AISettingsFields = () => {
                         formDescription={_("Use a self-hosted, OpenAI-compatible model.")}
                     />
                     {localEnabled && !canEditProviders ? (
-                        <div className="flex flex-col gap-4 pl-1">
+                        <div className="flex flex-col gap-4 ps-1">
                             <ProviderSetByAdmin />
                             {/* Tests the saved server. The server ignores any other URL for non-System Managers. */}
                             <Button type="button" variant="outline" size="sm" className="self-start" onClick={handleTestConnection} disabled={testing}>
@@ -140,7 +140,7 @@ const AISettingsFields = () => {
                         </div>
                     ) : null}
                     {localEnabled && canEditProviders ? (
-                        <div className="flex flex-col gap-4 pl-1">
+                        <div className="flex flex-col gap-4 ps-1">
                             <SelectFormField name="local_llm_provider" label={_("Provider")}>
                                 <SelectItem value="LM Studio">{_("LM Studio")}</SelectItem>
                                 <SelectItem value="Ollama">{_("Ollama")}</SelectItem>

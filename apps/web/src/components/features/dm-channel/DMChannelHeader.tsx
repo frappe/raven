@@ -185,7 +185,7 @@ export function DMChannelHeader({ peer, channelID, showActions = true, onOpenCha
             </div>
 
             {/* Right: Open channel (panes) + command menu (mobile) + Call */}
-            {onOpenChannel && !isMobile && <div className="items-center gap-1 ml-auto flex">
+            {onOpenChannel && !isMobile && <div className="items-center gap-1 ms-auto flex">
                 <Tooltip>
                     <TooltipTrigger asChild>
                         <Button variant="ghost" size="sm" isIconButton onClick={onOpenChannel} aria-label={_("Open channel")}>

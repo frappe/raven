@@ -62,7 +62,7 @@ const OthersRoster = ({ ids }: { ids: string[] }) => {
         // pins the bar to this ScrollArea's edge, so any card padding around
         // it reads as a gap. The row padding lives INSIDE the scroll instead.
         <ScrollArea viewportClassName="max-h-64 scroll-fade">
-            <div className="flex flex-col gap-2.5 pt-2 pl-2 pb-2 pr-2.5">
+            <div className="flex flex-col gap-2.5 pt-2 ps-2 pb-2 pe-2.5">
                 {ids.map((id) => {
                     const user = usersById.get(id)
                     return (

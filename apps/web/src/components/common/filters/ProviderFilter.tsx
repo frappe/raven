@@ -154,7 +154,7 @@ export function ProviderFilter({ value, onValueChange, placeholder, iconTrigger,
                             <ListFilterIcon />
                             {/* Same count dot as the search page's filter button. */}
                             {checkedCount > 0 && (
-                                <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-surface-gray-10 px-1 text-[10px] leading-none text-ink-blue-1">
+                                <span className="absolute -top-1 -end-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-surface-gray-10 px-1 text-[10px] leading-none text-ink-blue-1">
                                     {checkedCount}
                                 </span>
                             )}
@@ -168,7 +168,7 @@ export function ProviderFilter({ value, onValueChange, placeholder, iconTrigger,
                             className={cn(FILTER_TRIGGER_STYLES, triggerClassName)}
                         >
                             <span className={cn(
-                                "min-w-0 flex-1 truncate text-left leading-snug",
+                                "min-w-0 flex-1 truncate text-start leading-snug",
                                 checkedCount === 0 && "text-ink-gray-4",
                             )}>
                                 {triggerLabel}
@@ -207,7 +207,7 @@ export function ProviderFilter({ value, onValueChange, placeholder, iconTrigger,
                                         ) : Icon ? (
                                             <Icon className={cn("size-4 shrink-0", checked ? "text-ink-gray-8" : "text-ink-gray-4")} />
                                         ) : null}
-                                        <span className="min-w-0 flex-1 truncate text-left leading-snug">{_(option.label)}</span>
+                                        <span className="min-w-0 flex-1 truncate text-start leading-snug">{_(option.label)}</span>
                                     </button>
                                 )
                             })}

@@ -19,7 +19,7 @@ export const JoinWorkspaceSheet = ({ open, onOpenChange, workspaces, onJoined }:
     return (
         <DrawerNested open={open} onOpenChange={onOpenChange}>
             <DrawerContent>
-                <DrawerTitle className="px-4 py-2 text-left text-2xl-semibold text-ink-gray-9">
+                <DrawerTitle className="px-4 py-2 text-start text-2xl-semibold text-ink-gray-9">
                     {_("Join a workspace")}
                 </DrawerTitle>
                 <DrawerDescription className="sr-only">{_("Public workspaces you can join")}</DrawerDescription>

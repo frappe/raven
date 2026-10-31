@@ -75,7 +75,7 @@ export const CodeBlock = ({ code, language }: { code: string; language?: string 
                     no wrap). Horizontal scroll lives on <code>, so the gutter stays put. */}
                 <span
                     aria-hidden="true"
-                    className="flex flex-none select-none flex-col text-right tabular-nums items-end border-r border-outline-gray-2 pr-3 text-ink-gray-4"
+                    className="flex flex-none select-none flex-col text-end tabular-nums items-end border-e border-outline-gray-2 pe-3 text-ink-gray-4"
                 >
                     {Array.from({ length: lineCount }, (_unused, index) => (
                         <span key={index} className="block">
@@ -94,7 +94,7 @@ export const CodeBlock = ({ code, language }: { code: string; language?: string 
             {/* Hover-revealed toolbar (top-right): language · collapse · copy. Always
                 shown on touch (no hover). Sits on an opaque code-bg patch so it never
                 bleeds over the code beneath it. */}
-            <div className="absolute right-1.5 top-1.5 flex items-center gap-0.5 rounded-md bg-(--code-bg) p-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100">
+            <div className="absolute end-1.5 top-1.5 flex items-center gap-0.5 rounded-md bg-(--code-bg) p-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100">
                 <span className="select-none px-1 text-sm text-ink-gray-4">{displayLanguage}</span>
                 <Tooltip>
                     <TooltipTrigger asChild>
@@ -145,7 +145,7 @@ export const CodeBlock = ({ code, language }: { code: string; language?: string 
             )}
 
             {collapsible && (
-                <div className="absolute right-1.5 bottom-1.5">
+                <div className="absolute end-1.5 bottom-1.5">
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <Button

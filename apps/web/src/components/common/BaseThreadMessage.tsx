@@ -65,7 +65,7 @@ export const BaseThreadMessage = ({
             </div>
 
             {/* Participants and reply count */}
-            <div className="flex items-center gap-2 mt-3 ml-12 relative z-10">
+            <div className="flex items-center gap-2 mt-3 ms-12 relative z-10">
                 {!channelDetails.isDirectMessage ? (
                     <GroupedAvatars users={channelDetails.participants} max={3} size="xs" />
                 ) : <div className="h-6" />}

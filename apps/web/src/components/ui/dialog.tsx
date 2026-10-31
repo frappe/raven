@@ -59,7 +59,7 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "bg-surface-elevation-1 shadow-xl rounded-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 flex flex-col w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 p-6 duration-200 outline-none sm:max-w-lg max-h-[90vh] overflow-y-auto",
+          "bg-surface-elevation-1 shadow-xl rounded-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] start-[50%] z-50 flex flex-col w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 p-6 duration-200 outline-none sm:max-w-lg max-h-[90vh] overflow-y-auto",
           className
         )}
         {...props}
@@ -71,7 +71,7 @@ function DialogContent({
             variant="ghost"
             size="sm"
             isIconButton
-            className="absolute top-4 ltr:right-4 rtl:left-4"
+            className="absolute top-4 end-4"
           >
             <DialogPrimitive.Close data-slot="dialog-close" aria-label="Close">
               <XIcon />

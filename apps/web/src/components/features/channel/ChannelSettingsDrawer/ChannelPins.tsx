@@ -105,7 +105,7 @@ const ChannelPins = ({ channelID }: { channelID: string }) => {
                                         }
                                     }}
                                     aria-label={_("Jump to pinned message")}
-                                    className="group p-3 border border-outline-gray-1 rounded-md hover:bg-surface-gray-1 transition-colors cursor-pointer w-full text-left">
+                                    className="group p-3 border border-outline-gray-1 rounded-md hover:bg-surface-gray-1 transition-colors cursor-pointer w-full text-start">
                                     <div className="flex items-center gap-2 mb-1">
                                         {member && <>
                                             <UserAvatar

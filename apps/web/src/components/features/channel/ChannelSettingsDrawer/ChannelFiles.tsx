@@ -360,7 +360,7 @@ const FileGridTile = memo(({ file, member, index, onOpen }: {
             // tile+caption (it shows when the closing lightbox restores focus
             // here); keyboard users still get an indicator — the thumbnail
             // border below picks up focus-visible.
-            className="group flex w-full min-w-0 flex-col gap-1 text-left outline-none"
+            className="group flex w-full min-w-0 flex-col gap-1 text-start outline-none"
         >
             <div className="relative aspect-square w-full overflow-hidden rounded-lg border border-outline-gray-1 bg-surface-gray-1 transition-colors group-hover:border-outline-gray-3 group-focus-visible:border-outline-gray-4">
                 {file.message_type === 'Image' ? (
@@ -386,7 +386,7 @@ const FileGridTile = memo(({ file, member, index, onOpen }: {
                 {member && (
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <span className="absolute -bottom-0.5 right-1">
+                            <span className="absolute -bottom-0.5 end-1">
                                 <UserAvatar
                                     user={member}
                                     size="xs"

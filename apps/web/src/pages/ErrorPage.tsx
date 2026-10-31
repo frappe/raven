@@ -28,7 +28,7 @@ const ErrorPage = () => {
 
     return (
         <div className="flex h-dvh w-full items-center bg-surface-gray-2 md:p-16 p-4">
-            <div className="flex w-full max-w-2xl flex-col items-start gap-4 text-left">
+            <div className="flex w-full max-w-2xl flex-col items-start gap-4 text-start">
                 <h1 className="text-3xl font-semibold text-ink-gray-9">
                     {isStaleBuild ? _("A new update is available.") : _("Chaos is a ladder.")}
                 </h1>
@@ -50,9 +50,9 @@ const ErrorPage = () => {
                     )}
                 </p>
                 {!isStaleBuild && message && (
-                    <details className="w-full text-left">
+                    <details className="w-full text-start">
                         <summary className="cursor-pointer text-sm text-ink-gray-5">{_("Show error details")}</summary>
-                        <code className="mt-2 block max-h-40 overflow-auto rounded-sm bg-surface-gray-4 p-2 text-left text-p-sm text-ink-gray-7">
+                        <code className="mt-2 block max-h-40 overflow-auto rounded-sm bg-surface-gray-4 p-2 text-start text-p-sm text-ink-gray-7">
                             {message}
                         </code>
                     </details>

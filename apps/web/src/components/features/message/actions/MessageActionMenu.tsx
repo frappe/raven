@@ -19,6 +19,7 @@ import { messageActionTargetAtom, messagePressTargetAtom, replyToMessageAtom } f
 import { useIsMobile } from "@hooks/use-mobile"
 import { cn } from "@lib/utils"
 import _ from "@lib/translate"
+import { useDirection } from "@components/ui/direction"
 import { MessageAction, useMessageActions } from "./useMessageActions"
 import { MessageHoverToolbar } from "./MessageHoverToolbar"
 import { ReactionPickerPanel } from "./ReactionPicker"
@@ -115,6 +116,7 @@ export const MessageActionMenu = ({
     /** Hovered message + its toolbar position (top; one of left/right anchors
      *  it); null hides the toolbar. */
     const [hovered, setHovered] = useState<{ message: Message; top: number; left?: number; right?: number } | null>(null)
+    const direction = useDirection()
     /** While the toolbar's ellipsis menu is open, hover-clearing is suspended. */
     const toolbarMenuOpenRef = useRef(false)
 
@@ -189,7 +191,10 @@ export const MessageActionMenu = ({
         const inset = isSimple ? 16 : LEFT_RIGHT_TOOLBAR_INSET
         const rise = isSimple ? 24 : -LEFT_RIGHT_TOOLBAR_INSET
         const top = Math.max(rect.top - wrapperRect.top - rise, inset)
-        if (mode === "own") {
+        // The corners above are for left to right. Right to left mirrors the rows, so the
+        // toolbar swaps sides too.
+        const onLeft = (mode === "own") !== (direction === "rtl")
+        if (onLeft) {
             setHovered({
                 message,
                 top,
@@ -804,7 +809,7 @@ export const MessageActionMenu = ({
                                                 >
                                                     {action.icon && <action.icon />}
                                                     {action.label}
-                                                    <ChevronRight className="ml-auto text-ink-gray-5" />
+                                                    <ChevronRight className="ms-auto text-ink-gray-5" />
                                                 </Button>
                                             ) : (
                                                 <SheetActionRow key={action.id} action={action} onDone={closeSheet} />

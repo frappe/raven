@@ -144,7 +144,7 @@ export const ReactionsDialog = ({ message, open, onClose }: { message: Message |
                     inside their own scroll (see PANEL_SCROLLER), so rows scroll to the
                     drawer's true bottom edge instead of clipping at a padding line. */}
                 <DrawerContent className="pb-0">
-                    <DrawerTitle className="px-4 pb-4 pt-1 text-left text-2xl-semibold text-ink-gray-9">
+                    <DrawerTitle className="px-4 pb-4 pt-1 text-start text-2xl-semibold text-ink-gray-9">
                         {_("Reactions")}
                     </DrawerTitle>
                     <DrawerDescription className="sr-only">{_("Who reacted to this message")}</DrawerDescription>

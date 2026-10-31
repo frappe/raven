@@ -130,7 +130,7 @@ export const EditMessageComposer = ({ message }: { message: Message }) => {
                         <EditorContent editor={editor} />
                     </div>
                     <div className="flex items-center md:justify-start justify-end gap-2 px-1.5 pb-1.5">
-                        <span className="mr-auto px-1 text-xs text-ink-gray-4 hidden md:block">{_("Esc to cancel")}</span>
+                        <span className="me-auto px-1 text-xs text-ink-gray-4 hidden md:block">{_("Esc to cancel")}</span>
                         <Button type="button" variant="ghost" size="sm" onClick={close}>
                             {_("Cancel")}
                         </Button>

@@ -177,7 +177,7 @@ export default function Notifications() {
                                     {unreadCount > 99 ? "99+" : unreadCount}
                                 </Badge>
                             )}
-                            <div className="ml-auto flex items-center gap-2">
+                            <div className="ms-auto flex items-center gap-2">
                                 <div className="hidden md:flex items-center gap-2 px-1">
                                     <Label htmlFor="unread-toggle" className="text-xs-medium text-ink-gray-6 cursor-pointer">
                                         {_("Unread only")}

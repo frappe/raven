@@ -92,7 +92,7 @@ const SiteRow = ({ site, revealed, disabled, onReveal, onOpen, onRemove }: {
     return (
         <li style={{ "--slot": `${REVEAL_PX}px` } as React.CSSProperties} className="relative shrink-0 overflow-hidden rounded-lg">
             <button type="button" aria-label={_("Remove site")} aria-hidden={!revealed} tabIndex={revealed ? 0 : -1} disabled={disabled} onClick={onRemove}
-                className="absolute inset-y-0 right-0 flex w-[var(--slot)] items-center justify-end pe-1.5 text-ink-red-6">
+                className="absolute inset-y-0 end-0 flex w-[var(--slot)] items-center justify-end pe-1.5 text-ink-red-6">
                 {/* Hard against the right edge: the gap to the slid card is the wider one, so the icon reads as apart from the row. */}
                 <Trash2 className="size-5" />
             </button>
@@ -104,7 +104,7 @@ const SiteRow = ({ site, revealed, disabled, onReveal, onOpen, onRemove }: {
                     logoUrl ? "-translate-x-[calc(var(--reveal)*var(--slot))] transition-[translate]" : "me-[calc(var(--reveal)*var(--slot))] transition-[margin]")}>
                 {/* A tap on a row that is slid aside puts it back; only a resting row opens its site. */}
                 <button type="button" disabled={disabled} onClick={() => (revealed ? onReveal(false) : onOpen())}
-                    className={cn("flex min-w-0 flex-1 items-center gap-3 rounded-lg py-3 pe-3 text-left", logoUrl ? "ps-2" : "ps-3")}>
+                    className={cn("flex min-w-0 flex-1 items-center gap-3 rounded-lg py-3 pe-3 text-start", logoUrl ? "ps-2" : "ps-3")}>
                     {logoUrl && <img src={logoUrl} alt="" className="size-10 shrink-0 rounded-md" onError={() => setLogoFailed(true)} />}
                     <span className="flex flex-1 flex-col gap-1 min-w-0">
                         <span className="text-base font-medium truncate">{site.name}</span>

@@ -300,25 +300,25 @@ const CommandFooter = () => {
                         <Kbd className={FOOTER_KBD}><ArrowDownIcon /></Kbd>
                         <Kbd className={FOOTER_KBD}><ArrowUpIcon /></Kbd>
                     </KbdGroup>
-                    <span className="ml-1">{_("to navigate")}</span>
+                    <span className="ms-1">{_("to navigate")}</span>
                 </span>
                 <span className="flex items-center gap-1">
                     <Kbd aria-hidden className={FOOTER_KBD}><CornerDownLeftIcon /></Kbd>
-                    <span className="ml-1">{_("to select")}</span>
+                    <span className="ms-1">{_("to select")}</span>
                 </span>
                 <span className="flex items-center gap-1">
                     <Kbd aria-hidden className={cn(FOOTER_KBD, "px-1 text-sm")}>esc</Kbd>
-                    <span className="ml-1">{_("to close")}</span>
+                    <span className="ms-1">{_("to close")}</span>
                 </span>
             </div>
             <div className="flex items-center gap-4">
                 <span className="flex items-center gap-1">
                     <Kbd aria-hidden className={cn(FOOTER_KBD, "px-1")}><KeyboardMetaKeyIcon /><span className="text-xs">G</span></Kbd>
-                    <span className="ml-1">{_("to search")}</span>
+                    <span className="ms-1">{_("to search")}</span>
                 </span>
                 <span className="flex items-center gap-1">
                     <Kbd aria-hidden className={cn(FOOTER_KBD, "px-1")}><KeyboardMetaKeyIcon /><span className="text-xs">K</span></Kbd>
-                    <span className="ml-1">{_("to open")}</span>
+                    <span className="ms-1">{_("to open")}</span>
                 </span>
             </div>
         </div>

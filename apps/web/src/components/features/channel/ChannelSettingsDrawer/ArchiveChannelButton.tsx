@@ -148,7 +148,7 @@ export function ArchiveChannelButton({ channel }: ArchiveChannelButtonProps) {
           >
             {loading ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin text-ink-gray-8/80 aria-hidden" />
+                <Loader2 className="me-2 h-4 w-4 animate-spin text-ink-gray-8/80 aria-hidden" />
                 {channel.is_archived === 0 ? _("Archiving") : _("Unarchiving")}
               </>
             ) : channel.is_archived === 0 ? (

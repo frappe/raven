@@ -51,7 +51,7 @@ const PrimarySidebar = () => {
     return (
         <TooltipProvider delayDuration={0}>
             {/* The rail sits beside <main>, so it pads the status bar inset itself (iPad). */}
-            <div className="flex flex-col h-full gap-2 shrink-0 justify-between items-center border-r border-outline-gray-2 bg-surface-sidebar w-(--primary-sidebar-width) pb-4 pt-2.5 standalone:pt-[calc(var(--inset-top)+0.625rem)]">
+            <div className="flex flex-col h-full gap-2 shrink-0 justify-between items-center border-e border-outline-gray-2 bg-surface-sidebar w-(--primary-sidebar-width) pb-4 pt-2.5 standalone:pt-[calc(var(--inset-top)+0.625rem)]">
                 {/* min-h-0 lets this group shrink below its content, which is what
                     hands the workspace list inside it a bounded height to scroll in.
                     The nav icons above and the saved/profile block below stay put —
@@ -153,7 +153,7 @@ const IconBox = ({ children, isActive, title }: { children: React.ReactNode, isA
 
 const ActivePill = ({ isActive }: { isActive?: boolean }) => {
     return <div className={cn(
-        "absolute left-0 top-1/2 -translate-y-1/2 w-1 rounded-r-full transition-colors h-6 ease-in duration-200",
+        "absolute start-0 top-1/2 -translate-y-1/2 w-1 rounded-e-full transition-colors h-6 ease-in duration-200",
         isActive ? "bg-surface-gray-7" : "bg-transparent"
     )} />
 }
@@ -166,7 +166,7 @@ const UnreadBadge = ({ count, theme = "red" }: { count?: number, theme?: "red" |
     // but "9+" / two digits grow horizontally with px-1 so the glyphs aren't
     // crushed against the boundary. h-4 keeps the cap height stable either way.
     return <span className={cn(
-        "absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 flex items-center justify-center rounded-full text-[10px] leading-none",
+        "absolute -top-1.5 -end-1.5 h-4 min-w-4 px-1 flex items-center justify-center rounded-full text-[10px] leading-none",
         theme === "red"
             ? "bg-surface-red-6 dark:bg-surface-red-6 text-ink-base dark:text-ink-red-1"
             : "bg-surface-gray-6 text-ink-base",

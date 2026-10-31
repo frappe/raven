@@ -147,7 +147,7 @@ function FunctionNameCell({ func, onOpen }: { func: RavenAIFunction; onOpen: (id
         <button
             type="button"
             onClick={() => onOpen(func.name)}
-            className="hover:underline underline-offset-4 text-left min-w-0 cursor-pointer"
+            className="hover:underline underline-offset-4 text-start min-w-0 cursor-pointer"
         >
             <span className="font-medium truncate block">{func.function_name}</span>
         </button>
