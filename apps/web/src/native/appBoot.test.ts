@@ -3,6 +3,8 @@ import { bootFromCache, forgetBoot, loadBoot } from "./appBoot"
 
 const native = vi.hoisted(() => ({ status: 0 }))
 vi.mock("@capacitor/core", () => ({ CapacitorHttp: { get: async () => { if (!native.status) throw new Error("connect"); return { status: native.status, data: "" } } } }))
+// No html tag in these tests. locale.test.ts covers it.
+vi.mock("@lib/locale", () => ({ applyLocale: () => {} }))
 import { setActiveSite, siteKey, _resetActiveSite } from "@lib/site"
 import { clearSessionUser, sessionUser } from "@lib/sessionUser"
 
