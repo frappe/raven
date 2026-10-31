@@ -336,7 +336,7 @@ const NotificationBody = ({ notification }: { notification: NotificationObject }
     // Same reading tier as .tiptap: the rich branch overrides the quote
     // container's xs/gray styling, so the plain fallback must too, or a
     // "📷 Photo" teaser renders smaller and dimmer than text quotes.
-    return <span className="text-p-lg md:text-p-base text-ink-gray-8">{teaser || _("Message")}</span>
+    return <bdi className="text-p-lg md:text-p-base text-ink-gray-8">{teaser || _("Message")}</bdi>
 }
 
 /** Single-string template with a `{0}` placeholder for the emoji slot — keeps

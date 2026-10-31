@@ -8,6 +8,7 @@ import { getDateObject } from "@lib/date"
 import { BRAND, BrandIcon, PROVIDER_BRAND } from "./BrandIcons"
 import { fitImageBox } from "./ReservedImage"
 import _ from "@lib/translate"
+import { textDirection } from "@lib/locale"
 
 /**
  * The generic link preview — the card for blogs, articles, HN posts and
@@ -108,11 +109,11 @@ const FrappePreviewBody = ({ preview }: { preview: LinkPreviewData }) => {
                     </div>
                     {/* Newsreader — the serif from frappe.io itself. A serif
                         needs a little more size than Inter to feel right. */}
-                    <div className="line-clamp-2 font-[Newsreader] text-2xl-medium leading-snug text-ink-gray-9">
+                    <div dir={textDirection(preview.title)} className="line-clamp-2 font-[Newsreader] text-2xl-medium leading-snug text-ink-gray-9">
                         {preview.title}
                     </div>
                     {preview.description && (
-                        <p className="line-clamp-2 text-p-sm text-ink-gray-6" title={preview.description}>{preview.description}</p>
+                        <p dir={textDirection(preview.description)} className="line-clamp-2 text-p-sm text-ink-gray-6" title={preview.description}>{preview.description}</p>
                     )}
                     {line && <div className="truncate pt-0.5 text-p-xs text-ink-gray-5">{line}</div>}
                 </div>
@@ -213,12 +214,12 @@ const XPreviewBody = ({ preview }: { preview: LinkPreviewData }) => {
     return (
         <div className="flex w-full flex-col gap-2 p-3">
             <div className="flex items-center gap-2">
-                <span className="min-w-0 flex-1 truncate text-sm-medium leading-snug text-ink-gray-7">{preview.title}</span>
+                <bdi className="min-w-0 flex-1 truncate text-sm-medium leading-snug text-ink-gray-7">{preview.title}</bdi>
                 <BrandIcon brand={BRAND.x} className="size-4 shrink-0" />
             </div>
             {preview.description && (
                 <p
-                    className="line-clamp-6 whitespace-pre-line text-p-base text-ink-gray-9 mb-1"
+                    dir={textDirection(preview.description)} className="line-clamp-6 whitespace-pre-line text-p-base text-ink-gray-9 mb-1"
                     title={preview.description}
                 >
                     {preview.description}
@@ -249,9 +250,9 @@ const PreviewBody = ({ preview }: { preview: LinkPreviewData }) => {
                         {brand && <BrandIcon brand={brand} className="size-3.5 shrink-0" />}
                         <span className="truncate text-xs leading-snug text-ink-gray-6">{preview.site_name}</span>
                     </div>
-                    <div className="line-clamp-1 text-p-base-medium text-ink-gray-9">{preview.title}</div>
+                    <div dir={textDirection(preview.title)} className="line-clamp-1 text-p-base-medium text-ink-gray-9">{preview.title}</div>
                     {preview.description && (
-                        <p className="line-clamp-2 text-p-sm text-ink-gray-6" title={preview.description}>{preview.description}</p>
+                        <p dir={textDirection(preview.description)} className="line-clamp-2 text-p-sm text-ink-gray-6" title={preview.description}>{preview.description}</p>
                     )}
                     {line && <div className="truncate pt-0.5 text-p-xs text-ink-gray-5">{line}</div>}
                 </div>

@@ -13,8 +13,8 @@ describe("RichTextRenderer", () => {
             '<svg><a href="#"><animate attributeName="href" to="javascript:alert(1)"/>x</a></svg><math></math><p>after</p>'
         const out = render(html)
         expect(out).not.toMatch(/<(iframe|object|embed|script|meta|base|style|form|input|svg|animate|math)\b/)
-        expect(out).toContain("<p>before</p>")
-        expect(out).toContain("<p>after</p>")
+        expect(out).toMatch(/<p[^>]*>before<\/p>/)
+        expect(out).toMatch(/<p[^>]*>after<\/p>/)
     })
 
     it("keeps ordinary message markup", () => {

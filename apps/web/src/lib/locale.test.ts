@@ -1,18 +1,16 @@
 import { describe, expect, it } from "vitest"
-import { applyLocale } from "./locale"
+import { textDirection } from "./locale"
 
-const htmlTag = () => ({ lang: "", dir: "" }) as HTMLElement
-
-describe("applyLocale", () => {
-    it("sets the language and right to left direction from the boot", () => {
-        const root = htmlTag()
-        applyLocale({ lang: "ar", layout_direction: "rtl" }, root)
-        expect([root.lang, root.dir]).toEqual(["ar", "rtl"])
+describe("textDirection", () => {
+    it("follows the first letter, past any numbers, emoji or punctuation before it", () => {
+        expect(textDirection("مرحبا Hello")).toBe("rtl")
+        expect(textDirection("Hello مرحبا")).toBe("ltr")
+        expect(textDirection("123 👍 مرحبا")).toBe("rtl")
+        expect(textDirection("שלום")).toBe("rtl")
     })
 
-    it("stays left to right for a boot from a server that does not send a direction", () => {
-        const root = htmlTag()
-        applyLocale({ lang: "ar" }, root)
-        expect(root.dir).toBe("ltr")
+    it("gives nothing for text with no letters, so it keeps the interface direction", () => {
+        expect(textDirection("")).toBeUndefined()
+        expect(textDirection("👍 123")).toBeUndefined()
     })
 })
