@@ -48,6 +48,9 @@ const DATE_LOCALES: Record<string, () => Promise<{ default: { name: string } }>>
     zh: () => import("dayjs/locale/zh-cn"),
 }
 
+/** The languages Raven ships translations for. English is the source language. */
+export const translatedLanguages = (): string[] => ["en", ...Object.keys(DATE_LOCALES)]
+
 /** The dayjs locale name for a language, loaded if it is not English. "en" when there is none. */
 export const loadDateLocale = async (lang = "en"): Promise<string> => {
     const load = DATE_LOCALES[lang] ?? DATE_LOCALES[lang.split("-")[0]]

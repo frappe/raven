@@ -10,6 +10,7 @@ import useCurrentRavenUser from "@raven/lib/hooks/useCurrentRavenUser"
 import { Select, SelectItem, SelectValue, SelectTrigger, SelectContent } from "@components/ui/select"
 import { ImagesIcon, LayoutPanelLeftIcon, MousePointerClickIcon, PanelBottomIcon } from "lucide-react"
 import { errorResponseToast } from "@components/ui/error-banner"
+import { LanguageSetting } from "@components/features/profile/LanguageSetting"
 
 const Appearance = () => {
 
@@ -32,6 +33,9 @@ const Appearance = () => {
                         <LeftRightLayoutSwitcher />
 
                         <div className="flex flex-col gap-2">
+                            <Separator />
+                            <LanguageSetting />
+
                             <Separator />
                             <ImageGroupingBehaviour />
 
