@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Raven VERSION\n"
 "Report-Msgid-Bugs-To: support@frappe.io\n"
-"POT-Creation-Date: 2026-10-31 19:47+0553\n"
+"POT-Creation-Date: 2026-11-01 14:35+0553\n"
 "PO-Revision-Date: 2026-10-31 19:17+0553\n"
 "Last-Translator: support@frappe.io\n"
 "Language: zh\n"
@@ -210,6 +210,10 @@ msgstr "一条定时消息发送失败。"
 msgid "AI"
 msgstr "AI"
 
+#: apps/web/src/pages/threads/Threads.tsx:30
+msgid "AI Agents"
+msgstr "AI 智能体"
+
 #: apps/web/src/components/features/settings/panels/FileSources/FileSources.tsx:170
 msgid "AI Agents can use files as data sources to get more context, read instructions and execute tasks."
 msgstr "AI 智能体可以把文件作为数据源，以获取更多上下文、读取指令并执行任务。"
@@ -222,6 +226,12 @@ msgstr "AI 指令模板"
 msgid "AI Integration is not enabled"
 msgstr "未启用 AI 集成"
 
+#: apps/web/src/components/features/settings/SettingsDialog.tsx:237
+#: apps/web/src/components/features/settings/panels/AISettings.tsx:201
+#: apps/web/src/components/features/settings/panels/ai/AINotEnabledCallout.tsx:39
+msgid "AI Settings"
+msgstr "AI 设置"
+
 #: apps/web/src/components/features/threads/ThreadsList.tsx:268
 msgid "AI threads will appear here when you start conversations with an AI bot."
 msgstr "当你与 AI 机器人开始对话后，AI 话题会显示在这里。"
@@ -230,9 +240,27 @@ msgstr "当你与 AI 机器人开始对话后，AI 话题会显示在这里。"
 msgid "API Docs"
 msgstr "API 文档"
 
+#: apps/web/src/components/features/settings/panels/AISettings.tsx:171
+msgid "API Key"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/PushNotifications.tsx:125
 msgid "API Key cannot be more than 140 characters."
 msgstr "API Key 不能超过 140 个字符。"
+
+#: apps/web/src/components/features/settings/panels/PushNotifications.tsx:131
+msgid "API Secret"
+msgstr ""
+
+#: apps/web/src/components/features/settings/panels/AISettings.tsx:154
+msgid "API URL"
+msgstr "API URL"
+
+#: apps/web/src/components/features/channel/ChannelSettingsDrawer/ChannelSettingsDrawer.tsx:46
+#: apps/web/src/components/features/settings/SettingsDialog.tsx:261
+#: apps/web/src/components/features/settings/panels/About.tsx:40
+msgid "About"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/MessageActions/MessageActionListView.tsx:95
 msgid "Access them by right clicking any message and selecting"
@@ -242,14 +270,35 @@ msgstr "右键点击任意消息并选择以下选项即可使用："
 msgid "Access updated"
 msgstr "访问权限已更新"
 
+#. Label of the action (Select) field in DocType 'Raven Message Action'
+#: apps/web/src/components/features/settings/panels/KeyboardShortcuts.tsx:223
+#: raven/raven_integrations/doctype/raven_message_action/raven_message_action.json:44
+msgid "Action"
+msgstr ""
+
 #. Label of the action_name (Data) field in DocType 'Raven Message Action'
 #: raven/raven_integrations/doctype/raven_message_action/raven_message_action.json:70
 msgid "Action Name"
 msgstr "操作名称"
 
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionForm.tsx:51
+msgid "Action Type"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/MessageActions/MessageActionForm.tsx:55
 msgid "Action Type is required"
 msgstr "必须填写操作类型"
+
+#: apps/web/src/components/features/message/actions/dialogs/RunMessageActionDialog.tsx:123
+msgid "Action completed"
+msgstr "操作已完成"
+
+#: apps/web/src/components/features/message/actions/MessageActionMenu.tsx:751
+#: apps/web/src/components/features/message/actions/useMessageActions.tsx:312
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionListView.tsx:91
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionListView.tsx:95
+msgid "Actions"
+msgstr ""
 
 #: apps/web/src/components/features/message/actions/MessageActionMenu.tsx:715
 msgid "Actions for this message"
@@ -259,10 +308,31 @@ msgstr "此消息的操作"
 msgid "Actions for this reminder"
 msgstr "此提醒的操作"
 
+#: apps/web/src/components/features/settings/panels/Agents/AgentDocumentProcessorsTab.tsx:162
+#: apps/web/src/components/features/settings/panels/DocumentProcessors/DocumentProcessors.tsx:236
+msgid "Active"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/DocumentProcessors/DocumentProcessors.tsx:203
 #, python-brace-format
 msgid "Active Processors ({0})"
 msgstr "启用的处理器（{0}）"
+
+#: apps/web/src/components/features/channel/ChannelMembersDrawer/AddChannelMembers.tsx:128
+#: apps/web/src/components/features/channel/ChannelMembersDrawer/AddChannelMembers.tsx:159
+#: apps/web/src/components/features/settings/panels/Agents/AgentFileSourcesTab.tsx:220
+#: apps/web/src/components/features/settings/panels/Agents/AgentFunctionsTab.tsx:78
+#: apps/web/src/components/features/settings/panels/FrappeHR.tsx:91
+#: apps/web/src/components/features/settings/panels/Functions/DoctypeVariableBuilder.tsx:152
+#: apps/web/src/components/features/settings/panels/Functions/DoctypeVariableDialogForm.tsx:51
+#: apps/web/src/components/features/settings/panels/Functions/VariableDialog.tsx:146
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldDialog.tsx:43
+#: apps/web/src/components/features/settings/panels/Users/AddUserDialog.tsx:232
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookDataTable.tsx:71
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookHeaders.tsx:22
+#: apps/web/src/components/features/settings/panels/ai/InstructionField.tsx:281
+msgid "Add"
+msgstr ""
 
 #: apps/web/src/components/features/channel/ChannelMembersDrawer/AddChannelMembers.tsx:105
 #: apps/web/src/components/features/channel/CreateChannel/CreateChannelForm.tsx:185
@@ -273,6 +343,10 @@ msgstr "添加 1 名成员"
 #: apps/web/src/components/features/setup/steps/TeamStep.tsx:51
 msgid "Add 1 person"
 msgstr "添加 1 人"
+
+#: raven/public/js/timeline_button.js:104
+msgid "Add Attachment"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/Emojis/AddEmojiDialog.tsx:46
 msgid "Add Emoji"
@@ -296,6 +370,11 @@ msgstr "添加成员"
 #: apps/web/src/components/features/settings/panels/DocumentNotifications/DocumentNotificationRecipientsTab.tsx:38
 msgid "Add Recipient"
 msgstr "添加收件人"
+
+#: apps/web/src/components/features/settings/panels/Users/AddUserDialog.tsx:57
+#: apps/web/src/components/features/settings/panels/Users/AddUserDialog.tsx:64
+msgid "Add User"
+msgstr "添加用户"
 
 #: apps/web/src/components/features/settings/panels/Functions/DoctypeVariableBuilder.tsx:155
 #: apps/web/src/components/features/settings/panels/Functions/VariableBuilder.tsx:215
@@ -398,6 +477,10 @@ msgstr "添加此站点上的用户"
 msgid "Add reaction"
 msgstr "添加表情回应"
 
+#: apps/web/src/components/features/setup/steps/InviteTable.tsx:115
+msgid "Add row"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/LinkSettingsAdminSection.tsx:201
 #: apps/web/src/native/SitePicker.tsx:217
 msgid "Add site"
@@ -443,6 +526,10 @@ msgstr "添加 {0} 人"
 msgid "Add {0} to {1}"
 msgstr "将 {0} 添加到 {1}"
 
+#: apps/web/src/components/features/settings/panels/Emojis/Emojis.tsx:146
+msgid "Added"
+msgstr ""
+
 #: apps/web/src/components/features/setup/steps/SiteUsersBox.tsx:37
 #, python-brace-format
 msgid "Added to {0}"
@@ -479,13 +566,32 @@ msgstr "已移除管理员权限"
 msgid "Admins"
 msgstr "管理员"
 
+#: apps/web/src/components/features/settings/panels/Agents/AgentAITab.tsx:99
+msgid "Advanced"
+msgstr ""
+
 #: apps/web/src/lib/timeUtils.ts:105
 msgid "Afternoon"
 msgstr "下午"
 
+#: apps/web/src/components/features/settings/panels/ScheduledMessages/ScheduledMessageListView.tsx:94
+msgid "Agent"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/ScheduledMessages/ScheduledMessageForm.tsx:69
 msgid "Agent is required."
 msgstr "必须选择智能体。"
+
+#: apps/web/src/components/features/settings/SettingsDialog.tsx:148
+#: apps/web/src/components/features/settings/panels/Agents/AgentListView.tsx:74
+msgid "Agents"
+msgstr ""
+
+#: apps/web/src/components/features/message/actions/dialogs/ReactionsDialog.tsx:73
+#: apps/web/src/components/features/settings/panels/DocumentNotifications/DocumentNotificationRecipientsTab.tsx:199
+#: apps/web/src/pages/notifications/Notifications.tsx:34
+msgid "All"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/Channels/ChannelFilters.tsx:52
 msgid "All Channels"
@@ -551,6 +657,12 @@ msgstr "允许机器人写入单据"
 #: apps/web/src/components/features/ChatInput/CreatePollForm.tsx:271
 msgid "Allow multiple choices"
 msgstr "允许多选"
+
+#. Label of the allow_notifications (Check) field in DocType 'Raven Channel
+#. Member'
+#: raven/raven_channel_management/doctype/raven_channel_member/raven_channel_member.json:67
+msgid "Allow notifications"
+msgstr ""
 
 #: apps/web/src/components/features/channel/CustomizeSidebar/PreviewGroupHeader.tsx:126
 msgid "Alphabetical"
@@ -640,6 +752,13 @@ msgstr "任何人都可以查看，但默认不是成员"
 msgid "Anyone from your organisation can join this channel and view its message history."
 msgstr "你组织中的任何人都可以加入此频道并查看其历史消息。"
 
+#: apps/web/src/components/features/cmdk/SettingsList.tsx:19
+#: apps/web/src/components/features/settings/SettingsDialog.tsx:89
+#: apps/web/src/components/features/settings/panels/Appearance.tsx:19
+#: apps/web/src/pages/profile/Profile.tsx:101
+msgid "Appearance"
+msgstr "外观"
+
 #. Option for the 'Provider' (Select) field in DocType 'Raven Link Preview'
 #. Option for the 'Provider' (Select) field in DocType 'Raven Message Links'
 #: raven/raven_messaging/doctype/raven_link_preview/raven_link_preview.json:68
@@ -662,6 +781,14 @@ msgstr "Apple Podcasts"
 msgid "Apple Podcasts player"
 msgstr "Apple Podcasts 播放器"
 
+#: apps/web/src/components/features/editor/EditorFormattingToolbar.tsx:243
+msgid "Apply"
+msgstr ""
+
+#: apps/web/src/components/features/channel/ChannelSettingsDrawer/ArchiveChannelButton.tsx:152
+msgid "Archive"
+msgstr ""
+
 #: apps/web/src/components/features/channel/ChannelSettingsDrawer/ArchiveChannelButton.tsx:87
 msgid "Archive channel"
 msgstr "归档频道"
@@ -670,6 +797,11 @@ msgstr "归档频道"
 #: apps/web/src/components/features/channel/ChannelSettingsDrawer/ArchiveChannelButton.tsx:144
 msgid "Archive this channel?"
 msgstr "要归档此频道吗？"
+
+#: apps/web/src/components/features/cmdk/ChannelList.tsx:65
+#: apps/web/src/components/features/settings/panels/Channels/Channels.tsx:207
+msgid "Archived"
+msgstr ""
 
 #: apps/web/src/components/features/channel/ChannelSettingsDrawer/ArchiveChannelButton.tsx:149
 msgid "Archiving"
@@ -722,6 +854,11 @@ msgstr "至少需要 2 个选项"
 msgid "At what time?"
 msgstr "什么时间？"
 
+#: apps/web/src/components/features/ChatInput/AttachFrappeDocumentDialog.tsx:143
+#: apps/web/src/components/features/message/actions/dialogs/AttachToDocumentDialog.tsx:214
+msgid "Attach"
+msgstr ""
+
 #: apps/web/src/components/features/message/actions/dialogs/AttachToDocumentDialog.tsx:214
 #, python-brace-format
 msgid "Attach ({0})"
@@ -764,6 +901,10 @@ msgstr "附加到单据"
 msgid "Attached to {0}"
 msgstr "已附加到 {0}"
 
+#: apps/web/src/components/features/message/ThreadRootMessage.tsx:59
+msgid "Attachment"
+msgstr ""
+
 #. Label of the attendance_and_leaves_section (Section Break) field in DocType
 #. 'Raven Settings'
 #: raven/raven/doctype/raven_settings/raven_settings.json:102
@@ -783,6 +924,10 @@ msgstr "自动填充选项"
 msgid "Auto Silent"
 msgstr "自动静默"
 
+#: apps/web/src/components/features/settings/panels/Appearance.tsx:61
+msgid "Automatic"
+msgstr ""
+
 #. Label of the auto_create_department_channel (Check) field in DocType 'Raven
 #. Settings'
 #: raven/raven/doctype/raven_settings/raven_settings.json:89
@@ -795,7 +940,7 @@ msgid "Automatically add system users to Raven"
 msgstr "自动将系统用户添加到 Raven"
 
 #: apps/web/src/components/features/profile/EditProfileDrawer.tsx:100
-#: apps/web/src/components/features/settings/panels/Profile.tsx:139
+#: apps/web/src/components/features/settings/panels/Profile.tsx:140
 msgid "Availability"
 msgstr "在线状态"
 
@@ -805,18 +950,27 @@ msgid "Availability Status"
 msgstr "在线状态"
 
 #. Option for the 'Availability Status' (Select) field in DocType 'Raven User'
-#: apps/web/src/components/features/settings/panels/Profile.tsx:28
+#: apps/web/src/components/features/settings/panels/Profile.tsx:29
 #: apps/web/src/hooks/useSetAvailability.ts:9
 #: raven/raven/doctype/raven_user/raven_user.json:129
 msgid "Available"
 msgstr "有空"
 
 #. Option for the 'Availability Status' (Select) field in DocType 'Raven User'
-#: apps/web/src/components/features/settings/panels/Profile.tsx:29
+#: apps/web/src/components/features/settings/panels/Profile.tsx:30
 #: apps/web/src/hooks/useSetAvailability.ts:10
 #: raven/raven/doctype/raven_user/raven_user.json:129
 msgid "Away"
 msgstr "离开"
+
+#: apps/web/src/components/features/channel/ChannelHeader/ChannelHeader.tsx:73
+#: apps/web/src/components/features/dm-channel/DMChannelHeader.tsx:78
+#: apps/web/src/components/features/message/ThreadHeader.tsx:54
+#: apps/web/src/components/features/message/actions/MessageActionMenu.tsx:746
+#: apps/web/src/components/features/settings/panels/KeyboardShortcuts.tsx:194
+#: apps/web/src/components/features/setup/SetupPage.tsx:248
+msgid "Back"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/Agents/AgentEditorView.tsx:25
 msgid "Back to agents"
@@ -878,6 +1032,33 @@ msgstr "已屏蔽的链接预览"
 msgid "Blurhash"
 msgstr "Blurhash"
 
+#: apps/web/src/components/features/editor/EditorFormattingToolbar.tsx:58
+#: apps/web/src/components/features/settings/panels/KeyboardShortcuts.tsx:150
+msgid "Bold"
+msgstr ""
+
+#: apps/web/src/components/features/settings/panels/Functions/DoctypeVariableDialogForm.tsx:153
+#: apps/web/src/components/features/settings/panels/Functions/VariableDialog.tsx:62
+msgid "Boolean"
+msgstr "布尔值"
+
+#. Option for the 'Type' (Select) field in DocType 'Raven User'
+#. Label of the bot (Link) field in DocType 'Raven User'
+#. Label of the bot (Link) field in DocType 'Raven Incoming Webhook'
+#. Label of the bot (Link) field in DocType 'Raven Scheduler Event'
+#. Label of the bot (Link) field in DocType 'Raven Message'
+#: apps/web/src/components/features/cmdk/UserList.tsx:126
+#: apps/web/src/components/features/cmdk/UserList.tsx:170
+#: apps/web/src/components/features/dm-channel/DMChannelHeader.tsx:152
+#: apps/web/src/components/features/message/renderers/UserProfileHoverCard.tsx:94
+#: raven/raven/doctype/raven_user/raven_user.json:94
+#: raven/raven/doctype/raven_user/raven_user.json:103
+#: raven/raven_integrations/doctype/raven_incoming_webhook/raven_incoming_webhook.json:31
+#: raven/raven_integrations/doctype/raven_scheduler_event/raven_scheduler_event.json:52
+#: raven/raven_messaging/doctype/raven_message/raven_message.json:141
+msgid "Bot"
+msgstr ""
+
 #. Label of the bot_functions (Table) field in DocType 'Raven Bot'
 #: raven/raven_bot/doctype/raven_bot/raven_bot.json:165
 msgid "Bot Functions"
@@ -922,6 +1103,10 @@ msgstr "机器人可用于向频道发送 HTML 格式的消息。"
 msgid "Browse and manage every channel in this workspace."
 msgstr "浏览和管理此工作区中的所有频道。"
 
+#: apps/web/src/components/features/settings/panels/KeyboardShortcuts.tsx:187
+msgid "Browser"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/Functions/VariableBuilder.tsx:54
 msgid "Builder"
 msgstr "构建器"
@@ -930,10 +1115,19 @@ msgstr "构建器"
 msgid "Bulk Operations"
 msgstr "批量操作"
 
+#: apps/web/src/components/features/editor/EditorFormattingToolbar.tsx:70
+#: apps/web/src/components/features/settings/panels/KeyboardShortcuts.tsx:158
+msgid "Bullet list"
+msgstr "无序列表"
+
 #. Label of the cron_expression (Data) field in DocType 'Raven Scheduler Event'
 #: raven/raven_integrations/doctype/raven_scheduler_event/raven_scheduler_event.json:46
 msgid "CRON Expression"
 msgstr "CRON 表达式"
+
+#: apps/web/src/components/features/ChatInput/MobileComposerActions.tsx:83
+msgid "Camera"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/Agents/AgentListView.tsx:165
 msgid "Can Write Documents"
@@ -950,6 +1144,62 @@ msgstr "可以是 HTML/Markdown/纯文本。支持 Jinja 标签"
 #: raven/raven/doctype/raven_workspace/raven_workspace.json:31
 msgid "Can only join via invite?"
 msgstr "仅限邀请加入？"
+
+#. Option for the 'Send Alert On' (Select) field in DocType 'Raven Document
+#. Notification'
+#: apps/web/src/components/common/DownloadToast.tsx:20
+#: apps/web/src/components/common/UploadDocDialog.tsx:142
+#: apps/web/src/components/features/ChatInput/AttachFrappeDocumentDialog.tsx:140
+#: apps/web/src/components/features/ChatInput/CreatePollForm.tsx:376
+#: apps/web/src/components/features/channel/ChannelMembersDrawer/AddChannelMembers.tsx:147
+#: apps/web/src/components/features/channel/ChannelMembersDrawer/AddChannelMembers.tsx:198
+#: apps/web/src/components/features/channel/ChannelSettingsDrawer/ArchiveChannelButton.tsx:135
+#: apps/web/src/components/features/channel/ChannelSettingsDrawer/ChannelTypeSelect.tsx:191
+#: apps/web/src/components/features/channel/ChannelSettingsDrawer/DeleteChannelButton.tsx:116
+#: apps/web/src/components/features/channel/ChannelSettingsDrawer/EditChannelDescriptionButton.tsx:204
+#: apps/web/src/components/features/channel/ChannelSettingsDrawer/EditChannelDescriptionButton.tsx:262
+#: apps/web/src/components/features/channel/ChannelSettingsDrawer/LeaveChannelButton.tsx:87
+#: apps/web/src/components/features/channel/CreateChannel/CreateChannelForm.tsx:300
+#: apps/web/src/components/features/channel/CustomizeSidebar/GroupNameDialog.tsx:80
+#: apps/web/src/components/features/message/ThreadDrawer.tsx:224
+#: apps/web/src/components/features/message/actions/dialogs/AttachToDocumentDialog.tsx:211
+#: apps/web/src/components/features/message/actions/dialogs/DeleteMessageDialog.tsx:120
+#: apps/web/src/components/features/message/actions/dialogs/ForwardMessageDialog.tsx:444
+#: apps/web/src/components/features/message/actions/dialogs/RunMessageActionDialog.tsx:149
+#: apps/web/src/components/features/message/renderers/EditMessageComposer.tsx:135
+#: apps/web/src/components/features/message/renderers/PollDrawer.tsx:345
+#: apps/web/src/components/features/profile/EditProfileDrawer.tsx:139
+#: apps/web/src/components/features/profile/LanguageSetting.tsx:163
+#: apps/web/src/components/features/reminders/ReminderDialog.tsx:152
+#: apps/web/src/components/features/reminders/RemindersList.tsx:600
+#: apps/web/src/components/features/schedule-send/EditScheduledMessageSheet.tsx:110
+#: apps/web/src/components/features/schedule-send/InlineScheduledMessageEditor.tsx:81
+#: apps/web/src/components/features/schedule-send/ScheduleTimePicker.tsx:83
+#: apps/web/src/components/features/schedule-send/ScheduledMessageCard.tsx:284
+#: apps/web/src/components/features/schedule-send/ScheduledMessageCard.tsx:300
+#: apps/web/src/components/features/settings/panels/DocumentNotifications/DocumentNotificationDetailsTab.tsx:37
+#: apps/web/src/components/features/settings/panels/DocumentProcessors/DocumentProcessors.tsx:258
+#: apps/web/src/components/features/settings/panels/Emojis/DeleteEmojiDialog.tsx:60
+#: apps/web/src/components/features/settings/panels/FileSources/FileSources.tsx:220
+#: apps/web/src/components/features/settings/panels/LinkSettingsAdminSection.tsx:205
+#: apps/web/src/components/features/settings/panels/LinkSettingsAdminSection.tsx:297
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldDialog.tsx:223
+#: apps/web/src/components/features/settings/panels/QuietHoursAdminSection.tsx:242
+#: apps/web/src/components/features/settings/panels/RecordActionsMenu.tsx:74
+#: apps/web/src/components/features/settings/panels/Users/AddUserDialog.tsx:228
+#: apps/web/src/components/features/settings/panels/Users/DisableUserDialog.tsx:46
+#: apps/web/src/components/features/settings/panels/Users/ManageAccessDialog.tsx:113
+#: apps/web/src/components/features/settings/panels/Workspaces/AddWorkspaceDialog.tsx:129
+#: apps/web/src/components/features/settings/panels/Workspaces/WorkspaceActionMenu.tsx:162
+#: apps/web/src/components/features/settings/panels/Workspaces/WorkspaceMembers.tsx:285
+#: apps/web/src/components/features/setup/steps/SiteUsersDialog.tsx:58
+#: apps/web/src/components/features/setup/steps/SiteUsersDialog.tsx:82
+#: apps/web/src/components/features/workspaces/LeaveWorkspaceDialog.tsx:59
+#: apps/web/src/native/SitePicker.tsx:244
+#: apps/web/src/pages/profile/Profile.tsx:206
+#: raven/raven_integrations/doctype/raven_document_notification/raven_document_notification.json:53
+msgid "Cancel"
+msgstr ""
 
 #. Option for the 'Type' (Select) field in DocType 'Raven AI Function'
 #: raven/raven_ai/doctype/raven_ai_function/raven_ai_function.json:53
@@ -972,6 +1222,17 @@ msgstr "不能发送空消息"
 msgid "Change double-tap reaction"
 msgstr "更改双击表情回应"
 
+#: apps/web/src/components/features/profile/LanguageSetting.tsx:82
+#: apps/web/src/components/features/profile/LanguageSetting.tsx:127
+#: apps/web/src/components/features/profile/LanguageSetting.tsx:173
+msgid "Change language"
+msgstr "更改语言"
+
+#: apps/web/src/components/features/profile/LanguageSetting.tsx:173
+#, python-brace-format
+msgid "Change language to {0}"
+msgstr "将语言更改为{0}"
+
 #: apps/web/src/components/features/settings/panels/Workspaces/WorkspaceLogoField.tsx:58
 msgid "Change logo"
 msgstr "更改 Logo"
@@ -979,6 +1240,10 @@ msgstr "更改 Logo"
 #: apps/web/src/components/features/ChatInput/QuietHoursBanner.tsx:174
 msgid "Change organization's working hours"
 msgstr "更改组织的工作时间"
+
+#: apps/web/src/components/features/profile/ProfileImageMenu.tsx:77
+msgid "Change photo"
+msgstr "更换照片"
 
 #: apps/web/src/components/features/profile/PreferencesDrawer.tsx:197
 #, python-brace-format
@@ -1001,6 +1266,33 @@ msgstr "要改为开放频道吗？"
 #, python-brace-format
 msgid "Change to {0}"
 msgstr "改为{0}"
+
+#. Label of the channel_id (Link) field in DocType 'Raven Reminder'
+#. Label of the channel_id (Link) field in DocType 'Raven Channel Member'
+#. Option for the 'Channel Type' (Select) field in DocType 'Raven Document
+#. Notification Recipients'
+#. Option for the 'Send to' (Select) field in DocType 'Raven Scheduler Event'
+#. Label of the channel (Link) field in DocType 'Raven Scheduler Event'
+#. Option for the 'Conditions On' (Select) field in DocType 'Raven Webhook'
+#. Label of the channel_id (Link) field in DocType 'Raven Webhook'
+#. Label of the channel_id (Link) field in DocType 'Raven Scheduled Message'
+#: apps/web/src/components/features/channel/ChannelSettingsDrawer/ChannelSettingsTab.tsx:50
+#: apps/web/src/components/features/message/renderers/RavenLinkPreview.tsx:230
+#: apps/web/src/components/features/search/SearchFiltersBar.tsx:66
+#: apps/web/src/components/features/search/SearchFiltersSheet.tsx:144
+#: apps/web/src/components/features/search/SearchFiltersSheet.tsx:146
+#: apps/web/src/components/features/settings/panels/DocumentNotifications/DocumentNotificationRecipientsTab.tsx:82
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookConditionForm.tsx:99
+#: raven/raven/doctype/raven_reminder/raven_reminder.json:38
+#: raven/raven_channel_management/doctype/raven_channel_member/raven_channel_member.json:29
+#: raven/raven_integrations/doctype/raven_document_notification_recipients/raven_document_notification_recipients.json:19
+#: raven/raven_integrations/doctype/raven_scheduler_event/raven_scheduler_event.json:60
+#: raven/raven_integrations/doctype/raven_scheduler_event/raven_scheduler_event.json:66
+#: raven/raven_integrations/doctype/raven_webhook/raven_webhook.json:156
+#: raven/raven_integrations/doctype/raven_webhook/raven_webhook.json:162
+#: raven/raven_messaging/doctype/raven_scheduled_message/raven_scheduled_message.json:21
+msgid "Channel"
+msgstr ""
 
 #. Option for the 'Webhook Trigger' (Select) field in DocType 'Raven Webhook'
 #: raven/raven_integrations/doctype/raven_webhook/raven_webhook.json:140
@@ -1338,6 +1630,22 @@ msgstr "选择按 Enter 键时是发送消息还是换行。"
 msgid "Choose workspaces based on companies"
 msgstr "根据公司选择工作区"
 
+#: apps/web/src/components/common/ClearFieldButton.tsx:15
+#: apps/web/src/components/common/filters/FileTypeFilter.tsx:162
+#: apps/web/src/components/common/filters/ProviderFilter.tsx:226
+#: apps/web/src/components/features/channel/CustomizeSidebar/ChannelGroupSelect.tsx:58
+msgid "Clear"
+msgstr ""
+
+#: apps/web/src/components/features/channel/CreateChannel/AddMembersStep.tsx:197
+#: apps/web/src/components/features/setup/steps/SiteUsersDialog.tsx:138
+msgid "Clear all"
+msgstr "取消全选"
+
+#: apps/web/src/components/features/search/SearchFiltersSheet.tsx:216
+msgid "Clear all filters"
+msgstr "清除所有筛选"
+
 #: apps/web/src/components/common/filters/FilterCombobox.tsx:205
 msgid "Clear filter"
 msgstr "清除筛选"
@@ -1372,6 +1680,18 @@ msgstr "点击播放"
 msgid "Click to preview"
 msgstr "点击预览"
 
+#: apps/web/src/components/features/message/renderers/MediaPreviewHeader.tsx:121
+#: apps/web/src/components/features/message/renderers/MediaPreviewHeader.tsx:122
+#: apps/web/src/components/features/settings/panels/Agents/AgentFileSourcesTab.tsx:216
+#: apps/web/src/components/features/settings/panels/Functions/DoctypeVariableDialogForm.tsx:50
+#: apps/web/src/components/features/settings/panels/Functions/VariableDialog.tsx:144
+#: apps/web/src/components/features/settings/panels/KeyboardShortcuts.tsx:63
+#: apps/web/src/components/features/settings/panels/Workspaces/WorkspaceActionMenu.tsx:111
+#: apps/web/src/components/ui/dialog.tsx:77
+#: apps/web/src/components/ui/dialog.tsx:134
+msgid "Close"
+msgstr ""
+
 #: apps/web/src/components/features/channel/ChannelMembersDrawer/ChannelMembersDrawer.tsx:54
 #: apps/web/src/components/features/channel/ChannelSettingsDrawer/ChannelSettingsDrawer.tsx:52
 #: apps/web/src/components/features/message/renderers/PollDrawer.tsx:185
@@ -1403,13 +1723,33 @@ msgstr "要结束此投票吗？"
 msgid "Close thread"
 msgstr "关闭话题"
 
+#: apps/web/src/components/features/message/renderers/PollDrawer.tsx:122
+msgid "Closed"
+msgstr ""
+
 #: apps/web/src/components/features/message/renderers/PollDrawer.tsx:346
 msgid "Closing..."
 msgstr "正在结束……"
 
+#: apps/web/src/components/features/editor/EditorFormattingToolbar.tsx:66
+#: apps/web/src/components/features/message/renderers/MessageCodeBlock.tsx:66
+#: apps/web/src/components/features/settings/panels/KeyboardShortcuts.tsx:156
+msgid "Code"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/Agents/AgentListView.tsx:167
 msgid "Code Interpreter"
 msgstr "代码解释器"
+
+#: apps/web/src/components/features/editor/EditorFormattingToolbar.tsx:67
+#: apps/web/src/components/features/settings/panels/KeyboardShortcuts.tsx:157
+msgid "Code block"
+msgstr "代码块"
+
+#: apps/web/src/components/features/message/renderers/MessageCodeBlock.tsx:157
+#: apps/web/src/components/features/message/renderers/MessageCodeBlock.tsx:162
+msgid "Collapse"
+msgstr ""
 
 #: apps/web/src/components/features/message/ThreadRootMessage.tsx:116
 msgid "Collapse message"
@@ -1454,18 +1794,51 @@ msgstr "第 {0} 行的公司"
 msgid "Company is required"
 msgstr "必须填写公司"
 
+#: apps/web/src/pages/later/Later.tsx:26
+msgid "Completed"
+msgstr ""
+
 #: apps/web/src/components/features/ChatInput/MobileComposerActions.tsx:113
 msgid "Composer actions"
 msgstr "输入框操作"
+
+#. Label of the condition (Code) field in DocType 'Raven Document Notification'
+#. Label of the condition (Small Text) field in DocType 'Raven Webhook'
+#: apps/web/src/components/features/settings/panels/DocumentNotifications/DocumentNotificationConditionTab.tsx:17
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookConditionForm.tsx:80
+#: raven/raven_integrations/doctype/raven_document_notification/raven_document_notification.json:78
+#: raven/raven_integrations/doctype/raven_webhook/raven_webhook.json:52
+msgid "Condition"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/Webhooks/WebhookConditionForm.tsx:83
 msgid "Condition is required"
 msgstr "必须填写条件"
 
+#. Label of the conditions_tab (Tab Break) field in DocType 'Raven Document
+#. Notification'
+#: apps/web/src/components/features/settings/panels/DocumentNotifications/DocumentNotificationForm.tsx:14
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookForm.tsx:24
+#: raven/raven_integrations/doctype/raven_document_notification/raven_document_notification.json:72
+msgid "Conditions"
+msgstr ""
+
 #. Label of the conditions_on (Select) field in DocType 'Raven Webhook'
 #: raven/raven_integrations/doctype/raven_webhook/raven_webhook.json:154
 msgid "Conditions On"
 msgstr "条件依据"
+
+#. Label of the config (Small Text) field in DocType 'Raven Settings'
+#: raven/raven/doctype/raven_settings/raven_settings.json:246
+msgid "Config"
+msgstr ""
+
+#: apps/web/src/components/features/settings/panels/DocumentPreviews.tsx:53
+#: apps/web/src/components/features/settings/panels/LinkSettingsAdminSection.tsx:72
+#: apps/web/src/components/features/settings/panels/LinkSettingsAdminSection.tsx:101
+#: apps/web/src/components/features/settings/panels/QuietHoursAdminSection.tsx:75
+msgid "Configure"
+msgstr "配置"
 
 #: apps/web/src/components/features/settings/SettingsDialog.tsx:240
 #: apps/web/src/components/features/settings/panels/AISettings.tsx:202
@@ -1525,9 +1898,23 @@ msgstr "连接 OpenAI API 失败。请检查 Organization ID 和 API Key 中是�
 msgid "Contact Number"
 msgstr "联系电话"
 
+#. Label of the content (HTML Editor) field in DocType 'Raven Scheduler Event'
+#. Label of the content (Long Text) field in DocType 'Raven Message'
+#: raven/raven_integrations/doctype/raven_scheduler_event/raven_scheduler_event.json:81
+#: raven/raven_messaging/doctype/raven_message/raven_message.json:148
+msgid "Content"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldDialog.tsx:193
 msgid "Content (plain text)"
 msgstr "内容（纯文本）"
+
+#: apps/web/src/components/features/setup/steps/ChannelStep.tsx:60
+#: apps/web/src/components/features/setup/steps/ProfileStep.tsx:112
+#: apps/web/src/components/features/setup/steps/TeamStep.tsx:53
+#: apps/web/src/components/features/setup/steps/WorkspaceStep.tsx:108
+msgid "Continue"
+msgstr ""
 
 #: apps/web/src/pages/dm-channel/DirectMessage.tsx:51
 msgid "Conversation not found"
@@ -1550,6 +1937,10 @@ msgstr "已复制 {0}"
 #: apps/web/src/components/features/settings/panels/ai/InstructionField.tsx:144
 msgid "Copied!"
 msgstr "已复制！"
+
+#: apps/web/src/components/features/message/actions/useMessageActions.tsx:254
+msgid "Copy"
+msgstr "复制"
 
 #: apps/web/src/components/features/message/renderers/DocumentLinkRenderer.tsx:386
 msgid "Copy ID"
@@ -1794,7 +2185,7 @@ msgid "Could not update preference"
 msgstr "无法更新偏好设置"
 
 #: apps/web/src/components/features/profile/EditProfileDrawer.tsx:66
-#: apps/web/src/components/features/settings/panels/Profile.tsx:89
+#: apps/web/src/components/features/settings/panels/Profile.tsx:90
 msgid "Could not update profile"
 msgstr "无法更新个人资料"
 
@@ -1852,6 +2243,19 @@ msgstr "无法加载此频道"
 #: apps/web/src/pages/dm-channel/DirectMessage.tsx:37
 msgid "Couldn’t load this conversation"
 msgstr "无法加载此会话"
+
+#: apps/web/src/components/features/channel/CustomizeSidebar/ChannelGroupSelect.tsx:74
+#: apps/web/src/components/features/settings/panels/Agents/AgentListView.tsx:73
+#: apps/web/src/components/features/settings/panels/DocumentNotifications/DocumentNotificationListView.tsx:80
+#: apps/web/src/components/features/settings/panels/Functions/FunctionListView.tsx:85
+#: apps/web/src/components/features/settings/panels/Instructions/InstructionListView.tsx:70
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionListView.tsx:73
+#: apps/web/src/components/features/settings/panels/ScheduledMessages/ScheduledMessageListView.tsx:106
+#: apps/web/src/components/features/settings/panels/SettingsRecordEditor.tsx:101
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookListView.tsx:81
+#: apps/web/src/components/features/settings/panels/Workspaces/AddWorkspaceDialog.tsx:38
+msgid "Create"
+msgstr ""
 
 #: apps/web/src/components/features/channel/CreateChannel/CreateChannelButton.tsx:60
 #: apps/web/src/components/features/channel/CreateChannel/CreateChannelButton.tsx:77
@@ -2027,6 +2431,14 @@ msgstr "创建你的第一个模板"
 msgid "Create your first webhook"
 msgstr "创建你的第一个 Webhook"
 
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookListView.tsx:64
+msgid "Created By"
+msgstr ""
+
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookListView.tsx:71
+msgid "Created On"
+msgstr ""
+
 #: apps/web/src/components/features/channel/ChannelSettingsDrawer/ChannelInfo.tsx:44
 #, python-brace-format
 msgctxt "Do MMM YYYY"
@@ -2043,6 +2455,16 @@ msgstr "正在创建"
 msgid "Creating..."
 msgstr "正在创建……"
 
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldDialog.tsx:196
+msgid "Creation"
+msgstr ""
+
+#. Option for the 'Event Frequency' (Select) field in DocType 'Raven Scheduler
+#. Event'
+#: raven/raven_integrations/doctype/raven_scheduler_event/raven_scheduler_event.json:41
+msgid "Cron"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/ScheduledMessages/ScheduledMessageForm.tsx:119
 msgid "Cron expression"
 msgstr "Cron 表达式"
@@ -2051,9 +2473,20 @@ msgstr "Cron 表达式"
 msgid "Cron expression is required."
 msgstr "必须填写 Cron 表达式。"
 
+#: apps/web/src/components/features/cmdk/NavigationList.tsx:77
+msgid "Current"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/Agents/AgentAITab.tsx:94
 msgid "Currently, code interpreter features are not available for Local LLM providers. These features require OpenAI's infrastructure."
 msgstr "目前本地 LLM 服务商不支持代码解释器功能。这些功能需要 OpenAI 的基础设施。"
+
+#. Option for the 'Conditions On' (Select) field in DocType 'Raven Webhook'
+#: apps/web/src/components/features/settings/panels/ScheduledMessages/ScheduledMessageForm.tsx:83
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookConditionForm.tsx:65
+#: raven/raven_integrations/doctype/raven_webhook/raven_webhook.json:156
+msgid "Custom"
+msgstr ""
 
 #: apps/web/src/components/features/cmdk/SettingsList.tsx:23
 msgid "Custom Emojis"
@@ -2129,15 +2562,47 @@ msgstr "私信用户 2"
 msgid "DMs"
 msgstr "私信"
 
+#: apps/web/src/components/features/settings/panels/ScheduledMessages/ScheduledMessageForm.tsx:80
+msgid "Daily"
+msgstr ""
+
+#: apps/web/src/components/features/settings/panels/Appearance.tsx:69
+#: apps/web/src/pages/profile/Profile.tsx:105
+#: apps/web/src/pages/profile/Profile.tsx:113
+msgid "Dark"
+msgstr ""
+
+#. Option for the 'Type' (Select) field in DocType 'Raven Message Action
+#. Fields'
+#. Label of the webhook_data (Table) field in DocType 'Raven Webhook'
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookForm.tsx:25
+#: raven/raven_integrations/doctype/raven_message_action_fields/raven_message_action_fields.json:55
+#: raven/raven_integrations/doctype/raven_webhook/raven_webhook.json:133
+msgid "Data"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/PushNotifications.tsx:192
 msgid "Data synced to Raven Cloud."
 msgstr "数据已同步到 Raven Cloud。"
+
+#. Option for the 'Type' (Select) field in DocType 'Raven Message Action
+#. Fields'
+#: apps/web/src/components/features/reminders/DatePickerPopover.tsx:43
+#: raven/raven_integrations/doctype/raven_message_action_fields/raven_message_action_fields.json:55
+msgid "Date"
+msgstr ""
 
 #. Option for the 'Event Frequency' (Select) field in DocType 'Raven Scheduler
 #. Event'
 #: raven/raven_integrations/doctype/raven_scheduler_event/raven_scheduler_event.json:41
 msgid "Date of the month"
 msgstr "每月日期"
+
+#. Option for the 'Type' (Select) field in DocType 'Raven Message Action
+#. Fields'
+#: raven/raven_integrations/doctype/raven_message_action_fields/raven_message_action_fields.json:55
+msgid "Datetime"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/ScheduledMessages/ScheduledMessageForm.tsx:108
 msgid "Day of the month is required."
@@ -2161,6 +2626,24 @@ msgstr "决定一组图片在聊天中的显示方式。5 张及以上的图片�
 msgid "Declare functions to be used by your AI bots."
 msgstr "声明供 AI 机器人使用的函数。"
 
+#: apps/web/src/components/features/message/renderers/DocumentPrintDialog.tsx:118
+msgid "Default"
+msgstr ""
+
+#. Label of the default_value (Data) field in DocType 'Raven AI Function
+#. Params'
+#. Label of the default_value (Small Text) field in DocType 'Raven Message
+#. Action Fields'
+#: apps/web/src/components/features/settings/panels/Functions/DoctypeVariableDialogForm.tsx:160
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldDialog.tsx:191
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldDialog.tsx:207
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldDialog.tsx:211
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldsBuilder.tsx:47
+#: raven/raven_ai/doctype/raven_ai_function_params/raven_ai_function_params.json:38
+#: raven/raven_integrations/doctype/raven_message_action_fields/raven_message_action_fields.json:44
+msgid "Default Value"
+msgstr ""
+
 #. Label of the default_value_type (Select) field in DocType 'Raven Message
 #. Action Fields'
 #: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldDialog.tsx:182
@@ -2181,6 +2664,32 @@ msgstr "默认值"
 #: apps/web/src/components/features/settings/panels/Functions/DoctypeVariableDialogForm.tsx:163
 msgid "Default value is required if AI is not asked to fill this field"
 msgstr "如果不让 AI 填写此字段，则必须填写默认值"
+
+#. Option for the 'Send Alert On' (Select) field in DocType 'Raven Document
+#. Notification'
+#: apps/web/src/components/features/channel/ChannelSettingsDrawer/DeleteChannelButton.tsx:129
+#: apps/web/src/components/features/channel/CustomizeSidebar/PreviewGroupHeader.tsx:134
+#: apps/web/src/components/features/message/actions/dialogs/DeleteMessageDialog.tsx:128
+#: apps/web/src/components/features/message/actions/useMessageActions.tsx:452
+#: apps/web/src/components/features/reminders/RemindersList.tsx:329
+#: apps/web/src/components/features/reminders/RemindersList.tsx:610
+#: apps/web/src/components/features/schedule-send/ScheduledMessageCard.tsx:117
+#: apps/web/src/components/features/schedule-send/ScheduledMessageCard.tsx:268
+#: apps/web/src/components/features/schedule-send/ScheduledMessageCard.tsx:302
+#: apps/web/src/components/features/settings/panels/Agents/AgentFileSourcesTab.tsx:140
+#: apps/web/src/components/features/settings/panels/Agents/AgentFileSourcesTab.tsx:141
+#: apps/web/src/components/features/settings/panels/DocumentNotifications/DocumentNotificationDetailsTab.tsx:38
+#: apps/web/src/components/features/settings/panels/Emojis/DeleteEmojiDialog.tsx:66
+#: apps/web/src/components/features/settings/panels/FileSources/FileSources.tsx:125
+#: apps/web/src/components/features/settings/panels/FileSources/FileSources.tsx:126
+#: apps/web/src/components/features/settings/panels/FileSources/FileSources.tsx:222
+#: apps/web/src/components/features/settings/panels/RecordActionsMenu.tsx:61
+#: apps/web/src/components/features/settings/panels/RecordActionsMenu.tsx:76
+#: apps/web/src/components/features/settings/panels/Workspaces/WorkspaceActionMenu.tsx:48
+#: apps/web/src/components/features/settings/panels/Workspaces/WorkspaceActionMenu.tsx:164
+#: raven/raven_integrations/doctype/raven_document_notification/raven_document_notification.json:53
+msgid "Delete"
+msgstr ""
 
 #: apps/web/src/components/features/message/actions/dialogs/DeleteMessageDialog.tsx:128
 #, python-brace-format
@@ -2283,6 +2792,11 @@ msgstr "删除话题"
 msgid "Delete {0}?"
 msgstr "要删除 {0} 吗？"
 
+#: apps/web/src/components/features/message/renderers/DocumentLinkRenderer.tsx:278
+#: apps/web/src/components/features/settings/panels/RecordActionsMenu.tsx:42
+msgid "Deleted"
+msgstr ""
+
 #: apps/web/src/components/features/channel/ChannelSettingsDrawer/DeleteChannelButton.tsx:124
 #: apps/web/src/components/features/settings/panels/DocumentProcessors/DocumentProcessors.tsx:264
 #: apps/web/src/components/features/settings/panels/FileSources/FileSources.tsx:221
@@ -2290,6 +2804,10 @@ msgstr "要删除 {0} 吗？"
 #: apps/web/src/components/features/settings/panels/Workspaces/WorkspaceActionMenu.tsx:163
 msgid "Deleting"
 msgstr "正在删除"
+
+#: apps/web/src/components/features/settings/panels/Emojis/DeleteEmojiDialog.tsx:66
+msgid "Deleting..."
+msgstr "正在删除……"
 
 #: apps/web/src/components/features/message/ThreadDrawer.tsx:225
 msgid "Deleting…"
@@ -2315,9 +2833,52 @@ msgstr "部门频道类型"
 msgid "Department channel type"
 msgstr "部门频道类型"
 
+#: apps/web/src/components/features/settings/panels/DeprecatedBadge.tsx:10
+msgid "Deprecated"
+msgstr "已弃用"
+
 #: apps/web/src/components/features/settings/panels/Functions/FunctionDetailsTab.tsx:97
 msgid "Describe what this function does."
 msgstr "描述此函数的作用。"
+
+#. Label of the description (Small Text) field in DocType 'Raven Reminder'
+#. Label of the description (Small Text) field in DocType 'Raven Workspace'
+#. Label of the description (Small Text) field in DocType 'Raven AI Function'
+#. Label of the description (Small Text) field in DocType 'Raven AI Function
+#. Params'
+#. Label of the description (Small Text) field in DocType 'Raven Bot Functions'
+#. Label of the description (Small Text) field in DocType 'Raven Bot'
+#. Label of the description (Small Text) field in DocType 'Raven Message
+#. Action'
+#. Label of the description (Small Text) field in DocType 'Raven Link Preview'
+#: apps/web/src/components/features/channel/CreateChannel/CreateChannelForm.tsx:259
+#: apps/web/src/components/features/channel/CustomizeSidebar/ChannelTable.tsx:104
+#: apps/web/src/components/features/settings/panels/Agents/AgentGeneralTab.tsx:29
+#: apps/web/src/components/features/settings/panels/Agents/AgentListView.tsx:57
+#: apps/web/src/components/features/settings/panels/Channels/Channels.tsx:106
+#: apps/web/src/components/features/settings/panels/DocumentNotifications/DoctypeVariables.tsx:64
+#: apps/web/src/components/features/settings/panels/Functions/DoctypeVariableDialogForm.tsx:170
+#: apps/web/src/components/features/settings/panels/Functions/FunctionDetailsTab.tsx:94
+#: apps/web/src/components/features/settings/panels/Functions/FunctionListView.tsx:58
+#: apps/web/src/components/features/settings/panels/Functions/VariableDialog.tsx:112
+#: apps/web/src/components/features/settings/panels/Instructions/InstructionListView.tsx:58
+#: apps/web/src/components/features/settings/panels/KeyboardShortcuts.tsx:224
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldDialog.tsx:216
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionForm.tsx:136
+#: apps/web/src/components/features/settings/panels/Workspaces/AddWorkspaceDialog.tsx:91
+#: apps/web/src/components/features/settings/panels/Workspaces/WorkspaceEditForm.tsx:20
+#: apps/web/src/components/features/settings/panels/Workspaces/WorkspaceListView.tsx:51
+#: apps/web/src/components/features/settings/panels/ai/InstructionField.tsx:88
+#: raven/raven/doctype/raven_reminder/raven_reminder.json:68
+#: raven/raven/doctype/raven_workspace/raven_workspace.json:53
+#: raven/raven_ai/doctype/raven_ai_function/raven_ai_function.json:85
+#: raven/raven_ai/doctype/raven_ai_function_params/raven_ai_function_params.json:55
+#: raven/raven_ai/doctype/raven_bot_functions/raven_bot_functions.json:45
+#: raven/raven_bot/doctype/raven_bot/raven_bot.json:48
+#: raven/raven_integrations/doctype/raven_message_action/raven_message_action.json:35
+#: raven/raven_messaging/doctype/raven_link_preview/raven_link_preview.json:37
+msgid "Description"
+msgstr ""
 
 #: apps/web/src/components/features/setup/steps/WorkspaceStep.tsx:103
 msgid "Description (optional)"
@@ -2326,6 +2887,17 @@ msgstr "描述（可选）"
 #: apps/web/src/components/features/settings/panels/Functions/FunctionDetailsTab.tsx:96
 msgid "Description is required"
 msgstr "必须填写描述"
+
+#. Name of a role
+#: raven/raven/doctype/raven_settings/raven_settings.json:364
+msgid "Desk User"
+msgstr ""
+
+#: apps/web/src/components/features/settings/panels/DocumentNotifications/DocumentNotificationForm.tsx:12
+#: apps/web/src/components/features/settings/panels/Functions/FunctionForm.tsx:48
+#: apps/web/src/components/features/settings/panels/Workspaces/WorkspaceDetailView.tsx:128
+msgid "Details"
+msgstr ""
 
 #. Label of the device_information (Data) field in DocType 'Raven Push Token'
 #: raven/raven/doctype/raven_push_token/raven_push_token.json:37
@@ -2372,6 +2944,12 @@ msgstr "私信"
 msgid "Direct modification of message_reactions is not allowed. Use the Reactions API."
 msgstr "不允许直接修改 message_reactions。请使用 Reactions API。"
 
+#: apps/web/src/components/features/settings/panels/EnabledRecord.tsx:28
+#: apps/web/src/components/features/settings/panels/Users/DisableUserDialog.tsx:48
+#: apps/web/src/components/features/settings/panels/Users/Users.tsx:200
+msgid "Disable"
+msgstr ""
+
 #: apps/web/src/components/features/header/NavUserMenu/NavUserMenu.tsx:122
 msgid "Disable Notifications"
 msgstr "关闭通知"
@@ -2381,13 +2959,39 @@ msgstr "关闭通知"
 msgid "Disable {0}?"
 msgstr "要停用 {0} 吗？"
 
+#. Label of the disabled (Check) field in DocType 'Raven Scheduler Event'
+#: apps/web/src/components/features/cmdk/UserList.tsx:130
+#: apps/web/src/components/features/dm-channel/DMChannelHeader.tsx:158
+#: apps/web/src/components/features/dm-channel/UserProfileDrawer.tsx:45
+#: apps/web/src/components/features/message/renderers/UserProfileHoverCard.tsx:100
+#: apps/web/src/components/features/settings/panels/DocumentNotifications/DocumentNotificationListView.tsx:70
+#: apps/web/src/components/features/settings/panels/EnabledRecord.tsx:24
+#: apps/web/src/components/features/settings/panels/EnabledRecord.tsx:38
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionListView.tsx:63
+#: apps/web/src/components/features/settings/panels/ScheduledMessages/ScheduledMessageListView.tsx:79
+#: apps/web/src/components/features/settings/panels/Users/Users.tsx:152
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookListView.tsx:57
+#: raven/raven_integrations/doctype/raven_scheduler_event/raven_scheduler_event.json:35
+msgid "Disabled"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/Users/DisableUserDialog.tsx:47
 msgid "Disabling"
 msgstr "正在停用"
 
+#: apps/web/src/components/features/message/renderers/OptimisticStatus.tsx:71
+#: raven/public/js/timeline_button.js:89
+msgid "Discard"
+msgstr ""
+
 #: apps/web/src/components/features/channel/CustomizeSidebar/CustomizeSidebarDialog.tsx:105
 msgid "Discard changes"
 msgstr "放弃更改"
+
+#: apps/web/src/components/channel-sidebar/TrialCard.tsx:109
+#: apps/web/src/components/features/ChatInput/QuietHoursBanner.tsx:186
+msgid "Dismiss"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/FrappeHR.tsx:46
 msgid "Display a leave indicator on users who are off today."
@@ -2414,7 +3018,7 @@ msgid "Do not attach document with message"
 msgstr "不随消息附加单据"
 
 #. Option for the 'Availability Status' (Select) field in DocType 'Raven User'
-#: apps/web/src/components/features/settings/panels/Profile.tsx:30
+#: apps/web/src/components/features/settings/panels/Profile.tsx:31
 #: apps/web/src/hooks/useSetAvailability.ts:11
 #: raven/raven/doctype/raven_user/raven_user.json:129
 msgid "Do not disturb"
@@ -2429,10 +3033,31 @@ msgstr "不做处理"
 msgid "Do you want to autofill these as options?"
 msgstr "要自动将这些填为选项吗？"
 
+#. Label of the sb_doc_events (Section Break) field in DocType 'Raven Webhook'
+#: raven/raven_integrations/doctype/raven_webhook/raven_webhook.json:39
+msgid "Doc Events"
+msgstr ""
+
+#. Option for the 'Variable Type' (Select) field in DocType 'Raven Document
+#. Notification Recipients'
+#: raven/raven_integrations/doctype/raven_document_notification_recipients/raven_document_notification_recipients.json:27
+msgid "DocField"
+msgstr ""
+
+#: apps/web/src/components/features/settings/panels/Functions/DoctypeVariableDialogForm.tsx:79
+msgid "DocType"
+msgstr ""
+
 #. Label of a Card Break in the Raven Workspace
 #: raven/raven/workspace/raven/raven.json:68
 msgid "DocTypes"
 msgstr "DocType"
+
+#: apps/web/src/components/features/ChatInput/AttachFrappeDocumentDialog.tsx:131
+#: apps/web/src/components/features/ChatInput/MobileComposerActions.tsx:90
+#: apps/web/src/components/features/message/actions/dialogs/AttachToDocumentDialog.tsx:197
+msgid "Document"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/DocumentNotifications/DocumentNotificationRecipientsTab.tsx:98
 msgid "Document Field"
@@ -2470,6 +3095,28 @@ msgstr "文档处理器"
 msgid "Document Processors require Google Cloud APIs to be enabled in your Raven settings."
 msgstr "文档处理器需要在 Raven 设置中启用 Google Cloud API。"
 
+#. Label of the document_type (Link) field in DocType 'Raven Document
+#. Notification'
+#. Label of the document_type (Link) field in DocType 'Raven Message Action'
+#: apps/web/src/components/features/ChatInput/AttachFrappeDocumentDialog.tsx:117
+#: apps/web/src/components/features/message/actions/dialogs/AttachToDocumentDialog.tsx:183
+#: apps/web/src/components/features/settings/panels/DocumentNotifications/DocumentNotificationDetailsTab.tsx:42
+#: apps/web/src/components/features/settings/panels/DocumentNotifications/DocumentNotificationListView.tsx:52
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldDialog.tsx:172
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionForm.tsx:73
+#: raven/raven_integrations/doctype/raven_document_notification/raven_document_notification.json:64
+#: raven/raven_integrations/doctype/raven_message_action/raven_message_action.json:52
+msgid "Document Type"
+msgstr ""
+
+#: apps/web/src/components/features/ChatInput/AttachFrappeDocumentDialog.tsx:125
+#: apps/web/src/components/features/message/actions/dialogs/AttachToDocumentDialog.tsx:191
+#: apps/web/src/components/features/settings/panels/DocumentNotifications/DocumentNotificationDetailsTab.tsx:46
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldDialog.tsx:176
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionForm.tsx:77
+msgid "Document Type is required"
+msgstr "必须选择单据类型"
+
 #: raven/raven_integrations/doctype/raven_message_action/raven_message_action.py:44
 msgid "Document Type is required."
 msgstr "必须选择单据类型。"
@@ -2478,6 +3125,21 @@ msgstr "必须选择单据类型。"
 #: apps/web/src/components/features/message/actions/dialogs/AttachToDocumentDialog.tsx:201
 msgid "Document is required"
 msgstr "必须选择单据"
+
+#: apps/web/src/components/features/settings/panels/About.tsx:16
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionForm.tsx:191
+msgid "Documentation"
+msgstr ""
+
+#: apps/web/src/components/common/filters/FileTypeFilter.tsx:28
+msgid "Documents"
+msgstr ""
+
+#: apps/web/src/components/features/header/HomeWorkspacesDrawer.tsx:225
+#: apps/web/src/components/features/setup/steps/SiteUsersDialog.tsx:61
+#: apps/web/src/components/features/setup/steps/SiteUsersDialog.tsx:85
+msgid "Done"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/Functions/FunctionDetailsTab.tsx:236
 #: apps/web/src/components/features/settings/panels/MessageActions/MessageActionForm.tsx:119
@@ -2488,6 +3150,20 @@ msgstr "自定义函数/API 的点分路径，不能包含空格。"
 msgid "Double-tap reaction"
 msgstr "双击表情回应"
 
+#: apps/web/src/components/common/FileMessage/FileMessage.tsx:68
+#: apps/web/src/components/common/FileMessage/FileMessage.tsx:69
+#: apps/web/src/components/features/message/actions/fileActions.ts:92
+#: apps/web/src/components/features/message/renderers/AttachmentPreviewModal.tsx:581
+#: apps/web/src/components/features/message/renderers/MediaPreviewHeader.tsx:97
+#: apps/web/src/components/features/message/renderers/MediaPreviewHeader.tsx:98
+msgid "Download"
+msgstr ""
+
+#: apps/web/src/components/features/message/renderers/DocumentPrintDialog.tsx:158
+#: apps/web/src/components/features/message/renderers/DocumentPrintDialog.tsx:184
+msgid "Download PDF"
+msgstr ""
+
 #: apps/web/src/components/features/message/actions/fileActions.ts:116
 #, python-brace-format
 msgid "Download all ({0})"
@@ -2497,6 +3173,15 @@ msgstr "全部下载（{0}）"
 #, python-brace-format
 msgid "Download {0}"
 msgstr "下载 {0}"
+
+#: apps/web/src/components/channel-sidebar/ChannelSidebar.tsx:482
+#: apps/web/src/components/dm-sidebar/DMSidebar.tsx:389
+msgid "Draft"
+msgstr ""
+
+#: apps/web/src/components/features/header/HomeWorkspacesDrawer.tsx:223
+msgid "Drag to reorder"
+msgstr "拖动以调整顺序"
 
 #: apps/web/src/components/ui/file-dropzone.tsx:37
 msgid "Drop a file here, or click to select a file"
@@ -2513,6 +3198,11 @@ msgstr "将文件拖放到此处，或点击选择多个文件"
 #: apps/web/src/components/features/reminders/RemindersList.tsx:163
 msgid "Due"
 msgstr "到期"
+
+#: apps/web/src/components/features/settings/panels/Instructions/InstructionListView.tsx:145
+#: apps/web/src/components/features/settings/panels/ai/InstructionField.tsx:272
+msgid "Dynamic"
+msgstr ""
 
 #. Label of the dynamic_instructions (Check) field in DocType 'Raven Bot
 #. Instruction Template'
@@ -2535,6 +3225,16 @@ msgstr "动态指令允许你在给机器人的指令中嵌入 Jinja 标签，�
 #: apps/web/src/components/features/settings/panels/ai/InstructionField.tsx:56
 msgid "Dynamic Instructions allow you to embed Jinja tags in your instruction to the bot. Instructions would be different based on the user who is calling the bot or the data in your system as they are computed every time the bot is called."
 msgstr "动态指令允许你在给机器人的指令中嵌入 Jinja 标签。由于每次调用机器人时都会重新计算，指令会根据调用机器人的用户或系统中的数据而有所不同。"
+
+#: apps/web/src/components/features/channel/ChannelSettingsDrawer/EditChannelDescriptionButton.tsx:243
+#: apps/web/src/components/features/message/actions/useMessageActions.tsx:468
+#: apps/web/src/components/features/reminders/RemindersList.tsx:318
+#: apps/web/src/components/features/schedule-send/ScheduledMessageCard.tsx:116
+#: apps/web/src/components/features/schedule-send/ScheduledMessageCard.tsx:254
+#: apps/web/src/components/features/settings/panels/Functions/DoctypeVariableBuilder.tsx:178
+#: apps/web/src/components/features/settings/panels/Functions/VariableBuilder.tsx:164
+msgid "Edit"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldDialog.tsx:36
 msgid "Edit Field"
@@ -2597,6 +3297,21 @@ msgstr "编辑函数 schema 中的变量。"
 msgid "Edit variable - {0} in the function."
 msgstr "编辑函数中的变量 - {0}。"
 
+#: apps/web/src/components/features/settings/panels/ai/InstructionField.tsx:72
+msgid "Editor"
+msgstr "编辑器"
+
+#: apps/web/src/components/features/dm-channel/UserProfileDrawer.tsx:57
+#: apps/web/src/components/features/dm-channel/UserProfileDrawer.tsx:60
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldDialog.tsx:150
+#: apps/web/src/components/features/settings/panels/Users/AddUserDialog.tsx:150
+#: apps/web/src/components/features/settings/panels/Users/Users.tsx:159
+#: apps/web/src/components/features/setup/steps/InviteTable.tsx:46
+#: apps/web/src/components/features/setup/steps/InviteTable.tsx:70
+#: raven/api/login.py:50
+msgid "Email"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/Users/AddUserDialog.tsx:146
 #: apps/web/src/components/features/setup/steps/InviteTable.tsx:20
 msgid "Email is required"
@@ -2623,6 +3338,11 @@ msgstr "表情 {0} 已存在。"
 #: apps/web/src/components/features/settings/panels/Emojis/Emojis.tsx:178
 msgid "Emojis"
 msgstr "表情"
+
+#: apps/web/src/components/features/settings/panels/EnabledRecord.tsx:28
+#: apps/web/src/components/features/settings/panels/Users/Users.tsx:205
+msgid "Enable"
+msgstr ""
 
 #. Label of the enable_ai_integration (Check) field in DocType 'Raven Settings'
 #: apps/web/src/components/features/settings/panels/AISettings.tsx:73
@@ -2673,6 +3393,11 @@ msgstr "启用 OpenAI 服务"
 msgid "Enable Quiet Hours"
 msgstr "启用免打扰时段"
 
+#. Label of the enable_security (Check) field in DocType 'Raven Webhook'
+#: raven/raven_integrations/doctype/raven_webhook/raven_webhook.json:105
+msgid "Enable Security"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/Webhooks/WebhookForm.tsx:130
 msgid "Enable Security?"
 msgstr "启用安全设置？"
@@ -2700,10 +3425,32 @@ msgstr ""
 msgid "Enable this if you want the bot to be able to read PDF files and scan them.\\n\\nFile search enables the assistant with knowledge from files that you upload.\\nOnce a file is uploaded, the assistant automatically decides when to retrieve content based on user requests."
 msgstr "如果希望机器人能读取和扫描 PDF 文件，请启用此项。\\n\\n文件搜索让助手可以使用你上传的文件中的知识。\\n文件上传后，助手会根据用户请求自动决定何时检索内容。"
 
+#. Label of the enabled (Check) field in DocType 'Raven User'
+#. Label of the enabled (Check) field in DocType 'Raven Document Notification'
+#. Label of the enabled (Check) field in DocType 'Raven Message Action'
+#. Label of the enabled (Check) field in DocType 'Raven Webhook'
+#: apps/web/src/components/features/settings/panels/DocumentNotifications/DocumentNotificationListView.tsx:70
+#: apps/web/src/components/features/settings/panels/EnabledRecord.tsx:24
+#: apps/web/src/components/features/settings/panels/EnabledRecord.tsx:38
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionListView.tsx:63
+#: apps/web/src/components/features/settings/panels/ScheduledMessages/ScheduledMessageListView.tsx:79
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookListView.tsx:57
+#: raven/raven/doctype/raven_user/raven_user.json:80
+#: raven/raven_integrations/doctype/raven_document_notification/raven_document_notification.json:38
+#: raven/raven_integrations/doctype/raven_message_action/raven_message_action.json:65
+#: raven/raven_integrations/doctype/raven_webhook/raven_webhook.json:45
+msgid "Enabled"
+msgstr ""
+
 #: apps/web/src/components/features/header/NavUserMenu/NavUserMenu.tsx:71
 #: apps/web/src/pages/profile/Profile.tsx:54
 msgid "Enabling…"
 msgstr "正在启用…"
+
+#. Label of the end_date (Datetime) field in DocType 'Raven Poll'
+#: raven/raven_messaging/doctype/raven_poll/raven_poll.json:90
+msgid "End Date"
+msgstr ""
 
 #: apps/web/src/components/features/ChatInput/CreatePollForm.tsx:351
 msgid "End date"
@@ -2746,6 +3493,11 @@ msgstr "输入工作区名称以确认删除"
 #: raven/raven/doctype/raven_push_token/raven_push_token.json:30
 msgid "Environment"
 msgstr "环境"
+
+#. Label of the error (Small Text) field in DocType 'Raven Scheduled Message'
+#: raven/raven_messaging/doctype/raven_scheduled_message/raven_scheduled_message.json:58
+msgid "Error"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/Agents/AgentDocumentProcessorsTab.tsx:112
 #, python-brace-format
@@ -2803,6 +3555,12 @@ msgstr "按 Esc 取消"
 msgid "Evening"
 msgstr "晚上"
 
+#. Label of the event_frequency (Select) field in DocType 'Raven Scheduler
+#. Event'
+#: raven/raven_integrations/doctype/raven_scheduler_event/raven_scheduler_event.json:40
+msgid "Event Frequency"
+msgstr ""
+
 #. Option for the 'Event Frequency' (Select) field in DocType 'Raven Scheduler
 #. Event'
 #: raven/raven_integrations/doctype/raven_scheduler_event/raven_scheduler_event.json:41
@@ -2843,9 +3601,19 @@ msgstr "此站点上尚未加入任何工作区的所有人。"
 msgid "Exact"
 msgstr "精确"
 
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookDataTable.tsx:195
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookDataTable.tsx:237
+msgid "Example"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/Webhooks/WebhookDataTable.tsx:242
 msgid "Examples"
 msgstr "示例"
+
+#: apps/web/src/components/features/message/renderers/MessageCodeBlock.tsx:157
+#: apps/web/src/components/features/message/renderers/MessageCodeBlock.tsx:162
+msgid "Expand"
+msgstr ""
 
 #: apps/web/src/components/features/message/ThreadRootMessage.tsx:116
 #: apps/web/src/components/features/message/ThreadRootMessage.tsx:153
@@ -2860,6 +3628,14 @@ msgstr "FCM Token"
 #: raven/api/notification.py:129
 msgid "FCM token not found"
 msgstr "未找到 FCM token"
+
+#. Option for the 'Status' (Select) field in DocType 'Raven Link Preview'
+#. Option for the 'Status' (Select) field in DocType 'Raven Scheduled Message'
+#: apps/web/src/components/features/schedule-send/ScheduledMessageCard.tsx:197
+#: raven/raven_messaging/doctype/raven_link_preview/raven_link_preview.json:77
+#: raven/raven_messaging/doctype/raven_scheduled_message/raven_scheduled_message.json:46
+msgid "Failed"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/ai/InstructionField.tsx:131
 msgid "Failed to copy to clipboard"
@@ -2941,9 +3717,25 @@ msgstr "已获取"
 msgid "Fetched On"
 msgstr "获取时间"
 
+#: apps/web/src/components/features/settings/panels/Functions/DoctypeVariableDialogForm.tsx:114
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldDialog.tsx:247
+msgid "Field"
+msgstr ""
+
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldDialog.tsx:108
+msgid "Field Name"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/Webhooks/WebhookDataTable.tsx:177
 msgid "Field info"
 msgstr "字段信息"
+
+#: apps/web/src/components/features/settings/panels/Functions/DoctypeVariableDialogForm.tsx:120
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldDialog.tsx:111
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldDialog.tsx:251
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookConditionForm.tsx:57
+msgid "Field is required"
+msgstr "此字段为必填项"
 
 #: apps/web/src/components/features/settings/panels/Webhooks/WebhookConditionForm.tsx:71
 msgid "Field on which the condition will be applied"
@@ -2961,9 +3753,28 @@ msgstr "{1} 中不存在字段 {0}。"
 msgid "Field {0} not found in {1}"
 msgstr "在 {1} 中未找到字段 {0}"
 
+#. Label of the fieldname (Data) field in DocType 'Raven AI Function Params'
+#. Label of the fieldname (Data) field in DocType 'Raven Message Action Fields'
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldsBuilder.tsx:44
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookDataTable.tsx:88
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookDataTable.tsx:134
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookDataTable.tsx:137
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookDataTable.tsx:190
+#: raven/raven_ai/doctype/raven_ai_function_params/raven_ai_function_params.json:24
+#: raven/raven_integrations/doctype/raven_message_action_fields/raven_message_action_fields.json:25
+msgid "Fieldname"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/Webhooks/WebhookDataTable.tsx:128
 msgid "Fieldname is required"
 msgstr "必须填写字段名"
+
+#. Label of the fields_tab (Tab Break) field in DocType 'Raven Message Action'
+#. Label of the fields (Table) field in DocType 'Raven Message Action'
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionForm.tsx:19
+#: raven/raven_integrations/doctype/raven_message_action/raven_message_action.json:83
+msgid "Fields"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldsBuilder.tsx:28
 msgid "Fields to collect from the user when this action runs."
@@ -2980,9 +3791,34 @@ msgstr "字段已更新"
 msgid "Figma"
 msgstr "Figma"
 
+#. Label of the file (Link) field in DocType 'Raven AI Bot Files'
+#. Label of the file (Attach) field in DocType 'Raven AI File Source'
+#. Label of the file (Attach) field in DocType 'Raven Message'
+#. Option for the 'Message Type' (Select) field in DocType 'Raven Message'
+#: apps/web/src/components/features/message/actions/dialogs/MessagePreview.tsx:25
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldDialog.tsx:194
+#: apps/web/src/utils/messageUtils.ts:108
+#: raven/raven_ai/doctype/raven_ai_bot_files/raven_ai_bot_files.json:16
+#: raven/raven_ai/doctype/raven_ai_file_source/raven_ai_file_source.json:30
+#: raven/raven_messaging/doctype/raven_message/raven_message.json:68
+#: raven/raven_messaging/doctype/raven_message/raven_message.json:74
+msgid "File"
+msgstr ""
+
+#. Label of the file_name (Data) field in DocType 'Raven AI File Source'
+#: apps/web/src/components/features/settings/panels/FileSources/FileSourceUploadDialog.tsx:40
+#: raven/raven_ai/doctype/raven_ai_file_source/raven_ai_file_source.json:22
+msgid "File Name"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/Agents/AgentListView.tsx:166
 msgid "File Search"
 msgstr "文件搜索"
+
+#. Label of the file_size (Int) field in DocType 'Raven Message'
+#: raven/raven_messaging/doctype/raven_message/raven_message.json:225
+msgid "File Size"
+msgstr ""
 
 #. Label of the file_sources (Table) field in DocType 'Raven Bot'
 #: apps/web/src/components/features/settings/SettingsDialog.tsx:213
@@ -2996,6 +3832,12 @@ msgstr "文件来源"
 #: raven/raven_messaging/doctype/raven_message/raven_message.json:96
 msgid "File Thumbnail"
 msgstr "文件缩略图"
+
+#. Label of the file_type (Data) field in DocType 'Raven AI File Source'
+#: apps/web/src/components/common/filters/FileTypeFilter.tsx:91
+#: raven/raven_ai/doctype/raven_ai_file_source/raven_ai_file_source.json:36
+msgid "File Type"
+msgstr ""
 
 #: apps/web/src/components/features/message/actions/fileActions.ts:84
 msgid "File link copied"
@@ -3017,6 +3859,15 @@ msgstr "文件大小不能超过 {0}MB"
 #: apps/web/src/components/features/search/SearchFiltersBar.tsx:82
 msgid "File type"
 msgstr "文件类型"
+
+#: apps/web/src/components/features/ChatInput/MobileComposerActions.tsx:88
+#: apps/web/src/components/features/channel/ChannelHeader/ChannelMenu.tsx:103
+#: apps/web/src/components/features/channel/ChannelSettingsDrawer/ChannelSettingsDrawer.tsx:75
+#: apps/web/src/components/features/dm-channel/DMChannelHeader.tsx:116
+#: apps/web/src/components/features/search/SearchTabsBar.tsx:9
+#: apps/web/src/components/features/settings/panels/Agents/AgentForm.tsx:52
+msgid "Files"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/Agents/AgentFileSourcesTab.tsx:59
 msgid "Files like manuals, sheets etc can be added to the AI agent as instructions."
@@ -3042,6 +3893,12 @@ msgstr "筛选成员"
 msgid "Filtering & sorting"
 msgstr "筛选和排序"
 
+#: apps/web/src/pages/search/Search.tsx:188
+#: apps/web/src/pages/search/Search.tsx:192
+#: apps/web/src/pages/search/Search.tsx:251
+msgid "Filters"
+msgstr ""
+
 #: apps/web/src/pages/search/Search.tsx:321
 msgid "Find messages, files, links and polls. Type a query or pick a filter to start."
 msgstr "查找消息、文件、链接和投票。输入关键词或选择筛选条件开始。"
@@ -3061,6 +3918,12 @@ msgstr "在特定事件发生时触发 Webhook，例如发送消息或创建频�
 #: apps/web/src/components/features/setup/steps.ts:35
 msgid "First Frappe HR, now Raven. You're on a roll."
 msgstr "先是 Frappe HR，现在又是 Raven，势头不错！"
+
+#. Label of the first_name (Data) field in DocType 'Raven User'
+#: apps/web/src/components/features/settings/panels/Users/AddUserDialog.tsx:181
+#: raven/raven/doctype/raven_user/raven_user.json:68
+msgid "First Name"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/Users/AddUserDialog.tsx:184
 msgid "First Name is required"
@@ -3103,6 +3966,12 @@ msgstr "格式化 JSON"
 msgid "Formatting"
 msgstr "格式"
 
+#: apps/web/src/components/features/message/actions/dialogs/ForwardMessageDialog.tsx:462
+#: apps/web/src/components/features/message/actions/useMessageActions.tsx:246
+#: apps/web/src/components/features/settings/panels/KeyboardShortcuts.tsx:201
+msgid "Forward"
+msgstr ""
+
 #: apps/web/src/components/features/message/actions/dialogs/ForwardMessageDialog.tsx:421
 msgid "Forward message"
 msgstr "转发消息"
@@ -3119,6 +3988,13 @@ msgstr "已转发"
 #: apps/web/src/components/features/message/actions/dialogs/ForwardMessageDialog.tsx:458
 msgid "Forwarding"
 msgstr "正在转发"
+
+#. Option for the 'Provider' (Select) field in DocType 'Raven Link Preview'
+#. Option for the 'Provider' (Select) field in DocType 'Raven Message Links'
+#: raven/raven_messaging/doctype/raven_link_preview/raven_link_preview.json:68
+#: raven/raven_messaging/doctype/raven_message_links/raven_message_links.json:32
+msgid "Frappe"
+msgstr ""
 
 #. Option for the 'Push Notification Service' (Select) field in DocType 'Raven
 #. Settings'
@@ -3171,10 +4047,25 @@ msgstr "必须选择频率。"
 msgid "Fri"
 msgstr "周五"
 
-#: apps/web/src/components/features/settings/panels/Profile.tsx:131
+#: apps/web/src/components/features/settings/panels/ScheduledMessages/ScheduledMessageForm.tsx:23
+msgid "Friday"
+msgstr ""
+
+#. Label of the full_name (Data) field in DocType 'Raven User'
+#: raven/raven/doctype/raven_user/raven_user.json:60
+msgid "Full Name"
+msgstr ""
+
+#: apps/web/src/components/features/settings/panels/Profile.tsx:132
 #: apps/web/src/components/features/setup/steps/ProfileStep.tsx:92
 msgid "Full name"
 msgstr "全名"
+
+#. Label of the function (Link) field in DocType 'Raven Bot Functions'
+#: apps/web/src/components/features/settings/panels/Agents/AgentFunctionsTab.tsx:68
+#: raven/raven_ai/doctype/raven_bot_functions/raven_bot_functions.json:20
+msgid "Function"
+msgstr ""
 
 #. Label of the function_definition (JSON) field in DocType 'Raven AI Function'
 #: raven/raven_ai/doctype/raven_ai_function/raven_ai_function.json:70
@@ -3225,6 +4116,12 @@ msgstr "未找到函数 {0}。"
 msgid "Functions"
 msgstr "函数"
 
+#: apps/web/src/components/features/settings/panels/Agents/AgentForm.tsx:35
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionForm.tsx:18
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookForm.tsx:23
+msgid "General"
+msgstr ""
+
 #. Option for the 'Type' (Select) field in DocType 'Raven AI Function'
 #: raven/raven_ai/doctype/raven_ai_function/raven_ai_function.json:53
 msgid "Get Amended Document"
@@ -3262,6 +4159,14 @@ msgstr "使用键盘快捷键在 Raven 中快速操作。"
 #: apps/web/src/components/features/settings/panels/Agents/AgentListView.tsx:92
 msgid "Get started with agents"
 msgstr "开始使用智能体"
+
+#. Option for the 'Provider' (Select) field in DocType 'Raven Link Preview'
+#. Option for the 'Provider' (Select) field in DocType 'Raven Message Links'
+#: apps/web/src/components/features/settings/panels/About.tsx:17
+#: raven/raven_messaging/doctype/raven_link_preview/raven_link_preview.json:68
+#: raven/raven_messaging/doctype/raven_message_links/raven_message_links.json:32
+msgid "GitHub"
+msgstr ""
 
 #: apps/web/src/components/features/cmdk/CommandMenu.tsx:170
 msgid "Global Command Menu"
@@ -3340,9 +4245,18 @@ msgstr "Google 服务账号 JSON 密钥"
 msgid "Google Vision and Document AI"
 msgstr "Google Vision 和 Document AI"
 
+#: apps/web/src/components/features/profile/PreferencesDrawer.tsx:179
+#: apps/web/src/components/features/settings/panels/Appearance.tsx:450
+msgid "Grid"
+msgstr "网格"
+
 #: apps/web/src/components/features/channel/ChannelSettingsDrawer/ChannelFiles.tsx:205
 msgid "Grid view"
 msgstr "网格视图"
+
+#: apps/web/src/components/features/channel/CustomizeSidebar/ChannelTable.tsx:115
+msgid "Group"
+msgstr ""
 
 #. Label of the group_name (Data) field in DocType 'Raven Channel Groups'
 #: raven/raven_channel_management/doctype/raven_channel_groups/raven_channel_groups.json:18
@@ -3388,6 +4302,12 @@ msgstr "已分组的频道"
 msgid "Hacker News"
 msgstr "Hacker News"
 
+#. Label of the webhook_headers (Table) field in DocType 'Raven Webhook'
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookForm.tsx:26
+#: raven/raven_integrations/doctype/raven_webhook/raven_webhook.json:121
+msgid "Headers"
+msgstr ""
+
 #. Label of the helper_text (Data) field in DocType 'Raven Message Action
 #. Fields'
 #: raven/raven_integrations/doctype/raven_message_action_fields/raven_message_action_fields.json:38
@@ -3431,6 +4351,20 @@ msgstr "隐藏链接预览"
 #: apps/web/src/components/features/ChatInput/CreatePollForm.tsx:322
 msgid "Hide voter identities from other participants"
 msgstr "对其他参与者隐藏投票人身份"
+
+#: apps/web/src/components/features/settings/panels/Agents/AgentModelFields.tsx:167
+msgid "High"
+msgstr ""
+
+#: apps/web/src/components/features/editor/EditorFormattingToolbar.tsx:62
+#: apps/web/src/components/features/settings/panels/KeyboardShortcuts.tsx:154
+msgid "Highlight"
+msgstr ""
+
+#: apps/web/src/components/features/header/AppMobileFooter.tsx:21
+#: apps/web/src/components/features/header/AppMobileFooter.tsx:279
+msgid "Home"
+msgstr ""
 
 #: apps/web/src/components/features/ChatInput/CreatePollForm.tsx:292
 msgid "How many options each person can select"
@@ -3525,6 +4459,18 @@ msgstr "如果将此频道设为私有，在此之前加入过频道的所有人
 msgid "If you want this variable to have a default value, just add one option."
 msgstr "如果想让此变量有默认值，只需添加一个选项。"
 
+#. Label of the image (Attach Image) field in DocType 'Raven Bot'
+#. Label of the image (Attach Image) field in DocType 'Raven Custom Emoji'
+#. Label of the image (Small Text) field in DocType 'Raven Link Preview'
+#. Option for the 'Message Type' (Select) field in DocType 'Raven Message'
+#: apps/web/src/components/features/message/actions/dialogs/MessagePreview.tsx:21
+#: raven/raven_bot/doctype/raven_bot/raven_bot.json:53
+#: raven/raven_messaging/doctype/raven_custom_emoji/raven_custom_emoji.json:17
+#: raven/raven_messaging/doctype/raven_link_preview/raven_link_preview.json:42
+#: raven/raven_messaging/doctype/raven_message/raven_message.json:74
+msgid "Image"
+msgstr ""
+
 #. Label of the image_height (Int) field in DocType 'Raven Link Preview'
 #. Label of the image_height (Data) field in DocType 'Raven Message'
 #: raven/raven_messaging/doctype/raven_link_preview/raven_link_preview.json:102
@@ -3548,6 +4494,10 @@ msgstr "图片轮播"
 msgid "Image group layout"
 msgstr "图片组布局"
 
+#: apps/web/src/components/common/filters/FileTypeFilter.tsx:31
+msgid "Images"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/Functions/DoctypeVariableBuilder.tsx:238
 #: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldsBuilder.tsx:130
 #, python-brace-format
@@ -3570,6 +4520,10 @@ msgstr "20 分钟后"
 msgid "In 3 hours"
 msgstr "3 小时后"
 
+#: apps/web/src/pages/later/Later.tsx:24
+msgid "In Progress"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/KeyboardShortcuts.tsx:177
 msgid "In a settings list, create a new record."
 msgstr "在设置列表中，新建一条记录。"
@@ -3581,6 +4535,11 @@ msgstr "在附件查看器中，或将鼠标悬停在消息中的图片组上时
 #: apps/web/src/components/features/channel/ChannelSettingsDrawer/ChannelSettingsTab.tsx:176
 msgid "In-app notifications"
 msgstr "应用内通知"
+
+#: apps/web/src/components/features/settings/panels/Agents/AgentDocumentProcessorsTab.tsx:162
+#: apps/web/src/components/features/settings/panels/DocumentProcessors/DocumentProcessors.tsx:236
+msgid "Inactive"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/FrappeHR.tsx:38
 msgid "Install Frappe HR on this site to sync employees, departments and leaves with Raven."
@@ -3613,6 +4572,11 @@ msgstr "必须填写指令"
 msgid "Instruction view"
 msgstr "指令视图"
 
+#: apps/web/src/components/features/settings/SettingsDialog.tsx:221
+#: apps/web/src/components/features/settings/panels/Agents/AgentForm.tsx:43
+msgid "Instructions"
+msgstr ""
+
 #: raven/api/raven_users.py:26 raven/api/raven_users.py:56
 #: raven/api/raven_users.py:95
 msgid "Insufficient permissions. Please contact your administrator."
@@ -3621,6 +4585,14 @@ msgstr "权限不足，请联系管理员。"
 #: apps/web/src/components/features/settings/panels/Functions/DoctypeVariableDialogForm.tsx:151
 msgid "Integer"
 msgstr "整数"
+
+#. Label of the integrations_tab (Tab Break) field in DocType 'Raven Settings'
+#. Label of a Card Break in the Raven Workspace
+#: apps/web/src/components/features/settings/SettingsDialog.tsx:49
+#: raven/raven/doctype/raven_settings/raven_settings.json:66
+#: raven/raven/workspace/raven/raven.json:157
+msgid "Integrations"
+msgstr ""
 
 #: raven/raven_integrations/doctype/raven_webhook/raven_webhook.py:219
 msgid "Invalid Channel Type"
@@ -3641,7 +4613,7 @@ msgid "Invalid search filter: {0}"
 msgstr "无效的搜索筛选条件：{0}"
 
 #. Option for the 'Availability Status' (Select) field in DocType 'Raven User'
-#: apps/web/src/components/features/settings/panels/Profile.tsx:31
+#: apps/web/src/components/features/settings/panels/Profile.tsx:32
 #: apps/web/src/hooks/useSetAvailability.ts:12
 #: raven/raven/doctype/raven_user/raven_user.json:129
 msgid "Invisible"
@@ -3704,6 +4676,11 @@ msgstr "已归档"
 msgid "Is Bot Message"
 msgstr "是机器人消息"
 
+#. Label of the is_custom (Check) field in DocType 'Raven Message Reaction'
+#: raven/raven_messaging/doctype/raven_message_reaction/raven_message_reaction.json:52
+msgid "Is Custom"
+msgstr ""
+
 #. Label of the is_dm_thread (Check) field in DocType 'Raven Channel'
 #: raven/raven_channel_management/doctype/raven_channel/raven_channel.json:210
 msgid "Is DM Thread"
@@ -3713,6 +4690,16 @@ msgstr "是私信话题"
 #: raven/raven_channel_management/doctype/raven_channel/raven_channel.json:69
 msgid "Is Direct Message"
 msgstr "是私信"
+
+#. Label of the is_disabled (Check) field in DocType 'Raven Poll'
+#: raven/raven_messaging/doctype/raven_poll/raven_poll.json:69
+msgid "Is Disabled"
+msgstr "已停用"
+
+#. Label of the is_dynamic_url (Check) field in DocType 'Raven Webhook'
+#: raven/raven_integrations/doctype/raven_webhook/raven_webhook.json:90
+msgid "Is Dynamic URL?"
+msgstr ""
 
 #. Label of the is_edited (Check) field in DocType 'Raven Message'
 #: raven/raven_messaging/doctype/raven_message/raven_message.json:155
@@ -3755,6 +4742,11 @@ msgstr "是否必填？"
 msgid "Is Self Message"
 msgstr "是发给自己的消息"
 
+#. Label of the is_standard (Check) field in DocType 'Raven Bot'
+#: raven/raven_bot/doctype/raven_bot/raven_bot.json:69
+msgid "Is Standard"
+msgstr ""
+
 #. Label of the is_synced (Check) field in DocType 'Raven Channel'
 #. Label of the is_synced (Check) field in DocType 'Raven Channel Member'
 #: raven/raven_channel_management/doctype/raven_channel/raven_channel.json:148
@@ -3785,6 +4777,28 @@ msgstr "现在是非工作时间：静默发送，让大家好好休息（{0}）
 #: apps/web/src/components/features/ChatInput/QuietHoursBanner.tsx:130
 msgid "It's outside working hours - your messages will be sent silently."
 msgstr "现在是非工作时间：你的消息将静默发送。"
+
+#: apps/web/src/components/features/editor/EditorFormattingToolbar.tsx:59
+#: apps/web/src/components/features/settings/panels/KeyboardShortcuts.tsx:151
+msgid "Italic"
+msgstr "斜体"
+
+#. Label of the json (JSON) field in DocType 'Raven Message'
+#: apps/web/src/components/features/settings/panels/Functions/VariableBuilder.tsx:56
+#: raven/raven_messaging/doctype/raven_message/raven_message.json:63
+msgid "JSON"
+msgstr ""
+
+#. Option for the 'Variable Type' (Select) field in DocType 'Raven Document
+#. Notification Recipients'
+#. Option for the 'Default Value Type' (Select) field in DocType 'Raven Message
+#. Action Fields'
+#: apps/web/src/components/features/settings/panels/DocumentNotifications/DocumentNotificationRecipientsTab.tsx:99
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldDialog.tsx:187
+#: raven/raven_integrations/doctype/raven_document_notification_recipients/raven_document_notification_recipients.json:27
+#: raven/raven_integrations/doctype/raven_message_action_fields/raven_message_action_fields.json:78
+msgid "Jinja"
+msgstr ""
 
 #: apps/web/src/components/features/ChatInput/composerGate.tsx:162
 #: apps/web/src/components/features/message/renderers/LinkPreview.tsx:607
@@ -3851,9 +4865,21 @@ msgstr "跳转到下一个有未读消息的项目。"
 msgid "Jump to the previous item with unread messages."
 msgstr "跳转到上一个有未读消息的项目。"
 
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookDataTable.tsx:89
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookDataTable.tsx:150
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookHeaders.tsx:30
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookHeaders.tsx:40
+msgid "Key"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/Webhooks/WebhookHeaders.tsx:41
 msgid "Key is required"
 msgstr "必须填写键"
+
+#: apps/web/src/components/features/settings/SettingsDialog.tsx:253
+#: apps/web/src/components/features/settings/panels/KeyboardShortcuts.tsx:211
+msgid "Keyboard Shortcuts"
+msgstr ""
 
 #. Label of the keywords (Data) field in DocType 'Raven Custom Emoji'
 #: apps/web/src/components/features/settings/panels/Emojis/AddEmojiDialog.tsx:86
@@ -3869,9 +4895,21 @@ msgstr "关键词"
 msgid "LM Studio"
 msgstr "LM Studio"
 
+#. Label of the label (Data) field in DocType 'Raven Message Action Fields'
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldDialog.tsx:120
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldsBuilder.tsx:43
+#: raven/raven_integrations/doctype/raven_message_action_fields/raven_message_action_fields.json:32
+msgid "Label"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldDialog.tsx:122
 msgid "Label is required"
 msgstr "必须填写标签"
+
+#: apps/web/src/components/features/message/renderers/DocumentPrintDialog.tsx:122
+#: apps/web/src/components/features/profile/LanguageSetting.tsx:78
+msgid "Language"
+msgstr ""
 
 #. Label of the last_mention_viewed_on (Datetime) field in DocType 'Raven User'
 #: raven/raven/doctype/raven_user/raven_user.json:159
@@ -3893,6 +4931,10 @@ msgstr "最后一条消息 ID"
 #: raven/raven_channel_management/doctype/raven_channel/raven_channel.json:113
 msgid "Last Message Timestamp"
 msgstr "最后一条消息时间"
+
+#: apps/web/src/components/features/settings/panels/Users/AddUserDialog.tsx:190
+msgid "Last Name"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/Users/AddUserDialog.tsx:193
 msgid "Last Name is required"
@@ -3975,6 +5017,22 @@ msgstr "将两者连接起来：Raven 可以显示谁在休假，这样就不会
 msgid "Letterhead"
 msgstr "信头"
 
+#: apps/web/src/components/features/settings/panels/Appearance.tsx:65
+#: apps/web/src/pages/profile/Profile.tsx:105
+#: apps/web/src/pages/profile/Profile.tsx:112
+msgid "Light"
+msgstr ""
+
+#. Label of the link (Small Text) field in DocType 'Raven Blocked Links'
+#. Option for the 'Type' (Select) field in DocType 'Raven Message Action
+#. Fields'
+#: apps/web/src/components/features/editor/EditorFormattingToolbar.tsx:212
+#: apps/web/src/components/features/editor/EditorFormattingToolbar.tsx:221
+#: raven/raven/doctype/raven_blocked_links/raven_blocked_links.json:18
+#: raven/raven_integrations/doctype/raven_message_action_fields/raven_message_action_fields.json:55
+msgid "Link"
+msgstr ""
+
 #. Label of the link_doctype (Link) field in DocType 'Raven Message'
 #: raven/raven_messaging/doctype/raven_message/raven_message.json:121
 msgid "Link Doctype"
@@ -4043,6 +5101,15 @@ msgstr "关联的消息必须在同一个频道中"
 msgid "Linked to the notification that triggered this message"
 msgstr "关联到触发此消息的通知"
 
+#. Label of the links (Small Text) field in DocType 'Raven Message'
+#: apps/web/src/components/features/channel/ChannelHeader/ChannelMenu.tsx:113
+#: apps/web/src/components/features/channel/ChannelSettingsDrawer/ChannelSettingsDrawer.tsx:76
+#: apps/web/src/components/features/dm-channel/DMChannelHeader.tsx:120
+#: apps/web/src/components/features/search/SearchTabsBar.tsx:10
+#: raven/raven_messaging/doctype/raven_message/raven_message.json:213
+msgid "Links"
+msgstr ""
+
 #. Label of the links_table (Table) field in DocType 'Raven Message'
 #: raven/raven_messaging/doctype/raven_message/raven_message.json:232
 msgid "Links Table"
@@ -4056,6 +5123,10 @@ msgstr "匹配这些规则的链接不会显示预览。对所有人生效。"
 msgid "List view"
 msgstr "列表视图"
 
+#: apps/web/src/components/ui/spinner.tsx:50
+msgid "Loading"
+msgstr ""
+
 #: apps/web/src/components/features/message/actions/dialogs/RunMessageActionDialog.tsx:87
 msgid "Loading action details"
 msgstr "正在加载操作详情"
@@ -4063,6 +5134,10 @@ msgstr "正在加载操作详情"
 #: apps/web/src/components/features/threads/ThreadsList.tsx:56
 msgid "Loading more threads..."
 msgstr "正在加载更多话题……"
+
+#: apps/web/src/components/features/message/renderers/DocumentLinkRenderer.tsx:739
+msgid "Loading..."
+msgstr ""
 
 #. Option for the 'Model Provider' (Select) field in DocType 'Raven Bot'
 #: apps/web/src/components/features/settings/panels/Agents/AgentModelFields.tsx:51
@@ -4090,6 +5165,12 @@ msgstr "本地 LLM 服务商"
 #: raven/raven/doctype/raven_settings/raven_settings.json:168
 msgid "LocalAI"
 msgstr "LocalAI"
+
+#: apps/web/src/components/features/header/NavUserMenu/NavUserMenu.tsx:133
+#: apps/web/src/pages/profile/Profile.tsx:183
+#: apps/web/src/pages/profile/Profile.tsx:210
+msgid "Log out"
+msgstr ""
 
 #: apps/web/src/pages/profile/Profile.tsx:199
 msgid "Log out of your account?"
@@ -4120,6 +5201,10 @@ msgstr "Loom"
 msgid "Loom video player"
 msgstr "Loom 视频播放器"
 
+#: apps/web/src/components/features/settings/panels/Agents/AgentModelFields.tsx:165
+msgid "Low"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/Workspaces/WorkspaceMembers.tsx:222
 msgid "Make Admin"
 msgstr "设为管理员"
@@ -4144,9 +5229,22 @@ msgstr "请确保 Ollama 正在运行。默认 URL 通常是 http://localhost:11
 msgid "Make sure your OpenAI compatible service is running on the specified URL and that you have provided a valid API key."
 msgstr "请确保你的 OpenAI 兼容服务正在指定 URL 上运行，并且已提供有效的 API Key。"
 
+#: apps/web/src/components/features/workspaces/WorkspaceActions.tsx:35
+msgid "Manage"
+msgstr ""
+
+#: apps/web/src/components/features/header/NavUserMenu/NavUserMenu.tsx:118
+msgid "Manage Billing"
+msgstr ""
+
 #: apps/web/src/components/features/channel/CustomizeSidebar/CustomizeSidebarButton.tsx:50
 msgid "Manage Channels"
 msgstr "管理频道"
+
+#: apps/web/src/components/layout/PrimarySidebar/PrimarySidebar.tsx:280
+#: apps/web/src/components/layout/PrimarySidebar/PrimarySidebar.tsx:285
+msgid "Manage Workspaces"
+msgstr "管理工作区"
 
 #: apps/web/src/components/features/settings/panels/Users/ManageAccessDialog.tsx:25
 #: apps/web/src/components/features/settings/panels/Users/Users.tsx:227
@@ -4163,9 +5261,14 @@ msgid "Manage users added to Raven."
 msgstr "管理已添加到 Raven 的用户。"
 
 #: apps/web/src/components/features/settings/SettingsDialog.tsx:84
-#: apps/web/src/components/features/settings/panels/Profile.tsx:115
+#: apps/web/src/components/features/settings/panels/Profile.tsx:116
 msgid "Manage your Raven profile"
 msgstr "管理你的 Raven 个人资料"
+
+#: apps/web/src/pages/notifications/Notifications.tsx:193
+#: apps/web/src/pages/notifications/Notifications.tsx:195
+msgid "Mark all as read"
+msgstr ""
 
 #. Label of the match_exact (Check) field in DocType 'Raven Blocked Links'
 #: raven/raven/doctype/raven_blocked_links/raven_blocked_links.json:25
@@ -4194,6 +5297,10 @@ msgstr "多选投票中每个用户最多可选的选项数"
 #: apps/web/src/components/common/filters/ProviderFilter.tsx:29
 msgid "Media"
 msgstr "媒体"
+
+#: apps/web/src/components/features/settings/panels/Agents/AgentModelFields.tsx:166
+msgid "Medium"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/LinkSettingsAdminSection.tsx:175
 msgid "Meeting links from these sites show a join card in chat."
@@ -4228,6 +5335,14 @@ msgstr "成员选项"
 msgid "Member removed"
 msgstr "成员已移除"
 
+#. Label of a Link in the Raven Workspace
+#: apps/web/src/components/features/channel/ChannelHeader/ChannelMenu.tsx:133
+#: apps/web/src/components/features/channel/ChannelMembersDrawer/ChannelMembersDrawer.tsx:45
+#: apps/web/src/components/features/settings/panels/Workspaces/WorkspaceDetailView.tsx:131
+#: raven/raven/workspace/raven/raven.json:117
+msgid "Members"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/Workspaces/WorkspaceMembers.tsx:252
 msgid "Members added"
 msgstr "成员已添加"
@@ -4249,6 +5364,16 @@ msgstr "提及"
 msgid "Mention someone"
 msgstr "提及某人"
 
+#. Label of the mentions (Table) field in DocType 'Raven Message'
+#: apps/web/src/components/features/channel/ChannelSettingsDrawer/ChannelSettingsTab.tsx:138
+#: apps/web/src/components/features/channel/ChannelSettingsDrawer/ChannelSettingsTab.tsx:151
+#: apps/web/src/components/features/channel/ChannelSettingsDrawer/ChannelSettingsTab.tsx:169
+#: apps/web/src/components/features/channel/ChannelSettingsDrawer/ChannelSettingsTab.tsx:181
+#: apps/web/src/pages/notifications/Notifications.tsx:35
+#: raven/raven_messaging/doctype/raven_message/raven_message.json:169
+msgid "Mentions"
+msgstr ""
+
 #: apps/web/src/components/features/channel/ChannelHeader/ChannelMenu.tsx:74
 #: apps/web/src/components/features/dm-channel/DMChannelHeader.tsx:138
 msgid "Mentions Only"
@@ -4257,6 +5382,24 @@ msgstr "仅提及"
 #: apps/web/src/pages/notifications/Notifications.tsx:335
 msgid "Mentions and reactions to your messages will appear here."
 msgstr "提及你的消息和对你消息的表情回应会显示在这里。"
+
+#. Label of the message (Link) field in DocType 'Raven Reminder'
+#. Label of the message (Code) field in DocType 'Raven Document Notification'
+#. Label of the message (Link) field in DocType 'Raven Message Reaction'
+#: apps/web/src/components/features/channel/ChannelMembersDrawer/ChannelMembersList.tsx:187
+#: apps/web/src/components/features/message/ThreadRootMessage.tsx:60
+#: apps/web/src/components/features/message/actions/dialogs/MessagePreview.tsx:40
+#: apps/web/src/components/features/message/renderers/UserProfileHoverCard.tsx:137
+#: apps/web/src/components/features/reminders/RemindersList.tsx:121
+#: apps/web/src/components/features/schedule-send/EditScheduledMessageSheet.tsx:51
+#: apps/web/src/components/features/settings/panels/ScheduledMessages/ScheduledMessageForm.tsx:134
+#: apps/web/src/pages/notifications/NotificationItem.tsx:348
+#: apps/web/src/utils/messageUtils.ts:119 raven/public/js/timeline_button.js:80
+#: raven/raven/doctype/raven_reminder/raven_reminder.json:31
+#: raven/raven_integrations/doctype/raven_document_notification/raven_document_notification.json:101
+#: raven/raven_messaging/doctype/raven_message_reaction/raven_message_reaction.json:30
+msgid "Message"
+msgstr ""
 
 #: raven/api/message_actions.py:12
 #, python-brace-format
@@ -4299,6 +5442,11 @@ msgstr "消息已编辑"
 msgid "Message Field"
 msgstr "消息字段"
 
+#. Label of the message_id (Link) field in DocType 'Raven Pinned Messages'
+#: raven/raven/doctype/raven_pinned_messages/raven_pinned_messages.json:16
+msgid "Message ID"
+msgstr ""
+
 #. Option for the 'Webhook Trigger' (Select) field in DocType 'Raven Webhook'
 #: raven/raven_integrations/doctype/raven_webhook/raven_webhook.json:140
 msgid "Message Reacted On"
@@ -4314,6 +5462,17 @@ msgstr "消息表情回应不能在频道上触发"
 #: raven/raven_messaging/doctype/raven_message/raven_message.json:79
 msgid "Message Reactions"
 msgstr "消息表情回应"
+
+#. Option for the 'Webhook Trigger' (Select) field in DocType 'Raven Webhook'
+#: raven/raven_integrations/doctype/raven_webhook/raven_webhook.json:140
+msgid "Message Sent"
+msgstr ""
+
+#. Label of the message_type (Select) field in DocType 'Raven Message'
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldDialog.tsx:197
+#: raven/raven_messaging/doctype/raven_message/raven_message.json:73
+msgid "Message Type"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldDialog.tsx:202
 msgid "Message URL"
@@ -4343,6 +5502,10 @@ msgstr "此频道中不存在该消息"
 msgid "Message forwarded"
 msgstr "消息已转发"
 
+#: apps/web/src/components/features/settings/panels/ScheduledMessages/ScheduledMessageForm.tsx:137
+msgid "Message is required."
+msgstr "必须填写消息。"
+
 #: apps/web/src/pages/message/MessagePermalink.tsx:76
 #: raven/api/raven_message.py:348 raven/api/raven_message.py:636
 #: raven/api/raven_message.py:910
@@ -4367,6 +5530,12 @@ msgstr "消息将于 {0} 发送。"
 msgid "Message sent"
 msgstr "消息已发送"
 
+#. Label of a Link in the Raven Workspace
+#: apps/web/src/components/features/search/SearchTabsBar.tsx:8
+#: raven/raven/workspace/raven/raven.json:127
+msgid "Messages"
+msgstr ""
+
 #: apps/web/src/components/features/schedule-send/ScheduledMessagesDialog.tsx:47
 msgid "Messages you've scheduled to send later."
 msgstr "你设置为稍后发送的消息。"
@@ -4380,6 +5549,11 @@ msgstr "消息"
 msgid "Messaging after hours"
 msgstr "非工作时间发消息"
 
+#. Label of the metadata (JSON) field in DocType 'Raven Link Preview'
+#: raven/raven_messaging/doctype/raven_link_preview/raven_link_preview.json:113
+msgid "Metadata"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/ScheduledMessages/ScheduledMessageForm.tsx:126
 msgid "Minute, hour, day of month, month, day of week. Use * for any, lists like 1,3,5 and ranges like 1-5."
 msgstr "分钟、小时、日、月、星期。用 * 表示任意，可用 1,3,5 这样的列表和 1-5 这样的范围。"
@@ -4388,20 +5562,54 @@ msgstr "分钟、小时、日、月、星期。用 * 表示任意，可用 1,3,5
 msgid "Miscellaneous"
 msgstr "杂项"
 
+#. Option for the 'Environment' (Select) field in DocType 'Raven Push Token'
+#: raven/api/login.py:52
+#: raven/raven/doctype/raven_push_token/raven_push_token.json:31
+msgid "Mobile"
+msgstr ""
+
+#. Label of the model (Data) field in DocType 'Raven Bot'
+#: apps/web/src/components/features/settings/panels/Agents/AgentModelFields.tsx:102
+#: raven/raven_bot/doctype/raven_bot/raven_bot.json:189
+msgid "Model"
+msgstr ""
+
 #. Label of the model_provider (Select) field in DocType 'Raven Bot'
 #: apps/web/src/components/features/settings/panels/Agents/AgentModelFields.tsx:39
 #: raven/raven_bot/doctype/raven_bot/raven_bot.json:108
 msgid "Model Provider"
 msgstr "模型服务商"
 
+#. Label of the module (Link) field in DocType 'Raven Bot'
+#: raven/raven_bot/doctype/raven_bot/raven_bot.json:75
+msgid "Module"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/ScheduledMessages/ScheduledMessageForm.tsx:19
 msgid "Mon"
 msgstr "周一"
+
+#: apps/web/src/components/features/settings/panels/ScheduledMessages/ScheduledMessageForm.tsx:19
+msgid "Monday"
+msgstr ""
 
 #: apps/web/src/lib/timeUtils.ts:85
 #, python-brace-format
 msgid "Monday at {0}"
 msgstr "周一 {0}"
+
+#: apps/web/src/components/features/settings/panels/ScheduledMessages/ScheduledMessageForm.tsx:82
+msgid "Monthly"
+msgstr ""
+
+#: apps/web/src/components/features/ChatInput/MobileComposerActions.tsx:108
+#: apps/web/src/components/features/message/actions/MessageHoverToolbar.tsx:193
+#: apps/web/src/components/features/message/actions/MessageHoverToolbar.tsx:199
+#: apps/web/src/components/features/message/actions/MessageHoverToolbar.tsx:206
+#: apps/web/src/components/features/message/actions/MessageHoverToolbar.tsx:211
+#: apps/web/src/components/features/reminders/RemindersList.tsx:444
+msgid "More actions"
+msgstr "更多操作"
 
 #: apps/web/src/components/features/message/actions/MessageActionMenu.tsx:799
 msgid "More reactions"
@@ -4434,7 +5642,43 @@ msgstr "多选"
 msgid "Mute Channel"
 msgstr "频道免打扰"
 
-#: apps/web/src/components/features/settings/panels/Profile.tsx:135
+#. Label of the muted (Check) field in DocType 'Raven Channel Member'
+#: raven/raven_channel_management/doctype/raven_channel_member/raven_channel_member.json:99
+msgid "Muted"
+msgstr "免打扰"
+
+#. Label of the event_name (Data) field in DocType 'Raven Scheduler Event'
+#: apps/web/src/components/features/channel/CreateChannel/CreateChannelForm.tsx:240
+#: apps/web/src/components/features/channel/CustomizeSidebar/ChannelTable.tsx:73
+#: apps/web/src/components/features/profile/EditProfileDrawer.tsx:85
+#: apps/web/src/components/features/settings/panels/Agents/AgentFileSourcesTab.tsx:96
+#: apps/web/src/components/features/settings/panels/Agents/AgentFileSourcesTab.tsx:184
+#: apps/web/src/components/features/settings/panels/Agents/AgentGeneralTab.tsx:21
+#: apps/web/src/components/features/settings/panels/Agents/AgentListView.tsx:50
+#: apps/web/src/components/features/settings/panels/Channels/Channels.tsx:88
+#: apps/web/src/components/features/settings/panels/DocumentNotifications/DocumentNotificationDetailsTab.tsx:22
+#: apps/web/src/components/features/settings/panels/DocumentNotifications/DocumentNotificationListView.tsx:45
+#: apps/web/src/components/features/settings/panels/Emojis/Emojis.tsx:107
+#: apps/web/src/components/features/settings/panels/FileSources/FileSources.tsx:81
+#: apps/web/src/components/features/settings/panels/Functions/FunctionDetailsTab.tsx:81
+#: apps/web/src/components/features/settings/panels/Functions/FunctionListView.tsx:51
+#: apps/web/src/components/features/settings/panels/Functions/VariableDialog.tsx:77
+#: apps/web/src/components/features/settings/panels/Instructions/InstructionListView.tsx:51
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionForm.tsx:40
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionListView.tsx:45
+#: apps/web/src/components/features/settings/panels/ScheduledMessages/ScheduledMessageForm.tsx:43
+#: apps/web/src/components/features/settings/panels/ScheduledMessages/ScheduledMessageListView.tsx:71
+#: apps/web/src/components/features/settings/panels/Users/Users.tsx:146
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookForm.tsx:52
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookListView.tsx:46
+#: apps/web/src/components/features/settings/panels/Workspaces/WorkspaceListView.tsx:30
+#: apps/web/src/components/features/settings/panels/Workspaces/WorkspaceMembers.tsx:77
+#: apps/web/src/components/features/setup/steps/ChannelStep.tsx:115
+#: raven/raven_integrations/doctype/raven_scheduler_event/raven_scheduler_event.json:27
+msgid "Name"
+msgstr ""
+
+#: apps/web/src/components/features/settings/panels/Profile.tsx:136
 #: apps/web/src/components/features/settings/panels/ScheduledMessages/ScheduledMessageForm.tsx:48
 #: apps/web/src/components/features/setup/steps/ProfileStep.tsx:96
 msgid "Name cannot be more than 140 characters."
@@ -4450,7 +5694,7 @@ msgstr "名称不能包含空格"
 #: apps/web/src/components/features/settings/panels/Functions/FunctionDetailsTab.tsx:85
 #: apps/web/src/components/features/settings/panels/Instructions/InstructionTemplateForm.tsx:15
 #: apps/web/src/components/features/settings/panels/MessageActions/MessageActionForm.tsx:44
-#: apps/web/src/components/features/settings/panels/Profile.tsx:134
+#: apps/web/src/components/features/settings/panels/Profile.tsx:135
 #: apps/web/src/components/features/settings/panels/Webhooks/WebhookForm.tsx:56
 #: apps/web/src/components/features/settings/panels/Workspaces/AddWorkspaceDialog.tsx:86
 #: apps/web/src/components/features/setup/steps/ProfileStep.tsx:95
@@ -4470,6 +5714,11 @@ msgstr "名称必须少于 20 个字符"
 msgid "Name should not exceed 140 characters"
 msgstr "名称不能超过 140 个字符"
 
+#. Label of the naming_series (Select) field in DocType 'Raven Bot AI Prompt'
+#: raven/raven_ai/doctype/raven_bot_ai_prompt/raven_bot_ai_prompt.json:46
+msgid "Naming Series"
+msgstr ""
+
 #: apps/web/src/pages/search/Search.tsx:253
 msgid "Narrow results by person, channel, type or source"
 msgstr "按用户、频道、类型或来源缩小结果范围"
@@ -4482,6 +5731,10 @@ msgstr "导航"
 #, python-brace-format
 msgid "Need help finding one? Download from {0}."
 msgstr "需要帮忙找表情？可以从 {0} 下载。"
+
+#: apps/web/src/components/features/settings/panels/KeyboardShortcuts.tsx:176
+msgid "New"
+msgstr ""
 
 #. Option for the 'Send Alert On' (Select) field in DocType 'Raven Document
 #. Notification'
@@ -4509,10 +5762,20 @@ msgstr "新消息"
 msgid "Newer messages load when you're back online."
 msgstr "恢复联网后会加载较新的消息。"
 
+#: apps/web/src/components/features/message/renderers/AttachmentPreviewModal.tsx:321
+#: apps/web/src/components/features/settings/panels/KeyboardShortcuts.tsx:74
+msgid "Next"
+msgstr ""
+
 #: apps/web/src/components/features/message/renderers/ImageMessage.tsx:139
 #: apps/web/src/components/features/settings/panels/KeyboardShortcuts.tsx:168
 msgid "Next image"
 msgstr "下一张图片"
+
+#: apps/web/src/components/common/DataTable/DataTable.tsx:429
+#: apps/web/src/components/ui/table-pagination.tsx:91
+msgid "Next page"
+msgstr "下一页"
 
 #: apps/web/src/components/features/settings/panels/KeyboardShortcuts.tsx:84
 msgid "Next unread"
@@ -4538,6 +5801,10 @@ msgstr "未设置 Google 项目 ID。请在 Raven 设置中设置项目 ID"
 #: raven/raven/doctype/raven_user/raven_user.json:228
 msgid "No Nudge"
 msgstr "不提示"
+
+#: apps/web/src/components/features/message/renderers/DocumentLinkRenderer.tsx:741
+msgid "No actions available"
+msgstr "没有可用的操作"
 
 #: apps/web/src/components/features/channel/CustomizeSidebar/ChannelTable.tsx:144
 #: apps/web/src/components/features/settings/panels/Channels/Channels.tsx:167
@@ -4636,6 +5903,7 @@ msgid "No links shared in this channel yet."
 msgstr "此频道中还没有共享的链接。"
 
 #: apps/web/src/components/features/channel/CreateChannel/AddMembersStep.tsx:279
+#: apps/web/src/components/features/profile/LanguageSetting.tsx:154
 msgid "No matches"
 msgstr "无匹配结果"
 
@@ -4787,6 +6055,10 @@ msgstr "未定义变量"
 msgid "No workspaces found"
 msgstr "未找到工作区"
 
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldDialog.tsx:147
+msgid "None"
+msgstr ""
+
 #: apps/web/src/components/features/setup/steps/SiteUsersBox.tsx:21
 msgid "None selected"
 msgstr "未选择"
@@ -4797,6 +6069,11 @@ msgstr "未选择"
 msgid "Normalized URL"
 msgstr "规范化 URL"
 
+#: apps/web/src/components/features/settings/panels/SettingsRecordEditor.tsx:204
+#: apps/web/src/components/features/settings/panels/Workspaces/WorkspaceDetailView.tsx:118
+msgid "Not Saved"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/Workspaces/WorkspaceListView.tsx:171
 msgid "Not a member"
 msgstr "非成员"
@@ -4804,6 +6081,10 @@ msgstr "非成员"
 #: apps/web/src/components/features/message/actions/ReadReceiptsList.tsx:152
 msgid "Not seen yet"
 msgstr "尚未查看"
+
+#: apps/web/src/components/features/reminders/ReminderDialog.tsx:139
+msgid "Note"
+msgstr ""
 
 #: apps/web/src/components/features/reminders/RemindersList.tsx:349
 msgid "Nothing in progress"
@@ -4817,11 +6098,22 @@ msgstr "没有可转发的内容"
 msgid "Nothing to preview"
 msgstr "没有可预览的内容"
 
+#. Label of the notification (Data) field in DocType 'Raven Message'
+#: raven/raven_messaging/doctype/raven_message/raven_message.json:202
+msgid "Notification"
+msgstr ""
+
 #. Label of the notification_name (Data) field in DocType 'Raven Document
 #. Notification'
 #: raven/raven_integrations/doctype/raven_document_notification/raven_document_notification.json:30
 msgid "Notification Name"
 msgstr "通知名称"
+
+#. Label of the notification_settings_section (Section Break) field in DocType
+#. 'Raven Channel Member'
+#: raven/raven_channel_management/doctype/raven_channel_member/raven_channel_member.json:61
+msgid "Notification Settings"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/DocumentNotifications/DocumentNotificationEditorView.tsx:21
 msgid "Notification deleted"
@@ -4831,6 +6123,16 @@ msgstr "通知已删除"
 #, python-brace-format
 msgid "Notification for an event on {0} is not allowed."
 msgstr "不允许为 {0} 上的事件发送通知。"
+
+#: apps/web/src/components/features/channel/ChannelSettingsDrawer/ChannelSettingsTab.tsx:44
+#: apps/web/src/components/features/header/AppMobileFooter.tsx:36
+#: apps/web/src/components/features/header/AppMobileFooter.tsx:136
+#: apps/web/src/components/features/settings/SettingsDialog.tsx:245
+#: apps/web/src/components/layout/DocumentTitle.tsx:45
+#: apps/web/src/components/layout/PrimarySidebar/PrimarySidebar.tsx:185
+#: apps/web/src/pages/notifications/Notifications.tsx:175
+msgid "Notifications"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/DocumentNotifications/DocumentNotificationDetailsTab.tsx:55
 msgid "Notifications are sent via bots. Select the bot to send the notification."
@@ -4850,9 +6152,36 @@ msgstr "现在，"
 msgid "Nudge"
 msgstr "提示"
 
+#. Option for the 'Type' (Select) field in DocType 'Raven Message Action
+#. Fields'
+#: apps/web/src/components/features/settings/panels/Functions/DoctypeVariableDialogForm.tsx:152
+#: apps/web/src/components/features/settings/panels/Functions/VariableDialog.tsx:61
+#: apps/web/src/components/features/settings/panels/Functions/VariableDialog.tsx:104
+#: raven/raven_integrations/doctype/raven_message_action_fields/raven_message_action_fields.json:55
+msgid "Number"
+msgstr ""
+
+#: apps/web/src/components/features/editor/EditorFormattingToolbar.tsx:71
+#: apps/web/src/components/features/settings/panels/KeyboardShortcuts.tsx:159
+msgid "Numbered list"
+msgstr "有序列表"
+
+#. Label of the oauth_client (Link) field in DocType 'Raven Settings'
+#: raven/raven/doctype/raven_settings/raven_settings.json:194
+msgid "OAuth Client"
+msgstr ""
+
 #: apps/web/src/native/SitePicker.tsx:233
 msgid "OK"
 msgstr "确定"
+
+#: apps/web/src/components/features/settings/panels/Functions/VariableDialog.tsx:63
+msgid "Object"
+msgstr "对象"
+
+#: apps/web/src/components/features/channel/ChannelSettingsDrawer/ChannelSettingsTab.tsx:84
+msgid "Off"
+msgstr ""
 
 #: apps/web/src/components/features/message/UserAvatar.tsx:156
 msgid "Offline"
@@ -4873,6 +6202,12 @@ msgstr "Ollama"
 #: apps/web/src/components/features/setup/preview/PreviewDMHeader.tsx:24
 msgid "On Leave"
 msgstr "休假中"
+
+#. Description of the 'Is Dynamic URL?' (Check) field in DocType 'Raven
+#. Webhook'
+#: raven/raven_integrations/doctype/raven_webhook/raven_webhook.json:87
+msgid "On checking this option, URL will be treated like a jinja template string"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/Appearance.tsx:377
 msgid "On hover"
@@ -4952,6 +6287,23 @@ msgstr "只显示最近有动态的频道"
 #: raven/api/raven_poll.py:260
 msgid "Only the poll owner can close the poll"
 msgstr "只有投票创建者可以结束投票"
+
+#. Option for the 'Type' (Select) field in DocType 'Raven Channel'
+#. Option for the 'Channel Type' (Select) field in DocType 'Raven Webhook'
+#: apps/web/src/components/features/channel/ChannelSettingsDrawer/ChannelTypeSelect.tsx:36
+#: apps/web/src/components/features/channel/CreateChannel/ChannelTypeSelector.tsx:21
+#: apps/web/src/components/features/message/renderers/AttachmentPreviewModal.tsx:581
+#: apps/web/src/components/features/message/renderers/DocumentLinkRenderer.tsx:410
+#: apps/web/src/components/features/message/renderers/DocumentLinkRenderer.tsx:415
+#: apps/web/src/components/features/message/renderers/PollDrawer.tsx:129
+#: apps/web/src/components/features/message/renderers/RavenLinkPreview.tsx:223
+#: apps/web/src/components/features/message/renderers/RavenLinkPreview.tsx:245
+#: apps/web/src/components/features/settings/panels/Channels/ChannelFilters.tsx:74
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookConditionForm.tsx:124
+#: raven/raven_channel_management/doctype/raven_channel/raven_channel.json:49
+#: raven/raven_integrations/doctype/raven_webhook/raven_webhook.json:180
+msgid "Open"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/Agents/AgentEditorView.tsx:51
 msgid "Open Chat"
@@ -5077,6 +6429,10 @@ msgstr "选项 {0}"
 msgid "Option {0} is not valid for field {1} in {2}"
 msgstr "选项 {0} 对 {2} 中的字段 {1} 无效"
 
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldDialog.tsx:217
+msgid "Optional"
+msgstr "可选"
+
 #: apps/web/src/components/features/settings/panels/AISettings.tsx:172
 msgid "Optional — only if your provider requires it."
 msgstr "可选，仅在服务商要求时填写。"
@@ -5085,9 +6441,32 @@ msgstr "可选，仅在服务商要求时填写。"
 msgid "Optional. Checks the value is a valid email, phone number or URL."
 msgstr "可选。检查值是否为有效的邮箱、电话号码或 URL。"
 
+#. Description of the 'Condition' (Code) field in DocType 'Raven Document
+#. Notification'
+#: raven/raven_integrations/doctype/raven_document_notification/raven_document_notification.json:75
+msgid "Optional: The alert will be sent if this expression is true"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/DocumentNotifications/DocumentNotificationConditionTab.tsx:19
 msgid "Optional: the notification is sent only if this expression is true."
 msgstr "可选：仅当此表达式为真时才发送通知。"
+
+#. Label of the options (Small Text) field in DocType 'Raven AI Function
+#. Params'
+#. Label of the options (Small Text) field in DocType 'Raven Message Action
+#. Fields'
+#. Label of the options (Table) field in DocType 'Raven Poll'
+#: apps/web/src/components/features/ChatInput/CreatePollForm.tsx:201
+#: apps/web/src/components/features/settings/panels/Functions/DoctypeVariableDialogForm.tsx:192
+#: apps/web/src/components/features/settings/panels/Functions/VariableDialog.tsx:128
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldDialog.tsx:163
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldsBuilder.tsx:46
+#: apps/web/src/components/features/settings/panels/RecordActionsMenu.tsx:52
+#: raven/raven_ai/doctype/raven_ai_function_params/raven_ai_function_params.json:45
+#: raven/raven_integrations/doctype/raven_message_action_fields/raven_message_action_fields.json:61
+#: raven/raven_messaging/doctype/raven_poll/raven_poll.json:44
+msgid "Options"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldDialog.tsx:165
 msgid "Options are required"
@@ -5101,6 +6480,15 @@ msgstr "选择类字段必须填写选项"
 msgid "Options:"
 msgstr "选项："
 
+#. Option for the 'Provider' (Select) field in DocType 'Raven Link Preview'
+#. Option for the 'Provider' (Select) field in DocType 'Raven Message Links'
+#: apps/web/src/components/features/settings/SettingsDialog.tsx:51
+#: apps/web/src/pages/threads/Threads.tsx:29
+#: raven/raven_messaging/doctype/raven_link_preview/raven_link_preview.json:68
+#: raven/raven_messaging/doctype/raven_message_links/raven_message_links.json:32
+msgid "Other"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/Channels/ChannelFilters.tsx:54
 msgid "Other Channels"
 msgstr "其他频道"
@@ -5109,6 +6497,14 @@ msgstr "其他频道"
 msgid "Other sites"
 msgstr "其他站点"
 
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldDialog.tsx:195
+msgid "Owner"
+msgstr ""
+
+#: apps/web/src/components/features/message/actions/dialogs/MessagePreview.tsx:24
+msgid "PDF"
+msgstr ""
+
 #: apps/web/src/components/common/filters/FileTypeFilter.tsx:27
 msgid "PDFs"
 msgstr "PDF"
@@ -5116,6 +6512,18 @@ msgstr "PDF"
 #: apps/web/src/pages/NotFound.tsx:15
 msgid "Page Not Found"
 msgstr "页面不存在"
+
+#: apps/web/src/components/ui/table-pagination.tsx:69
+#, python-brace-format
+msgid "Page {0} of {1}"
+msgstr ""
+
+#. Label of the parameters_section (Section Break) field in DocType 'Raven AI
+#. Function'
+#. Label of the parameters (Table) field in DocType 'Raven AI Function'
+#: raven/raven_ai/doctype/raven_ai_function/raven_ai_function.json:80
+msgid "Parameters"
+msgstr ""
 
 #. Label of the params (JSON) field in DocType 'Raven AI Function'
 #: raven/raven_ai/doctype/raven_ai_function/raven_ai_function.json:65
@@ -5132,6 +6540,10 @@ msgstr "参与中"
 #: raven/raven_ai/doctype/raven_ai_function/raven_ai_function.json:40
 msgid "Pass parameters as JSON"
 msgstr "以 JSON 传递参数"
+
+#: apps/web/src/components/features/setup/steps/ProfileStep.tsx:103
+msgid "Password"
+msgstr ""
 
 #: apps/web/src/components/features/setup/steps/ProfileStep.tsx:106
 msgid "Password is required"
@@ -5156,6 +6568,11 @@ msgstr "必须填写路径"
 msgid "Pause"
 msgstr "暂停"
 
+#. Option for the 'Status' (Select) field in DocType 'Raven Link Preview'
+#: raven/raven_messaging/doctype/raven_link_preview/raven_link_preview.json:77
+msgid "Pending"
+msgstr ""
+
 #: apps/web/src/components/features/channel/ChannelSettingsDrawer/DeleteChannelButton.tsx:71
 msgid "Permanently delete this channel and all of its messages"
 msgstr "永久删除此频道及其所有消息"
@@ -5175,6 +6592,12 @@ msgstr "用户"
 #: apps/web/src/components/features/settings/panels/Emojis/Emojis.tsx:38
 msgid "Personalize your chats with custom emojis."
 msgstr "使用自定义表情，让聊天更有个性。"
+
+#: apps/web/src/components/features/dm-channel/UserProfileDrawer.tsx:64
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldDialog.tsx:151
+#: apps/web/src/components/features/settings/panels/Profile.tsx:163
+msgid "Phone"
+msgstr ""
 
 #: apps/web/src/components/features/dm-channel/UserProfileDrawer.tsx:67
 msgid "Phone number"
@@ -5228,6 +6651,15 @@ msgstr "请至少选择一天。"
 msgid "Pick when to be reminded about this message."
 msgstr "选择何时提醒你处理这条消息。"
 
+#: apps/web/src/components/features/message/actions/useMessageActions.tsx:341
+msgid "Pin"
+msgstr "置顶"
+
+#: apps/web/src/components/features/dm-channel/DMChannelHeader.tsx:174
+#: apps/web/src/components/features/message/renderers/MessageContent.tsx:133
+msgid "Pinned"
+msgstr ""
+
 #. Label of the pinned_channels (Table) field in DocType 'Raven User'
 #: raven/raven/doctype/raven_user/raven_user.json:116
 msgid "Pinned Channels"
@@ -5259,6 +6691,10 @@ msgstr "置顶"
 #: apps/web/src/components/features/message/renderers/MessageAudio.tsx:41
 msgid "Play"
 msgstr "播放"
+
+#: apps/web/src/components/features/message/renderers/LinkPreview.tsx:229
+msgid "Play video"
+msgstr "播放视频"
 
 #: apps/web/src/components/features/channel/CreateChannel/ChannelNameInput.tsx:13
 msgid "Please add a channel name"
@@ -5431,6 +6867,17 @@ msgstr "投票设置"
 msgid "Polls"
 msgstr "投票"
 
+#. Label of the chat_style_section (Section Break) field in DocType 'Raven
+#. User'
+#: apps/web/src/components/features/cmdk/SettingsList.tsx:20
+#: apps/web/src/components/features/profile/PreferencesDrawer.tsx:104
+#: apps/web/src/components/features/settings/SettingsDialog.tsx:97
+#: apps/web/src/components/features/settings/panels/Preferences.tsx:72
+#: apps/web/src/pages/profile/Profile.tsx:132
+#: raven/raven/doctype/raven_user/raven_user.json:144
+msgid "Preferences"
+msgstr ""
+
 #: apps/web/src/components/common/filters/FileTypeFilter.tsx:29
 msgid "Presentations"
 msgstr "演示文稿"
@@ -5442,6 +6889,15 @@ msgstr "按 Enter 换行。按 Ctrl / ⌘ + Enter 发送消息。"
 #: apps/web/src/components/features/settings/panels/Preferences.tsx:234
 msgid "Pressing Enter will immediately send your message. Use Shift+Enter to add a new line."
 msgstr "按 Enter 立即发送消息。按 Shift+Enter 换行。"
+
+#: apps/web/src/components/features/channel/CustomizeSidebar/CustomizeSidebarDialog.tsx:141
+#: apps/web/src/components/features/message/renderers/AttachmentPreviewModal.tsx:261
+#: apps/web/src/components/features/settings/panels/DocumentPreviews.tsx:65
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookDataTable.tsx:228
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookDataTable.tsx:233
+#: apps/web/src/components/features/settings/panels/ai/InstructionField.tsx:73
+msgid "Preview"
+msgstr ""
 
 #. Option for the 'Link Previews' (Select) field in DocType 'Raven User'
 #: raven/raven/doctype/raven_user/raven_user.json:215
@@ -5472,10 +6928,20 @@ msgstr "使用打印格式、信头和语言预览此{0}，然后打印或下载
 msgid "Preview {0}"
 msgstr "预览 {0}"
 
+#: apps/web/src/components/features/message/renderers/AttachmentPreviewModal.tsx:307
+#: apps/web/src/components/features/settings/panels/KeyboardShortcuts.tsx:79
+msgid "Previous"
+msgstr ""
+
 #: apps/web/src/components/features/message/renderers/ImageMessage.tsx:126
 #: apps/web/src/components/features/settings/panels/KeyboardShortcuts.tsx:167
 msgid "Previous image"
 msgstr "上一张图片"
+
+#: apps/web/src/components/common/DataTable/DataTable.tsx:419
+#: apps/web/src/components/ui/table-pagination.tsx:81
+msgid "Previous page"
+msgstr "上一页"
 
 #: apps/web/src/components/features/settings/panels/KeyboardShortcuts.tsx:89
 msgid "Previous unread"
@@ -5484,6 +6950,16 @@ msgstr "上一条未读"
 #: apps/web/src/components/features/settings/panels/KeyboardShortcuts.tsx:99
 msgid "Previous workspace"
 msgstr "上一个工作区"
+
+#: apps/web/src/components/features/message/renderers/DocumentLinkRenderer.tsx:427
+#: apps/web/src/components/features/message/renderers/DocumentLinkRenderer.tsx:431
+#: apps/web/src/components/features/message/renderers/DocumentPrintDialog.tsx:188
+msgid "Print"
+msgstr ""
+
+#: apps/web/src/components/features/message/renderers/DocumentPrintDialog.tsx:92
+msgid "Print format"
+msgstr "打印格式"
 
 #: apps/web/src/components/features/message/renderers/DocumentPrintDialog.tsx:134
 msgid "Print preview"
@@ -5494,6 +6970,25 @@ msgstr "打印预览"
 #, python-brace-format
 msgid "Print {0}"
 msgstr "打印 {0}"
+
+#. Option for the 'Department Channel Type' (Select) field in DocType 'Raven
+#. Settings'
+#. Option for the 'Type' (Select) field in DocType 'Raven Workspace'
+#. Option for the 'Type' (Select) field in DocType 'Raven Channel'
+#. Option for the 'Channel Type' (Select) field in DocType 'Raven Webhook'
+#: apps/web/src/components/features/channel/ChannelSettingsDrawer/ChannelTypeSelect.tsx:35
+#: apps/web/src/components/features/channel/CreateChannel/ChannelTypeSelector.tsx:20
+#: apps/web/src/components/features/settings/panels/Channels/ChannelFilters.tsx:73
+#: apps/web/src/components/features/settings/panels/FrappeHR.tsx:66
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookConditionForm.tsx:123
+#: apps/web/src/components/features/settings/panels/Workspaces/AddWorkspaceDialog.tsx:105
+#: apps/web/src/components/features/settings/panels/Workspaces/WorkspaceEditForm.tsx:34
+#: raven/raven/doctype/raven_settings/raven_settings.json:97
+#: raven/raven/doctype/raven_workspace/raven_workspace.json:24
+#: raven/raven_channel_management/doctype/raven_channel/raven_channel.json:49
+#: raven/raven_integrations/doctype/raven_webhook/raven_webhook.json:180
+msgid "Private"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/Workspaces/AddWorkspaceDialog.tsx:111
 #: apps/web/src/components/features/settings/panels/Workspaces/WorkspaceEditForm.tsx:40
@@ -5508,14 +7003,57 @@ msgstr "处理器已创建"
 msgid "Processor deleted successfully"
 msgstr "处理器已删除"
 
+#: apps/web/src/components/features/channel/ChannelSettingsDrawer/ChannelSettingsDrawer.tsx:46
+#: apps/web/src/components/features/cmdk/SettingsList.tsx:18
+#: apps/web/src/components/features/header/AppMobileFooter.tsx:41
+#: apps/web/src/components/features/header/AppMobileFooter.tsx:314
+#: apps/web/src/components/features/settings/SettingsDialog.tsx:81
+#: apps/web/src/components/features/settings/panels/Profile.tsx:115
+#: apps/web/src/pages/profile/Profile.tsx:69
+#: apps/web/src/pages/profile/ProfilePageSkeleton.tsx:19
+msgid "Profile"
+msgstr ""
+
 #: apps/web/src/components/features/setup/steps/ProfileStep.tsx:85
 msgid "Profile picture"
 msgstr "头像"
 
 #: apps/web/src/components/features/profile/EditProfileDrawer.tsx:63
-#: apps/web/src/components/features/settings/panels/Profile.tsx:78
+#: apps/web/src/components/features/settings/panels/Profile.tsx:79
 msgid "Profile updated"
 msgstr "个人资料已更新"
+
+#. Label of the prompt (Small Text) field in DocType 'Raven Bot AI Prompt'
+#: raven/raven_ai/doctype/raven_bot_ai_prompt/raven_bot_ai_prompt.json:22
+msgid "Prompt"
+msgstr "提示词"
+
+#. Label of the provider (Select) field in DocType 'Raven Link Preview'
+#. Label of the provider (Select) field in DocType 'Raven Message Links'
+#: apps/web/src/components/features/settings/panels/AISettings.tsx:144
+#: raven/raven_messaging/doctype/raven_link_preview/raven_link_preview.json:67
+#: raven/raven_messaging/doctype/raven_message_links/raven_message_links.json:31
+msgid "Provider"
+msgstr ""
+
+#. Option for the 'Department Channel Type' (Select) field in DocType 'Raven
+#. Settings'
+#. Option for the 'Type' (Select) field in DocType 'Raven Workspace'
+#. Option for the 'Type' (Select) field in DocType 'Raven Channel'
+#. Option for the 'Channel Type' (Select) field in DocType 'Raven Webhook'
+#: apps/web/src/components/features/channel/ChannelSettingsDrawer/ChannelTypeSelect.tsx:34
+#: apps/web/src/components/features/channel/CreateChannel/ChannelTypeSelector.tsx:19
+#: apps/web/src/components/features/settings/panels/Channels/ChannelFilters.tsx:72
+#: apps/web/src/components/features/settings/panels/FrappeHR.tsx:65
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookConditionForm.tsx:122
+#: apps/web/src/components/features/settings/panels/Workspaces/AddWorkspaceDialog.tsx:102
+#: apps/web/src/components/features/settings/panels/Workspaces/WorkspaceEditForm.tsx:31
+#: raven/raven/doctype/raven_settings/raven_settings.json:97
+#: raven/raven/doctype/raven_workspace/raven_workspace.json:24
+#: raven/raven_channel_management/doctype/raven_channel/raven_channel.json:49
+#: raven/raven_integrations/doctype/raven_webhook/raven_webhook.json:180
+msgid "Public"
+msgstr ""
 
 #: apps/web/src/components/features/profile/PreferencesDrawer.tsx:122
 msgid "Public channels that you have not joined will be hidden"
@@ -5554,6 +7092,13 @@ msgstr "推送通知服务器 URL"
 #: raven/raven/doctype/raven_settings/raven_settings.json:214
 msgid "Push Notification Service"
 msgstr "推送通知服务"
+
+#. Label of the push_notifications_tab (Tab Break) field in DocType 'Raven
+#. Settings'
+#: apps/web/src/components/features/settings/panels/PushNotifications.tsx:209
+#: raven/raven/doctype/raven_settings/raven_settings.json:208
+msgid "Push Notifications"
+msgstr ""
 
 #: raven/api/notification.py:69
 msgid "Push notification service is not set to Raven Cloud."
@@ -5639,6 +7184,15 @@ msgstr "引用"
 #: apps/web/src/components/channel-sidebar/TrialCard.tsx:53
 msgid "Raise the limit or choose a smaller plan to end your trial."
 msgstr "提高上限或选择更小的套餐以结束试用。"
+
+#. Option for the 'Push Notification Service' (Select) field in DocType 'Raven
+#. Settings'
+#. Name of a Workspace
+#: apps/web/src/components/features/setup/steps/HRStep.tsx:54
+#: raven/raven/doctype/raven_settings/raven_settings.json:215
+#: raven/raven/workspace/raven/raven.json:14
+msgid "Raven"
+msgstr "Raven"
 
 #. Name of a DocType
 #: raven/raven_ai/doctype/raven_ai_bot_files/raven_ai_bot_files.json:28
@@ -5922,6 +7476,10 @@ msgstr "Raven 版本、已安装的应用和资源链接。"
 msgid "Raven was updated"
 msgstr "Raven 已更新"
 
+#: apps/web/src/components/features/profile/LanguageSetting.tsx:128
+msgid "Raven will reload to show the new language."
+msgstr "Raven 将重新加载以显示新语言。"
+
 #: apps/web/src/components/features/settings/panels/DeprecatedBadge.tsx:13
 msgid "Raven will soon support AI integrations via Frappe Flow."
 msgstr "Raven 即将通过 Frappe Flow 支持 AI 集成。"
@@ -5965,6 +7523,13 @@ msgstr "转义后的表情回应"
 msgid "Reactions"
 msgstr "表情回应"
 
+#. Label of the is_read (Check) field in DocType 'Raven Mention'
+#. Label of the is_read (Check) field in DocType 'Raven Message Reaction'
+#: raven/raven_messaging/doctype/raven_mention/raven_mention.json:25
+#: raven/raven_messaging/doctype/raven_message_reaction/raven_message_reaction.json:58
+msgid "Read"
+msgstr ""
+
 #: apps/web/src/components/features/message/actions/dialogs/ReadReceiptsDialog.tsx:39
 #: apps/web/src/components/features/message/actions/dialogs/ReadReceiptsDialog.tsx:57
 #: apps/web/src/components/features/message/actions/useMessageActions.tsx:440
@@ -5989,6 +7554,10 @@ msgstr "实时事件无法正常工作，请刷新页面。"
 msgid "Reasoning Effort"
 msgstr "推理强度"
 
+#: apps/web/src/components/common/LinkFieldComboBox/LinkFieldCombobox.tsx:380
+msgid "Recent"
+msgstr "最近使用"
+
 #. Option for the 'Sort channels by' (Select) field in DocType 'Raven User'
 #. Option for the 'Sort By' (Select) field in DocType 'Raven Channel Groups'
 #: apps/web/src/components/features/profile/PreferencesDrawer.tsx:142
@@ -5998,9 +7567,21 @@ msgstr "推理强度"
 msgid "Recent Activity"
 msgstr "最近动态"
 
+#: apps/web/src/components/features/channel/CustomizeSidebar/PreviewGroupHeader.tsx:122
+msgid "Recent activity"
+msgstr "最近动态"
+
 #: apps/web/src/hooks/useRecentlyUsedDocType.ts:32
 msgid "Recently used"
 msgstr "最近使用"
+
+#. Label of the recipients_tab (Tab Break) field in DocType 'Raven Document
+#. Notification'
+#. Label of the recipients (Table) field in DocType 'Raven Document
+#: apps/web/src/components/features/settings/panels/DocumentNotifications/DocumentNotificationForm.tsx:13
+#: raven/raven_integrations/doctype/raven_document_notification/raven_document_notification.json:83
+msgid "Recipients"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/DocumentNotifications/DocumentNotificationRecipientsTab.tsx:31
 msgid "Recipients are the users who will receive the notification. Send to channels or specific users."
@@ -6021,9 +7602,23 @@ msgstr "Reddit"
 msgid "Reddit post"
 msgstr "Reddit 帖子"
 
+#. Label of the reference_doctype (Link) field in DocType 'Raven AI Function'
+#: raven/raven_ai/doctype/raven_ai_function/raven_ai_function.json:92
+msgid "Reference DocType"
+msgstr ""
+
+#: apps/web/src/components/features/settings/panels/Functions/FunctionDetailsTab.tsx:206
+msgid "Reference Doctype"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/Functions/FunctionDetailsTab.tsx:211
 msgid "Reference Doctype is required"
 msgstr "必须选择参考 DocType"
+
+#: apps/web/src/components/layout/AppUpdateAlert.tsx:88
+#: apps/web/src/components/layout/SessionBroadcast.tsx:95
+msgid "Refresh"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/PushNotifications.tsx:182
 msgid "Register Site on Raven Cloud"
@@ -6045,6 +7640,11 @@ msgstr "重新加载页面"
 msgid "Reload to pick up the latest version - everything will be right where you left it."
 msgstr "重新加载以使用最新版本，一切都会保持你离开时的样子。"
 
+#. Label of the remind_at (Datetime) field in DocType 'Raven Reminder'
+#: raven/raven/doctype/raven_reminder/raven_reminder.json:49
+msgid "Remind At"
+msgstr ""
+
 #: apps/web/src/components/features/message/actions/useMessageActions.tsx:399
 msgid "Remind me"
 msgstr "提醒我"
@@ -6058,6 +7658,10 @@ msgstr "再次提醒我"
 #: apps/web/src/components/features/reminders/ReminderDialog.tsx:142
 msgid "Remind me to…"
 msgstr "提醒我…"
+
+#: apps/web/src/components/features/reminders/ReminderDialog.tsx:106
+msgid "Reminder"
+msgstr ""
 
 #: apps/web/src/components/features/reminders/RemindersList.tsx:515
 msgid "Reminder actions"
@@ -6082,6 +7686,15 @@ msgstr "已设置提醒：{0}"
 msgid "Reminders you've opened or checked off show here."
 msgstr "你打开过或已完成的提醒会显示在这里。"
 
+#: apps/web/src/components/features/settings/panels/Agents/AgentFunctionsTab.tsx:113
+#: apps/web/src/components/features/settings/panels/Agents/AgentFunctionsTab.tsx:114
+#: apps/web/src/components/features/settings/panels/Functions/DoctypeVariableBuilder.tsx:131
+#: apps/web/src/components/features/settings/panels/Functions/VariableBuilder.tsx:175
+#: apps/web/src/components/features/setup/steps/ImageUploadField.tsx:52
+#: apps/web/src/native/SitePicker.tsx:245
+msgid "Remove"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/Workspaces/WorkspaceMembers.tsx:222
 msgid "Remove Admin"
 msgstr "移除管理员"
@@ -6101,6 +7714,11 @@ msgstr "移除已屏蔽的链接"
 #: apps/web/src/components/features/ChatInput/AttachFrappeDocumentDialog.tsx:211
 msgid "Remove document"
 msgstr "移除单据"
+
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldsBuilder.tsx:91
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookDataTable.tsx:158
+msgid "Remove field"
+msgstr ""
 
 #: apps/web/src/components/features/ChatInput/InputFiles.tsx:151
 msgid "Remove file"
@@ -6157,6 +7775,13 @@ msgstr "要移除站点吗？"
 msgid "Removing {0} site will log you out of it on this device."
 msgstr "移除站点 {0} 后，你将在此设备上退出该站点。"
 
+#: apps/web/src/components/features/channel/CustomizeSidebar/PreviewGroupHeader.tsx:97
+#: apps/web/src/components/features/channel/CustomizeSidebar/PreviewGroupHeader.tsx:143
+#: apps/web/src/components/features/settings/panels/Workspaces/WorkspaceActionMenu.tsx:44
+#: apps/web/src/components/features/settings/panels/Workspaces/WorkspaceActionMenu.tsx:114
+msgid "Rename"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/Workspaces/WorkspaceActionMenu.tsx:102
 msgid "Rename Workspace"
 msgstr "重命名工作区"
@@ -6190,10 +7815,26 @@ msgstr "被回复消息 ID"
 msgid "Replies"
 msgstr "回复"
 
+#: apps/web/src/components/features/message/actions/useMessageActions.tsx:172
+msgid "Reply"
+msgstr ""
+
 #: apps/web/src/components/features/message/renderers/RepliedMessagePreview.tsx:36
 #, python-brace-format
 msgid "Replying to {0}"
 msgstr "回复 {0}"
+
+#. Label of the timeout (Int) field in DocType 'Raven Webhook'
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookForm.tsx:75
+#: raven/raven_integrations/doctype/raven_webhook/raven_webhook.json:82
+msgid "Request Timeout"
+msgstr ""
+
+#. Label of the request_url (Data) field in DocType 'Raven Webhook'
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookForm.tsx:64
+#: raven/raven_integrations/doctype/raven_webhook/raven_webhook.json:74
+msgid "Request URL"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/Webhooks/WebhookForm.tsx:67
 msgid "Request URL is required"
@@ -6202,6 +7843,17 @@ msgstr "必须填写请求 URL"
 #: apps/web/src/components/features/settings/panels/Webhooks/WebhookForm.tsx:68
 msgid "Request URL should not exceed 140 characters"
 msgstr "请求 URL 不能超过 140 个字符"
+
+#. Label of the required (Check) field in DocType 'Raven AI Function Params'
+#: apps/web/src/components/features/settings/panels/Functions/DoctypeVariableBuilder.tsx:102
+#: apps/web/src/components/features/settings/panels/Functions/DoctypeVariableDialogForm.tsx:155
+#: apps/web/src/components/features/settings/panels/Functions/VariableBuilder.tsx:151
+#: apps/web/src/components/features/settings/panels/Functions/VariableDialog.tsx:72
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldDialog.tsx:158
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldsBuilder.tsx:45
+#: raven/raven_ai/doctype/raven_ai_function_params/raven_ai_function_params.json:32
+msgid "Required"
+msgstr ""
 
 #. Label of the requires_write_permissions (Check) field in DocType 'Raven AI
 #. Function'
@@ -6238,6 +7890,15 @@ msgstr "撤回我的投票"
 msgid "Retract vote"
 msgstr "撤回投票"
 
+#: apps/web/src/components/features/message/renderers/OptimisticStatus.tsx:64
+#: apps/web/src/components/features/setup/steps/ProfileStep.tsx:38
+#: apps/web/src/components/features/threads/ThreadsList.tsx:238
+#: apps/web/src/components/layout/ProtectedRoute.tsx:74
+#: apps/web/src/native/BootErrorScreen.tsx:41
+#: apps/web/src/pages/notifications/Notifications.tsx:235
+msgid "Retry"
+msgstr ""
+
 #: apps/web/src/components/features/setup/steps/ImageUploadField.tsx:47
 msgid "Reupload"
 msgstr "重新上传"
@@ -6259,6 +7920,34 @@ msgstr "工资条通知"
 #: apps/web/src/components/features/settings/panels/ScheduledMessages/ScheduledMessageForm.tsx:24
 msgid "Sat"
 msgstr "周六"
+
+#: apps/web/src/components/features/settings/panels/ScheduledMessages/ScheduledMessageForm.tsx:24
+msgid "Saturday"
+msgstr ""
+
+#: apps/web/src/components/features/channel/ChannelSettingsDrawer/EditChannelDescriptionButton.tsx:217
+#: apps/web/src/components/features/channel/ChannelSettingsDrawer/EditChannelDescriptionButton.tsx:271
+#: apps/web/src/components/features/channel/CustomizeSidebar/CustomizeSidebarDialog.tsx:113
+#: apps/web/src/components/features/message/actions/useMessageActions.tsx:364
+#: apps/web/src/components/features/message/renderers/EditMessageComposer.tsx:138
+#: apps/web/src/components/features/profile/EditProfileDrawer.tsx:140
+#: apps/web/src/components/features/reminders/ReminderDialog.tsx:162
+#: apps/web/src/components/features/schedule-send/EditScheduledMessageSheet.tsx:113
+#: apps/web/src/components/features/schedule-send/InlineScheduledMessageEditor.tsx:84
+#: apps/web/src/components/features/settings/panels/AdminSettingsForm.tsx:97
+#: apps/web/src/components/features/settings/panels/Emojis/AddEmojiDialog.tsx:48
+#: apps/web/src/components/features/settings/panels/KeyboardShortcuts.tsx:181
+#: apps/web/src/components/features/settings/panels/LinkSettingsAdminSection.tsx:208
+#: apps/web/src/components/features/settings/panels/LinkSettingsAdminSection.tsx:300
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldDialog.tsx:43
+#: apps/web/src/components/features/settings/panels/Profile.tsx:111
+#: apps/web/src/components/features/settings/panels/QuietHoursAdminSection.tsx:245
+#: apps/web/src/components/features/settings/panels/SettingsRecordEditor.tsx:196
+#: apps/web/src/components/features/settings/panels/Users/ManageAccessDialog.tsx:116
+#: apps/web/src/components/features/settings/panels/Workspaces/AddWorkspaceDialog.tsx:132
+#: apps/web/src/components/features/settings/panels/Workspaces/WorkspaceDetailView.tsx:104
+msgid "Save"
+msgstr ""
 
 #: apps/web/src/components/features/saved-messages/SavedMessagesList.tsx:150
 msgid "Save a message to find it here, or adjust your search."
@@ -6287,10 +7976,42 @@ msgstr "将常用指令保存为模板，供机器人使用。"
 msgid "Save the open settings form."
 msgstr "保存当前打开的设置表单。"
 
+#: apps/web/src/components/features/settings/panels/SettingsRecordEditor.tsx:156
+#: apps/web/src/components/features/settings/panels/Workspaces/WorkspaceDetailView.tsx:77
+#: apps/web/src/pages/later/Later.tsx:25
+msgid "Saved"
+msgstr ""
+
 #. Label of a Link in the Raven Workspace
 #: raven/raven/workspace/raven/raven.json:58
 msgid "Saved Prompts"
 msgstr "已保存的提示词"
+
+#: apps/web/src/components/features/settings/panels/Profile.tsx:108
+#: apps/web/src/components/features/settings/panels/SettingsRecordEditor.tsx:195
+#: apps/web/src/components/features/settings/panels/Users/ManageAccessDialog.tsx:115
+#: apps/web/src/components/features/settings/panels/Workspaces/WorkspaceDetailView.tsx:103
+msgid "Saving"
+msgstr ""
+
+#: apps/web/src/components/features/channel/ChannelSettingsDrawer/ChannelTypeSelect.tsx:197
+#: apps/web/src/components/features/channel/ChannelSettingsDrawer/EditChannelDescriptionButton.tsx:269
+#: apps/web/src/components/features/profile/LanguageSetting.tsx:171
+#: apps/web/src/components/features/settings/panels/Emojis/AddEmojiDialog.tsx:49
+#: apps/web/src/components/features/settings/panels/Workspaces/AddWorkspaceDialog.tsx:131
+msgid "Saving..."
+msgstr ""
+
+#: apps/web/src/components/features/settings/panels/AdminSettingsForm.tsx:75
+#: apps/web/src/components/features/settings/panels/LinkSettingsAdminSection.tsx:128
+#: apps/web/src/components/features/settings/panels/QuietHoursAdminSection.tsx:184
+msgid "Saving…"
+msgstr "正在保存…"
+
+#: apps/web/src/components/features/schedule-send/ScheduleTimePicker.tsx:94
+#: apps/web/src/components/features/settings/panels/ScheduledMessages/ScheduledMessageListView.tsx:87
+msgid "Schedule"
+msgstr ""
 
 #: apps/web/src/components/features/schedule-send/ScheduledMessagesList.tsx:128
 msgid "Schedule a message from any channel's send menu."
@@ -6311,6 +8032,11 @@ msgstr "定时发送"
 msgid "Schedule messages and reminders to be sent to you at a specific date and time."
 msgstr "设置在指定日期和时间发送给你的消息和提醒。"
 
+#. Option for the 'Status' (Select) field in DocType 'Raven Scheduled Message'
+#: raven/raven_messaging/doctype/raven_scheduled_message/raven_scheduled_message.json:46
+msgid "Scheduled"
+msgstr ""
+
 #: apps/web/src/App.tsx:81
 #: apps/web/src/components/features/schedule-send/ScheduledMessagesDialog.tsx:46
 #: apps/web/src/components/features/settings/SettingsDialog.tsx:189
@@ -6327,6 +8053,12 @@ msgstr "定时消息"
 #: raven/raven_messaging/doctype/raven_scheduled_message/raven_scheduled_message.json:35
 msgid "Scheduled Time"
 msgstr "定时时间"
+
+#: apps/web/src/components/features/ChatInput/ChatInput.tsx:292
+#: apps/web/src/components/features/schedule-send/ScheduleSendDialog.tsx:97
+#, python-brace-format
+msgid "Scheduled for {0}"
+msgstr "已定时于 {0} 发送"
 
 #: apps/web/src/components/features/schedule-send/ScheduledMessageCard.tsx:165
 #: apps/web/src/components/features/schedule-send/ScheduledMessageCard.tsx:218
@@ -6354,6 +8086,25 @@ msgstr "定时时间必须是将来的时间。"
 #: raven/raven_integrations/doctype/raven_scheduler_event/raven_scheduler_event.json:87
 msgid "Scheduler Event ID"
 msgstr "调度事件 ID"
+
+#: apps/web/src/App.tsx:79
+#: apps/web/src/components/common/LinkFieldComboBox/LinkFieldCombobox.tsx:371
+#: apps/web/src/components/common/filters/FilterCombobox.tsx:251
+#: apps/web/src/components/features/channel/ChannelMembersDrawer/ChannelMembersList.tsx:48
+#: apps/web/src/components/features/cmdk/CommandMenu.tsx:182
+#: apps/web/src/components/features/cmdk/CommandMenu.tsx:256
+#: apps/web/src/components/features/header/QuickSearch/SearchButton.tsx:21
+#: apps/web/src/components/features/profile/LanguageSetting.tsx:138
+#: apps/web/src/components/features/profile/LanguageSetting.tsx:139
+#: apps/web/src/components/features/search/SearchFiltersSheet.tsx:329
+#: apps/web/src/components/features/settings/panels/DocumentNotifications/DoctypeVariables.tsx:58
+#: apps/web/src/components/features/settings/panels/Functions/DoctypeVariableDialogForm.tsx:281
+#: apps/web/src/components/features/settings/panels/KeyboardShortcuts.tsx:53
+#: apps/web/src/components/layout/DocumentTitle.tsx:48
+#: apps/web/src/components/layout/PrimarySidebar/PrimarySidebar.tsx:101
+#: apps/web/src/pages/search/Search.tsx:296
+msgid "Search"
+msgstr ""
 
 #: apps/web/src/pages/search/Search.tsx:320
 msgid "Search Raven"
@@ -6408,6 +8159,11 @@ msgstr "搜索会话"
 msgid "Search emojis"
 msgstr "搜索表情"
 
+#: apps/web/src/components/features/settings/panels/DocumentPreviews.tsx:163
+#: apps/web/src/components/features/settings/panels/DocumentPreviews.tsx:164
+msgid "Search fields"
+msgstr ""
+
 #: apps/web/src/components/dm-sidebar/DMSidebar.tsx:174
 msgid "Search for a user and start a conversation."
 msgstr "搜索用户并开始会话。"
@@ -6420,6 +8176,11 @@ msgstr "搜索频道"
 #: apps/web/src/components/features/channel/ChannelMembersDrawer/AddChannelMembers.tsx:183
 msgid "Search for people in this workspace and add them to the channel."
 msgstr "搜索此工作区中的用户并将其添加到频道。"
+
+#: apps/web/src/components/features/cmdk/CommandMenu.tsx:255
+#, python-brace-format
+msgid "Search for {0}"
+msgstr ""
 
 #: apps/web/src/components/features/cmdk/CommandMenu.tsx:274
 #, python-brace-format
@@ -6452,6 +8213,12 @@ msgstr "在 {0} 中搜索"
 msgid "Search members"
 msgstr "搜索成员"
 
+#: apps/web/src/components/features/cmdk/CommandMenu.tsx:74
+#: apps/web/src/components/features/cmdk/CommandMenu.tsx:91
+#: apps/web/src/components/features/cmdk/CommandMenu.tsx:182
+msgid "Search or type a command"
+msgstr ""
+
 #: apps/web/src/components/features/setup/steps/SiteUsersDialog.tsx:129
 msgid "Search people"
 msgstr "搜索用户"
@@ -6472,10 +8239,40 @@ msgstr "搜索团队成员"
 msgid "Search threads..."
 msgstr "搜索话题……"
 
+#: apps/web/src/components/features/settings/panels/Users/Users.tsx:106
+msgid "Search users"
+msgstr "搜索用户"
+
+#: apps/web/src/components/features/channel/ChannelSettingsDrawer/ChannelFiles.tsx:200
+#: apps/web/src/components/features/channel/ChannelSettingsDrawer/ChannelLinks.tsx:69
+#: apps/web/src/components/features/channel/ChannelSettingsDrawer/ChannelThreads.tsx:39
+msgid "Search..."
+msgstr ""
+
 #: apps/web/src/components/features/message/renderers/AudioPlayer.tsx:78
 #: apps/web/src/components/features/message/renderers/MessageAudio.tsx:77
 msgid "Seek"
 msgstr "调整进度"
+
+#: apps/web/src/components/features/message/actions/ReadReceiptsList.tsx:150
+msgid "Seen"
+msgstr ""
+
+#. Option for the 'Type' (Select) field in DocType 'Raven Message Action
+#. Fields'
+#: raven/raven_integrations/doctype/raven_message_action_fields/raven_message_action_fields.json:55
+msgid "Select"
+msgstr ""
+
+#: raven/public/js/timeline_button.js:82 raven/public/js/timeline_button.js:100
+msgid "Select Attachments"
+msgstr ""
+
+#: apps/web/src/components/features/settings/panels/Functions/DoctypeVariableDialogForm.tsx:116
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldDialog.tsx:249
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookConditionForm.tsx:60
+msgid "Select Field"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/Agents/AgentFileSourcesTab.tsx:74
 #: apps/web/src/components/features/settings/panels/Agents/AgentFileSourcesTab.tsx:79
@@ -6595,6 +8392,11 @@ msgstr "选择频道类型"
 msgid "Select channels"
 msgstr "选择频道"
 
+#: apps/web/src/components/features/reminders/DatePickerPopover.tsx:61
+#: apps/web/src/components/ui/form-elements.tsx:166
+msgid "Select date"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/Webhooks/WebhookDataTable.tsx:239
 msgid "Select example"
 msgstr "选择示例"
@@ -6642,10 +8444,21 @@ msgstr "选择时间格式"
 msgid "Select what to delete. This can't be undone."
 msgstr "选择要删除的内容。此操作无法撤销。"
 
+#: apps/web/src/components/common/LinkFieldComboBox/LinkFieldCombobox.tsx:169
+#, python-brace-format
+msgid "Select {0}"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/Functions/DoctypeVariableDialogForm.tsx:270
 #, python-brace-format
 msgid "Select {0}s"
 msgstr "选择{0}"
+
+#. Label of the selection_section (Section Break) field in DocType 'Raven Poll
+#. Vote Selection'
+#: raven/raven_messaging/doctype/raven_poll_vote_selection/raven_poll_vote_selection.json:16
+msgid "Selection"
+msgstr "所选选项"
 
 #. Label of the selections_section (Section Break) field in DocType 'Raven Poll
 #. Vote'
@@ -6658,6 +8471,21 @@ msgstr "已选项"
 #: raven/raven_integrations/doctype/raven_webhook/raven_webhook.json:180
 msgid "Self Message"
 msgstr "发给自己的消息"
+
+#: apps/web/src/components/features/ChatInput/SendButton.tsx:178
+#: apps/web/src/components/features/settings/panels/KeyboardShortcuts.tsx:111
+#: apps/web/src/components/features/settings/panels/KeyboardShortcuts.tsx:116
+#: raven/public/js/timeline_button.js:84
+msgid "Send"
+msgstr ""
+
+#. Label of the send_alert_on (Select) field in DocType 'Raven Document
+#. Notification'
+#: apps/web/src/components/features/settings/panels/DocumentNotifications/DocumentNotificationDetailsTab.tsx:30
+#: apps/web/src/components/features/settings/panels/DocumentNotifications/DocumentNotificationListView.tsx:59
+#: raven/raven_integrations/doctype/raven_document_notification/raven_document_notification.json:52
+msgid "Send Alert On"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/Users/AddUserDialog.tsx:232
 msgid "Send Invite"
@@ -6743,6 +8571,12 @@ msgstr "发送但不通知"
 msgid "Send without notifying anyone."
 msgstr "发送但不通知任何人。"
 
+#. Label of the sender (Link) field in DocType 'Raven Document Notification'
+#: apps/web/src/components/features/settings/panels/DocumentNotifications/DocumentNotificationDetailsTab.tsx:51
+#: raven/raven_integrations/doctype/raven_document_notification/raven_document_notification.json:107
+msgid "Sender"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/DocumentNotifications/DocumentNotificationDetailsTab.tsx:54
 msgid "Sender is required"
 msgstr "必须选择发送者"
@@ -6770,6 +8604,11 @@ msgstr "发送带单据链接的消息"
 #: apps/web/src/components/features/ChatInput/SendButton.tsx:169
 msgid "Sending..."
 msgstr "正在发送……"
+
+#. Option for the 'Status' (Select) field in DocType 'Raven Scheduled Message'
+#: raven/raven_messaging/doctype/raven_scheduled_message/raven_scheduled_message.json:46
+msgid "Sent"
+msgstr ""
 
 #. Label of the sent_message (Link) field in DocType 'Raven Scheduled Message'
 #: raven/raven_messaging/doctype/raven_scheduled_message/raven_scheduled_message.json:51
@@ -6807,6 +8646,15 @@ msgstr "每{0} {1} 发送。"
 msgid "Sent on the {0} of every month at {1}."
 msgstr "每月 {0} {1} 发送。"
 
+#. Option for the 'Action' (Select) field in DocType 'Raven Message Action'
+#. Label of the server_script (Link) field in DocType 'Raven Message Action'
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionForm.tsx:66
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionForm.tsx:88
+#: raven/raven_integrations/doctype/raven_message_action/raven_message_action.json:45
+#: raven/raven_integrations/doctype/raven_message_action/raven_message_action.json:99
+msgid "Server Script"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/MessageActions/MessageActionForm.tsx:92
 msgid "Server Script is required"
 msgstr "必须选择 Server Script"
@@ -6832,6 +8680,11 @@ msgstr "Server Script {0} 已停用。"
 #: apps/web/src/components/features/settings/panels/ScheduledMessages/ServerScriptsCallout.tsx:15
 msgid "Server scripts are not enabled on this site."
 msgstr "此站点未启用 Server Script。"
+
+#. Option for the 'Type' (Select) field in DocType 'Raven AI Function'
+#: raven/raven_ai/doctype/raven_ai_function/raven_ai_function.json:53
+msgid "Set Value"
+msgstr ""
 
 #: apps/web/src/components/features/reminders/RemindersList.tsx:353
 msgid "Set a reminder from a message's actions — Remind me — or adjust your search."
@@ -6882,6 +8735,16 @@ msgstr "为你的组织设置工作时间，以便 Raven 在非工作时间提�
 msgid "Set your favorite emojis for quick reactions."
 msgstr "设置你常用的表情作为快捷表情回应。"
 
+#: apps/web/src/components/features/channel/ChannelHeader/ChannelMenu.tsx:93
+#: apps/web/src/components/features/channel/ChannelSettingsDrawer/ChannelSettingsDrawer.tsx:79
+#: apps/web/src/components/features/cmdk/SettingsList.tsx:65
+#: apps/web/src/components/features/header/NavUserMenu/NavUserMenu.tsx:114
+#: apps/web/src/components/features/settings/SettingsDialog.tsx:47
+#: apps/web/src/components/features/settings/panels/KeyboardShortcuts.tsx:58
+#: apps/web/src/components/features/settings/panels/KeyboardShortcuts.tsx:172
+msgid "Settings"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/AdminSettingsForm.tsx:80
 #: apps/web/src/components/features/settings/panels/LinkSettingsAdminSection.tsx:128
 #: apps/web/src/components/features/settings/panels/Preferences.tsx:55
@@ -6899,6 +8762,15 @@ msgstr "设置已完成"
 msgid "Setup progress"
 msgstr "设置进度"
 
+#: apps/web/src/components/features/message/actions/fileActions.ts:92
+#: apps/web/src/components/features/message/renderers/AttachmentPreviewModal.tsx:581
+#: apps/web/src/components/features/message/renderers/MediaPreviewHeader.tsx:97
+#: apps/web/src/components/features/message/renderers/MediaPreviewHeader.tsx:98
+#: apps/web/src/components/features/message/renderers/MediaPreviewHeader.tsx:110
+#: apps/web/src/components/features/message/renderers/MediaPreviewHeader.tsx:111
+msgid "Share"
+msgstr ""
+
 #: apps/web/src/components/features/message/actions/fileActions.ts:116
 #, python-brace-format
 msgid "Share all ({0})"
@@ -6913,7 +8785,7 @@ msgstr "分享到"
 msgid "Share to…"
 msgstr "分享到…"
 
-#: apps/web/src/components/features/settings/panels/Profile.tsx:153
+#: apps/web/src/components/features/settings/panels/Profile.tsx:154
 msgid "Share what you are up to"
 msgstr "分享你在忙什么"
 
@@ -6921,6 +8793,10 @@ msgstr "分享你在忙什么"
 #, python-brace-format
 msgid "Shared {0}"
 msgstr "分享了 {0}"
+
+#: apps/web/src/components/features/settings/panels/KeyboardShortcuts.tsx:222
+msgid "Shortcut"
+msgstr "快捷键"
 
 #: apps/web/src/components/features/settings/panels/Appearance.tsx:367
 msgid "Show a preview card under messages with links, or keep the stream compact and preview links on hover. On mobile, previews only appear as cards."
@@ -6940,6 +8816,10 @@ msgstr "显示错误详情"
 #: raven/raven/doctype/raven_settings/raven_settings.json:108
 msgid "Show if a user is on leave"
 msgstr "显示用户是否在休假"
+
+#: apps/web/src/components/features/message/renderers/MessageCodeBlock.tsx:141
+msgid "Show more"
+msgstr "显示更多"
 
 #: apps/web/src/components/features/settings/panels/KeyboardShortcuts.tsx:168
 msgid "Show the next image."
@@ -6971,9 +8851,17 @@ msgstr "在对话框中显示"
 msgid "Shown on the message action dialog."
 msgstr "在消息操作对话框中显示。"
 
-#: apps/web/src/components/features/settings/panels/Profile.tsx:163
+#: apps/web/src/components/features/settings/panels/Profile.tsx:164
 msgid "Shown on your profile"
 msgstr "在你的个人资料中显示"
+
+#: apps/web/src/components/features/settings/SettingsDialog.tsx:105
+msgid "Sidebar"
+msgstr ""
+
+#: apps/web/src/components/features/channel/CustomizeSidebar/CustomizeSidebarDialog.tsx:81
+msgid "Sidebar updated"
+msgstr "侧边栏已更新"
 
 #: apps/web/src/native/SitePicker.tsx:193
 msgid "Sign in to your team's site."
@@ -7019,6 +8907,12 @@ msgstr "站点"
 msgid "Skip for now"
 msgstr "暂时跳过"
 
+#. Option for the 'Type' (Select) field in DocType 'Raven Message Action
+#. Fields'
+#: raven/raven_integrations/doctype/raven_message_action_fields/raven_message_action_fields.json:55
+msgid "Small Text"
+msgstr ""
+
 #: apps/web/src/components/common/filters/ProviderFilter.tsx:42
 msgid "Social"
 msgstr "社交"
@@ -7063,6 +8957,11 @@ msgstr "SoundCloud"
 msgid "SoundCloud player"
 msgstr "SoundCloud 播放器"
 
+#: apps/web/src/components/common/filters/ProviderFilter.tsx:130
+#: apps/web/src/components/features/search/SearchFiltersBar.tsx:94
+msgid "Source"
+msgstr ""
+
 #: apps/web/src/components/features/settings/SettingsDialog.tsx:256
 msgid "Speed up your workflow with keyboard shortcuts."
 msgstr "使用键盘快捷键提高效率。"
@@ -7100,6 +8999,10 @@ msgstr "堆叠"
 #: raven/raven_messaging/doctype/raven_link_preview/raven_link_preview.json:92
 msgid "Stale After"
 msgstr "过期时间"
+
+#: apps/web/src/components/features/settings/panels/Functions/FunctionDetailsTab.tsx:146
+msgid "Standard"
+msgstr ""
 
 #: apps/web/src/components/features/channel/ChannelHeader/ChannelHeader.tsx:86
 msgid "Star"
@@ -7142,7 +9045,21 @@ msgstr "静态值"
 msgid "Static value, a field from the selected message, or a Jinja template with the message as context."
 msgstr "静态值、所选消息中的字段，或以消息为上下文的 Jinja 模板。"
 
-#: apps/web/src/components/features/settings/panels/Profile.tsx:156
+#. Label of the status (Select) field in DocType 'Raven Link Preview'
+#. Label of the status (Select) field in DocType 'Raven Scheduled Message'
+#: apps/web/src/components/features/header/NavUserMenu/NavUserMenu.tsx:149
+#: apps/web/src/components/features/profile/EditProfileDrawer.tsx:129
+#: apps/web/src/components/features/settings/panels/DocumentNotifications/DocumentNotificationListView.tsx:66
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionListView.tsx:59
+#: apps/web/src/components/features/settings/panels/Profile.tsx:153
+#: apps/web/src/components/features/settings/panels/Users/Users.tsx:166
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookListView.tsx:53
+#: raven/raven_messaging/doctype/raven_link_preview/raven_link_preview.json:76
+#: raven/raven_messaging/doctype/raven_scheduled_message/raven_scheduled_message.json:45
+msgid "Status"
+msgstr ""
+
+#: apps/web/src/components/features/settings/panels/Profile.tsx:157
 msgid "Status cannot be more than 140 characters."
 msgstr "状态不能超过 140 个字符。"
 
@@ -7169,10 +9086,34 @@ msgstr "存储最后发送的消息的 ID"
 msgid "Strict"
 msgstr "严格"
 
+#: apps/web/src/components/features/editor/EditorFormattingToolbar.tsx:61
+#: apps/web/src/components/features/settings/panels/KeyboardShortcuts.tsx:153
+msgid "Strikethrough"
+msgstr "删除线"
+
+#: apps/web/src/components/features/settings/panels/Functions/DoctypeVariableDialogForm.tsx:150
+#: apps/web/src/components/features/settings/panels/Functions/VariableDialog.tsx:59
+#: apps/web/src/components/features/settings/panels/Functions/VariableDialog.tsx:103
+msgid "String"
+msgstr "字符串"
+
+#. Option for the 'Send Alert On' (Select) field in DocType 'Raven Document
+#. Notification'
+#: apps/web/src/components/features/message/actions/dialogs/RunMessageActionDialog.tsx:152
+#: apps/web/src/components/features/message/renderers/MultiChoicePollVoting.tsx:118
+#: apps/web/src/components/features/settings/panels/DocumentNotifications/DocumentNotificationDetailsTab.tsx:36
+#: raven/raven_integrations/doctype/raven_document_notification/raven_document_notification.json:53
+msgid "Submit"
+msgstr ""
+
 #. Option for the 'Type' (Select) field in DocType 'Raven AI Function'
 #: raven/raven_ai/doctype/raven_ai_function/raven_ai_function.json:53
 msgid "Submit Document"
 msgstr "提交单据"
+
+#: apps/web/src/components/features/message/actions/dialogs/RunMessageActionDialog.tsx:152
+msgid "Submitting..."
+msgstr ""
 
 #. Label of the success_message (Small Text) field in DocType 'Raven Message
 #. Action'
@@ -7201,6 +9142,10 @@ msgstr "推荐："
 #: apps/web/src/components/features/settings/panels/ScheduledMessages/ScheduledMessageForm.tsx:25
 msgid "Sun"
 msgstr "周日"
+
+#: apps/web/src/components/features/settings/panels/ScheduledMessages/ScheduledMessageForm.tsx:25
+msgid "Sunday"
+msgstr ""
 
 #: apps/web/src/components/common/UploadDocDialog.tsx:136
 #, python-brace-format
@@ -7248,6 +9193,42 @@ msgstr "同步数据到 Raven Cloud"
 msgid "Syncing Data to Raven Cloud..."
 msgstr "正在同步数据到 Raven Cloud……"
 
+#. Option for the 'Message Type' (Select) field in DocType 'Raven Message'
+#: apps/web/src/pages/profile/Profile.tsx:105
+#: apps/web/src/pages/profile/Profile.tsx:114
+#: raven/raven_messaging/doctype/raven_message/raven_message.json:74
+msgid "System"
+msgstr ""
+
+#. Name of a role
+#: raven/raven/doctype/raven_push_token/raven_push_token.json:69
+#: raven/raven/doctype/raven_reminder/raven_reminder.json:87
+#: raven/raven/doctype/raven_settings/raven_settings.json:358
+#: raven/raven/doctype/raven_user/raven_user.json:257
+#: raven/raven/doctype/raven_workspace/raven_workspace.json:86
+#: raven/raven/doctype/raven_workspace_member/raven_workspace_member.json:62
+#: raven/raven_ai/doctype/raven_ai_file_source/raven_ai_file_source.json:69
+#: raven/raven_ai/doctype/raven_ai_function/raven_ai_function.json:125
+#: raven/raven_ai/doctype/raven_bot_ai_prompt/raven_bot_ai_prompt.json:68
+#: raven/raven_ai/doctype/raven_bot_instruction_template/raven_bot_instruction_template.json:61
+#: raven/raven_bot/doctype/raven_bot/raven_bot.json:268
+#: raven/raven_channel_management/doctype/raven_channel/raven_channel.json:262
+#: raven/raven_channel_management/doctype/raven_channel_member/raven_channel_member.json:119
+#: raven/raven_integrations/doctype/raven_document_notification/raven_document_notification.json:137
+#: raven/raven_integrations/doctype/raven_incoming_webhook/raven_incoming_webhook.json:62
+#: raven/raven_integrations/doctype/raven_message_action/raven_message_action.json:121
+#: raven/raven_integrations/doctype/raven_scheduler_event/raven_scheduler_event.json:113
+#: raven/raven_integrations/doctype/raven_webhook/raven_webhook.json:211
+#: raven/raven_messaging/doctype/raven_custom_emoji/raven_custom_emoji.json:51
+#: raven/raven_messaging/doctype/raven_link_preview/raven_link_preview.json:134
+#: raven/raven_messaging/doctype/raven_message/raven_message.json:253
+#: raven/raven_messaging/doctype/raven_message_reaction/raven_message_reaction.json:78
+#: raven/raven_messaging/doctype/raven_poll/raven_poll.json:116
+#: raven/raven_messaging/doctype/raven_poll_vote/raven_poll_vote.json:70
+#: raven/raven_messaging/doctype/raven_scheduled_message/raven_scheduled_message.json:84
+msgid "System Manager"
+msgstr ""
+
 #: apps/web/src/components/features/profile/PreferencesDrawer.tsx:204
 msgid "Tap a slot to change its emoji - these are your one-tap reactions."
 msgstr "点按一个位置即可更换表情，这些是你的一键表情回应。"
@@ -7262,10 +9243,31 @@ msgstr "目标工作区不存在"
 msgid "Temperature"
 msgstr "Temperature"
 
+#. Label of the template_name (Data) field in DocType 'Raven Bot Instruction
+#. Template'
+#: apps/web/src/components/features/settings/panels/Instructions/InstructionTemplateForm.tsx:13
+#: raven/raven_ai/doctype/raven_bot_instruction_template/raven_bot_instruction_template.json:21
+msgid "Template Name"
+msgstr ""
+
 #. Label of the tenor_api_key (Data) field in DocType 'Raven Settings'
 #: raven/raven/doctype/raven_settings/raven_settings.json:71
 msgid "Tenor API Key"
 msgstr "Tenor API Key"
+
+#: apps/web/src/components/features/settings/panels/AISettings.tsx:133
+#: apps/web/src/components/features/settings/panels/AISettings.tsx:165
+msgid "Test Connection"
+msgstr "测试连接"
+
+#. Label of the text (Long Text) field in DocType 'Raven Message'
+#. Option for the 'Message Type' (Select) field in DocType 'Raven Message'
+#. Label of the text (Long Text) field in DocType 'Raven Scheduled Message'
+#: raven/raven_messaging/doctype/raven_message/raven_message.json:58
+#: raven/raven_messaging/doctype/raven_message/raven_message.json:74
+#: raven/raven_messaging/doctype/raven_scheduled_message/raven_scheduled_message.json:28
+msgid "Text"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldDialog.tsx:192
 msgid "Text (with HTML)"
@@ -7394,6 +9396,11 @@ msgstr "模型需要兼容 OpenAI Assistants API。建议使用 GPT-4 系列模�
 msgid "The new Raven web app only supports Raven Cloud. Switch to Raven Cloud and add your credentials to keep push notifications working."
 msgstr "新版 Raven 网页应用只支持 Raven Cloud。请切换到 Raven Cloud 并添加你的凭据，以保持推送通知正常工作。"
 
+#. Description of the 'Request Timeout' (Int) field in DocType 'Raven Webhook'
+#: raven/raven_integrations/doctype/raven_webhook/raven_webhook.json:79
+msgid "The number of seconds until the request expires"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/Webhooks/WebhookForm.tsx:77
 msgid "The number of seconds until the request expires."
 msgstr "请求过期前的秒数。"
@@ -7447,6 +9454,11 @@ msgstr "此话题及其所有回复将对所有人永久删除。此操作无法
 msgid "The user you are trying to message is not a Raven User."
 msgstr "你要发消息的用户不是 Raven 用户。"
 
+#. Description of the 'Condition' (Small Text) field in DocType 'Raven Webhook'
+#: raven/raven_integrations/doctype/raven_webhook/raven_webhook.json:49
+msgid "The webhook will be triggered if this expression is true"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/Webhooks/WebhookConditionForm.tsx:84
 msgid "The webhook will be triggered if this expression is true."
 msgstr "如果此表达式为真，将触发 Webhook。"
@@ -7454,6 +9466,10 @@ msgstr "如果此表达式为真，将触发 Webhook。"
 #: apps/web/src/components/features/settings/panels/Webhooks/WebhookConditionForm.tsx:118
 msgid "The webhook will trigger if the channel type equals the value selected here."
 msgstr "如果频道类型等于此处选择的值，将触发 Webhook。"
+
+#: apps/web/src/components/features/settings/panels/Appearance.tsx:75
+msgid "Theme"
+msgstr ""
 
 #: apps/web/src/components/features/threads/ThreadsList.tsx:266
 msgid "There are no unread threads to show. Clear the filter to see all threads."
@@ -7594,6 +9610,10 @@ msgstr "此消息开启了一个话题"
 #, python-brace-format
 msgid "This message will be sent to {0} immediately."
 msgstr "此消息将立即发送到 {0}。"
+
+#: raven/www/raven.py:78
+msgid "This method is only meant for developer mode"
+msgstr ""
 
 #: apps/web/src/components/features/channel/CustomizeSidebar/useChannelGroups.tsx:69
 #: apps/web/src/components/features/channel/CustomizeSidebar/useChannelGroups.tsx:85
@@ -7768,9 +9788,33 @@ msgstr "缩略图高度"
 msgid "Thumbnail Width"
 msgstr "缩略图宽度"
 
+#: apps/web/src/components/features/settings/panels/ScheduledMessages/ScheduledMessageForm.tsx:22
+msgid "Thursday"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/MessageActions/MessageActionForm.tsx:144
 msgid "Ticket created successfully."
 msgstr "工单已创建。"
+
+#. Option for the 'Type' (Select) field in DocType 'Raven Message Action
+#. Fields'
+#: apps/web/src/components/features/reminders/ReminderDialog.tsx:117
+#: apps/web/src/components/features/schedule-send/EditScheduledMessageSheet.tsx:82
+#: apps/web/src/components/features/schedule-send/InlineScheduledMessageEditor.tsx:54
+#: apps/web/src/components/features/schedule-send/ScheduleTimePicker.tsx:60
+#: raven/raven_integrations/doctype/raven_message_action_fields/raven_message_action_fields.json:55
+msgid "Time"
+msgstr ""
+
+#. Label of the time_format (Select) field in DocType 'Raven User'
+#: raven/raven/doctype/raven_user/raven_user.json:201
+msgid "Time Format"
+msgstr ""
+
+#: apps/web/src/components/features/profile/PreferencesDrawer.tsx:150
+#: apps/web/src/components/features/settings/panels/Appearance.tsx:412
+msgid "Time format"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/Appearance.tsx:404
 msgid "Time format updated"
@@ -7790,6 +9834,14 @@ msgstr "时间采用站点时区：{0}。"
 msgid "Times are in {0}. An end before the start means an overnight shift."
 msgstr "时间采用 {0} 时区。结束时间早于开始时间表示跨夜班次。"
 
+#. Label of the title (Data) field in DocType 'Raven Message Action'
+#. Label of the title (Small Text) field in DocType 'Raven Link Preview'
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionForm.tsx:127
+#: raven/raven_integrations/doctype/raven_message_action/raven_message_action.json:29
+#: raven/raven_messaging/doctype/raven_link_preview/raven_link_preview.json:31
+msgid "Title"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/MessageActions/MessageActionForm.tsx:130
 msgid "Title is required"
 msgstr "必须填写标题"
@@ -7797,6 +9849,12 @@ msgstr "必须填写标题"
 #: apps/web/src/components/features/settings/panels/MessageActions/MessageActionForm.tsx:131
 msgid "Title of the message action dialog."
 msgstr "消息操作对话框的标题。"
+
+#: apps/web/src/components/features/message/renderers/DocumentLinkRenderer.tsx:650
+#: apps/web/src/components/features/schedule-send/ScheduledMessagesList.tsx:37
+#: apps/web/src/lib/timeUtils.ts:117
+msgid "Today"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/KeyboardShortcuts.tsx:150
 msgid "Toggle bold on the selection."
@@ -7825,6 +9883,12 @@ msgstr "为所选内容切换下划线。"
 #: apps/web/src/components/features/profile/PreferencesDrawer.tsx:227
 msgid "Toggled when you double-tap a message"
 msgstr "双击消息时切换"
+
+#: apps/web/src/components/features/message/renderers/DocumentLinkRenderer.tsx:651
+#: apps/web/src/components/features/schedule-send/ScheduledMessagesList.tsx:38
+#: apps/web/src/lib/timeUtils.ts:118
+msgid "Tomorrow"
+msgstr ""
 
 #: apps/web/src/lib/timeUtils.ts:80
 #, python-brace-format
@@ -7905,6 +9969,10 @@ msgstr "试试这样："
 msgid "Tue"
 msgstr "周二"
 
+#: apps/web/src/components/features/settings/panels/ScheduledMessages/ScheduledMessageForm.tsx:20
+msgid "Tuesday"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/AISettings.tsx:74
 msgid "Turn on AI features across Raven."
 msgstr "在 Raven 中开启 AI 功能。"
@@ -7931,6 +9999,33 @@ msgstr "将当前块转为引用。"
 msgid "Turning this on will remove any public channels where you have not joined from the sidebar."
 msgstr "开启后，你未加入的公开频道将从侧边栏移除。"
 
+#. Label of the type (Select) field in DocType 'Raven User'
+#. Label of the type (Select) field in DocType 'Raven Workspace'
+#. Label of the type (Select) field in DocType 'Raven AI Function'
+#. Label of the type (Select) field in DocType 'Raven AI Function Params'
+#. Label of the type (Data) field in DocType 'Raven Bot Functions'
+#. Label of the type (Select) field in DocType 'Raven Channel'
+#. Label of the type (Select) field in DocType 'Raven Message Action Fields'
+#: apps/web/src/components/features/search/SearchFiltersSheet.tsx:164
+#: apps/web/src/components/features/settings/panels/Agents/AgentFileSourcesTab.tsx:97
+#: apps/web/src/components/features/settings/panels/Agents/AgentFileSourcesTab.tsx:185
+#: apps/web/src/components/features/settings/panels/FileSources/FileSources.tsx:97
+#: apps/web/src/components/features/settings/panels/Functions/FunctionDetailsTab.tsx:138
+#: apps/web/src/components/features/settings/panels/Functions/FunctionListView.tsx:65
+#: apps/web/src/components/features/settings/panels/Functions/VariableDialog.tsx:51
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldDialog.tsx:131
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionListView.tsx:52
+#: apps/web/src/components/features/settings/panels/Workspaces/WorkspaceListView.tsx:37
+#: raven/raven/doctype/raven_user/raven_user.json:93
+#: raven/raven/doctype/raven_workspace/raven_workspace.json:23
+#: raven/raven_ai/doctype/raven_ai_function/raven_ai_function.json:52
+#: raven/raven_ai/doctype/raven_ai_function_params/raven_ai_function_params.json:61
+#: raven/raven_ai/doctype/raven_bot_functions/raven_bot_functions.json:33
+#: raven/raven_channel_management/doctype/raven_channel/raven_channel.json:48
+#: raven/raven_integrations/doctype/raven_message_action_fields/raven_message_action_fields.json:54
+msgid "Type"
+msgstr ""
+
 #: apps/web/src/components/features/ChatInput/ChatInput.tsx:148
 msgid "Type a message..."
 msgstr "输入消息……"
@@ -7948,6 +10043,14 @@ msgstr "数组中元素的类型"
 #: apps/web/src/pages/search/Search.tsx:224
 msgid "Type to search"
 msgstr "输入以搜索"
+
+#. Label of the url (Data) field in DocType 'Raven Link Preview'
+#. Label of the url (Small Text) field in DocType 'Raven Message Links'
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldDialog.tsx:152
+#: raven/raven_messaging/doctype/raven_link_preview/raven_link_preview.json:54
+#: raven/raven_messaging/doctype/raven_message_links/raven_message_links.json:19
+msgid "URL"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/PushNotifications.tsx:108
 msgid "URL cannot be more than 300 characters."
@@ -7970,6 +10073,15 @@ msgstr "要取消归档此频道吗？"
 msgid "Unarchiving"
 msgstr "正在取消归档"
 
+#: apps/web/src/components/features/editor/EditorFormattingToolbar.tsx:60
+#: apps/web/src/components/features/settings/panels/KeyboardShortcuts.tsx:152
+msgid "Underline"
+msgstr "下划线"
+
+#: apps/web/src/components/features/threads/ThreadsList.tsx:122
+msgid "Unknown"
+msgstr ""
+
 #: raven/api/setup.py:244
 #, python-brace-format
 msgid "Unknown setup event: {0}"
@@ -7978,6 +10090,16 @@ msgstr "未知的设置事件：{0}"
 #: apps/web/src/components/features/settings/panels/Channels/Channels.tsx:291
 msgid "Unmute Channel"
 msgstr "取消频道免打扰"
+
+#: apps/web/src/components/features/channel/ChannelSettingsDrawer/ChannelPins.tsx:136
+#: apps/web/src/components/features/message/actions/useMessageActions.tsx:341
+msgid "Unpin"
+msgstr "取消置顶"
+
+#: apps/web/src/components/common/UnreadDot.tsx:10
+#: apps/web/src/components/common/UnreadFilterPill.tsx:25
+msgid "Unread"
+msgstr ""
 
 #: apps/web/src/components/features/header/HomeWorkspacesDrawer.tsx:78
 msgid "Unread channels across all your workspaces"
@@ -8006,6 +10128,14 @@ msgstr "未命名"
 msgid "Upcoming"
 msgstr "即将到来"
 
+#. Option for the 'Send Alert On' (Select) field in DocType 'Raven Document
+#. Notification'
+#: apps/web/src/components/features/settings/panels/DocumentNotifications/DocumentNotificationDetailsTab.tsx:35
+#: apps/web/src/components/features/settings/panels/DocumentPreviews.tsx:170
+#: raven/raven_integrations/doctype/raven_document_notification/raven_document_notification.json:53
+msgid "Update"
+msgstr ""
+
 #. Option for the 'Type' (Select) field in DocType 'Raven AI Function'
 #: raven/raven_ai/doctype/raven_ai_function/raven_ai_function.json:53
 msgid "Update Document"
@@ -8025,9 +10155,23 @@ msgstr "更新频道名称和描述"
 msgid "Update your name, photo and profile details"
 msgstr "更新你的姓名、照片和个人资料"
 
+#: apps/web/src/components/features/settings/panels/DocumentPreviews.tsx:169
+msgid "Updating"
+msgstr ""
+
 #: apps/web/src/pages/ErrorPage.tsx:62
 msgid "Upgrade to a better experience"
 msgstr "升级以获得更好的体验"
+
+#: apps/web/src/components/common/UploadDocDialog.tsx:145
+#: apps/web/src/components/features/settings/panels/Agents/AgentFileSourcesTab.tsx:67
+#: apps/web/src/components/features/settings/panels/Emojis/Emojis.tsx:48
+#: apps/web/src/components/features/settings/panels/Emojis/Emojis.tsx:174
+#: apps/web/src/components/features/settings/panels/FileSources/FileSourceUploadDialog.tsx:28
+#: apps/web/src/components/features/settings/panels/FileSources/FileSourceUploadDialog.tsx:36
+#: apps/web/src/components/features/settings/panels/Workspaces/WorkspaceLogoField.tsx:144
+msgid "Upload"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/FileSources/FileSourceUploadDialog.tsx:26
 msgid "Upload File"
@@ -8044,6 +10188,10 @@ msgstr "上传文件，作为 AI 智能体的数据源。"
 #: apps/web/src/components/features/profile/ProfileImageMenu.tsx:91
 msgid "Upload a photo"
 msgstr "上传照片"
+
+#: apps/web/src/components/features/setup/steps/ImageUploadField.tsx:47
+msgid "Upload image"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/Workspaces/WorkspaceLogoField.tsx:67
 #: apps/web/src/components/features/settings/panels/Workspaces/WorkspaceLogoField.tsx:79
@@ -8067,6 +10215,11 @@ msgstr "已上传"
 #: apps/web/src/components/features/settings/panels/Emojis/Emojis.tsx:138
 msgid "Uploaded By"
 msgstr "上传者"
+
+#: apps/web/src/components/common/UploadDocDialog.tsx:144
+#: apps/web/src/components/features/settings/panels/Workspaces/WorkspaceLogoField.tsx:143
+msgid "Uploading"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/FileSources/FileSourceUploadDialog.tsx:29
 msgid "Uploading..."
@@ -8126,6 +10279,38 @@ msgstr "用于在前端将消息分组显示"
 msgid "Useful for extracting information from documents before sending it to agents"
 msgstr "可用于在发送给智能体之前从文档中提取信息"
 
+#. Label of the user (Link) field in DocType 'Raven Push Token'
+#. Label of the user (Link) field in DocType 'Raven Reminder'
+#. Label of the user (Link) field in DocType 'Raven User'
+#. Option for the 'Type' (Select) field in DocType 'Raven User'
+#. Label of the user (Link) field in DocType 'Raven Workspace Member'
+#. Label of the user_id (Link) field in DocType 'Raven Channel Member'
+#. Option for the 'Channel Type' (Select) field in DocType 'Raven Document
+#. Notification Recipients'
+#. Option for the 'Conditions On' (Select) field in DocType 'Raven Webhook'
+#. Label of the user (Link) field in DocType 'Raven Webhook'
+#. Label of the user (Data) field in DocType 'Raven Mention'
+#. Label of the section_break_user (Section Break) field in DocType 'Raven Poll
+#. Vote'
+#. Label of the user_id (Link) field in DocType 'Raven Poll Vote'
+#: apps/web/src/components/common/BaseThreadMessage.tsx:41
+#: apps/web/src/components/features/message/ThreadRootMessage.tsx:89
+#: apps/web/src/components/features/message/renderers/MessageRow.tsx:149
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookConditionForm.tsx:108
+#: raven/raven/doctype/raven_push_token/raven_push_token.json:20
+#: raven/raven/doctype/raven_reminder/raven_reminder.json:22
+#: raven/raven/doctype/raven_user/raven_user.json:47
+#: raven/raven/doctype/raven_user/raven_user.json:94
+#: raven/raven/doctype/raven_workspace_member/raven_workspace_member.json:19
+#: raven/raven_channel_management/doctype/raven_channel_member/raven_channel_member.json:39
+#: raven/raven_integrations/doctype/raven_document_notification_recipients/raven_document_notification_recipients.json:19
+#: raven/raven_integrations/doctype/raven_webhook/raven_webhook.json:156
+#: raven/raven_integrations/doctype/raven_webhook/raven_webhook.json:170
+#: raven/raven_messaging/doctype/raven_mention/raven_mention.json:17
+#: raven/raven_messaging/doctype/raven_poll_vote/raven_poll_vote.json:19
+msgid "User"
+msgstr ""
+
 #. Option for the 'Webhook Trigger' (Select) field in DocType 'Raven Webhook'
 #: raven/raven_integrations/doctype/raven_webhook/raven_webhook.json:140
 msgid "User Added"
@@ -8135,6 +10320,11 @@ msgstr "已添加用户"
 #: raven/raven_integrations/doctype/raven_webhook/raven_webhook.json:140
 msgid "User Deleted"
 msgstr "已删除用户"
+
+#. Label of the user_image (Attach Image) field in DocType 'Raven User'
+#: raven/raven/doctype/raven_user/raven_user.json:74
+msgid "User Image"
+msgstr ""
 
 #. Label of the user_status_section (Section Break) field in DocType 'Raven
 #. User'
@@ -8171,6 +10361,16 @@ msgstr "用户不是此频道的成员"
 msgid "User {0} does not exist in Raven."
 msgstr "Raven 中不存在用户 {0}。"
 
+#: raven/api/login.py:55
+msgid "Username"
+msgstr ""
+
+#: apps/web/src/components/features/cmdk/UserList.tsx:96
+#: apps/web/src/components/features/settings/SettingsDialog.tsx:115
+#: apps/web/src/components/features/settings/panels/Users/Users.tsx:95
+msgid "Users"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/Users/Users.tsx:129
 msgid "Users added to Raven will show up here."
 msgstr "添加到 Raven 的用户会显示在这里。"
@@ -8184,6 +10384,15 @@ msgstr "VAPID 公钥"
 msgid "Validation"
 msgstr "校验"
 
+#. Label of the value (Data) field in DocType 'Raven Document Notification
+#. Recipients'
+#: apps/web/src/components/features/settings/panels/DocumentNotifications/DocumentNotificationRecipientsTab.tsx:48
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookHeaders.tsx:31
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookHeaders.tsx:45
+#: raven/raven_integrations/doctype/raven_document_notification_recipients/raven_document_notification_recipients.json:34
+msgid "Value"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/DocumentNotifications/DocumentNotificationRecipientsTab.tsx:109
 msgid "Value is required"
 msgstr "必须填写值"
@@ -8193,13 +10402,41 @@ msgstr "必须填写值"
 msgid "Variable"
 msgstr "变量"
 
+#. Label of the variable_type (Select) field in DocType 'Raven Document
+#. Notification Recipients'
+#: apps/web/src/components/features/settings/panels/DocumentNotifications/DocumentNotificationRecipientsTab.tsx:47
+#: apps/web/src/components/features/settings/panels/Functions/DoctypeVariableDialogForm.tsx:145
+#: raven/raven_integrations/doctype/raven_document_notification_recipients/raven_document_notification_recipients.json:26
+msgid "Variable Type"
+msgstr "变量类型"
+
 #: apps/web/src/components/features/settings/panels/Functions/VariableDialog.tsx:88
 msgid "Variable name must be unique, and cannot have spaces."
 msgstr "变量名必须唯一，且不能包含空格。"
 
+#: apps/web/src/components/features/settings/panels/Functions/FunctionForm.tsx:51
+msgid "Variables"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/DocumentNotifications/DoctypeVariables.tsx:54
 msgid "Variables you can use — click to copy."
 msgstr "可用的变量，点击即可复制。"
+
+#: apps/web/src/components/features/ChatInput/MobileComposerActions.tsx:86
+#: apps/web/src/components/features/message/actions/dialogs/MessagePreview.tsx:22
+msgid "Video"
+msgstr ""
+
+#: apps/web/src/components/features/message/actions/dialogs/AttachToDocumentDialog.tsx:132
+#: apps/web/src/components/features/message/actions/dialogs/ForwardMessageDialog.tsx:401
+#: apps/web/src/components/features/message/actions/dialogs/RunMessageActionDialog.tsx:125
+#: apps/web/src/components/features/schedule-send/ScheduledMessagesBanner.tsx:53
+msgid "View"
+msgstr ""
+
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionForm.tsx:187
+msgid "View Docs"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/Agents/AgentAITab.tsx:81
 msgid "View OpenAI documentation about Code Interpreter"
@@ -8226,6 +10463,10 @@ msgstr "查看消息"
 #: apps/web/src/components/features/message/renderers/PollMessageContent.tsx:172
 msgid "View poll details"
 msgstr "查看投票详情"
+
+#: apps/web/src/components/features/dm-channel/DMChannelHeader.tsx:112
+msgid "View profile"
+msgstr "查看个人资料"
 
 #: apps/web/src/components/features/message/actions/useMessageActions.tsx:418
 msgid "View reactions"
@@ -8283,13 +10524,57 @@ msgstr "票数"
 msgid "Web"
 msgstr "网页"
 
+#. Label of the webhook (Link) field in DocType 'Raven Webhook'
+#: raven/raven_integrations/doctype/raven_webhook/raven_webhook.json:186
+msgid "Webhook"
+msgstr ""
+
+#. Label of the sb_webhook_data (Section Break) field in DocType 'Raven
+#. Webhook'
+#: raven/raven_integrations/doctype/raven_webhook/raven_webhook.json:127
+msgid "Webhook Data"
+msgstr ""
+
 #: raven/raven_integrations/doctype/raven_webhook/raven_webhook.py:61
 msgid "Webhook Data keys should be unique"
 msgstr "Webhook 数据的键必须唯一"
 
+#. Label of the sb_webhook_headers (Section Break) field in DocType 'Raven
+#. Webhook'
+#: raven/raven_integrations/doctype/raven_webhook/raven_webhook.json:116
+msgid "Webhook Headers"
+msgstr ""
+
 #: raven/raven_integrations/doctype/raven_webhook/raven_webhook.py:63
 msgid "Webhook Headers keys should be unique"
 msgstr "Webhook 请求头的键必须唯一"
+
+#. Label of the sb_webhook (Section Break) field in DocType 'Raven Webhook'
+#: raven/raven_integrations/doctype/raven_webhook/raven_webhook.json:68
+msgid "Webhook Request"
+msgstr ""
+
+#. Label of the webhook_secret (Password) field in DocType 'Raven Webhook'
+#: apps/web/src/components/features/settings/panels/Webhooks/WebhookForm.tsx:141
+#: raven/raven_integrations/doctype/raven_webhook/raven_webhook.json:111
+msgid "Webhook Secret"
+msgstr ""
+
+#. Label of the sb_security (Section Break) field in DocType 'Raven Webhook'
+#: raven/raven_integrations/doctype/raven_webhook/raven_webhook.json:99
+msgid "Webhook Security"
+msgstr ""
+
+#. Label of the webhook_trigger (Select) field in DocType 'Raven Webhook'
+#: raven/raven_integrations/doctype/raven_webhook/raven_webhook.json:139
+msgid "Webhook Trigger"
+msgstr ""
+
+#. Label of the webhook_url (Read Only) field in DocType 'Raven Incoming
+#. Webhook'
+#: raven/raven_integrations/doctype/raven_incoming_webhook/raven_incoming_webhook.json:17
+msgid "Webhook URL"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/Webhooks/WebhookEditorView.tsx:21
 msgid "Webhook deleted"
@@ -8325,9 +10610,25 @@ msgstr "Webhook"
 msgid "Webhooks allow you to receive HTTP requests whenever a specific event occurs - like when a message is sent or a channel is created."
 msgstr "Webhook 让你在特定事件发生时接收 HTTP 请求，例如发送消息或创建频道时。"
 
+#: apps/web/src/components/features/settings/panels/About.tsx:18
+msgid "Website"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/ScheduledMessages/ScheduledMessageForm.tsx:21
 msgid "Wed"
 msgstr "周三"
+
+#: apps/web/src/components/features/settings/panels/ScheduledMessages/ScheduledMessageForm.tsx:21
+msgid "Wednesday"
+msgstr ""
+
+#: apps/web/src/components/features/settings/panels/ScheduledMessages/ScheduledMessageForm.tsx:179
+msgid "Weekdays"
+msgstr ""
+
+#: apps/web/src/components/features/settings/panels/ScheduledMessages/ScheduledMessageForm.tsx:81
+msgid "Weekly"
+msgstr ""
 
 #: apps/web/src/native/SitePicker.tsx:191
 msgid "Welcome to Raven"
@@ -8367,6 +10668,10 @@ msgstr "你想问什么？"
 #: apps/web/src/components/features/profile/EditProfileDrawer.tsx:131
 msgid "What's your status?"
 msgstr "你的状态是什么？"
+
+#: apps/web/src/components/features/reminders/ReminderDialog.tsx:113
+msgid "When"
+msgstr "时间"
 
 #. Description of the 'Use Google Document/Vision AI to parse documents'
 #. (Check) field in DocType 'Raven Bot'
@@ -8434,6 +10739,11 @@ msgstr "Wikipedia"
 msgid "With the message box empty, open your last message for editing."
 msgstr "消息框为空时，打开你的上一条消息进行编辑。"
 
+#: apps/web/src/components/features/message/renderers/DocumentLinkRenderer.tsx:691
+#: apps/web/src/components/features/message/renderers/DocumentLinkRenderer.tsx:696
+msgid "Workflow"
+msgstr ""
+
 #: apps/web/src/components/features/message/renderers/DocumentLinkRenderer.tsx:731
 msgid "Workflow updated"
 msgstr "工作流已更新"
@@ -8459,6 +10769,19 @@ msgstr "工作结束时间"
 #: apps/web/src/components/features/settings/panels/QuietHoursAdminSection.tsx:217
 msgid "Working hours start"
 msgstr "工作开始时间"
+
+#. Label of the workspace (Link) field in DocType 'Raven User Pinned
+#. Workspaces'
+#. Label of the workspace (Link) field in DocType 'Raven Workspace Member'
+#. Label of the workspace (Link) field in DocType 'Raven Channel'
+#: apps/web/src/components/common/filters/ProviderFilter.tsx:68
+#: apps/web/src/components/features/settings/SettingsDialog.tsx:48
+#: apps/web/src/components/features/settings/panels/FrappeHR.tsx:99
+#: raven/raven/doctype/raven_user_pinned_workspaces/raven_user_pinned_workspaces.json:17
+#: raven/raven/doctype/raven_workspace_member/raven_workspace_member.json:32
+#: raven/raven_channel_management/doctype/raven_channel/raven_channel.json:202
+msgid "Workspace"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldDialog.tsx:201
 msgid "Workspace ID"
@@ -8513,6 +10836,17 @@ msgstr "工作区选项"
 msgid "Workspace renamed"
 msgstr "工作区已重命名"
 
+#. Label of a Link in the Raven Workspace
+#: apps/web/src/components/features/cmdk/NavigationList.tsx:105
+#: apps/web/src/components/features/cmdk/SettingsList.tsx:21
+#: apps/web/src/components/features/header/HomeWorkspacesDrawer.tsx:76
+#: apps/web/src/components/features/settings/SettingsDialog.tsx:123
+#: apps/web/src/components/features/settings/panels/Users/AddUserDialog.tsx:205
+#: apps/web/src/components/features/settings/panels/Workspaces/WorkspaceListView.tsx:70
+#: raven/raven/workspace/raven/raven.json:87
+msgid "Workspaces"
+msgstr ""
+
 #: apps/web/src/components/features/settings/SettingsDialog.tsx:126
 #: apps/web/src/components/features/settings/panels/Workspaces/AddWorkspaceDialog.tsx:45
 #: apps/web/src/components/features/settings/panels/Workspaces/WorkspaceListView.tsx:72
@@ -8546,9 +10880,19 @@ msgstr "撰写消息"
 msgid "X"
 msgstr "X"
 
+#: apps/web/src/components/features/message/renderers/DocumentLinkRenderer.tsx:591
+#: apps/web/src/components/features/settings/panels/MessageActions/MessageActionFieldsBuilder.tsx:59
+msgid "Yes"
+msgstr ""
+
 #: apps/web/src/components/features/channel/ChannelSettingsDrawer/DeleteChannelButton.tsx:109
 msgid "Yes, I understand, permanently delete this channel"
 msgstr "是的，我了解，永久删除此频道"
+
+#: apps/web/src/components/features/message/renderers/DocumentLinkRenderer.tsx:652
+#: apps/web/src/lib/date.ts:68
+msgid "Yesterday"
+msgstr ""
 
 #: apps/web/src/components/features/dm-channel/UserProfileDrawer.tsx:36
 #: apps/web/src/components/features/message/renderers/MessageReactions.tsx:239
@@ -8926,6 +11270,10 @@ msgstr "YouTube Music"
 msgid "YouTube playlist player"
 msgstr "YouTube 播放列表播放器"
 
+#: apps/web/src/components/features/message/renderers/LinkPreview.tsx:221
+msgid "YouTube video player"
+msgstr "YouTube 视频播放器"
+
 #: apps/web/src/components/features/settings/panels/PushNotifications.tsx:127
 msgid "Your API Key"
 msgstr "你的 API Key"
@@ -8969,9 +11317,29 @@ msgstr "你的试用明天结束"
 msgid "Your trial has ended"
 msgstr "你的试用已结束"
 
+#. Option for the 'Provider' (Select) field in DocType 'Raven Link Preview'
+#. Option for the 'Provider' (Select) field in DocType 'Raven Message Links'
+#: raven/raven_messaging/doctype/raven_link_preview/raven_link_preview.json:68
+#: raven/raven_messaging/doctype/raven_message_links/raven_message_links.json:32
+msgid "Zoom"
+msgstr "Zoom"
+
+#: apps/web/src/components/features/message/renderers/ZoomableImage.tsx:485
+msgid "Zoom in"
+msgstr ""
+
 #: apps/web/src/components/features/message/renderers/LinkPreview.tsx:719
 msgid "Zoom meeting"
 msgstr "Zoom 会议"
+
+#: apps/web/src/components/features/message/renderers/ZoomableImage.tsx:469
+msgid "Zoom out"
+msgstr ""
+
+#: apps/web/src/components/features/settings/panels/Agents/AgentApiDocsTab.tsx:78
+#: apps/web/src/components/features/settings/panels/ScheduledMessages/ScheduledMessageForm.tsx:237
+msgid "and"
+msgstr ""
 
 #: apps/web/src/components/features/settings/panels/Agents/AgentFunctionsTab.tsx:58
 msgid "and then add them here."
@@ -8994,7 +11362,7 @@ msgstr "例如：你好，提醒你按时缴费。"
 msgid "e.g. My Workspace"
 msgstr "例如：我的工作区"
 
-#: apps/web/src/components/features/settings/panels/Profile.tsx:154
+#: apps/web/src/components/features/settings/panels/Profile.tsx:155
 msgid "e.g. Out of office"
 msgstr "例如：不在办公室"
 
@@ -9080,6 +11448,10 @@ msgstr "方法并设置 user_id 参数，即可给用户发送私信。此方法
 msgid "number"
 msgstr "数字"
 
+#: apps/web/src/native/SitePicker.tsx:208
+msgid "or"
+msgstr ""
+
 #: apps/web/src/components/features/settings/panels/Agents/AgentApiDocsTab.tsx:68
 msgid "parameter to True."
 msgstr "参数设为 True。"
@@ -9109,6 +11481,14 @@ msgstr "话题"
 msgid "to"
 msgstr "至"
 
+#: apps/web/src/components/features/cmdk/CommandMenu.tsx:311
+msgid "to close"
+msgstr ""
+
+#: apps/web/src/components/features/cmdk/CommandMenu.tsx:303
+msgid "to navigate"
+msgstr ""
+
 #: apps/web/src/components/features/cmdk/CommandMenu.tsx:321
 msgid "to open"
 msgstr "打开"
@@ -9116,6 +11496,10 @@ msgstr "打开"
 #: apps/web/src/components/features/cmdk/CommandMenu.tsx:317
 msgid "to search"
 msgstr "搜索"
+
+#: apps/web/src/components/features/cmdk/CommandMenu.tsx:307
+msgid "to select"
+msgstr ""
 
 #. Option for the 'Google Processor Location' (Select) field in DocType 'Raven
 #. Settings'
@@ -9180,6 +11564,12 @@ msgstr "{0} 和 #{1}"
 msgid "{0} and add your site to get an API Key and API Secret."
 msgstr "{0}，然后添加你的站点以获取 API Key 和 API Secret。"
 
+#: apps/web/src/components/features/message/renderers/MessageReactions.tsx:257
+#: apps/web/src/lib/nameList.ts:14
+#, python-brace-format
+msgid "{0} and {1}"
+msgstr ""
+
 #: apps/web/src/components/features/setup/steps/siteUsersSummary.ts:10
 #, python-brace-format
 msgid "{0} and {1} are already on this site"
@@ -9189,6 +11579,12 @@ msgstr "{0} 和 {1} 已在此站点上"
 #, python-brace-format
 msgid "{0} and {1} are typing"
 msgstr "{0} 和 {1} 正在输入"
+
+#: apps/web/src/components/common/filters/FileTypeFilter.tsx:45
+#: apps/web/src/components/common/filters/ProviderFilter.tsx:89
+#, python-brace-format
+msgid "{0} and {1} more"
+msgstr "{0} 及另外 {1} 项"
 
 #: apps/web/src/components/features/message/renderers/MessageReactions.tsx:255
 #, python-brace-format
@@ -9265,6 +11661,16 @@ msgstr "{0} 的角色来自角色配置。请在那里添加 Raven User 角色�
 msgid "{0} has been deleted from your Google Cloud project."
 msgstr "{0} 已从你的 Google Cloud 项目中删除。"
 
+#: apps/web/src/components/features/settings/panels/Users/DisableUserDialog.tsx:29
+#, python-brace-format
+msgid "{0} has been disabled"
+msgstr "{0} 已被停用"
+
+#: apps/web/src/components/features/settings/panels/Users/Users.tsx:57
+#, python-brace-format
+msgid "{0} has been enabled"
+msgstr "{0} 已被启用"
+
 #: apps/web/src/components/features/message/renderers/SystemMessage.tsx:153
 #, python-brace-format
 msgid "{0} is no longer an admin."
@@ -9284,6 +11690,11 @@ msgstr "{0} 今天休假，且不在此频道中。"
 #, python-brace-format
 msgid "{0} is on leave today."
 msgstr "{0} 今天休假。"
+
+#: apps/web/src/components/features/message/actions/dialogs/messageActionFields.ts:55
+#, python-brace-format
+msgid "{0} is required"
+msgstr ""
 
 #: apps/web/src/components/features/ChatInput/useFileInput.ts:122
 #, python-brace-format
@@ -9355,6 +11766,11 @@ msgstr "已安排 {0} 条消息，下一条将于 {1} 发送。"
 #, python-brace-format
 msgid "{0} messages scheduled."
 msgstr "已安排 {0} 条消息。"
+
+#: apps/web/src/components/features/message/renderers/AttachmentPreviewModal.tsx:271
+#, python-brace-format
+msgid "{0} of {1}"
+msgstr ""
 
 #: apps/web/src/components/features/setup/steps/SiteUsersBox.tsx:21
 #, python-brace-format
