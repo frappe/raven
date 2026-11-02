@@ -84,10 +84,14 @@ function TabsList({
   className,
   variant = "underline",
   size = "md",
+  scrollable = false,
   children,
   ...props
 }: React.ComponentProps<typeof TabsPrimitive.List> &
-  VariantProps<typeof tabsListVariants>) {
+  VariantProps<typeof tabsListVariants> & {
+    /** Many tabs scroll sideways with faded edges instead of squeezing to fit. */
+    scrollable?: boolean
+  }) {
   const listRef = React.useRef<React.ComponentRef<typeof TabsPrimitive.List>>(null)
 
   // Slide the underline bar to the active trigger. Same approach as
@@ -117,12 +121,18 @@ function TabsList({
     }
   }, [variant])
 
-  return (
+  const list = (
     <TabsPrimitive.List
       data-slot="tabs-list"
       data-variant={variant}
       data-size={size}
-      className={cn(tabsListVariants({ variant, size }), className)}
+      // The drawer library would otherwise take the pointer for its own drag.
+      data-vaul-no-drag={scrollable || undefined}
+      className={cn(
+        tabsListVariants({ variant, size }),
+        scrollable && "overflow-x-auto no-scrollbar scroll-fade-x border-none",
+        className,
+      )}
       {...props}
       ref={listRef}
     >
@@ -136,7 +146,9 @@ function TabsList({
             // utilities set the separate `translate` property, so a `transform`
             // transition would leave the bar snapping while only width animates.
             "pointer-events-none absolute bg-ink-gray-9 transition-[width,height,translate] duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none",
-            "group-data-[orientation=horizontal]/tabs:bottom-0 group-data-[orientation=horizontal]/tabs:left-0 group-data-[orientation=horizontal]/tabs:h-px group-data-[orientation=horizontal]/tabs:w-(--tabs-indicator-w) group-data-[orientation=horizontal]/tabs:translate-x-(--tabs-indicator-x) group-data-[orientation=horizontal]/tabs:translate-y-px",
+            "group-data-[orientation=horizontal]/tabs:bottom-0 group-data-[orientation=horizontal]/tabs:left-0 group-data-[orientation=horizontal]/tabs:h-px group-data-[orientation=horizontal]/tabs:w-(--tabs-indicator-w) group-data-[orientation=horizontal]/tabs:translate-x-(--tabs-indicator-x)",
+            // A scroll container clips anything past its box, so the bar stays inside it there.
+            !scrollable && "group-data-[orientation=horizontal]/tabs:translate-y-px",
             "group-data-[orientation=vertical]/tabs:top-0 group-data-[orientation=vertical]/tabs:end-0 group-data-[orientation=vertical]/tabs:w-px group-data-[orientation=vertical]/tabs:h-(--tabs-indicator-w) group-data-[orientation=vertical]/tabs:translate-y-(--tabs-indicator-x) group-data-[orientation=vertical]/tabs:translate-x-px",
           )}
         />
@@ -144,6 +156,11 @@ function TabsList({
       {children}
     </TabsPrimitive.List>
   )
+  // The gray line moves out of the scroller, which would clip a border-hugging bar.
+  if (scrollable && variant === "underline") {
+    return <div className="border-b border-outline-gray-1">{list}</div>
+  }
+  return list
 }
 
 function TabsTrigger({

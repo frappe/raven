@@ -11,6 +11,7 @@ import { AdminSettingsForm } from "./AdminSettingsForm"
 import type { RavenSettings } from "@raven/types/Raven/RavenSettings"
 import _ from "@lib/translate"
 import { hasRole } from "@lib/permissions"
+import { DeprecatedBadge } from "./DeprecatedBadge"
 
 const FORM_ID = "settings-ai-form"
 
@@ -197,7 +198,7 @@ const AISettingsFields = () => {
 /** AI Settings — configure AI providers (OpenAI / local LLM); provider sections show only when AI integration is on. */
 export const AISettings = () => (
     <AdminSettingsForm
-        title={_("AI Settings")}
+        title={<>{_("AI Settings")} <DeprecatedBadge /></>}
         description={_("Configure AI providers to use AI features in Raven.")}
         formId={FORM_ID}
     >

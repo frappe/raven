@@ -4,7 +4,6 @@ import { useUserCookieData } from "@hooks/useUserCookieData"
 import { useUsersById } from "@hooks/useMessageRowLookups"
 import { Spinner } from "@components/ui/spinner"
 import type { PollData } from "./PollMessageContent"
-import { ScrollArea } from "@components/ui/scroll-area"
 import { Button } from "@components/ui/button"
 import { Badge } from "@components/ui/badge"
 import {
@@ -132,7 +131,10 @@ export const PollDrawer: React.FC<PollDrawerProps> = ({ messageID, onClose }) =>
     })()
 
     return (
-        <div className="flex flex-col h-full w-full">
+        // Every host is a flex column (island, thread rail, mobile sheet). flex-1 with
+        // min-h-0 fits beside siblings such as the sheet's drag handle; h-full overflowed
+        // the sheet by the handle's height and pushed the scroller's bottom edge off screen.
+        <div className="flex min-h-0 w-full flex-1 flex-col">
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-2 md:border-b h-11 shrink-0">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -187,9 +189,11 @@ export const PollDrawer: React.FC<PollDrawerProps> = ({ messageID, onClose }) =>
                     </Button>
                 </div>
             </div>
-            <div className="flex-1 overflow-hidden">
-                <ScrollArea className="h-full p-3">
-                    <div className="px-1 space-y-3 pb-4">
+            {/* The scroller runs to the panel's bottom edge and the fade softens the cut, so
+                the padding lives inside it. On the mobile sheet (pb-0 host) it also covers
+                the safe area, so the last card can scroll clear of the home indicator. */}
+            <div className="flex-1 min-h-0 overflow-y-auto scroll-fade px-4 pt-3 pb-3 max-md:pb-[calc(var(--inset-bottom)+0.75rem)]">
+                    <div className="space-y-3">
                         {/* Poll Question */}
                         <p className="text-p-base-medium text-ink-gray-8">{poll.question}</p>
                         {/* Poll Creator and Creation Time */}
@@ -234,8 +238,11 @@ export const PollDrawer: React.FC<PollDrawerProps> = ({ messageID, onClose }) =>
                                 return (
                                     <div
                                         key={option.name}
+                                        // With a voter list the card's bottom padding moves into the
+                                        // list, so rows scroll to the card's true edge under the fade.
                                         className={cn(
-                                            "p-3 border rounded-lg",
+                                            "px-3 pt-3 border rounded-lg",
+                                            !showVoters && "pb-3",
                                             isCurrentUserVote
                                                 ? "border-outline-violet-3 bg-surface-violet-1 dark:border-outline-gray-3 dark:bg-surface-elevation-2"
                                                 : "border-outline-gray-1"
@@ -283,7 +290,7 @@ export const PollDrawer: React.FC<PollDrawerProps> = ({ messageID, onClose }) =>
                                             {/* Voters List */}
                                             {showVoters && (
                                                 <div className="pt-2 border-t">
-                                                    <div className="space-y-1 max-h-75 overflow-y-auto">
+                                                    <div className="space-y-1 max-h-75 overflow-y-auto scroll-fade pb-3">
                                                         {optionWithVoters.voters?.map((voter) => (
                                                             <div
                                                                 key={voter.id}
@@ -322,7 +329,6 @@ export const PollDrawer: React.FC<PollDrawerProps> = ({ messageID, onClose }) =>
                             })}
                         </div>
                     </div>
-                </ScrollArea>
             </div>
 
             {/* Closing a poll stops all voting and can't be undone — confirm first. Controlled

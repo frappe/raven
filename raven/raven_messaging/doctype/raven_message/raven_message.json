@@ -269,7 +269,8 @@
   },
   {
    "read": 1,
-   "role": "Raven User"
+   "role": "Raven User",
+   "delete": 1
   }
  ],
  "row_format": "Dynamic",

@@ -21,6 +21,8 @@ import { isRavenSettingsAdmin } from "../AdminSettingsForm"
 import type { RavenAIFunction } from "@raven/types/RavenAI/RavenAIFunction"
 import AINotEnabledCallout from "../ai/AINotEnabledCallout"
 import _ from "@lib/translate"
+import { DeprecatedBadge } from "../DeprecatedBadge"
+
 
 export const FUNCTIONS_LIST_KEY = "raven-ai-functions"
 
@@ -81,7 +83,7 @@ const FunctionListView = ({ onOpen, onCreate }: { onOpen: (id: string) => void; 
     return (
         <>
             <SettingsPanelHeader actions={isAdmin ? <Button size="sm" onClick={onCreate}>{_("Create")}</Button> : null}>
-                <SettingsPanelTitle>{_("Functions")}</SettingsPanelTitle>
+                <SettingsPanelTitle>{_("Functions")} <DeprecatedBadge /></SettingsPanelTitle>
                 <SettingsPanelDescription>{_("Declare functions to be used by your AI bots.")}</SettingsPanelDescription>
             </SettingsPanelHeader>
             <SettingsPanelContent className="min-h-0 gap-2">

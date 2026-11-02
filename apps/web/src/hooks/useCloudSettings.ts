@@ -1,19 +1,16 @@
 import { closeCloudSettings, openCloudSettings } from "@frappe/cloud-sdk"
 import { atom, getDefaultStore } from "jotai"
 import { useEffect, useState } from "react"
+import { isFrappeCloudV2Site } from "@lib/frappe"
 
 /** True while the Cloud Settings dialog is on screen. The Esc hotkey gate
  *  (useEscHotkey) reads it, so Esc closes the dialog and not the page under it. */
 export const cloudSettingsOpenAtom = atom(false)
 
-/**
- * Frappe adds `cloud_settings` to boot on a pilot-managed site, and only marks it
- * enabled for users who hold the Cloud Settings role. Older Frappe has no key at
- * all. Reading boot means no request is ever made on a site that cannot show it.
- */
+/** Reading boot means no request is ever made on a site that cannot show Cloud Settings. */
 export const isCloudSettingsAvailable = (): boolean =>
     // The SDK calls the site by relative URL with cookies; the native app's page is not on the site.
-    !import.meta.env.VITE_NATIVE && window.frappe?.boot?.cloud_settings?.enabled === true
+    !import.meta.env.VITE_NATIVE && isFrappeCloudV2Site()
 
 /** Opens the Cloud Settings dialog on the billing panel. Rejects with the SDK's message. */
 export const openBillingDialog = async (): Promise<void> => {

@@ -21,6 +21,8 @@ import { isProcessorActive } from "../ai/processorState"
 import GoogleAPINotEnabledCallout from "../ai/GoogleAPINotEnabledCallout"
 import ProcessorTypeSelector from "./ProcessorTypeSelector"
 import _ from "@lib/translate"
+import { DeprecatedBadge } from "../DeprecatedBadge"
+
 
 /** Shape of an entry in `raven.ai.google_ai.get_available_processor_types`. */
 export interface ProcessorTypeConfig {
@@ -103,7 +105,7 @@ const DocumentProcessors = () => {
         return (
             <>
                 <SettingsPanelHeader>
-                    <SettingsPanelTitle>{_("Document Processors")}</SettingsPanelTitle>
+                    <SettingsPanelTitle>{_("Document Processors")} <DeprecatedBadge /></SettingsPanelTitle>
                     <SettingsPanelDescription>
                         {_("View your active document processors or select a processor type and create a new processor.")}
                     </SettingsPanelDescription>
@@ -134,7 +136,7 @@ const DocumentProcessors = () => {
                     </Button>
                 }
             >
-                <SettingsPanelTitle>{_("Document Processors")}</SettingsPanelTitle>
+                <SettingsPanelTitle>{_("Document Processors")} <DeprecatedBadge /></SettingsPanelTitle>
                 <SettingsPanelDescription>
                     {_("View your active document processors or select a processor type and create a new processor.")}
                 </SettingsPanelDescription>

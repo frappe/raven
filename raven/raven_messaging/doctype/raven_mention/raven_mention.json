@@ -15,7 +15,8 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "User",
-   "reqd": 1
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "default": "0",
@@ -27,7 +28,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-02-23 16:55:14.344577",
+ "modified": "2026-10-28 12:30:00.000000",
  "modified_by": "Administrator",
  "module": "Raven Messaging",
  "name": "Raven Mention",

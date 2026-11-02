@@ -132,6 +132,7 @@ export const ThreadRootMessage = ({ threadID, parentID }: { threadID: string; pa
                                         <DocumentLinkRenderer
                                             doctype={linkedDocMember.link_doctype!}
                                             docname={linkedDocMember.link_document!}
+                                            messageCreation={linkedDocMember.creation}
                                         />
                                     )}
                                 </div>

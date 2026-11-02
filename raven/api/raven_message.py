@@ -252,7 +252,7 @@ def send_message_with_attachments(
 	linked_message: str | None = None,
 	send_silently: bool = False,
 	link_doctype: str | None = None,
-	link_document: str | None = None,
+	link_document: str | int | None = None,
 	location: dict | str | None = None,
 	contact: dict | str | None = None,
 ):
@@ -1192,7 +1192,7 @@ def build_reply_blockquote(replied_message_details=None, linked_message: str | N
 
 
 @frappe.whitelist(methods=["POST"])
-def attach_file_to_document(message_ids: list[str], doctype: str, docname: str):
+def attach_file_to_document(message_ids: list[str], doctype: str, docname: str | int):
 	"""
 	Attach files shared on Raven to another document — one File row per message, e.g. for
 	a multi-file batch the user ticks in bulk (messages sharing a message_batch_id).
