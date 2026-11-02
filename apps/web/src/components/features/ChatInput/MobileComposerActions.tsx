@@ -72,6 +72,7 @@ export const MobileComposerActions = ({
     )
 
     const iosApp = !!import.meta.env.VITE_NATIVE && window.Capacitor?.getPlatform() === "ios"
+    const androidApp = !!import.meta.env.VITE_NATIVE && window.Capacitor?.getPlatform() === "android"
     // The ternary keeps the native chunk out of browser builds entirely.
     const pickNative = import.meta.env.VITE_NATIVE
         ? (kind: "files" | "photos") => {
@@ -121,7 +122,16 @@ export const MobileComposerActions = ({
             ? [{ icon: MapPin, label: _("Location"), onSelect: () => { afterClose.current = onShareLocation } }]
             : []),
         ...(onShareContact
-            ? [{ icon: UserRound, label: _("Contact"), onSelect: () => { afterClose.current = onShareContact } }]
+            ? [{
+                icon: UserRound,
+                label: _("Contact"),
+                onSelect: () => {
+                    // The native picker sits above the WebView: open it while the sheet closes, like Photos.
+                    // The Android app opens its Phone/Email chooser (a web drawer) instead, so that waits.
+                    if (androidApp) afterClose.current = onShareContact
+                    else onShareContact()
+                },
+            }]
             : []),
         { icon: ChartBar, label: _("Poll"), onSelect: () => setPollOpen(true) },
         { icon: FileBox, label: _("Document"), onSelect: () => setDocOpen(true) },
