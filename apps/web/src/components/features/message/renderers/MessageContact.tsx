@@ -37,7 +37,7 @@ export const MessageContact = ({ message, fallback }: { message: Message; fallba
                 <PopoverAnchor>{card}</PopoverAnchor>
                 <PopoverContent
                     align="start"
-                    className="flex max-h-(--radix-popover-content-available-height) w-80 flex-col gap-1 overflow-y-auto p-2"
+                    className="flex max-h-(--radix-popover-content-available-height) w-96 max-w-[calc(100vw-2rem)] flex-col gap-1 overflow-y-auto p-2"
                 >
                     <ContactDetails contact={contact} photoUrl={photoUrl} onClose={close} />
                 </PopoverContent>
