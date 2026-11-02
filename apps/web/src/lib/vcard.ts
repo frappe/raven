@@ -41,7 +41,7 @@ const logicalLines = (text: string): string[] => {
     const lines: string[] = []
     for (const line of text.replace(/\r\n?/g, "\n").split("\n")) {
         const last = lines.length - 1
-        if (last >= 0 && lines[last].endsWith("=") && /ENCODING=QUOTED-PRINTABLE/i.test(lines[last])) {
+        if (last >= 0 && lines[last].endsWith("=") && /QUOTED-PRINTABLE/i.test(lines[last].slice(0, valueStart(lines[last])))) {
             lines[last] = lines[last].slice(0, -1) + line.replace(/^[ \t]/, "")
         } else if (last >= 0 && /^[ \t]/.test(line)) {
             lines[last] += line.slice(1)
@@ -52,7 +52,19 @@ const logicalLines = (text: string): string[] => {
     return lines
 }
 
-const decodeQuotedPrintable = (value: string): string => {
+/** The first parameter that names a text encoding (CHARSET=…), else UTF-8. */
+const decoderFor = (params: Set<string>): TextDecoder => {
+    for (const token of params) {
+        try {
+            return new TextDecoder(token)
+        } catch {
+            // Not an encoding label (TYPE, ENCODING and the like).
+        }
+    }
+    return new TextDecoder()
+}
+
+const decodeQuotedPrintable = (value: string, decoder: TextDecoder): string => {
     const encoder = new TextEncoder()
     const bytes: number[] = []
     for (let index = 0; index < value.length; index++) {
@@ -62,7 +74,7 @@ const decodeQuotedPrintable = (value: string): string => {
             index += 2
         } else bytes.push(...encoder.encode(value[index]))
     }
-    return new TextDecoder().decode(new Uint8Array(bytes))
+    return decoder.decode(new Uint8Array(bytes))
 }
 
 const unescapeText = (value: string): string =>
@@ -95,12 +107,15 @@ const parseProperty = (line: string): Property | undefined => {
         group: group?.[1].toLowerCase(),
         name: (group?.[2] ?? rawName).trim().toUpperCase(),
         params,
-        value: quoted ? decodeQuotedPrintable(value) : value,
+        value: quoted ? decodeQuotedPrintable(value, decoderFor(params)) : value,
     }
 }
 
 const propertyLabel = (property: Property, custom: Map<string, string>): string | undefined => {
     if (property.group && custom.has(property.group)) return custom.get(property.group)
+    // A fax or pager line also carries HOME or WORK; it must not read as a phone to call.
+    if (property.params.has("FAX")) return "Fax"
+    if (property.params.has("PAGER")) return "Pager"
     return [...property.params].map((token) => TYPE_LABELS[token]).find(Boolean)
 }
 

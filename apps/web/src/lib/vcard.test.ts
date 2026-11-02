@@ -100,7 +100,7 @@ describe("parseVCards", () => {
             [
                 "BEGIN:VCARD",
                 "FN:Priya",
-                "TEL;TYPE=FAX:+1-555",
+                "TEL;TYPE=X-SATELLITE:+1-555",
                 "PHOTO;VALUE=uri:https://example.com/photo.jpg",
                 "END:VCARD",
             ].join("\n"),
@@ -133,5 +133,21 @@ describe("isVCardFile", () => {
         const card = ["BEGIN:VCARD", "VERSION:3.0", "FN:Pat", "item1.TEL:2", "item1.X-ABLabel:Pager", "END:VCARD"].join("\n")
         expect(parseVCards(card)[0].phones).toEqual([{ value: "2", label: "Pager" }])
         expect(parseVCards("not a vcard\n:::\n;;")).toEqual([])
+    })
+
+    it("labels fax and pager lines and decodes a Latin-1 quoted-printable name", () => {
+        const card = [
+            "BEGIN:VCARD",
+            "VERSION:2.1",
+            "FN;CHARSET=ISO-8859-1;QUOTED-PRINTABLE:Jos=E9",
+            "TEL;HOME;FAX:1",
+            "TEL;PAGER:2",
+            "END:VCARD",
+        ].join("\n")
+        expect(parseVCards(card)[0]).toEqual({
+            name: "José",
+            phones: [{ value: "1", label: "Fax" }, { value: "2", label: "Pager" }],
+            emails: [],
+        })
     })
 })
