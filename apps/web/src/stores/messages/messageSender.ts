@@ -205,7 +205,8 @@ export const enqueueSend = (
         ...(contact ? { contact } : {}),
     })
 
-    submitSend(client, channelID, batchId, content, files, linkedMessage, { sendSilently, linkedDocument, location, contact })
+    // Settles when the server answers (never rejects): callers that must keep order can await it.
+    return submitSend(client, channelID, batchId, content, files, linkedMessage, { sendSilently, linkedDocument, location, contact })
 }
 
 /**

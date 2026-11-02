@@ -21,6 +21,11 @@ final class ShareViewController: UIViewController {
     }
 
     private func load(_ provider: NSItemProvider, index: Int) async -> [String: String]? {
+        // A contact card can also offer plain text; the app needs the card itself.
+        if provider.hasItemConformingToTypeIdentifier(UTType.vCard.identifier),
+           let data = try? await provider.loadItem(forTypeIdentifier: UTType.vCard.identifier) as? Data {
+            return write(data, name: name(provider.suggestedName ?? "contact_\(index)", as: .vCard), type: "text/vcard")
+        }
         if provider.hasItemConformingToTypeIdentifier(UTType.url.identifier),
            let url = try? await provider.loadItem(forTypeIdentifier: UTType.url.identifier) as? URL {
             if url.isFileURL { return copy(url) }

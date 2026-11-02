@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useId, useState } from "react"
 import { AlertDialogFooter } from "@components/ui/alert-dialog"
 import { Button } from "@components/ui/button"
 import { Checkbox } from "@components/ui/checkbox"
@@ -9,10 +9,12 @@ import { ContactAvatar } from "@components/features/message/renderers/ContactAva
 import { useIsMobile } from "@hooks/use-mobile"
 import type { ContactField } from "@lib/contact"
 import _ from "@lib/translate"
+import { cn } from "@lib/utils"
 import type { PickedContact } from "../../../../native/contacts"
 import { canSendContact, contactTicks } from "./shareSelection"
 
 type FieldSectionProps = {
+    contactIndex: number
     heading: string
     kind: "phone" | "email"
     fields: ContactField[]
@@ -20,14 +22,14 @@ type FieldSectionProps = {
     onToggle: (key: string) => void
 }
 
-const FieldSection = ({ heading, kind, fields, ticked, onToggle }: FieldSectionProps) =>
+const FieldSection = ({ contactIndex, heading, kind, fields, ticked, onToggle }: FieldSectionProps) =>
     fields.length > 0 && (
         <div className="flex flex-col">
             <span className="px-3 pb-1 pt-2 text-xs font-medium uppercase tracking-wide text-ink-gray-5">
                 {heading}
             </span>
             {fields.map((field, index) => {
-                const key = `${kind}:${index}`
+                const key = `${contactIndex}:${kind}:${index}`
                 return (
                     <label
                         key={key}
@@ -60,18 +62,34 @@ const usePhotoUrl = (photo: PickedContact["photo"]) => {
     return url
 }
 
-type ShareContactSheetProps = {
-    contact: PickedContact
-    sending: boolean
-    onClose: () => void
-    onSend: (contact: PickedContact, ticked: Set<string>) => void
+/** One contact gets a large header; several get a compact heading each. */
+const ContactHeading = ({ contact, id, large }: { contact: PickedContact; id: string; large: boolean }) => {
+    const photoUrl = usePhotoUrl(contact.photo)
+    return (
+        <div className={cn("flex items-center px-3", large ? "gap-3.5 pb-3 pt-2" : "gap-3 pb-1 pt-5")}>
+            <ContactAvatar name={contact.name} photoUrl={photoUrl} size={large ? 56 : 40} />
+            <span
+                id={id}
+                className={cn("min-w-0 break-words text-ink-gray-9", large ? "text-xl-medium" : "text-base-medium")}
+            >
+                {contact.name}
+            </span>
+        </div>
+    )
 }
 
-/** The picked contact, with every phone and email ticked until the user removes one. */
-export const ShareContactSheet = ({ contact, sending, onClose, onSend }: ShareContactSheetProps) => {
+type ShareContactSheetProps = {
+    contacts: PickedContact[]
+    sending: boolean
+    onClose: () => void
+    onSend: (contacts: PickedContact[], ticked: Set<string>) => void
+}
+
+/** The picked contacts, with every phone and email ticked until the user removes one. */
+export const ShareContactSheet = ({ contacts, sending, onClose, onSend }: ShareContactSheetProps) => {
+    const groupId = useId()
     const isMobile = useIsMobile()
-    const [ticked, setTicked] = useState(() => contactTicks(contact))
-    const photoUrl = usePhotoUrl(contact.photo)
+    const [ticked, setTicked] = useState(() => contactTicks(contacts))
 
     const toggle = (key: string) =>
         setTicked((current) => {
@@ -102,7 +120,7 @@ export const ShareContactSheet = ({ contact, sending, onClose, onSend }: ShareCo
                     className="h-11 md:h-8"
                     loading={sending}
                     disabled={sending || !canSend}
-                    onClick={() => onSend(contact, ticked)}
+                    onClick={() => onSend(contacts, ticked)}
                 >
                     {_("Send")}
                 </Button>
@@ -118,14 +136,30 @@ export const ShareContactSheet = ({ contact, sending, onClose, onSend }: ShareCo
             bodyClassName="gap-1 px-3 pt-0"
             dialogClassName="gap-1 sm:max-w-sm"
         >
-            <Title className="px-3 pt-2 text-lg-medium">{_("Share contact")}</Title>
+            <Title className="px-3 pt-2 text-lg-medium">{contacts.length > 1 ? _("Share contacts") : _("Share contact")}</Title>
             <Description className="sr-only">{_("Choose the details to share")}</Description>
-            <div className="flex items-center gap-3.5 px-3 pb-3 pt-2">
-                <ContactAvatar name={contact.name} photoUrl={photoUrl} size={56} />
-                <span className="min-w-0 break-words text-xl-medium text-ink-gray-9">{contact.name}</span>
-            </div>
-            <FieldSection heading={_("Phone")} kind="phone" fields={contact.phones} ticked={ticked} onToggle={toggle} />
-            <FieldSection heading={_("Email")} kind="email" fields={contact.emails} ticked={ticked} onToggle={toggle} />
+            {contacts.map((contact, contactIndex) => (
+                // A group named by its contact, so each "Mobile" row says whose number it is.
+                <div key={contactIndex} role="group" aria-labelledby={`${groupId}-${contactIndex}`} className="flex flex-col">
+                    <ContactHeading contact={contact} id={`${groupId}-${contactIndex}`} large={contacts.length === 1} />
+                    <FieldSection
+                        contactIndex={contactIndex}
+                        heading={_("Phone")}
+                        kind="phone"
+                        fields={contact.phones}
+                        ticked={ticked}
+                        onToggle={toggle}
+                    />
+                    <FieldSection
+                        contactIndex={contactIndex}
+                        heading={_("Email")}
+                        kind="email"
+                        fields={contact.emails}
+                        ticked={ticked}
+                        onToggle={toggle}
+                    />
+                </div>
+            ))}
         </ResponsiveDialog>
     )
 }
