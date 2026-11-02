@@ -10,7 +10,7 @@ from frappe.model.document import Document
 from frappe.utils import get_datetime, get_system_timezone
 from pytz import timezone, utc
 
-from raven.api.contact import sane_contact
+from raven.api.contact import contact_fallback_html, sane_contact
 from raven.api.location import sane_location
 from raven.api.raven_channel import get_peer_user_id_from_dm_users
 from raven.links import detect_provider, normalize_url
@@ -296,6 +296,8 @@ class RavenMessage(Document):
 			if not clean:
 				frappe.throw(_("Invalid contact"))
 			self.json = clean
+			# Derived here, from the stored payload, so the fallback always matches the card.
+			self.text = contact_fallback_html(clean)
 			# Teasers, search and reminders show a contact by its name, not its numbers.
 			self.content = clean["name"]
 

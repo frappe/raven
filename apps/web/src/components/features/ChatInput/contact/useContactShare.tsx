@@ -12,10 +12,15 @@ import { needsFieldChoice, pickContact, type PickedContact } from "../../../../n
 import { ContactFieldChooser } from "./ContactFieldChooser"
 import { ShareContactSheet } from "./ShareContactSheet"
 import { selectedContacts } from "./shareSelection"
+import { preloadPhoneFormatter, withCountryCodes } from "@lib/phone"
 import { renderContactPhoto } from "./contactPhoto"
 import { uploadFileWithin, type TimedUpload, type UploadToken } from "../uploadWithin"
 
 const PHOTO_TIMEOUT_MS = 5000
+
+/** The sheet shows numbers as they will be stored: with the sender's country code. */
+const formatted = (contacts: PickedContact[]) =>
+    Promise.all(contacts.map(async (contact) => ({ ...contact, phones: await withCountryCodes(contact.phones) })))
 
 type ContactShareOptions = {
     channelID: string
@@ -41,10 +46,12 @@ export const useContactShare = ({ channelID, quietSendMode, stopTyping, replyTo,
     const choose = useCallback(async (field?: "phone" | "email") => {
         if (pickingRef.current) return
         pickingRef.current = true
+        // Loads while the picker is up, so formatting the pick costs no visible wait.
+        void preloadPhoneFormatter()
         const result = await pickContact(field).finally(() => {
             pickingRef.current = false
         })
-        if (result.status === "picked") setContacts([result.contact])
+        if (result.status === "picked") setContacts(await formatted([result.contact]))
         else if (result.status === "empty")
             toast.error(
                 result.name
@@ -60,8 +67,8 @@ export const useContactShare = ({ channelID, quietSendMode, stopTyping, replyTo,
     }, [choose])
 
     /** Opens the sheet for contacts shared from another app. */
-    const share = useCallback((shared: PickedContact[]) => {
-        if (shared.length) setContacts(shared)
+    const share = useCallback(async (shared: PickedContact[]) => {
+        if (shared.length) setContacts(await formatted(shared))
     }, [])
 
     // Closing while a photo uploads abandons it, so the uploaded file is deleted.

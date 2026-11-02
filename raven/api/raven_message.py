@@ -7,7 +7,6 @@ from frappe.query_builder.functions import Coalesce, Count
 from frappe.utils import cint
 
 from raven.api.chat_stream import message_columns
-from raven.api.contact import contact_fallback_html, sane_contact
 from raven.api.location import location_link_html, maps_url, sane_location, sane_number
 from raven.api.raven_channel import create_direct_message_channel, get_peer_user_id_from_dm_users
 from raven.api.search import channel_access_condition
@@ -335,9 +334,6 @@ def send_message_with_attachments(
 			or (photo and _file_message_type(_attachment_url(photo)) != "Image")
 		):
 			frappe.throw(_("A contact can't be sent with other content"))
-		clean_contact = sane_contact(contact)
-		if not clean_contact:
-			frappe.throw(_("Invalid contact"))
 	elif not has_body and not files and not has_linked_document:
 		frappe.throw(_("Cannot send an empty message"))
 
@@ -364,11 +360,8 @@ def send_message_with_attachments(
 			location_spec["file_size"] = _attachment_size(files[0])
 		specs.append(location_spec)
 	elif contact is not None:
-		contact_spec = {
-			"message_type": "Contact",
-			"json": clean_contact,
-			"text": contact_fallback_html(clean_contact),
-		}
+		# The doctype cleans the contact and derives its text on insert.
+		contact_spec = {"message_type": "Contact", "json": contact}
 		if files:
 			contact_spec["file"] = _attachment_url(files[0])
 			contact_spec["file_size"] = _attachment_size(files[0])

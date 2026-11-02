@@ -1,17 +1,19 @@
-import { useCallback, useState } from "react"
-import { ChevronLeft, CopyIcon, MailIcon, MessageSquare, PhoneIcon, UserPlus, UserRound } from "lucide-react"
+import { useState } from "react"
+import { useNavigate } from "react-router-dom"
+import { getDefaultStore, useSetAtom } from "jotai"
+import { CopyIcon, MailIcon, MessageSquare, PhoneIcon, UserPlus, UserRound } from "lucide-react"
 import { toast } from "sonner"
 import { useCopyToClipboard } from "usehooks-ts"
 import { Button } from "@components/ui/button"
-import { DialogDescription, DialogTitle } from "@components/ui/dialog"
 import { DrawerDescription, DrawerTitle } from "@components/ui/drawer"
 import { ResponsiveDialog } from "@components/features/message/actions/dialogs/ResponsiveDialog"
-import { UserProfileDrawer } from "@components/features/dm-channel/UserProfileDrawer"
+import { settingsDialogOpenTab } from "@components/features/settings/settingsDialogAtom"
 import { useCreateDM } from "@hooks/useCreateDM"
 import { useIsMobile } from "@hooks/use-mobile"
 import { contactHref, type ContactField, type ContactPayload } from "@lib/contact"
 import _ from "@lib/translate"
 import { cn } from "@lib/utils"
+import { channelDrawerAtom, pollDrawerAtom } from "@utils/channelAtoms"
 import { hasNativePlugin } from "../../../../native/platform"
 import { saveContact } from "../../../../native/contacts"
 import { ContactAvatar } from "./ContactAvatar"
@@ -30,15 +32,14 @@ type DetailRowProps = {
 const DetailRow = ({ field, kind, onCopy }: DetailRowProps) => {
     return (
         <div className="flex items-center gap-1">
-            <a
-                href={contactHref(kind, field.value)}
-                className={cn(rowClass, "flex-1")}
-            >
+            <a href={contactHref(kind, field.value)} className={cn(rowClass, "flex-1")}>
                 {kind === "phone" ? <PhoneIcon /> : <MailIcon />}
                 <span dir="ltr" className="min-w-0 flex-1 wrap-anywhere py-2.5 md:py-1.5">
                     {field.value}
                 </span>
-                {field.label && <span className="max-w-1/3 text-end text-sm break-words text-ink-gray-6">{field.label}</span>}
+                {field.label && (
+                    <span className="max-w-1/3 text-end text-sm break-words text-ink-gray-6">{field.label}</span>
+                )}
             </a>
             <Button
                 variant="ghost"
@@ -60,13 +61,11 @@ type ContactDetailsProps = {
     onClose: () => void
 }
 
-/** The full contact: phone and email rows plus the matched user's actions. */
+/** The contact's rows and actions: the desktop popover's content, and the mobile sheet's. */
 export const ContactDetails = ({ contact, photoUrl, onClose }: ContactDetailsProps) => {
     const isMobile = useIsMobile()
-    // "returned" is the contact view after Back, so focus can land on View profile.
-    const [view, setView] = useState<"contact" | "profile" | "returned">("contact")
-    // Focus follows a view swap; nothing is focused when the sheet first opens.
-    const focusOnMount = useCallback((node: HTMLButtonElement | null) => node?.focus(), [])
+    const navigate = useNavigate()
+    const setSettingsTab = useSetAtom(settingsDialogOpenTab)
     const contactUser = useContactUser(contact)
     const { createDM } = useCreateDM()
     const [, copy] = useCopyToClipboard()
@@ -88,8 +87,22 @@ export const ContactDetails = ({ contact, photoUrl, onClose }: ContactDetailsPro
 
     const canSave = hasNativePlugin("RavenContacts")
 
-    const Title = isMobile ? DrawerTitle : DialogTitle
-    const Description = isMobile ? DrawerDescription : DialogDescription
+    const viewProfile = (user: NonNullable<typeof contactUser>) => {
+        // Your own profile: the Profile page on mobile, the Profile settings tab on desktop.
+        if (user.isSelf) {
+            if (isMobile) navigate("/profile")
+            else setSettingsTab("profile")
+            onClose()
+            return
+        }
+        // Someone else's profile is their DM's details drawer, which the DM header's View profile opens too.
+        void createDM(user.user.name).then((channel) => {
+            if (!channel) return
+            getDefaultStore().set(channelDrawerAtom(channel), "files")
+            getDefaultStore().set(pollDrawerAtom(channel), null)
+            onClose()
+        })
+    }
 
     const actions = contactUser ? (
         <>
@@ -105,62 +118,45 @@ export const ContactDetails = ({ contact, photoUrl, onClose }: ContactDetailsPro
                     {_("Message {0}", [contactUser.user.full_name || contactUser.user.name])}
                 </button>
             )}
-            <button
-                type="button"
-                ref={view === "returned" ? focusOnMount : undefined}
-                className={rowClass}
-                onClick={() => setView("profile")}
-            >
+            <button type="button" className={rowClass} onClick={() => viewProfile(contactUser)}>
                 <UserRound />
                 {_("View profile")}
             </button>
         </>
     ) : null
 
-    const content =
-        view === "profile" && contactUser ? (
-            <>
-                <Title className="sr-only">{contact.name}</Title>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    isIconButton
-                    className="ms-1 self-start"
-                    ref={focusOnMount}
-                    aria-label={_("Back")}
-                    onClick={() => setView("returned")}
-                >
-                    <ChevronLeft />
-                </Button>
-                <UserProfileDrawer user={contactUser.user} />
-            </>
-        ) : (
-            <>
-                <div className="flex items-center gap-3.5 px-3 pb-4 pt-2 md:pe-10">
-                    <ContactAvatar name={contact.name} photoUrl={photoUrl} size={56} />
-                    <Title className="min-w-0 break-words text-2xl-medium">{contact.name}</Title>
-                </div>
-                {contact.phones.map((phone, index) => (
-                    <DetailRow key={`phone-${index}`} field={phone} kind="phone" onCopy={copyValue} />
-                ))}
-                {contact.emails.map((email, index) => (
-                    <DetailRow key={`email-${index}`} field={email} kind="email" onCopy={copyValue} />
-                ))}
-                {(actions || canSave) && <div className="my-1 border-t border-outline-gray-2" />}
-                {actions}
-                {canSave && (
-                    <button type="button" className={rowClass} disabled={saving} onClick={save}>
-                        <UserPlus />
-                        {_("Save to contacts")}
-                    </button>
-                )}
-            </>
-        )
-
     return (
-        <ResponsiveDialog open onClose={onClose} bodyClassName="gap-1 p-3 pb-6" dialogClassName="gap-1 sm:max-w-sm">
-            <Description className="sr-only">{_("Contact details")}</Description>
-            {content}
-        </ResponsiveDialog>
+        <>
+            {/* The desktop popover opens at the card, which already shows the avatar and name. */}
+            {isMobile && (
+                <div className="flex items-center gap-3.5 px-3 pb-4 pt-2">
+                    <ContactAvatar name={contact.name} photoUrl={photoUrl} size={56} />
+                    <span className="min-w-0 break-words text-2xl-medium text-ink-gray-9">{contact.name}</span>
+                </div>
+            )}
+            {contact.phones.map((phone, index) => (
+                <DetailRow key={`phone-${index}`} field={phone} kind="phone" onCopy={copyValue} />
+            ))}
+            {contact.emails.map((email, index) => (
+                <DetailRow key={`email-${index}`} field={email} kind="email" onCopy={copyValue} />
+            ))}
+            {(actions || canSave) && <div className="my-1 border-t border-outline-gray-2" />}
+            {actions}
+            {canSave && (
+                <button type="button" className={rowClass} disabled={saving} onClick={save}>
+                    <UserPlus />
+                    {_("Save to contacts")}
+                </button>
+            )}
+        </>
     )
 }
+
+/** Mobile: the contact as a bottom sheet. */
+export const ContactSheet = (props: ContactDetailsProps) => (
+    <ResponsiveDialog open onClose={props.onClose} bodyClassName="gap-1 p-3 pb-6">
+        <DrawerTitle className="sr-only">{props.contact.name}</DrawerTitle>
+        <DrawerDescription className="sr-only">{_("Contact details")}</DrawerDescription>
+        <ContactDetails {...props} />
+    </ResponsiveDialog>
+)

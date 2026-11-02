@@ -81,6 +81,7 @@
     "jotai-family": "^1.0.2",
     "js-cookie": "^3.0.8",
     "leaflet": "^1.9.4",
+    "libphonenumber-js": "1.13.15",
     "linkifyjs": "^4.3.3",
     "lowlight": "^3.3.0",
     "lucide-react": "^1.17.0",

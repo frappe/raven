@@ -1,6 +1,7 @@
 import re
 
 import frappe
+import phonenumbers
 
 _MAX_NAME = 200
 _MAX_VALUE = 200
@@ -79,3 +80,17 @@ def contact_fallback_html(contact: dict) -> str:
 	values += [email["value"] for email in contact["emails"]]
 	# One paragraph per line: a <br> comes back from the HTML parser as <br/>, which reads as an edit.
 	return "".join(f"<p>{frappe.utils.escape_html(value)}</p>" for value in values)
+
+
+def phone_region() -> str | None:
+	"""The sender's country for numbers saved without one: their own mobile's, else the site's."""
+	own = frappe.get_cached_value("User", frappe.session.user, "mobile_no")
+	try:
+		region = own and phonenumbers.region_code_for_country_code(phonenumbers.parse(own).country_code)
+	except phonenumbers.NumberParseException:
+		region = None
+	if region and region != "ZZ":
+		return region
+	country = frappe.get_system_settings("country")
+	code = country and frappe.get_cached_value("Country", country, "code")
+	return code.upper() if code else None

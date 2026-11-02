@@ -237,6 +237,21 @@ class TestContactSend(IntegrationTestCase):
 		doc.save()
 		self.assertEqual(frappe.db.get_value("Raven Message", msg.name, "is_thread"), 1)
 
+	def _boot_phone_region(self, country, mobile):
+		from raven.boot import boot_session
+
+		frappe.db.set_single_value("System Settings", "country", country)
+		frappe.db.set_value("User", "test1@example.com", "mobile_no", mobile)
+		frappe.clear_cache()
+		bootinfo = frappe._dict()
+		boot_session(bootinfo)
+		return bootinfo.raven_phone_region
+
+	def test_boot_phone_region_is_the_senders_then_the_sites(self):
+		self.assertEqual(self._boot_phone_region("India", "+44 7400 123456"), "GB")
+		self.assertEqual(self._boot_phone_region("India", None), "IN")
+		self.assertIsNone(self._boot_phone_region(None, None))
+
 	def test_reply_silent_idempotent(self):
 		parent = send_message_with_attachments(channel_id=self.channel.name, content="<p>who?</p>")[0]
 		kwargs = dict(

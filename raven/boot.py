@@ -3,6 +3,7 @@ from urllib.parse import urlsplit
 import frappe
 from frappe.utils.safe_exec import is_safe_exec_enabled
 
+from raven.api.contact import phone_region
 from raven.api.setup import is_setup_admin
 from raven.frappe_cloud_push import (
 	is_on_frappe_cloud_push,
@@ -14,6 +15,9 @@ from raven.frappe_cloud_push import (
 def boot_session(bootinfo):
 
 	raven_settings = frappe.get_single("Raven Settings")
+
+	# Shared contacts show local numbers with this country's code, as the server stores them.
+	bootinfo.raven_phone_region = phone_region()
 
 	# Scheduled messages run as Server Scripts. The settings panel warns when those are off.
 	bootinfo.server_script_enabled = is_safe_exec_enabled()
