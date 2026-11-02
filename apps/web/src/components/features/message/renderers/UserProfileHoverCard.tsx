@@ -115,7 +115,8 @@ const UserProfileCard = ({ id, fallbackLabel, isSelf }: { id: string; fallbackLa
                             {availability}
                         </span>
                     )}
-                    {user?.custom_status && <p className="text-p-sm text-ink-gray-7">{user.custom_status}</p>}
+                    {/* A status can be one long URL: it wraps inside the card's fixed width. */}
+                    {user?.custom_status && <p className="wrap-anywhere text-p-sm text-ink-gray-7">{user.custom_status}</p>}
                 </div>
             )}
 
