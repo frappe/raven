@@ -3,6 +3,7 @@ import { siteKey } from "@lib/site"
 import { Dexie, type EntityTable } from "dexie"
 import type { VoiceNoteMeta } from "@lib/voiceNote"
 import type { LocationMeta } from "@lib/location"
+import type { ContactPayload } from "@lib/contact"
 
 export type UserData = Pick<RavenUser, 'name' | 'full_name' | 'user_image' | 'first_name' | 'enabled' | 'type' | 'availability_status' | 'custom_status' | 'contact_number'>
 
@@ -48,6 +49,8 @@ export interface OutboxMessage {
     link_document?: string
     /** A shared location; its snapshot, when present, is `files[0]`. */
     location?: LocationMeta
+    /** A shared contact; its photo, when present, is `files[0]`. */
+    contact?: ContactPayload
 }
 
 /**

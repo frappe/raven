@@ -6,6 +6,7 @@ import type { OutboxMessage } from "@db"
 import { getAttachmentKind } from "@utils/attachmentPreview"
 import { parseVoiceJson, type VoiceNoteMeta } from "@lib/voiceNote"
 import { parseLocationJson, senderMapsProvider, type LocationMeta } from "@lib/location"
+import { parseContactJson, type ContactPayload } from "@lib/contact"
 import _ from "@lib/translate"
 import { channelMessagesStore } from "./store"
 import { channelUnreadStore } from "@stores/unread/store"
@@ -101,6 +102,7 @@ export const buildOptimisticMessages = (
     reply?: { linkedMessage: string; repliedMessageDetails?: string },
     linkedDocument?: { doctype: string; docname: string },
     location?: LocationMeta,
+    contact?: ContactPayload,
 ): OptimisticMessage[] => {
     const base = (extra: Partial<Message>): OptimisticMessage =>
         ({
@@ -112,20 +114,19 @@ export const buildOptimisticMessages = (
             ...extra,
         }) as unknown as OptimisticMessage
 
-    // A location is one message: its snapshot (when present) rides on it, and the
-    // composer never pairs it with text.
-    const locationPlaceholder = location
-        ? base({
-              name: `${batchId}-location`,
-              message_type: "Location",
-              json: location,
-              ...(files[0] ? { file: files[0].file_url, file_size: files[0].file_size } : {}),
-          })
-        : undefined
-    const messages: OptimisticMessage[] = locationPlaceholder ? [locationPlaceholder] : filePlaceholders(files, batchId, base)
+    // A location or contact is one message: its image (when present) rides on it, and
+    // the composer never pairs it with text.
+    const card: Partial<Message> | undefined = location
+        ? { name: `${batchId}-location`, message_type: "Location", json: location }
+        : contact
+          ? { name: `${batchId}-contact`, message_type: "Contact", json: contact }
+          : undefined
+    const messages: OptimisticMessage[] = card
+        ? [base({ ...card, ...(files[0] ? { file: files[0].file_url, file_size: files[0].file_size } : {}) })]
+        : filePlaceholders(files, batchId, base)
     // Mirror the backend: a document-only send still needs one (empty Text) message
     // to carry the link — the card is the content.
-    if (!location && (content || (linkedDocument && files.length === 0))) {
+    if (!card && (content || (linkedDocument && files.length === 0))) {
         messages.push(base({ name: `${batchId}-text`, message_type: "Text", text: content }))
     }
 
@@ -172,13 +173,15 @@ export const enqueueSend = (
         linkedDocument?: { doctype: string; docname: string }
         /** A shared location; its snapshot, when present, travels as `files[0]`. */
         location?: LocationMeta
+        /** A shared contact; its photo, when present, travels as `files[0]`. */
+        contact?: ContactPayload
     },
 ) => {
-    const { channelID, batchId, owner, content, files, linkedMessage, repliedMessageDetails, sendSilently, linkedDocument, location } = params
+    const { channelID, batchId, owner, content, files, linkedMessage, repliedMessageDetails, sendSilently, linkedDocument, location, contact } = params
     const creation = optimisticNow()
     const reply = linkedMessage ? { linkedMessage, repliedMessageDetails } : undefined
 
-    const placeholders = buildOptimisticMessages(channelID, batchId, owner, content, files, creation, reply, linkedDocument, location)
+    const placeholders = buildOptimisticMessages(channelID, batchId, owner, content, files, creation, reply, linkedDocument, location, contact)
     channelMessagesStore.addOptimisticMessages(channelID, batchId, placeholders)
 
     // Sending means you're caught up — clear the unread badge instantly (the read tracker
@@ -199,9 +202,10 @@ export const enqueueSend = (
         ...(sendSilently ? { send_silently: true } : {}),
         ...(linkedDocument ? { link_doctype: linkedDocument.doctype, link_document: linkedDocument.docname } : {}),
         ...(location ? { location } : {}),
+        ...(contact ? { contact } : {}),
     })
 
-    submitSend(client, channelID, batchId, content, files, linkedMessage, { sendSilently, linkedDocument, location })
+    submitSend(client, channelID, batchId, content, files, linkedMessage, { sendSilently, linkedDocument, location, contact })
 }
 
 /**
@@ -246,6 +250,8 @@ export const submitSend = (
         linkedDocument?: { doctype: string; docname: string }
         /** The shared point; `maps` picks the server's fallback link provider. */
         location?: LocationMeta
+        /** The shared contact card. */
+        contact?: ContactPayload
     },
 ) => {
     inFlight.add(batchId)
@@ -263,6 +269,7 @@ export const submitSend = (
             link_doctype: opts?.linkedDocument?.doctype ?? null,
             link_document: opts?.linkedDocument?.docname ?? null,
             location: opts?.location ? { ...opts.location, maps: senderMapsProvider() } : null,
+            contact: opts?.contact ?? null,
         })
         .then((res) => {
             channelMessagesStore.resolveOptimisticSend(channelID, batchId, res.message ?? [])
@@ -316,6 +323,10 @@ export const retrySend = async (client: PostClient, channelID: string, batchId: 
 
     // Fall back to the saved record when the placeholder json is unusable.
     const location = locationFromPlaceholders(placeholders) ?? record?.location
+    const contact = contactFromPlaceholders(placeholders) ?? record?.contact
+    // A card that can't be rebuilt stays failed rather than re-sending its image alone.
+    const isCard = placeholders.some((m) => m.message_type === "Location" || m.message_type === "Contact")
+    if (isCard && !location && !contact) return
 
     channelMessagesStore.retryOptimisticSend(channelID, batchId)
     setOutboxStatus(batchId, "sending")
@@ -325,6 +336,7 @@ export const retrySend = async (client: PostClient, channelID: string, batchId: 
         sendSilently: record?.send_silently,
         linkedDocument: record ? linkedDocumentOf(record) : undefined,
         location,
+        contact,
     })
 }
 
@@ -332,6 +344,12 @@ export const retrySend = async (client: PostClient, channelID: string, batchId: 
 const locationFromPlaceholders = (placeholders: Message[]): LocationMeta | undefined => {
     const location = placeholders.find((m) => m.message_type === "Location")
     return location ? parseLocationJson(location.json) ?? undefined : undefined
+}
+
+/** A Contact placeholder's card, rebuilt for a retry (undefined when unusable). */
+const contactFromPlaceholders = (placeholders: Message[]): ContactPayload | undefined => {
+    const contact = placeholders.find((m) => m.message_type === "Contact")
+    return contact ? parseContactJson(contact.json) ?? undefined : undefined
 }
 
 /** Discard a failed send: remove it both from the screen and from the saved outbox. */
@@ -358,6 +376,7 @@ export const injectOutboxRecord = (record: OutboxMessage) => {
         record.linked_message ? { linkedMessage: record.linked_message, repliedMessageDetails: record.replied_message_details } : undefined,
         linkedDocumentOf(record),
         record.location,
+        record.contact,
     )
     channelMessagesStore.addOptimisticMessages(record.channel_id, record.client_id, placeholders)
     // failed AND rejected both render as a failed bubble (Retry / Discard).
@@ -390,6 +409,7 @@ export const retryOutboxRecord = (client: PostClient, record: OutboxMessage): Pr
             record.linked_message ? { linkedMessage: record.linked_message, repliedMessageDetails: record.replied_message_details } : undefined,
             linkedDocumentOf(record),
             record.location,
+            record.contact,
         )
         channelMessagesStore.addOptimisticMessages(record.channel_id, record.client_id, placeholders)
     } else {
@@ -403,5 +423,6 @@ export const retryOutboxRecord = (client: PostClient, record: OutboxMessage): Pr
         sendSilently: record.send_silently,
         linkedDocument: linkedDocumentOf(record),
         location: record.location,
+        contact: record.contact,
     })
 }
