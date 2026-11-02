@@ -26,12 +26,17 @@ import { ReplyPreviewBanner } from "./ReplyPreviewBanner"
 import { MentionWarningBanner } from "./MentionWarningBanner"
 import { QuietHoursBanner } from "./QuietHoursBanner"
 import { MobileComposerActions } from "./MobileComposerActions"
+import { VoiceNoteButton } from "./VoiceNoteButton"
+import { VoiceComposer } from "./VoiceComposer"
+import { useVoiceRecording } from "./useVoiceRecording"
+import { canRecordVoice } from "./recordingFormat"
 import { loadDraft, saveDraft } from "./draft"
 import { useTypingEmitter } from "@stores/typing/useTypingEmitter"
 import { TypingIndicator } from "./TypingIndicator"
 import { useIsMobile } from "@hooks/use-mobile"
 import { useIsKeyboardOpen } from "@hooks/useIsKeyboardOpen"
 import { enqueueSend } from "@stores/messages/messageSender"
+import { buildReplySnapshot } from "@utils/replySnapshot"
 import { editingMessageAtom, linkedDocumentAtom, replyToMessageAtom } from "@utils/channelAtoms"
 import { getLastEditableMessage } from "@components/features/message/actions/editTarget"
 import { useChannelById } from "@stores/channels/useChannelList"
@@ -58,6 +63,8 @@ interface ChatInputProps {
     parentChannelID?: string | null,
     /** Thread composers can't schedule — v1 scope: the scheduled-messages dialog has no thread context to display. */
     disableSchedule?: boolean,
+    /** Mounted but hidden under another layer (the mobile thread): a recording there is discarded. */
+    covered?: boolean,
 }
 
 /**
@@ -74,7 +81,10 @@ interface ChatInputProps {
  * finishes (pendingSendAtom). The actual send (dispatchSend) is split out so the
  * normal path and the waiting path share one implementation.
  */
-const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDirectMessage, parentChannelID, disableSchedule }, ref) => {
+// Inert composer parts while recording: they read as disabled.
+const RECORDING_DISABLED = "[&_*]:text-ink-gray-4 [&_button]:bg-transparent!"
+
+const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDirectMessage, parentChannelID, disableSchedule, covered = false }, ref) => {
     const { call } = useContext(FrappeContext) as FrappeConfig
     const [files, setFiles] = useAtom(uploadedFilesAtom(channelID))
     const [pendingSend, setPendingSend] = useAtom(pendingSendAtom(channelID))
@@ -232,18 +242,7 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
         // Reply context: send the linked message id + a snapshot of it so the reply
         // preview renders immediately (the snapshot matches ReplyMessage's expected shape).
         const linkedMessage = replyTo?.name
-        const repliedMessageDetails = replyTo
-            ? JSON.stringify({
-                // No `text` (HTML): the server's snapshot doesn't store it and the
-                // preview renders `content`, so this stays byte-compatible with what
-                // the server sends back when the send is confirmed.
-                content: replyTo.content ?? "",
-                file: (replyTo as typeof replyTo & { file?: string }).file ?? "",
-                message_type: replyTo.message_type,
-                owner: replyTo.owner,
-                creation: replyTo.creation,
-            })
-            : undefined
+        const repliedMessageDetails = buildReplySnapshot(replyTo)
 
         // Shows the message on screen, saves it to the outbox, then sends it.
         enqueueSend(call, { channelID, batchId, owner: currentUser, content, files: outgoingFiles, linkedMessage, repliedMessageDetails, sendSilently: opts?.sendSilently, linkedDocument: linkedDocument ?? undefined })
@@ -301,6 +300,9 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
     // button advertises it and offers the loud override) — resolved HERE, the
     // one dispatch gate, so Enter, the button, and held sends all agree.
     const quietSendMode = useQuietSendMode()
+
+    const voice = useVoiceRecording({ channelID, editor, quietSendMode, stopTyping, covered })
+    const { recording } = voice
 
     const handleSend = useCallback((opts?: { sendSilently?: boolean }) => {
         if (!editor) return
@@ -446,15 +448,17 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                 so they must NOT be clipped. The inner box keeps overflow-y-hidden so the
                 formatting toolbar's square top corners stay within the rounded border. */}
             <div data-raven-editor className="relative w-full">
-                <div className={cn("w-full md:rounded-lg md:border border-outline-gray-2 shadow-outline-base bg-surface-base focus-within:border-outline-gray-3 overflow-y-hidden")}>
+                <div className="w-full md:rounded-lg md:border border-outline-gray-2 shadow-outline-base bg-surface-base focus-within:border-outline-gray-3 overflow-y-hidden">
                     <TooltipProvider>
 
                         {editor && showFormatting && !isMobile && (
-                            <EditorFormattingToolbar
-                                editor={editor}
-                                linkSignal={linkSignal}
-                                onLinkConsumed={() => setLinkSignal(0)}
-                            />
+                            <div inert={recording} className={cn(recording && RECORDING_DISABLED)}>
+                                <EditorFormattingToolbar
+                                    editor={editor}
+                                    linkSignal={linkSignal}
+                                    onLinkConsumed={() => setLinkSignal(0)}
+                                />
+                            </div>
                         )}
                         {/* Reply banner slides open/closed (grid-rows 0fr↔1fr — the
                             animatable "height:auto"). The last reply is snapshotted so
@@ -470,84 +474,134 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                             empty until `editor` is ready) so the composer — and the stream's
                             height — don't jump on channel open. Same class as the editor surface. */}
                         {isMobile ? (
-                            // Mobile is a single row: [+] · editor · send. The `[&_.tiptap]` overrides
-                            // deliberately replace the editor surface's default EDITOR_CLASS heights
-                            // (EDITOR_MIN_H etc.) with a compact one-line-that-grows box — these values
-                            // are mobile-specific and intentionally NOT tied to EDITOR_MIN_H.
-                            // Unequal paddings are added to make the entire thing optically balanced since the Plus button is bare (ghost) and does not have a structure.
-                            // max(inset, 0.75rem): iOS reports the 34px home-indicator inset, but
-                            // Android Chrome reports 0 (content doesn't extend under the nav bar),
-                            // which left the composer flush against the screen bottom. Keyboard
-                            // open → no override: the row's own py-2 gives a little breathing
-                            // room above the keyboard. Native never resizes the page for the
-                            // keyboard: --keyboard-height (set by the keyboard plugin) lifts the row.
-                            <div className={cn("flex items-end gap-0 pe-2 ps-1 py-2 border-t border-outline-gray-2 bg-surface-base mb-[var(--keyboard-height,0px)]", isMobile && !keyboardOpen && "standalone:pb-[max(var(--inset-bottom),0.75rem)]")}>
+                            <>
+                            {recording && (
+                                <div className="border-t border-outline-gray-2 bg-surface-base">
+                                    <VoiceComposer ref={voice.composerRef} layout="row" onSend={voice.send} onClose={voice.close} />
+                                </div>
+                            )}
+                            {/*
+                            Mobile is a single row: [+] · editor · send. The `[&_.tiptap]` overrides
+                            deliberately replace the editor surface's default EDITOR_CLASS heights
+                            (EDITOR_MIN_H etc.) with a compact one-line-that-grows box — these values
+                            are mobile-specific and intentionally NOT tied to EDITOR_MIN_H.
+                            Unequal paddings are added to make the entire thing optically balanced since the Plus button is bare (ghost) and does not have a structure.
+                            max(inset, 0.75rem): iOS reports the 34px home-indicator inset, but
+                            Android Chrome reports 0 (content doesn't extend under the nav bar),
+                            which left the composer flush against the screen bottom. Keyboard
+                            open → no override: the row's own py-2 gives a little breathing
+                            room above the keyboard. Native never resizes the page for the
+                            keyboard: --keyboard-height (set by the keyboard plugin) lifts the row.
+                            */}
+                            <div className={cn("flex items-end gap-0 pe-2 ps-1 py-2 border-t border-outline-gray-2 bg-surface-base mb-[var(--keyboard-height,0px)]", isMobile && !keyboardOpen && "standalone:pb-[max(var(--inset-bottom),0.75rem)]", recording && "hidden")}>
                                 <div className="flex items-center justify-center h-10">
-                                    <MobileComposerActions channelID={channelID} />
+                                    <MobileComposerActions channelID={channelID} onRecord={canRecordVoice() ? voice.start : undefined} />
                                 </div>
                                 <div className="flex-1 min-w-0 dark:bg-surface-elevation-2 bg-surface-gray-1 rounded-2xl [&_.tiptap]:min-h-10 [&_.tiptap]:max-h-64 [&_.tiptap]:overflow-y-auto [&_.tiptap]:py-2">
                                     <EditorContent editor={editor} />
                                 </div>
                                 <div className="flex items-center justify-center h-10 ms-1.5">
-                                    <SendButton
-                                        onSend={handleSend}
-                                        onSendSilently={() => handleSend({ sendSilently: true })}
-                                        onSendLoud={() => handleSend({ sendSilently: false })}
-                                        quietMode={quietSendMode}
-                                        onSchedulePick={handleSchedulePick}
-                                        onScheduleSend={() => setScheduleOpen(true)}
-                                        scheduleDisabled={scheduleDisabled}
-                                        loading={!!pendingSend}
-                                        disabled={nothingToSend}
-                                    />
+                                    {/* Slack-style: an idle, empty composer offers voice; focusing it offers Send. */}
+                                    {canRecordVoice() && !keyboardOpen && nothingToSend ? (
+                                        <VoiceNoteButton onRecord={voice.start} onHold={voice.startHold} size="lg" variant="solid" />
+                                    ) : (
+                                        <SendButton
+                                            onSend={handleSend}
+                                            onSendSilently={() => handleSend({ sendSilently: true })}
+                                            onSendLoud={() => handleSend({ sendSilently: false })}
+                                            quietMode={quietSendMode}
+                                            onSchedulePick={handleSchedulePick}
+                                            onScheduleSend={() => setScheduleOpen(true)}
+                                            scheduleDisabled={scheduleDisabled}
+                                            loading={!!pendingSend}
+                                            disabled={nothingToSend}
+                                        />
+                                    )}
                                 </div>
 
                             </div>
+                            </>
                         ) : (
                             <>
-                                <div className={EDITOR_MIN_H}>
+                                {/* Kept mounted while recording so the draft and its undo history survive */}
+                                <div className={cn(EDITOR_MIN_H, recording && "hidden")}>
                                     <EditorContent editor={editor} />
                                 </div>
-                                <div className="flex items-center gap-1 px-1 pb-1">
-                                    <AddFileButton channelID={channelID} onAfterAttach={() => editor?.commands.focus()} />
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="sm"
-                                                isIconButton
-                                                aria-label={_("Formatting")}
-                                                aria-pressed={showFormatting}
-                                                onClick={() => {
-                                                    setShowFormatting((v) => !v)
-                                                    editor?.commands.focus()
-                                                }}
-                                                className={cn(showFormatting && "bg-surface-gray-3 text-ink-gray-9")}
-                                            >
-                                                <Type />
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>{_("Formatting")}</TooltipContent>
-                                    </Tooltip>
-                                    <Separator orientation="vertical" className="mx-1 h-4!" />
-                                    {editor && <MentionButton editor={editor} />}
-                                    {editor && <EmojiPickerButton editor={editor} />}
-                                    <Separator orientation="vertical" className="mx-1 h-4!" />
-                                    <CreatePollDialog channelID={channelID} />
-                                    <AttachFrappeDocumentDialog channelID={channelID} />
-                                    <div className="flex-1" />
-                                    <SendButton
-                                        onSend={handleSend}
-                                        onSendSilently={() => handleSend({ sendSilently: true })}
-                                        onSendLoud={() => handleSend({ sendSilently: false })}
-                                        quietMode={quietSendMode}
-                                        onSchedulePick={handleSchedulePick}
-                                        onScheduleSend={() => setScheduleOpen(true)}
-                                        scheduleDisabled={scheduleDisabled}
-                                        loading={!!pendingSend}
-                                        disabled={nothingToSend}
+                                {recording && (
+                                    // The recorder takes the editor's place; the toolbar stays, inert, and Send sends the note.
+                                    <VoiceComposer
+                                        layout="inline"
+                                        onSend={voice.send}
+                                        onClose={voice.close}
+                                        sendSlot={voice.sendSlot}
+                                        renderSend={(control) => (
+                                            <SendButton
+                                                onSend={() => control.send()}
+                                                onSendSilently={() => control.send({ sendSilently: true })}
+                                                onSendLoud={() => control.send({ sendSilently: false })}
+                                                quietMode={quietSendMode}
+                                                onSchedulePick={handleSchedulePick}
+                                                onScheduleSend={() => setScheduleOpen(true)}
+                                                scheduleDisabled
+                                                loading={control.sending}
+                                                disabled={control.disabled}
+                                            />
+                                        )}
                                     />
+                                )}
+                                <div className="flex items-center gap-1 px-1 pb-1">
+                                    {/* While recording every action but Send is inert */}
+                                    <div inert={recording} className={cn("flex items-center gap-1", recording && RECORDING_DISABLED)}>
+                                        <AddFileButton channelID={channelID} onAfterAttach={() => editor?.commands.focus()} />
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    isIconButton
+                                                    aria-label={_("Formatting")}
+                                                    aria-pressed={showFormatting}
+                                                    onClick={() => {
+                                                        setShowFormatting((v) => !v)
+                                                        editor?.commands.focus()
+                                                    }}
+                                                    className={cn(showFormatting && "bg-surface-gray-3 text-ink-gray-9")}
+                                                >
+                                                    <Type />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>{_("Formatting")}</TooltipContent>
+                                        </Tooltip>
+                                        <Separator orientation="vertical" className="mx-1 h-4!" />
+                                        {editor && <MentionButton editor={editor} />}
+                                        {editor && <EmojiPickerButton editor={editor} />}
+                                        <Separator orientation="vertical" className="mx-1 h-4!" />
+                                        <CreatePollDialog channelID={channelID} />
+                                        <AttachFrappeDocumentDialog channelID={channelID} />
+                                        {canRecordVoice() && (
+                                            <>
+                                                <Separator orientation="vertical" className="mx-1 h-4!" />
+                                                <VoiceNoteButton onRecord={voice.start} />
+                                            </>
+                                        )}
+                                    </div>
+                                    <div className="flex-1" />
+                                    {recording ? (
+                                        <div ref={voice.setSendSlot} className="contents" />
+                                    ) : (
+                                        <SendButton
+                                            onSend={handleSend}
+                                            onSendSilently={() => handleSend({ sendSilently: true })}
+                                            onSendLoud={() => handleSend({ sendSilently: false })}
+                                            quietMode={quietSendMode}
+                                            onSchedulePick={handleSchedulePick}
+                                            onScheduleSend={() => setScheduleOpen(true)}
+                                            scheduleDisabled={scheduleDisabled}
+                                            loading={!!pendingSend}
+                                            disabled={nothingToSend}
+                                        />
+                                    )}
                                 </div>
                             </>
                         )}

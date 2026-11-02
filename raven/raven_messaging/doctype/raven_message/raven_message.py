@@ -64,7 +64,7 @@ class RavenMessage(Document):
 		mentions: DF.Table[RavenMention]
 		message_batch_id: DF.Data | None
 		message_reactions: DF.JSON | None
-		message_type: DF.Literal["Text", "Image", "File", "Poll", "System"]
+		message_type: DF.Literal["Text", "Image", "File", "Poll", "System", "Voice"]
 		notification: DF.Data | None
 		poll_id: DF.Link | None
 		replied_message_details: DF.JSON | None
@@ -322,15 +322,18 @@ class RavenMessage(Document):
 			# while fetches return the stored STRING. Clients that parsed the
 			# string form saw live reply quotes vanish (JSON.parse throws on an
 			# object). One shape everywhere.
-			self.replied_message_details = frappe.as_json(
-				{
-					"content": details.content,
-					"file": details.file,
-					"message_type": details.message_type,
-					"owner": details.owner,
-					"creation": datetime.datetime.strftime(details.creation, "%Y-%m-%d %H:%M:%S"),
-				}
-			)
+			snapshot = {
+				"content": details.content,
+				"file": details.file,
+				"message_type": details.message_type,
+				"owner": details.owner,
+				"creation": datetime.datetime.strftime(details.creation, "%Y-%m-%d %H:%M:%S"),
+			}
+			# A voice note's preview shows its length. Fetched only then: a text message's
+			# `json` is its whole editor document.
+			if details.message_type == "Voice":
+				snapshot["json"] = json_dict(frappe.db.get_value("Raven Message", self.linked_message, "json"))
+			self.replied_message_details = frappe.as_json(snapshot)
 
 	def after_insert(self):
 		# In a multi-message batch (one send → several messages) only the last,
@@ -715,6 +718,11 @@ class RavenMessage(Document):
 			return "📷 Sent a photo"
 		elif self.message_type == "Poll":
 			return "📊 Sent a poll"
+		elif self.message_type == "Voice":
+			duration = json_dict(self.json).get("duration")
+			if isinstance(duration, (int, float)) and duration > 0:
+				return f"🎤 Sent a voice note ({int(duration // 60)}:{int(duration % 60):02d})"
+			return "🎤 Sent a voice note"
 		elif self.text:
 			return self.content
 
@@ -947,8 +955,8 @@ class RavenMessage(Document):
 			)
 		else:
 			after_commit = False
-			if self.message_type == "File" or self.message_type == "Image":
-				# If the message is a file or an image, then we need to wait for the file to be uploaded
+			if self.message_type in ("File", "Image", "Voice"):
+				# Attachment messages wait for the file to be uploaded
 				after_commit = True
 				if not self.file:
 					return
@@ -1128,6 +1136,12 @@ def on_doctype_update():
 	# Index the selector (channel or message type) first for faster queries (less rows to sort in the next step)
 	frappe.db.add_index("Raven Message", ["channel_id", "creation"])
 	frappe.db.add_index("Raven Message", ["message_type", "creation"])
+
+
+def json_dict(value) -> dict:
+	"""A JSON field as a dict: the stored string from a fetch, the dict on a fresh doc."""
+	parsed = frappe.parse_json(value) if isinstance(value, str) else value
+	return parsed if isinstance(parsed, dict) else {}
 
 
 def get_milliseconds_since_epoch(timestamp: str) -> str:

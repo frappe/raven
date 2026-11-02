@@ -1,13 +1,16 @@
 import { RavenUser } from "@raven/types/Raven/RavenUser"
 import { siteKey } from "@lib/site"
 import { Dexie, type EntityTable } from "dexie"
+import type { VoiceNoteMeta } from "@lib/voiceNote"
 
 export type UserData = Pick<RavenUser, 'name' | 'full_name' | 'user_image' | 'first_name' | 'enabled' | 'type' | 'availability_status' | 'custom_status' | 'contact_number'>
 
-/** An already-uploaded attachment going out with a send (its stable URL + size). */
+/** An already-uploaded attachment going out with a send (its stable URL + size).
+ *  A voice note's metadata rides along so a retried send stays a Voice message. */
 export interface OutboxFile {
     file_url: string
     file_size: number
+    voice?: VoiceNoteMeta
 }
 
 /**

@@ -4,6 +4,7 @@ import { MessageImages } from "./MessageImages"
 import { MessageFiles } from "./MessageFiles"
 import { MessageVideo } from "./MessageVideo"
 import { MessageAudio } from "./MessageAudio"
+import { MessageVoiceNote } from "./MessageVoiceNote"
 import { DocumentLinkRenderer } from "./DocumentLinkRenderer"
 import { EditableMessageBody, MessageAttributes } from "./MessageContent"
 import { MessageLinkPreview } from "./LinkPreview"
@@ -42,7 +43,8 @@ export const BatchMediaGroups = ({ messages }: { messages: Message[] }) => {
     const fileMessages = messages.filter((message) => (message as FileLikeMessage).file)
     const images = fileMessages.filter((message) => kindOf(message) === "image")
     const videos = fileMessages.filter((message) => kindOf(message) === "video")
-    const audios = fileMessages.filter((message) => kindOf(message) === "audio")
+    const voiceNotes = fileMessages.filter((message) => message.message_type === "Voice")
+    const audios = fileMessages.filter((message) => message.message_type !== "Voice" && kindOf(message) === "audio")
     const docs = fileMessages.filter((message) => {
         const kind = kindOf(message)
         return kind === "pdf" || kind === "file"
@@ -56,6 +58,7 @@ export const BatchMediaGroups = ({ messages }: { messages: Message[] }) => {
         <>
             {images.length > 0 && <MessageImages messages={images} attachments={attachments} />}
             {videos.length > 0 && <MessageVideo messages={videos} />}
+            {voiceNotes.map((message) => <MessageVoiceNote key={message.name} message={message} />)}
             {audios.length > 0 && <MessageAudio messages={audios} />}
             {docs.length > 0 && <MessageFiles messages={docs} attachments={attachments} />}
         </>

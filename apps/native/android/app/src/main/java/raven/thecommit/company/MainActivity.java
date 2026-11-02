@@ -42,6 +42,8 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
         serveMediaProxy();
         publishSystemBarInsets();
+        // The page plays its own haptics (RavenHaptics); the WebView's long-press buzz would replace them.
+        getBridge().getWebView().setHapticFeedbackEnabled(false);
     }
 
     // Media proxy requests are answered here; everything else keeps Capacitor's client.

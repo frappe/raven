@@ -10,12 +10,12 @@ import type { Message } from "@raven/types/common/Message"
 export type FileBearingMessage = Message & { file?: string; file_size?: number }
 
 /**
- * True when `message` actually carries a file (File/Image message_type with a
+ * True when `message` actually carries a file (File/Image/Voice message_type with a
  * non-empty `file`). The one predicate every file-action surface filters batch
  * members through — a batch's caption (a plain Text message, always the LAST
  * member) must never be mistaken for an attachable file.
  */
 export const hasFile = (message: Message): message is FileBearingMessage & { file: string } => {
     const file = (message as FileBearingMessage).file
-    return !!file && (message.message_type === "File" || message.message_type === "Image")
+    return !!file && (message.message_type === "File" || message.message_type === "Image" || message.message_type === "Voice")
 }

@@ -113,6 +113,8 @@ const teaserBody = (details: LastMessageDetails, maxLength: number): string => {
             const question = details.content?.split("\n")[0]?.trim()
             return `📊 ${withoutCodeMarkers(question || _("Poll"))}`
         }
+        case "Voice":
+            return `🎤 ${_("Voice note")}`
         default:
             return typeof details.content === "string" && details.content.trim()
                 ? toPlainText(details.content, maxLength)
