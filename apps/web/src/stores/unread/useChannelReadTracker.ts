@@ -59,11 +59,13 @@ export const useChannelReadTracker = (
         sentRef.current = null
         caughtUpRef.current = false
         hiddenSeenRef.current = null
+        // A channel marked unread is read again on entering it.
+        channelUnreadStore.releaseRead(channelID)
     }, [channelID])
 
     const flush = useCallback(() => {
         const watermark = watermarkRef.current
-        if (!watermark) return
+        if (!watermark || channelUnreadStore.isReadHeld(channelID)) return
         // First flush this mount: adopt the server's last_visit (delivered on channel load)
         // as the baseline. Opening a channel you're already caught up on then posts nothing,
         // since its newest message is at/below that watermark. Pristine — never advanced by
@@ -111,7 +113,7 @@ export const useChannelReadTracker = (
                 // Partial reads (not caught up) keep hold-then-reconcile semantics.
                 // Drift-safe: markRead is forward-only and a lost post is replayed
                 // by the visit outbox.
-                if (caughtUpRef.current && document.visibilityState === "visible") {
+                if (caughtUpRef.current && document.visibilityState === "visible" && !channelUnreadStore.isReadHeld(channelID)) {
                     channelUnreadStore.markRead(channelID, message.creation, true)
                     // Mirror for the unread-threads badge (no-op for channels).
                     unreadThreadsStore.remove(channelID)
@@ -144,7 +146,9 @@ export const useChannelReadTracker = (
             channelUnreadStore.setActiveReadChannel(caughtUp ? channelID : null)
             // Mirror for the unread-threads badge (a thread is a channel here; no-op otherwise).
             unreadThreadsStore.setActiveThread(caughtUp ? channelID : null)
-            if (caughtUp && watermarkRef.current) channelUnreadStore.markRead(channelID, watermarkRef.current, true)
+            if (caughtUp && watermarkRef.current && !channelUnreadStore.isReadHeld(channelID)) {
+                channelUnreadStore.markRead(channelID, watermarkRef.current, true)
+            }
         }
         apply()
         document.addEventListener("visibilitychange", apply)
