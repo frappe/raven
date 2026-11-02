@@ -20,6 +20,7 @@
 		E5F60718293A4B5C6D7E8F90 /* RavenSocketPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4E5F60718293A4B5C6D7E8F /* RavenSocketPlugin.swift */; };
 		AB0000000000000000000031 /* RavenDownloadPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0000000000000000000032 /* RavenDownloadPlugin.swift */; };
 		49E7D96627FA898ADC661352 /* RavenMediaPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3CE359CD698AE8B40DDBE8B /* RavenMediaPlugin.swift */; };
+		C0A7AC750000000000000001 /* RavenContactsPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0A7AC750000000000000002 /* RavenContactsPlugin.swift */; };
 		F83F3B7E0B443CEF6CAE4432 /* RavenMediaHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E787D73202C6E31F48EFD17 /* RavenMediaHandler.swift */; };
 		50379B232058CBB4000EE86E /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
 		504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };
@@ -88,6 +89,7 @@
 		D4E5F60718293A4B5C6D7E8F /* RavenSocketPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RavenSocketPlugin.swift; sourceTree = "<group>"; };
 		AB0000000000000000000032 /* RavenDownloadPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RavenDownloadPlugin.swift; sourceTree = "<group>"; };
 		D3CE359CD698AE8B40DDBE8B /* RavenMediaPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RavenMediaPlugin.swift; sourceTree = "<group>"; };
+		C0A7AC750000000000000002 /* RavenContactsPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RavenContactsPlugin.swift; sourceTree = "<group>"; };
 		8E787D73202C6E31F48EFD17 /* RavenMediaHandler.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RavenMediaHandler.swift; sourceTree = "<group>"; };
 		9582B6822FE993A50072D4E8 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
@@ -182,6 +184,7 @@
 				D4E5F60718293A4B5C6D7E8F /* RavenSocketPlugin.swift */,
 				AB0000000000000000000032 /* RavenDownloadPlugin.swift */,
 				D3CE359CD698AE8B40DDBE8B /* RavenMediaPlugin.swift */,
+				C0A7AC750000000000000002 /* RavenContactsPlugin.swift */,
 				8E787D73202C6E31F48EFD17 /* RavenMediaHandler.swift */,
 			);
 			path = App;
@@ -356,6 +359,7 @@
 				E5F60718293A4B5C6D7E8F90 /* RavenSocketPlugin.swift in Sources */,
 				AB0000000000000000000031 /* RavenDownloadPlugin.swift in Sources */,
 				49E7D96627FA898ADC661352 /* RavenMediaPlugin.swift in Sources */,
+				C0A7AC750000000000000001 /* RavenContactsPlugin.swift in Sources */,
 				F83F3B7E0B443CEF6CAE4432 /* RavenMediaHandler.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

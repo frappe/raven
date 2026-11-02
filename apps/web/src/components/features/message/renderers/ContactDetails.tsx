@@ -80,8 +80,8 @@ export const ContactDetails = ({ contact, photoUrl, onClose }: ContactDetailsPro
     const save = () => {
         if (saving) return
         setSaving(true)
+        // The system editor shows whether it saved; Cancel there must not read as success here.
         void saveContact(contact, photoUrl)
-            .then(() => toast.success(_("Saved to contacts")))
             .catch(() => toast.error(_("Couldn't save the contact. Try again.")))
             .finally(() => setSaving(false))
     }
