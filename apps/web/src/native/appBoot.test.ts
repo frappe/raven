@@ -3,8 +3,8 @@ import { bootFromCache, forgetBoot, loadBoot } from "./appBoot"
 
 const native = vi.hoisted(() => ({ status: 0 }))
 vi.mock("@capacitor/core", () => ({ CapacitorHttp: { get: async () => { if (!native.status) throw new Error("connect"); return { status: native.status, data: "" } } } }))
-// No html tag in these tests. locale.test.ts covers it.
-vi.mock("@lib/locale", () => ({ applyLocale: () => {} }))
+// applyLocale writes to the html tag, which these tests don't have. The rest stays real.
+vi.mock("@lib/locale", async (importOriginal) => ({ ...(await importOriginal<typeof import("@lib/locale")>()), applyLocale: () => {} }))
 import { setActiveSite, siteKey, _resetActiveSite } from "@lib/site"
 import { clearSessionUser, sessionUser } from "@lib/sessionUser"
 
