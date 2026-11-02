@@ -32,8 +32,9 @@ export const useContactShare = ({ channelID, quietSendMode, stopTyping, replyTo,
     const [chooserOpen, setChooserOpen] = useState(false)
     const [sending, setSending] = useState(false)
     const sendingRef = useRef(false)
-    // Only Cancel abandons a send; once Send is tapped it finishes even if the composer unmounts.
+    // Cancel abandons only the photo uploads; once they finish, the sends go out even if the composer unmounts.
     const tokenRef = useRef<UploadToken | null>(null)
+    const sendQueue = useRef<Promise<void>>(Promise.resolve())
 
     // One picker at a time: a double tap must not open it twice.
     const pickingRef = useRef(false)
@@ -97,29 +98,36 @@ export const useContactShare = ({ channelID, quietSendMode, stopTyping, replyTo,
                 })
             }),
         )
-        for (const [index, contact] of selected.entries()) {
-            const uploaded = uploads[index]
-            // Cancel already reset the sheet; uploadFileWithin deleted any late upload.
-            if (token.abandoned) return
-            // One at a time: concurrent sends to a channel race on its last-message row and land out of order.
-            await enqueueSend(call, {
-                channelID,
-                batchId: randomUUID(),
-                owner: sessionUser().name,
-                content: "",
-                files: uploaded ? [uploaded.file] : [],
-                contact: { name: contact.name, phones: contact.phones, emails: contact.emails },
-                linkedMessage: index === 0 ? replyTo?.name : undefined,
-                repliedMessageDetails: index === 0 ? buildReplySnapshot(replyTo) : undefined,
-                sendSilently: quietSendMode === "auto" ? true : undefined,
-            })
-            // The reply rides the first contact; clear it now so a Cancel later can't leave it staged.
-            if (index === 0 && replyTo) clearReply()
+        if (token.abandoned) {
+            // Cancel came mid-upload: the photos that finished before it are this send's to delete.
+            for (const uploaded of uploads) if (uploaded) void db.deleteDoc("File", uploaded.name).catch(() => { })
+            return
         }
-        stopTyping()
+        // Uploads are done, so the sheet closes now; the sends carry on without it.
         sendingRef.current = false
         setSending(false)
         setContacts([])
+        const reply = replyTo
+        if (reply) clearReply()
+        stopTyping()
+        for (const [index, contact] of selected.entries()) {
+            const uploaded = uploads[index]
+            // One at a time, across sheets too: concurrent sends to a channel race on its last-message row.
+            sendQueue.current = sendQueue.current.then(() =>
+                enqueueSend(call, {
+                    channelID,
+                    batchId: randomUUID(),
+                    owner: sessionUser().name,
+                    content: "",
+                    files: uploaded ? [uploaded.file] : [],
+                    contact: { name: contact.name, phones: contact.phones, emails: contact.emails },
+                    // The reply rides the first contact only.
+                    linkedMessage: index === 0 ? reply?.name : undefined,
+                    repliedMessageDetails: index === 0 ? buildReplySnapshot(reply) : undefined,
+                    sendSilently: quietSendMode === "auto" ? true : undefined,
+                }),
+            )
+        }
     }, [call, channelID, fileApi, db, replyTo, clearReply, quietSendMode, stopTyping])
 
     const sheet = (
