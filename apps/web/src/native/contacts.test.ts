@@ -97,4 +97,14 @@ describe("saveContact", () => {
         await saveContact(contact, "/private/files/contact.jpg")
         expect(plugin.saveContact).toHaveBeenLastCalledWith({ name: "Priya", phones: [{ value: "1" }], emails: [] })
     })
+
+describe("native pickContact", () => {
+    it("treats an empty native resolve as cancel, not failure", async () => {
+        ;(globalThis as { __platform?: string }).__platform = "ios"
+        plugin.pickContact.mockResolvedValue(undefined)
+        expect(await pickContact()).toEqual({ status: "cancelled" })
+        plugin.pickContact.mockResolvedValue({})
+        expect(await pickContact()).toEqual({ status: "cancelled" })
+    })
+})
 })

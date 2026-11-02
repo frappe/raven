@@ -102,7 +102,8 @@ export const pickContact = async (field?: "phone" | "email"): Promise<PickResult
     try {
         if (nativePlatform() !== "web") {
             const { plugin } = await ravenContacts()
-            return toResult((await plugin.pickContact({ field })).contact)
+            // An empty native resolve arrives as undefined, not {}: that is still a cancel.
+            return toResult((await plugin.pickContact({ field }))?.contact)
         }
         const contacts = webContacts()
         if (!contacts) return { status: "failed" }

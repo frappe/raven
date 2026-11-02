@@ -41,7 +41,7 @@ public class RavenContactsPlugin extends Plugin {
         if (call == null) return;
         Intent data = result.getData();
         if (result.getResultCode() != Activity.RESULT_OK || data == null || data.getData() == null) {
-            call.resolve();
+            call.resolve(new JSObject());
             return;
         }
         JSObject ret = new JSObject();
@@ -101,7 +101,7 @@ public class RavenContactsPlugin extends Plugin {
         if (!data.isEmpty()) intent.putParcelableArrayListExtra(ContactsContract.Intents.Insert.DATA, data);
         try {
             getActivity().startActivity(intent);
-            call.resolve();
+            call.resolve(new JSObject());
         } catch (Exception e) {
             call.reject("Could not open the contact editor");
         }

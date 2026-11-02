@@ -24,7 +24,7 @@ public class RavenContactsPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func pickContact(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
             // A picker swiped away may never report back; release that call rather than block every later pick.
-            self.pickCall?.resolve()
+            self.pickCall?.resolve([:])
             guard let presenter = self.topViewController() else { return call.reject("No view controller to present the picker") }
             self.pickCall = call
             let picker = CNContactPickerViewController()
@@ -40,7 +40,7 @@ public class RavenContactsPlugin: CAPPlugin, CAPBridgedPlugin {
             editor.delegate = self
             presenter.present(UINavigationController(rootViewController: editor), animated: true)
             // Like Android: the system editor owns the outcome, so the call ends once it is shown.
-            call.resolve()
+            call.resolve([:])
         }
     }
 
@@ -146,7 +146,7 @@ extension RavenContactsPlugin: CNContactPickerDelegate, CNContactViewControllerD
     public func contactPickerDidCancel(_ picker: CNContactPickerViewController) {
         let call = pickCall
         pickCall = nil
-        call?.resolve()
+        call?.resolve([:])
     }
 
     public func contactViewController(_ viewController: CNContactViewController, didCompleteWith contact: CNContact?) {
