@@ -38,14 +38,14 @@ export const drawSnapshot = (
     })
 }
 
+// JPEG: Frappe rejects WebP uploads from users without desk access.
 const toBlob = (canvas: HTMLCanvasElement): Promise<Blob | null> =>
-    new Promise((resolve) => canvas.toBlob(resolve, "image/webp", 0.8))
+    new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85))
 
 /** The upload's name: never the coordinates, which would leak through file paths. */
-export const snapshotFileName = (type: string): string =>
-    type === "image/png" ? "location.png" : "location.webp"
+export const SNAPSHOT_FILE_NAME = "location.jpg"
 
-const fileFor = (blob: Blob): File => new File([blob], snapshotFileName(blob.type), { type: blob.type })
+const fileFor = (blob: Blob): File => new File([blob], SNAPSHOT_FILE_NAME, { type: "image/jpeg" })
 
 /** A small map image of the point, or null when any tile, canvas or encode step fails. */
 export const renderLocationSnapshot = async (meta: LocationMeta, zoom: number): Promise<File | null> => {

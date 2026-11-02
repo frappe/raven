@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest"
 import {
+    SNAPSHOT_FILE_NAME,
     SNAPSHOT_HEIGHT,
     SNAPSHOT_WIDTH,
     drawSnapshot,
     snapshotDrawPlan,
-    snapshotFileName,
 } from "./snapshot"
 
 const zoomOf = (url: string): number => Number(url.split("/")[3])
@@ -37,14 +37,10 @@ describe("snapshotDrawPlan", () => {
     })
 })
 
-describe("snapshotFileName", () => {
-    it("carries no digits: coordinates must not reach a file path", () => {
-        expect(snapshotFileName("image/webp")).toBe("location.webp")
-        expect(snapshotFileName("image/webp")).not.toMatch(/\d/)
-    })
-
-    it("uses png when the browser encodes png", () => {
-        expect(snapshotFileName("image/png")).toBe("location.png")
+describe("SNAPSHOT_FILE_NAME", () => {
+    it("is a JPEG name with no digits: coordinates must not reach a file path", () => {
+        expect(SNAPSHOT_FILE_NAME).toBe("location.jpg")
+        expect(SNAPSHOT_FILE_NAME).not.toMatch(/\d/)
     })
 })
 
