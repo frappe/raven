@@ -39,7 +39,7 @@ export const RepliedMessagePreview = ({ details }: { details: RepliedMessageDeta
                 {details.message_type === "Poll" && (
                     <span className="flex items-center gap-1">
                         <ChartColumnIcon className="h-3.5 w-3.5" />
-                        <span className="line-clamp-1 md:text-p-base text-p-lg">Poll: {details.content.split("\n")[0]}</span>
+                        <span className="line-clamp-1 md:text-p-base text-p-lg">Poll: <bdi>{details.content.split("\n")[0]}</bdi></span>
                     </span>
                 )}
 
@@ -68,7 +68,7 @@ export const RepliedMessagePreview = ({ details }: { details: RepliedMessageDeta
                     and `content` holds that same teaser (file name / poll question), so
                     keying this off the type avoids printing it twice. */}
                 {details.message_type === "Text" && details.content && (
-                    <span className="md:line-clamp-2 line-clamp-1 md:text-p-base text-p-lg">{details.content}</span>
+                    <bdi className="md:line-clamp-2 line-clamp-1 md:text-p-base text-p-lg">{details.content}</bdi>
                 )}
             </div>
         </div>

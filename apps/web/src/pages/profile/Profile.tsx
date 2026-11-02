@@ -72,7 +72,7 @@ const Profile = () => {
                 {/* Identity card */}
                 <div className="gap-1">
                     {myProfile && (
-                        <div className="flex flex-col w-full items-center gap-4 px-4 py-4 text-left">
+                        <div className="flex flex-col w-full items-center gap-4 px-4 py-4 text-start">
                             {/* Tapping the avatar opens the Upload / Remove photo menu */}
                             <ProfileImageMenu />
                             <div className="flex w-full min-w-0 flex-1 flex-col gap-2">

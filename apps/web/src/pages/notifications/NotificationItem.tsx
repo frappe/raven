@@ -11,7 +11,9 @@ import { ChannelIcon } from "@components/common/ChannelIcon/ChannelIcon"
 import { formatRelativeDate } from "@lib/date"
 import { formatNameList } from "@lib/nameList"
 import { getMessageTeaser } from "@utils/messageUtils"
-import _ from "@lib/translate"
+import _, { withElements } from "@lib/translate"
+import { lineSign } from "@lib/locale"
+import { useDirection } from "@components/ui/direction"
 import RichTextRenderer from "@components/features/message/renderers/RichTextRenderer"
 import type { UserData } from "@db"
 import type { SelectedNotification } from "./NotificationChat"
@@ -29,13 +31,14 @@ const ChannelContext = ({
     if (!notification.is_direct_message) {
         return (
             <div className="flex min-w-0 items-center gap-1 text-p-xs text-ink-gray-5">
-                <span className="shrink-0">{_("in")}</span>
-                <span className="flex min-w-0 items-center gap-1">
-                    <span className="flex h-lh shrink-0 items-center">
-                        <ChannelIcon type={notification.channel_type} className="size-3.5" />
-                    </span>
-                    <span className="truncate">{notification.channel_name}</span>
-                </span>
+                {withElements(_("in {0}"), [
+                    <span key="channel" className="flex min-w-0 items-center gap-1">
+                        <span className="flex h-lh shrink-0 items-center">
+                            <ChannelIcon type={notification.channel_type} className="size-3.5" />
+                        </span>
+                        <span className="truncate">{notification.channel_name}</span>
+                    </span>,
+                ])}
             </div>
         )
     }
@@ -48,7 +51,7 @@ const ChannelContext = ({
 const AvatarBadge = ({ icon: Icon, label, className }: { icon: LucideIcon; label: string; className?: string }) => (
     <span
         className={cn(
-            "absolute -bottom-1 -right-1 flex size-4 items-center justify-center rounded-full border border-outline-gray-1 bg-surface-base",
+            "absolute -bottom-1 -end-1 flex size-4 items-center justify-center rounded-full border border-outline-gray-1 bg-surface-base",
             className,
         )}
         aria-label={label}
@@ -58,20 +61,21 @@ const AvatarBadge = ({ icon: Icon, label, className }: { icon: LucideIcon; label
     </span>
 )
 
-/** Swipe-right-to-mark-read (touch): the same gesture language and feel as
- * swipe-to-reply on message rows — same slop, flick, edge guard and haptic.
+/** Swipe-to-mark-read (touch), toward the end of the line (right, or left in Arabic):
+ * the same gesture language and feel as swipe-to-reply on message rows — same slop,
+ * flick, edge guard and haptic.
  * Only UNREAD rows arm the gesture; read rows have nothing to mark. */
 const SWIPE_READ_EDGE_GUARD_PX = 32
 const SWIPE_READ_COMMIT_PX = 56
 const SWIPE_READ_MAX_PX = 88
 const SWIPE_READ_SLOP_PX = 12
-const SWIPE_READ_FLICK_VELOCITY = 0.5 // px/ms rightward
+const SWIPE_READ_FLICK_VELOCITY = 0.5 // px/ms toward the end of the line
 const SWIPE_READ_FLICK_MIN_PX = 20
 /** Suppress the click synthesized from the drag — it would OPEN the notification. */
 const SWIPE_READ_CLICK_GUARD_MS = 300
 
 const rowShellClasses = (isRead: boolean | number, isActive: boolean) => cn(
-    "group flex w-full items-start gap-3 px-2 py-3 md:py-2 text-p-sm rounded transition-colors relative text-left select-none",
+    "group flex w-full items-start gap-3 px-2 py-3 md:py-2 text-p-sm rounded transition-colors relative text-start select-none",
     "hover:bg-surface-gray-3 active:bg-surface-gray-3",
     isActive && "bg-surface-elevation-3 hover:bg-surface-elevation-3 active:bg-surface-elevation-3 shadow-sm"
 )
@@ -117,23 +121,28 @@ const NotificationRowLayout = ({
         pointerId: number
         startX: number
         startY: number
+        /** 1 left to right, -1 right to left: distances below are along the line. */
+        sign: 1 | -1
         active: boolean
         velocity: number
         lastX: number
         lastTime: number
     } | null>(null)
     const suppressClickUntilRef = useRef(0)
+    const direction = useDirection()
 
     const canSwipeRead = !isRead && !!onMarkRead
 
     const onPointerDown = (event: React.PointerEvent) => {
         if (!canSwipeRead || event.pointerType !== "touch") return
-        // The left screen edge belongs to the iOS back-swipe gesture.
-        if (event.clientX <= SWIPE_READ_EDGE_GUARD_PX) return
+        // The screen edges belong to the iOS back-swipe gesture. It sits on the side of the
+        // device's language, which can differ from Raven's, so both are kept clear.
+        if (event.clientX <= SWIPE_READ_EDGE_GUARD_PX || event.clientX >= window.innerWidth - SWIPE_READ_EDGE_GUARD_PX) return
         swipeRef.current = {
             pointerId: event.pointerId,
             startX: event.clientX,
             startY: event.clientY,
+            sign: lineSign(direction),
             active: false,
             velocity: 0,
             lastX: event.clientX,
@@ -144,11 +153,11 @@ const NotificationRowLayout = ({
     const onPointerMove = (event: React.PointerEvent) => {
         const swipe = swipeRef.current
         if (!swipe || swipe.pointerId !== event.pointerId) return
-        const dx = event.clientX - swipe.startX
+        const dx = (event.clientX - swipe.startX) * swipe.sign
         const dy = event.clientY - swipe.startY
 
         if (!swipe.active) {
-            // Vertical-dominant or leftward travel: it's a scroll, stand down.
+            // Vertical-dominant or backward travel: it's a scroll, stand down.
             if (Math.abs(dy) > SWIPE_READ_SLOP_PX && Math.abs(dy) > Math.abs(dx)) {
                 swipeRef.current = null
                 return
@@ -167,7 +176,7 @@ const NotificationRowLayout = ({
 
         if (swipe.active) {
             const dt = event.timeStamp - swipe.lastTime
-            if (dt > 0) swipe.velocity = (event.clientX - swipe.lastX) / dt
+            if (dt > 0) swipe.velocity = ((event.clientX - swipe.lastX) * swipe.sign) / dt
             swipe.lastX = event.clientX
             swipe.lastTime = event.timeStamp
 
@@ -177,7 +186,7 @@ const NotificationRowLayout = ({
             const offset = swipeDismisses
                 ? Math.max(dx, 0)
                 : Math.min(Math.max(dx, 0), SWIPE_READ_MAX_PX)
-            if (rowRef.current) rowRef.current.style.transform = `translateX(${offset}px)`
+            if (rowRef.current) rowRef.current.style.transform = `translateX(${offset * swipe.sign}px)`
             if (glyphRef.current) glyphRef.current.style.opacity = String(Math.min(offset / SWIPE_READ_COMMIT_PX, 1))
         }
     }
@@ -190,8 +199,8 @@ const NotificationRowLayout = ({
 
         suppressClickUntilRef.current = performance.now() + SWIPE_READ_CLICK_GUARD_MS
 
-        // Commit on distance OR a rightward flick (same rule as swipe-to-reply).
-        const dx = event.clientX - swipe.startX
+        // Commit on distance OR a flick toward the line's end (same rule as swipe-to-reply).
+        const dx = (event.clientX - swipe.startX) * swipe.sign
         const commit =
             event.type !== "pointercancel" &&
             (dx >= SWIPE_READ_COMMIT_PX ||
@@ -201,12 +210,12 @@ const NotificationRowLayout = ({
         const glyph = glyphRef.current
         if (commit && swipeDismisses) {
             // The swipe finishes what it started: the row keeps travelling off
-            // the right edge while the leave pipeline (expedited — no linger for
+            // the end edge while the leave pipeline (expedited — no linger for
             // swipes) collapses the gap behind it. No snap-back, no cleanup:
             // the row is about to unmount.
             if (row) {
                 row.style.transition = "transform 200ms ease-out, opacity 200ms ease-out"
-                row.style.transform = `translateX(${(row.parentElement?.clientWidth ?? 400) + 32}px)`
+                row.style.transform = `translateX(${((row.parentElement?.clientWidth ?? 400) + 32) * swipe.sign}px)`
                 row.style.opacity = "0"
             }
         } else {
@@ -280,7 +289,7 @@ const NotificationRowLayout = ({
                     <div
                         ref={glyphRef}
                         aria-hidden
-                        className="pointer-events-none absolute left-4 top-1/2 z-0 flex size-8 -translate-y-1/2 items-center justify-center rounded-full bg-surface-gray-3 text-ink-gray-7 opacity-0"
+                        className="pointer-events-none absolute start-4 top-1/2 z-0 flex size-8 -translate-y-1/2 items-center justify-center rounded-full bg-surface-gray-3 text-ink-gray-7 opacity-0"
                     >
                         <CheckCheck className="size-4" />
                     </div>
@@ -336,7 +345,7 @@ const NotificationBody = ({ notification }: { notification: NotificationObject }
     // Same reading tier as .tiptap: the rich branch overrides the quote
     // container's xs/gray styling, so the plain fallback must too, or a
     // "📷 Photo" teaser renders smaller and dimmer than text quotes.
-    return <span className="text-p-lg md:text-p-base text-ink-gray-8">{teaser || _("Message")}</span>
+    return <bdi className="text-p-lg md:text-p-base text-ink-gray-8">{teaser || _("Message")}</bdi>
 }
 
 /** Single-string template with a `{0}` placeholder for the emoji slot — keeps
@@ -482,16 +491,16 @@ export const ReactionItem = memo(({
             avatar={
                 <div className="relative mt-0.5 h-8 w-8 shrink-0">
                     {reactorsData[0] && (
-                        <div className={cn("absolute", total > 1 ? "top-0 left-0 w-6 h-6" : "inset-0")}>
+                        <div className={cn("absolute", total > 1 ? "top-0 start-0 w-6 h-6" : "inset-0")}>
                             <UserAvatar user={reactorsData[0]} size={total > 1 ? "xs" : "md"} showStatusIndicator={false} showBotIndicator={false} />
                         </div>
                     )}
                     {reactorsData[1] && total > 1 && (
-                        <div className="absolute bottom-0 right-0 w-5 h-5 ring-1 ring-surface-gray-1 rounded-full overflow-hidden">
+                        <div className="absolute bottom-0 end-0 w-5 h-5 ring-1 ring-surface-gray-1 rounded-full overflow-hidden">
                             <UserAvatar user={reactorsData[1]} size="xs" showStatusIndicator={false} showBotIndicator={false} />
                         </div>
                     )}
-                    <AvatarBadge icon={SmilePlus} label={_("Reaction")} className={total > 1 ? "-bottom-2 -right-1.5" : undefined} />
+                    <AvatarBadge icon={SmilePlus} label={_("Reaction")} className={total > 1 ? "-bottom-2 -end-1.5" : undefined} />
                 </div>
             }
             name={reactorText}
@@ -501,7 +510,7 @@ export const ReactionItem = memo(({
             <p className="flex items-center gap-1.5 text-p-sm text-ink-gray-8">
                 {renderReactedSentence(displayReactions)}
             </p>
-            <div className="mt-2 border-l-2 border-outline-gray-2 pl-2 text-p-xs text-ink-gray-5 line-clamp-2 [&_p]:my-0 [&_.mention]:pointer-events-none">
+            <div className="mt-2 border-s-2 border-outline-gray-2 ps-2 text-p-xs text-ink-gray-5 line-clamp-2 [&_p]:my-0 [&_.mention]:pointer-events-none">
                 <NotificationBody notification={notification} />
             </div>
         </NotificationRowLayout>

@@ -155,7 +155,7 @@ export function ChannelFilter({
                 selectedChannel ? (
                     <ChannelOption channel={selectedChannel} users={users} compact />
                 ) : (
-                    <span className="min-w-0 flex-1 truncate text-left leading-snug text-ink-gray-4">{allLabel}</span>
+                    <span className="min-w-0 flex-1 truncate text-start leading-snug text-ink-gray-4">{allLabel}</span>
                 )
             }
         >
@@ -240,7 +240,7 @@ export function ChannelOption({
             )}
             {/* leading-snug: the UI type scale's 1.15 is too tight to contain descenders
                 once `truncate` clips the line box. */}
-            <span className="min-w-0 flex-1 truncate text-left leading-snug">
+            <span className="min-w-0 flex-1 truncate text-start leading-snug">
                 {getUserDisplayName(getChannelLabel(channel, users), isSelfDM)}
             </span>
             {/* Stands in for the group heading while the list is flat: two channels can share

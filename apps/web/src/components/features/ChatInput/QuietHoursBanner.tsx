@@ -133,7 +133,7 @@ const QuietHoursBannerContent = ({ mode, onDismiss }: { mode: QuietSendMode; onD
                 : _("It's outside working hours - send silently to let people rest ({0}).", [isApple ? "⌘⇧↵" : "Ctrl+Shift+Enter"])
 
     return (
-        <div className="flex items-center gap-1.5 rounded-md bg-surface-gray-2 dark:bg-surface-elevation-2 py-1 pl-3 pr-1 md:mx-0 mx-1">
+        <div className="flex items-center gap-1.5 rounded-md bg-surface-gray-2 dark:bg-surface-elevation-2 py-1 ps-3 pe-1 md:mx-0 mx-1">
             <span className="flex h-lh shrink-0 items-center" aria-hidden="true">
                 <MoonStarIcon className="size-4 text-ink-gray-6" />
             </span>

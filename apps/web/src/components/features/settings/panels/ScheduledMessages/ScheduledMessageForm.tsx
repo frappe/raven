@@ -236,10 +236,7 @@ const describeCron = (cron: string, use24Hour: boolean): string | null => {
 const joinNames = (names: string[]) =>
     names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} ${_("and")} ${names[names.length - 1]}`
 
-const ordinal = (n: number) => {
-    const rem10 = n % 10, rem100 = n % 100
-    const suffix = rem10 === 1 && rem100 !== 11 ? "st" : rem10 === 2 && rem100 !== 12 ? "nd" : rem10 === 3 && rem100 !== 13 ? "rd" : "th"
-    return `${n}${suffix}`
-}
+/** "1st", "2nd" in English, and the ordinal of the user's language elsewhere. January has all 31 days. */
+const ordinal = (day: number) => dayjs("2000-01-01").date(day).format("Do")
 
 export default ScheduledMessageForm

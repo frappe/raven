@@ -41,7 +41,7 @@ const ChannelInfo = ({ channelID }: { channelID: string }) => {
                 <div className="flex items-center gap-1.5 pt-2">
                     <UserAvatar user={user} size="xs" showStatusIndicator={false} showBotIndicator={false} />
                     <span className="text-p-xs text-ink-gray-6">
-                        {_(`Created by {0} on {1}`, [user.full_name, formatDate(channel.creation, "Do MMM YYYY")])}
+                        {_("Created by {0} on {1}", [user.full_name, formatDate(channel.creation, "Do MMM YYYY")])}
                     </span>
                 </div>
             )}

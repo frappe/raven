@@ -170,7 +170,7 @@ const ShareTarget = () => {
                             <button
                                 key={channel.name}
                                 type="button"
-                                className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-left active:bg-surface-gray-2"
+                                className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-start active:bg-surface-gray-2"
                                 onClick={() => pick(channel)}
                             >
                                 <div className="flex items-center gap-2">
@@ -226,7 +226,7 @@ const DMRow = ({ dm, peer, onPick }: { dm: DMChannelListItem; peer?: UserData; o
     return (
         <button
             type="button"
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left active:bg-surface-gray-2"
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-start active:bg-surface-gray-2"
             onClick={() => onPick(dm)}
         >
             {peer && <UserAvatar user={peer} size="sm" />}

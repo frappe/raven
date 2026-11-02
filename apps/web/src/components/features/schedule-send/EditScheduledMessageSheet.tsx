@@ -42,7 +42,7 @@ export const EditScheduledMessageSheet = ({ row, open, onOpenChange, onDone }: E
                 {/* Title inside the px-4 body so it aligns with the fields (same as
                     the Create Channel sheet). */}
                 <div className="flex min-h-0 flex-col gap-5 px-4 pt-1 pb-2">
-                    <DrawerTitle className="shrink-0 text-left text-2xl-semibold text-ink-gray-9">
+                    <DrawerTitle className="shrink-0 text-start text-2xl-semibold text-ink-gray-9">
                         {_("Edit scheduled message")}
                     </DrawerTitle>
                     {/* Composer-style box: toolbar pinned on top, overflow-hidden clips

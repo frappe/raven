@@ -138,7 +138,9 @@ function TabsList({
     >
       {variant === "underline" && (
         // The active underline: a 1px bar shifted onto the list's border,
-        // so it sits ON the gray line rather than a pixel above it.
+        // so it sits ON the gray line rather than a pixel above it. It stays at
+        // left-0 in every direction: --tabs-indicator-x is offsetLeft, measured
+        // from the left.
         <span
           aria-hidden
           className={cn(
@@ -149,7 +151,7 @@ function TabsList({
             "group-data-[orientation=horizontal]/tabs:bottom-0 group-data-[orientation=horizontal]/tabs:left-0 group-data-[orientation=horizontal]/tabs:h-px group-data-[orientation=horizontal]/tabs:w-(--tabs-indicator-w) group-data-[orientation=horizontal]/tabs:translate-x-(--tabs-indicator-x)",
             // A scroll container clips anything past its box, so the bar stays inside it there.
             !scrollable && "group-data-[orientation=horizontal]/tabs:translate-y-px",
-            "group-data-[orientation=vertical]/tabs:top-0 group-data-[orientation=vertical]/tabs:end-0 group-data-[orientation=vertical]/tabs:w-px group-data-[orientation=vertical]/tabs:h-(--tabs-indicator-w) group-data-[orientation=vertical]/tabs:translate-y-(--tabs-indicator-x) group-data-[orientation=vertical]/tabs:translate-x-px",
+            "group-data-[orientation=vertical]/tabs:top-0 group-data-[orientation=vertical]/tabs:end-0 group-data-[orientation=vertical]/tabs:w-px group-data-[orientation=vertical]/tabs:h-(--tabs-indicator-w) group-data-[orientation=vertical]/tabs:translate-y-(--tabs-indicator-x) group-data-[orientation=vertical]/tabs:translate-x-px rtl:group-data-[orientation=vertical]/tabs:-translate-x-px",
           )}
         />
       )}

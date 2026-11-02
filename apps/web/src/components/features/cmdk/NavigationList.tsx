@@ -73,7 +73,7 @@ const NavigationList = ({ text }: { text: string }) => {
             <WorkspaceLogo workspace={workspace} className="size-4 rounded" />
             <span className="truncate">{workspace.workspace_name}</span>
             {workspace.name === firstSegment && (
-                <Badge variant="subtle" size="sm" className="ml-auto">
+                <Badge variant="subtle" size="sm" className="ms-auto">
                     {_("Current")}
                 </Badge>
             )}

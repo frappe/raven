@@ -74,7 +74,7 @@ export const WorkspaceTile = ({ workspace, index, isCurrent, hasUnread, editing,
                         />
                         {/* Same ambient signal as the Home tab: a dot, not a count. */}
                         {hasUnread && (
-                            <span className="absolute -right-1 -top-1 size-2.5 rounded-full bg-surface-red-6 ring-2 ring-surface-elevation-1" aria-hidden="true" />
+                            <span className="absolute -end-1 -top-1 size-2.5 rounded-full bg-surface-red-6 ring-2 ring-surface-elevation-1" aria-hidden="true" />
                         )}
                     </span>
                     <span className="w-full text-center text-xs leading-snug text-ink-gray-6 line-clamp-2 break-words">
@@ -91,7 +91,7 @@ export const WorkspaceTile = ({ workspace, index, isCurrent, hasUnread, editing,
                         onClick={onRemove}
                         aria-label={_("Leave {0}", [workspace.workspace_name])}
                         // The ring fakes a cutout against whatever logo is underneath.
-                        className="absolute left-1 top-0 size-5 rounded-full ring-2 ring-surface-elevation-1"
+                        className="absolute start-1 top-0 size-5 rounded-full ring-2 ring-surface-elevation-1"
                     >
                         <Minus className="size-3.5" />
                     </Button>

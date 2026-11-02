@@ -1,5 +1,6 @@
 import { CheckIcon } from 'lucide-react'
 import { cn } from '@lib/utils'
+import _ from "@lib/translate"
 
 interface Step {
     id: number
@@ -17,7 +18,7 @@ interface StepperProps {
 
 export const Stepper = ({ steps, currentStep }: StepperProps) => {
     return (
-        <nav aria-label="Form progress" className="flex items-center justify-center gap-3">
+        <nav aria-label={_("Form progress")} className="flex items-center justify-center gap-3">
             <ol className="flex items-center gap-3">
                 {steps.map((step, index) => (
                     <li key={step.id} className="flex items-center gap-3">

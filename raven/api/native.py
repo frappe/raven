@@ -1,6 +1,8 @@
 import frappe
 import frappe.sessions
 
+from raven.www.raven import layout_direction
+
 # Origins the bundled app runs from: WKWebView on iOS, the Android WebView.
 APP_ORIGINS = ("capacitor://localhost", "https://localhost")
 # Sent by the app on every request. It marks the request as the app's. It is not a security
@@ -18,7 +20,10 @@ def boot():
 	# Desk's boot runs every app's hooks and takes seconds to rebuild after a logout; use it only when cached.
 	data = frappe.sessions.get() if frappe.cache.hget("bootinfo", frappe.session.user) else app_boot()
 	data["push_relay_server_url"] = frappe.conf.get("push_relay_server_url")
-	data["server_script_enabled"] = frappe.conf.get("server_script_enabled", True)
+	# Site config often holds 0 or 1, and the client checks for false.
+	data["server_script_enabled"] = bool(frappe.conf.get("server_script_enabled", True))
+	# The app has no server page, so the boot is the only place it learns the direction.
+	data["layout_direction"] = layout_direction()
 	return data
 
 

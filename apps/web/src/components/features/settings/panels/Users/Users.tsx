@@ -97,11 +97,11 @@ export const Users = () => {
             </SettingsPanelHeader>
             <SettingsPanelContent className="min-h-0 gap-2">
                 <div className="relative">
-                    <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-gray-4" aria-hidden="true" />
+                    <SearchIcon className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-gray-4" aria-hidden="true" />
                     <Input
                         inputSize="sm"
                         type="search"
-                        className="pl-9"
+                        className="ps-9"
                         placeholder={_("Search by name or email")}
                         aria-label={_("Search users")}
                         value={search}

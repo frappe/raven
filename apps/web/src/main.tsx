@@ -12,15 +12,20 @@ scan({
 
 import { initPushNotifications, isStandalone } from "@lib/push";
 import { loadTranslations } from "@lib/translations";
+import { applyLocale, layoutDirection } from "@lib/locale";
+import { DirectionProvider } from "@components/ui/direction";
 
 const render = () => {
   // After boot lands: the push config (firebase_client_config) comes from it.
   initPushNotifications()
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
-      <ThemeProvider>
-        <App />
-      </ThemeProvider>
+      {/* Radix does not read the page's dir: submenus, arrow keys, sliders and scrollbars need this. */}
+      <DirectionProvider dir={layoutDirection(window.frappe?.boot ?? {})}>
+        <ThemeProvider>
+          <App />
+        </ThemeProvider>
+      </DirectionProvider>
     </StrictMode>,
   )
 }
@@ -34,6 +39,7 @@ if (import.meta.env.DEV) {
       const v = JSON.parse(values.message)
       if (!window.frappe) window.frappe = {};
       window.frappe.boot = v
+      applyLocale(v)
       return loadTranslations(v)
     })
     .then(render)
@@ -68,5 +74,6 @@ if (import.meta.env.DEV) {
   // Frappe 15 and 16 put the translations in the boot; develop serves them separately. Either
   // way they are in place before the first render, so nothing shows in English first.
   const boot = window.frappe?.boot
+  if (boot) applyLocale(boot)
   void (boot ? loadTranslations(boot) : Promise.resolve()).then(render)
 }

@@ -130,7 +130,7 @@ const FileSourceRow = ({ file, onDelete }: { file?: RavenAIFileSource; onDelete:
                     </Badge>
                 )}
             </TableCell>
-            <TableCell className="w-12 text-right">
+            <TableCell className="w-12 text-end">
                 <Button
                     variant="ghost"
                     theme="red"

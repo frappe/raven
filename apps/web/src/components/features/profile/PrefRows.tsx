@@ -87,7 +87,7 @@ export const PrefActionRow = forwardRef<
             ref={ref}
             type="button"
             className={cn(
-                "flex w-full items-center justify-between gap-6 py-3 text-left select-none outline-none transition-colors",
+                "flex w-full items-center justify-between gap-6 py-3 text-start select-none outline-none transition-colors",
                 "active:bg-surface-gray-2 data-[state=open]:bg-surface-gray-2",
                 className,
             )}

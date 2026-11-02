@@ -33,7 +33,7 @@ export const ReplyPreviewBanner = ({
     const isMobile = useIsMobile()
     return (
         <div className={cn("flex items-center gap-2 bg-surface-gray-1 md:px-3 md:py-2.5", showFormatting && "m-2 rounded")}>
-            <div className="min-w-0 flex-1 md:border-l-2 border-l-4 md:py-0 py-2 md:border-outline-gray-3 border-outline-gray-4 pl-2">
+            <div className="min-w-0 flex-1 md:border-s-2 border-s-4 md:py-0 py-2 md:border-outline-gray-3 border-outline-gray-4 ps-2">
                 <RepliedMessagePreview details={toDetails(message)} />
             </div>
             <Button type="button" variant="ghost" size={isMobile ? "lg" : "md"}

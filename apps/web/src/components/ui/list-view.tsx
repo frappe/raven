@@ -21,6 +21,7 @@ import { Checkbox } from "@components/ui/checkbox"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip"
 import { cn } from "@lib/utils"
 import { useDirection } from "./direction"
+import _ from "@lib/translate"
 
 /** Optional per-column layout hints for `ListView`. */
 export type ListViewColumnMeta = {
@@ -310,7 +311,7 @@ function ListViewInner<TData>({
             header: ({ table }) => (
                 <div className="flex size-full items-center justify-center">
                     <Checkbox
-                        aria-label="Select all rows"
+                        aria-label={_("Select all rows")}
                         checked={
                             table.getIsAllRowsSelected()
                                 ? true
@@ -326,7 +327,7 @@ function ListViewInner<TData>({
             cell: ({ row }) => (
                 <div className="flex size-full items-center justify-center">
                     <Checkbox
-                        aria-label="Select row"
+                        aria-label={_("Select row")}
                         checked={row.getIsSelected()}
                         onCheckedChange={(value) => row.toggleSelected(value === true)}
                         onClick={(e) => e.stopPropagation()}
@@ -551,7 +552,7 @@ function ListViewInner<TData>({
                                             <span
                                                 aria-hidden
                                                 className={cn(
-                                                    "pointer-events-none absolute ltr:-right-2 rtl:-left-2 z-1 w-0.5 bg-outline-gray-2",
+                                                    "pointer-events-none absolute -end-2 z-1 w-0.5 bg-outline-gray-2",
                                                     "opacity-0 transition-[opacity,background-color] ease-in-out duration-150",
                                                     "group-hover:opacity-100 group-hover:bg-outline-gray-2",
                                                     resizingColId === header.column.id && "bg-outline-gray-3 opacity-100",
@@ -561,9 +562,9 @@ function ListViewInner<TData>({
                                             <div
                                                 role="separator"
                                                 aria-orientation="vertical"
-                                                aria-label="Resize column"
+                                                aria-label={_("Resize column")}
                                                 onPointerDown={(e) => startColumnResize(e, header)}
-                                                className="absolute top-0 ltr:-right-2 rtl:-left-2 z-10 h-full w-2 max-w-[12px] cursor-col-resize touch-none select-none bg-transparent"
+                                                className="absolute top-0 -end-2 z-10 h-full w-2 max-w-[12px] cursor-col-resize touch-none select-none bg-transparent"
                                             />
                                         </>
                                     ) : null}
@@ -591,7 +592,7 @@ function ListViewInner<TData>({
                                 data-index={virtualRow.index}
                                 role="row"
                                 className={cn(
-                                    "absolute top-0 group ltr:left-0 rtl:right-0 w-full min-w-0 rounded px-3 transition-colors",
+                                    "absolute top-0 group start-0 w-full min-w-0 rounded px-3 transition-colors",
                                     // virtualRow.index > 0 && "border-t border-outline-gray-1",
                                     !row.getIsSelected() && "hover:bg-surface-gray-1",
                                     row.getIsSelected() && "bg-surface-gray-2 hover:bg-surface-gray-3",

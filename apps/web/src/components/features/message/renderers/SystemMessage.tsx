@@ -7,7 +7,7 @@ import { getDateObject } from "@lib/date";
 import { timeFormatAtom } from "@utils/preferences";
 import { useUsersById } from "@hooks/useMessageRowLookups";
 import { useIsMobile } from "@hooks/use-mobile";
-import _ from "@lib/translate";
+import _, { withElements } from "@lib/translate";
 import { useAtomValue } from "jotai";
 import React, { useMemo } from "react";
 
@@ -62,7 +62,7 @@ const OthersRoster = ({ ids }: { ids: string[] }) => {
         // pins the bar to this ScrollArea's edge, so any card padding around
         // it reads as a gap. The row padding lives INSIDE the scroll instead.
         <ScrollArea viewportClassName="max-h-64 scroll-fade">
-            <div className="flex flex-col gap-2.5 pt-2 pl-2 pb-2 pr-2.5">
+            <div className="flex flex-col gap-2.5 pt-2 ps-2 pb-2 pe-2.5">
                 {ids.map((id) => {
                     const user = usersById.get(id)
                     return (
@@ -102,55 +102,49 @@ const SystemMessage: React.FC<SystemMessageProps> = ({ message, time, data }) =>
                 // Long lists: "…and N others" reveals who the others are (ids
                 // from the payload, names resolved live). Desktop opens on
                 // hover; touch has no hover, so mobile uses a tap-open popover
-                // with the same content. The sentence is split around the
-                // trigger, so it's composed from two translated fragments.
+                // with the same content. The trigger goes into the same sentence
+                // the short lists use, as its {2}, so translators see one sentence.
                 const restIDs = structured.members.slice(3)
                 const othersLabel = (
                     <span className="cursor-pointer underline decoration-outline-gray-3 decoration-dotted underline-offset-2">
                         {_("{0} others", [String(restIDs.length)])}
                     </span>
                 )
-                return (
-                    <>
-                        {_("{0} added {1} and", [adder, names.slice(0, 3).join(", ")])}{" "}
-                        {isMobile ? (
-                            <Popover>
-                                <PopoverTrigger asChild>{othersLabel}</PopoverTrigger>
-                                <PopoverContent align="start" className="w-56 p-0">
-                                    <OthersRoster ids={restIDs} />
-                                </PopoverContent>
-                            </Popover>
-                        ) : (
-                            <HoverCard openDelay={200}>
-                                <HoverCardTrigger asChild>{othersLabel}</HoverCardTrigger>
-                                {/* stopPropagation: wheel inside the card must scroll the card,
-                                    not the chat stream underneath. */}
-                                <HoverCardContent align="start" className="w-56 p-0" onWheel={(e) => e.stopPropagation()}>
-                                    <OthersRoster ids={restIDs} />
-                                </HoverCardContent>
-                            </HoverCard>
-                        )}
-                        .
-                    </>
+                const others = isMobile ? (
+                    <Popover>
+                        <PopoverTrigger asChild>{othersLabel}</PopoverTrigger>
+                        <PopoverContent align="start" className="w-56 p-0">
+                            <OthersRoster ids={restIDs} />
+                        </PopoverContent>
+                    </Popover>
+                ) : (
+                    <HoverCard openDelay={200}>
+                        <HoverCardTrigger asChild>{othersLabel}</HoverCardTrigger>
+                        {/* stopPropagation: wheel inside the card must scroll the card,
+                            not the chat stream underneath. */}
+                        <HoverCardContent align="start" className="w-56 p-0" onWheel={(e) => e.stopPropagation()}>
+                            <OthersRoster ids={restIDs} />
+                        </HoverCardContent>
+                    </HoverCard>
                 )
+                return <>{withElements(_("{0} added {1} and {2}."), [adder, names.slice(0, 3).join(", "), others])}</>
             }
             case "user_joined":
                 return _("{0} joined.", [resolveName(structured.user)])
             case "user_left":
                 if (structured.new_admin) {
-                    return _("{0} left and {1} is the new admin of this channel.", [
-                        resolveName(structured.user),
-                        resolveName(structured.new_admin),
-                    ])
+                    const [user, newAdmin] = [resolveName(structured.user), resolveName(structured.new_admin)]
+                    return _("{0} left and {1} is the new admin of this channel.", [user, newAdmin])
                 }
                 return _("{0} left.", [resolveName(structured.user)])
             case "member_removed":
                 if (structured.new_admin) {
-                    return _("{0} was removed by {1} and {2} is the new admin of this channel.", [
+                    const [user, removedBy, newAdmin] = [
                         resolveName(structured.user),
                         resolveName(structured.removed_by),
                         resolveName(structured.new_admin),
-                    ])
+                    ]
+                    return _("{0} was removed by {1} and {2} is the new admin of this channel.", [user, removedBy, newAdmin])
                 }
                 return _("{0} removed {1}.", [resolveName(structured.removed_by), resolveName(structured.user)])
             case "admin_status_changed":

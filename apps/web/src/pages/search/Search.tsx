@@ -191,7 +191,7 @@ export default function Search() {
             <ListFilter />
             {_("Filters")}
             {activeFilterCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-surface-gray-10 px-1 text-[10px] leading-none text-ink-gray-1">
+                <span className="absolute -top-1.5 -end-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-surface-gray-10 px-1 text-[10px] leading-none text-ink-gray-1">
                     {activeFilterCount}
                 </span>
             )}
@@ -214,7 +214,7 @@ export default function Search() {
 
     const searchInput = (
         <div className="flex items-center gap-2">
-            <InputGroup className='pr-0.5'>
+            <InputGroup className='pe-0.5'>
                 <InputGroupAddon>
                     <SearchIcon className="h-4 w-4 text-ink-gray-4 pointer-events-none" />
                 </InputGroupAddon>
@@ -222,7 +222,7 @@ export default function Search() {
                     value={searchValue}
                     onChange={(e) => setSearchValue(e.target.value)}
                     placeholder={_('Type to search')}
-                    // className="pl-9 pr-9 h-9 md:h-8 text-xl md:text-base"
+                    // className="ps-9 pe-9 h-9 md:h-8 text-xl md:text-base"
                     autoFocus={!isMobile}
                 />
                 {searchValue && <InputGroupAddon align="inline-end">
@@ -247,7 +247,7 @@ export default function Search() {
                 <Drawer>
                     <DrawerTrigger asChild>{filterButton}</DrawerTrigger>
                     <DrawerContent className="max-h-[85dvh]">
-                        <DrawerTitle className="px-4 pb-3 pt-1 text-left text-2xl-semibold text-ink-gray-9">
+                        <DrawerTitle className="px-4 pb-3 pt-1 text-start text-2xl-semibold text-ink-gray-9">
                             {_('Filters')}
                         </DrawerTitle>
 <DrawerDescription className="sr-only">{_("Narrow results by person, channel, type or source")}</DrawerDescription>

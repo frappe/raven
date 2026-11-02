@@ -70,7 +70,7 @@ const Later = () => {
     // Shared across tabs — a per-tab search bar made the tabs row jump on switch.
     const searchInput = (
         <div className="relative">
-            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-gray-4 pointer-events-none" />
+            <SearchIcon className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-gray-4 pointer-events-none" />
             <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -79,7 +79,7 @@ const Later = () => {
                     : tab === 'completed'
                         ? _('Search completed reminders')
                         : _('Search reminders')}
-                className="pl-9 pr-9 h-9 md:h-8 text-xl md:text-base"
+                className="ps-9 pe-9 h-9 md:h-8 text-xl md:text-base"
                 autoFocus={!isMobile}
             />
             {search && (
@@ -87,7 +87,7 @@ const Later = () => {
                     type="button"
                     onClick={() => setSearch('')}
                     aria-label={_('Clear search')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-gray-4 hover:text-ink-gray-8"
+                    className="absolute end-2 top-1/2 -translate-y-1/2 text-ink-gray-4 hover:text-ink-gray-8"
                 >
                     <X className="h-4 w-4" />
                 </button>

@@ -20,7 +20,7 @@ import {
 } from "@components/ui/select";
 import ErrorBanner from "@components/ui/error-banner";
 import { PrefRow } from "@components/features/profile/PrefRows";
-import _ from "@lib/translate";
+import _, { withElements } from "@lib/translate";
 import {
   ChannelList,
   ChannelListItem,
@@ -111,7 +111,12 @@ export function ChannelTypeSelect({ channel }: { channel: ChannelListItem }) {
         <AlertDialogContent className="sm:max-w-xl">
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {_("Change to a {0} channel?", [(pendingType ?? "").toLowerCase()])}
+              {/* Whole sentences: the type word cannot be slotted into other languages. */}
+              {pendingType === "Public"
+                ? _("Change to a public channel?")
+                : pendingType === "Private"
+                  ? _("Change to a private channel?")
+                  : _("Change to an open channel?")}
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-4 pt-1">
@@ -119,9 +124,9 @@ export function ChannelTypeSelect({ channel }: { channel: ChannelListItem }) {
                 {pendingType === "Public" && (
                   <>
                     <p>
-                      {_("Please understand that when you make")}{" "}
-                      <strong>{channel.channel_name}</strong>{" "}
-                      {_("a public channel:")}
+                      {withElements(_("Please understand that when you make {0} a public channel:"), [
+                        <strong key="name">{channel.channel_name}</strong>,
+                      ])}
                     </p>
                     <ul className="list-inside list-disc space-y-1">
                       <li>
@@ -140,9 +145,9 @@ export function ChannelTypeSelect({ channel }: { channel: ChannelListItem }) {
                 {pendingType === "Private" && (
                   <>
                     <p>
-                      {_("Please understand that when you make")}{" "}
-                      <strong>{channel.channel_name}</strong>{" "}
-                      {_("a private channel:")}
+                      {withElements(_("Please understand that when you make {0} a private channel:"), [
+                        <strong key="name">{channel.channel_name}</strong>,
+                      ])}
                     </p>
                     <ul className="list-inside list-disc space-y-1">
                       <li>
@@ -161,9 +166,9 @@ export function ChannelTypeSelect({ channel }: { channel: ChannelListItem }) {
                 {pendingType === "Open" && (
                   <>
                     <p>
-                      {_("Please understand that when you make")}{" "}
-                      <strong>{channel.channel_name}</strong>{" "}
-                      {_("a open channel:")}
+                      {withElements(_("Please understand that when you make {0} an open channel:"), [
+                        <strong key="name">{channel.channel_name}</strong>,
+                      ])}
                     </p>
                     <ul className="list-inside list-disc space-y-1">
                       <li>

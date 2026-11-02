@@ -13,9 +13,17 @@ import {
  */
 const CODE_SPAN = /(`[^`]+`)/
 
-/** Plain-text teaser: code spans shown as code, known custom emoji `:name:`s as the emoji. */
+/**
+ * Plain-text teaser: code spans shown as code, known custom emoji `:name:`s as the emoji.
+ * In a <bdi>, so the snippet reads in its own language's direction while the row around
+ * it keeps the interface's.
+ */
 export function TeaserText({ text }: { text: string }) {
     const shortcodes = useCustomEmojiShortcodes(text)
+    return <bdi>{teaserParts(text, shortcodes)}</bdi>
+}
+
+const teaserParts = (text: string, shortcodes: CustomEmojiShortcodes | null) => {
     if (!text.includes("`")) return withEmojis(text, shortcodes) ?? text
     return text.split(CODE_SPAN).map((chunk, i) =>
         i % 2 ? (

@@ -210,9 +210,9 @@ export const ThreadRootMessage = ({ threadID, parentID }: { threadID: string; pa
                                         {(isBatch || messageFile(message)) && (
                                             <Paperclip className="size-3.5 shrink-0 text-ink-gray-5" />
                                         )}
-                                        <span className="truncate">
+                                        <bdi className="truncate">
                                             {isBatch ? attachmentCountLabel(fileCount) : rootPreviewText(message)}
-                                        </span>
+                                        </bdi>
                                     </p>
                                 ) : null}
                             </div>

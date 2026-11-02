@@ -126,7 +126,7 @@ const DMChannelItem = ({ user, channel }: { user: UserData; channel: DMChannelLi
                 {_("Bot")}
             </Badge>}
             {user?.enabled === 0 && (
-                <Badge variant="subtle" className="ml-auto text-xs">
+                <Badge variant="subtle" className="ms-auto text-xs">
                     {_("Disabled")}
                 </Badge>
             )}
@@ -169,7 +169,7 @@ const UserItem = ({ user }: { user: UserData }) => {
                 <BotIcon />
                 {_("Bot")}
             </Badge>}
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {loading && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
         </CommandItem>
     )
 }

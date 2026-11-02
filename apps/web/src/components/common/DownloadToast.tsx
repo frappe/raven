@@ -17,5 +17,5 @@ export const showDownloadToast = (id: string, name: string, percent?: number, on
     toast.loading(<DownloadToast name={name} percent={percent} />, {
         id,
         // With a Cancel it is the only control, and its text edge lands on the toast's own padding line.
-        ...(onCancel && { action: { label: _("Cancel"), onClick: onCancel }, closeButton: false, classNames: { actionButton: "!-mr-2" } }),
+        ...(onCancel && { action: { label: _("Cancel"), onClick: onCancel }, closeButton: false, classNames: { actionButton: "!-me-2" } }),
     })

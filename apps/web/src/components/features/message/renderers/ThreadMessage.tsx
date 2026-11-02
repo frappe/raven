@@ -17,9 +17,9 @@ import _ from "@lib/translate"
  *  avatar column for others, a short bottom elbow beside an own message's pill. */
 export const ThreadConnector = ({ side }: { side: "left" | "right" }) =>
     side === "left" ? (
-        <div className="absolute left-7 top-[48px] z-0 h-[calc(100%-66px)] w-6 rounded-bl-2xl border-b-2 border-l-2 border-outline-gray-2" />
+        <div className="absolute start-7 top-[48px] z-0 h-[calc(100%-66px)] w-6 rounded-es-2xl border-b-2 border-s-2 border-outline-gray-2" />
     ) : (
-        <div className="absolute right-7 bottom-[18px] z-0 h-4 w-6 rounded-br-2xl border-b-2 border-r-2 border-outline-gray-2" />
+        <div className="absolute end-7 bottom-[18px] z-0 h-4 w-6 rounded-ee-2xl border-b-2 border-e-2 border-outline-gray-2" />
     )
 
 /** Where the thread pill sits. "start": indented past the avatar gutter, for
@@ -27,7 +27,7 @@ export const ThreadConnector = ({ side }: { side: "left" | "right" }) =>
  *  right-aligned, with its content mirrored to match. */
 export type ThreadPillAlign = "start" | "end"
 
-const pillAlignClass = (align: ThreadPillAlign) => (align === "end" ? "mt-2 mr-11 flex-row-reverse" : "mt-2 ml-11")
+const pillAlignClass = (align: ThreadPillAlign) => (align === "end" ? "mt-2 me-11 flex-row-reverse" : "mt-2 ms-11")
 
 interface ThreadButtonProps {
     participants: UserData[]

@@ -45,7 +45,7 @@ export const ChannelTypeSelector = ({ value, onChange }: ChannelTypeSelectorProp
                             <FormLabel
                                 className={cn(
                                     // items-start + text-left: the ui FormLabel's base items-center would centre the stacked content
-                                    'flex w-full cursor-pointer flex-col items-start gap-1 rounded-md border border-outline-gray-2 p-3 text-left transition-colors hover:bg-surface-gray-1',
+                                    'flex w-full cursor-pointer flex-col items-start gap-1 rounded-md border border-outline-gray-2 p-3 text-start transition-colors hover:bg-surface-gray-1',
                                     'peer-data-[state=checked]:border-outline-gray-5 peer-data-[state=checked]:bg-surface-gray-2',
                                     // The radio itself is sr-only, so KEYBOARD focus (Tab into the
                                     // group, arrows between options) must show on the card instead —

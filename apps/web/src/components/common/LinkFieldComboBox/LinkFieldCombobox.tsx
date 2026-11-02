@@ -318,9 +318,9 @@ const LinkFieldCombobox = ({
                 aria-expanded={open}
                 // w-full overrides FILTER_TRIGGER_STYLES' w-fit — this one is a form field.
                 // read-only dims the label; subtle's bg is already gray-2.
-                // disabled keeps pointer-events so cursor-not-allowed shows; pr-7 = room for the clear ×.
-                className={cn(FILTER_TRIGGER_STYLES, "group w-full disabled:pointer-events-auto", showClear && "pr-7", readOnly && "text-ink-gray-5", buttonClassName)}>
-                <span className={cn("min-w-0 flex-1 truncate text-left", !linkTitle && "text-ink-gray-4")}>
+                // disabled keeps pointer-events so cursor-not-allowed shows; pe-7 = room for the clear ×.
+                className={cn(FILTER_TRIGGER_STYLES, "group w-full disabled:pointer-events-auto", showClear && "pe-7", readOnly && "text-ink-gray-5", buttonClassName)}>
+                <span className={cn("min-w-0 flex-1 truncate text-start", !linkTitle && "text-ink-gray-4")}>
                     {linkTitle || placeholder}
                 </span>
 
@@ -344,10 +344,10 @@ const LinkFieldCombobox = ({
             role="combobox"
             disabled={disabled}
             aria-expanded={open}
-            className={cn(FILTER_TRIGGER_STYLES, "w-full disabled:pointer-events-auto", showClear && "pr-7", readOnly && "text-ink-gray-5", buttonClassName)}>
+            className={cn(FILTER_TRIGGER_STYLES, "w-full disabled:pointer-events-auto", showClear && "pe-7", readOnly && "text-ink-gray-5", buttonClassName)}>
             {/* linkTitle, like the form branch: a doctype with a title field shows
                 "English", not "en". Falls back to the raw value. */}
-            <span className={cn("min-w-0 flex-1 truncate text-left", !linkTitle && "text-ink-gray-4")}>
+            <span className={cn("min-w-0 flex-1 truncate text-start", !linkTitle && "text-ink-gray-4")}>
                 {linkTitle || placeholder}
             </span>
 
@@ -432,7 +432,7 @@ const LinkFieldCombobox = ({
                     // the list it's meant to filter. Same rule as the popover below.
                     onOpenAutoFocus={(event) => event.preventDefault()}
                 >
-                    <DrawerTitle className="px-4 pb-2 pt-1 text-left">{placeholder}</DrawerTitle>
+                    <DrawerTitle className="px-4 pb-2 pt-1 text-start">{placeholder}</DrawerTitle>
                     <DrawerDescription className="sr-only">{_("Search and pick a document")}</DrawerDescription>
                     {/* Programmatic closes go through this (see onSelect): vaul unscales
                         the PARENT sheet only on its own close path. */}

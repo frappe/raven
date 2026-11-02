@@ -119,7 +119,7 @@ export function UserFilter({
                 selectedUser && !isAllSelected ? (
                     <UserOption user={selectedUser} compact />
                 ) : (
-                    <span className="min-w-0 flex-1 truncate text-left leading-snug text-ink-gray-4">
+                    <span className="min-w-0 flex-1 truncate text-start leading-snug text-ink-gray-4">
                         {placeholder ?? _("Person")}
                     </span>
                 )
@@ -153,7 +153,7 @@ export function UserOption({ user, compact = false, secondary }: { user: UserDat
             />
             {/* leading-snug: the UI type scale's 1.15 clips descenders once truncate
                 bounds the line box. */}
-            <span className="min-w-0 flex-1 truncate text-left leading-snug">
+            <span className="min-w-0 flex-1 truncate text-start leading-snug">
                 {getUserDisplayName(user.full_name ?? user.name, isSelf)}
             </span>
             {/* Only set when another account shares this name: the id is the sole thing

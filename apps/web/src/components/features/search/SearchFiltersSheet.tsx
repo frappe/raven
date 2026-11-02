@@ -7,8 +7,8 @@ import { InputGroup, InputGroupAddon } from '@components/ui/input-group'
 import { DrawerClose, DrawerContent, DrawerDescription, DrawerNested, DrawerTitle, DrawerTrigger } from '@components/ui/drawer'
 import { ChannelFilterRows } from '@components/common/filters/ChannelFilter'
 import { UserFilterRows } from '@components/common/filters/UserFilter'
-import { FILE_TYPE_OPTIONS } from '@components/common/filters/FileTypeFilter'
-import { PROVIDER_CATEGORIES } from '@components/common/filters/ProviderFilter'
+import { fileTypeOptions } from '@components/common/filters/FileTypeFilter'
+import { providerCategories } from '@components/common/filters/ProviderFilter'
 import { scoreFilterRow } from '@components/common/filters/filterScore'
 import { BrandIcon } from '@components/features/message/renderers/BrandIcons'
 import { ChannelIcon } from '@components/common/ChannelIcon/ChannelIcon'
@@ -162,7 +162,7 @@ export function SearchFiltersSheet({
 
             {showFileTypeFilter && (
                 <ChipSection title={_('Type')}>
-                    {FILE_TYPE_OPTIONS.map((option) => {
+                    {fileTypeOptions().map((option) => {
                         const Icon = option.icon
                         const selected = fileTypes.includes(option.id)
                         return (
@@ -172,7 +172,7 @@ export function SearchFiltersSheet({
                                 onClick={() => toggle(fileTypes, option.id, onFileTypeChange)}
                             >
                                 <Icon className={cn('size-4', selected ? 'text-ink-gray-8' : 'text-ink-gray-4')} />
-                                {_(option.label)}
+                                {option.label}
                             </Chip>
                         )
                     })}
@@ -180,8 +180,8 @@ export function SearchFiltersSheet({
             )}
 
             {showProviderFilter &&
-                PROVIDER_CATEGORIES.map((category) => (
-                    <ChipSection key={category.label} title={_(category.label)}>
+                providerCategories().map((category) => (
+                    <ChipSection key={category.label} title={category.label}>
                         {category.options.map((option) => {
                             const Icon = option.icon
                             const selected = providers.includes(option.id)
@@ -196,7 +196,7 @@ export function SearchFiltersSheet({
                                     ) : Icon ? (
                                         <Icon className={cn('size-4', selected ? 'text-ink-gray-8' : 'text-ink-gray-6')} />
                                     ) : null}
-                                    {_(option.label)}
+                                    {option.label}
                                 </Chip>
                             )
                         })}
@@ -282,7 +282,7 @@ const DrillIn = ({
             <DrawerTrigger asChild>
                 <button
                     type="button"
-                    className="flex w-full shrink-0 cursor-pointer items-center gap-2 p-3 px-4 rounded-md text-left active:bg-surface-gray-1"
+                    className="flex w-full shrink-0 cursor-pointer items-center gap-2 p-3 px-4 rounded-md text-start active:bg-surface-gray-1"
                 >
                     <span className="text-base text-ink-gray-7">{label}</span>
                     {/* A flex container, not a text span: the value can carry an
@@ -300,7 +300,7 @@ const DrillIn = ({
                 // be seen. Tapping the field still opens it.
                 onOpenAutoFocus={(event) => event.preventDefault()}
             >
-                <DrawerTitle className="px-4 py-2 text-left text-2xl-semibold text-ink-gray-9">
+                <DrawerTitle className="px-4 py-2 text-start text-2xl-semibold text-ink-gray-9">
                     {title}
                 </DrawerTitle>
 <DrawerDescription className="sr-only">{_("Search and pick an option to filter results")}</DrawerDescription>

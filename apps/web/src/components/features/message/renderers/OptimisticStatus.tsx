@@ -16,7 +16,7 @@ import _ from "@lib/translate"
 export const optimisticRowClass = (message: Message): string => {
     if (!isOptimistic(message)) return ""
     if (message._status === "failed") {
-        return "bg-surface-red-1 hover:bg-surface-red-2 shadow-[inset_2px_0_0_0_var(--outline-red-4)] rounded-l-none"
+        return "bg-surface-red-1 hover:bg-surface-red-2 shadow-[inset_2px_0_0_0_var(--outline-red-4)] rtl:shadow-[inset_-2px_0_0_0_var(--outline-red-4)] rounded-s-none"
     }
     return "opacity-50"
 }

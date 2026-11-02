@@ -92,7 +92,7 @@ const InstructionListView = ({ onOpen, onCreate }: { onOpen: (id: string) => voi
                                 <EmptyHeader>
                                     <EmptyTitle>{_("AI Instruction Templates")}</EmptyTitle>
                                     <EmptyDescription>
-                                        {_("Most bots require the same kind of instructions to perform their tasks, like \"format dates as DD-MM-YYYY\" or \"the current user is")}
+                                        {_('Most bots require the same kind of instructions to perform their tasks, like "format dates as DD-MM-YYYY" or "the current user is')}
                                         <code>{"{{user}}"}</code>
                                         {_("\".")}
                                         <br />
@@ -136,7 +136,7 @@ function TemplateNameCell({ template, onOpen }: { template: RavenBotInstructionT
         <button
             type="button"
             onClick={() => onOpen(template.name)}
-            className="group text-left min-w-0 cursor-pointer"
+            className="group text-start min-w-0 cursor-pointer"
         >
             <div className="flex items-center gap-2 min-w-0">
                 <span className="font-medium truncate group-hover:underline underline-offset-4">{template.template_name}</span>

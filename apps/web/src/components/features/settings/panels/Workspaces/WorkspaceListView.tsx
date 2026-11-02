@@ -133,7 +133,7 @@ function WorkspaceNameCell({
         <button
             type="button"
             onClick={() => onOpenWorkspace(workspace.name)}
-            className="hover:underline underline-offset-4 text-left min-w-0 cursor-pointer"
+            className="hover:underline underline-offset-4 text-start min-w-0 cursor-pointer"
         >
             {content}
         </button>
@@ -149,9 +149,9 @@ function WorkspaceTypeCell({ type }: { type: WorkspaceFields["type"] }) {
     return (
         <Badge variant={isPrivate ? "subtle" : "outline"}>
             {isPrivate ? (
-                <Lock className="mr-1 h-3 w-3" />
+                <Lock className="me-1 h-3 w-3" />
             ) : (
-                <Globe className="mr-1 h-3 w-3" />
+                <Globe className="me-1 h-3 w-3" />
             )}
             {type && _(type)}
         </Badge>

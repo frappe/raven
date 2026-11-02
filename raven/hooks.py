@@ -307,11 +307,6 @@ require_type_annotated_api_methods = True
 
 raven_document_link_override = "raven.api.document_link.get_new_app_document_links"
 
-# Translation
-# ------------
-# List of apps whose translatable strings should be excluded from this app's translations.
-ignore_translatable_strings_from = ["frappe"]
-
 sqlite_search = ["raven.api.search.RavenSearch"]
 
 # Expose method source code through the API discovery endpoints. Safe for open

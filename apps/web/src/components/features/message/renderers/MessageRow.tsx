@@ -155,7 +155,7 @@ export const MessageSenderLayout = ({
                 {!isContinuation && (
                     <Tooltip delayDuration={300}>
                         <TooltipTrigger asChild>
-                            <span className="pb-1 pr-1 text-xs text-ink-gray-5">{shortTime}</span>
+                            <span className="pb-1 pe-1 text-xs text-ink-gray-5">{shortTime}</span>
                         </TooltipTrigger>
                         <TooltipContent>{longTime}</TooltipContent>
                     </Tooltip>
@@ -182,7 +182,7 @@ export const MessageSenderLayout = ({
                     reads as a table. The tooltip carries the full date and am/pm. */}
                 <Tooltip delayDuration={300}>
                     <TooltipTrigger asChild>
-                        <span className="w-8 min-w-8 pt-0.5 text-right text-xs leading-5 tabular-nums text-ink-gray-4 opacity-0 transition-opacity duration-200 group-hover/message-item:opacity-100">
+                        <span className="w-8 min-w-8 pt-0.5 text-end text-xs leading-5 tabular-nums text-ink-gray-4 opacity-0 transition-opacity duration-200 group-hover/message-item:opacity-100">
                             {compactTime}
                         </span>
                     </TooltipTrigger>
