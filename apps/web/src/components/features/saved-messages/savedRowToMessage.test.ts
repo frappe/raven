@@ -37,4 +37,20 @@ describe("savedRowToMessage", () => {
         const message = savedRowToMessage({ ...row, message_type: "Location", file: undefined, json: '{"latitude":1,"longitude":2}' })
         expect("file" in message).toBe(false)
     })
+
+    it("keeps a contact's payload and photo", () => {
+        const message = savedRowToMessage({
+            ...row,
+            message_type: "Contact",
+            text: "<p>Priya<br>+91 1</p>",
+            file: "/private/files/contact.jpg",
+            json: '{"name":"Priya","phones":[{"value":"+91 1"}],"emails":[]}',
+        })
+        expect(message).toMatchObject({
+            message_type: "Contact",
+            text: "<p>Priya<br>+91 1</p>",
+            file: "/private/files/contact.jpg",
+            json: '{"name":"Priya","phones":[{"value":"+91 1"}],"emails":[]}',
+        })
+    })
 })

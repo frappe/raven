@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react"
-import { Plus, Camera, Images, FileBox, type LucideIcon, FilesIcon, ChartBar, Video, Mic, MapPin } from "lucide-react"
+import { Plus, Camera, Images, FileBox, type LucideIcon, FilesIcon, ChartBar, Video, Mic, MapPin, UserRound } from "lucide-react"
 import { Button } from "@components/ui/button"
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle, DrawerTrigger } from "@components/ui/drawer"
 import { useSetAtom } from "jotai"
@@ -41,12 +41,15 @@ export const MobileComposerActions = ({
     channelID,
     onRecord,
     onShareLocation,
+    onShareContact,
 }: {
     channelID: string
     /** Starts a voice note; absent when this device can't record. */
     onRecord?: () => void
     /** Opens the location picker after the sheet closes; absent when this device can't share one. */
     onShareLocation?: () => void
+    /** Opens the contact picker after the sheet closes; absent when this device can't share one. */
+    onShareContact?: () => void
 }) => {
     const [sheetOpen, setSheetOpen] = useState(false)
     const [pollOpen, setPollOpen] = useState(false)
@@ -69,6 +72,7 @@ export const MobileComposerActions = ({
     )
 
     const iosApp = !!import.meta.env.VITE_NATIVE && window.Capacitor?.getPlatform() === "ios"
+    const androidApp = !!import.meta.env.VITE_NATIVE && window.Capacitor?.getPlatform() === "android"
     // The ternary keeps the native chunk out of browser builds entirely.
     const pickNative = import.meta.env.VITE_NATIVE
         ? (kind: "files" | "photos") => {
@@ -116,6 +120,18 @@ export const MobileComposerActions = ({
             : []),
         ...(onShareLocation
             ? [{ icon: MapPin, label: _("Location"), onSelect: () => { afterClose.current = onShareLocation } }]
+            : []),
+        ...(onShareContact
+            ? [{
+                icon: UserRound,
+                label: _("Contact"),
+                onSelect: () => {
+                    // The native picker sits above the WebView: open it while the sheet closes, like Photos.
+                    // The Android app opens its Phone/Email chooser (a web drawer) instead, so that waits.
+                    if (androidApp) afterClose.current = onShareContact
+                    else onShareContact()
+                },
+            }]
             : []),
         { icon: ChartBar, label: _("Poll"), onSelect: () => setPollOpen(true) },
         { icon: FileBox, label: _("Document"), onSelect: () => setDocOpen(true) },

@@ -32,7 +32,13 @@ import { useVoiceRecording } from "./useVoiceRecording"
 import { useLocationShare } from "./location/useLocationShare"
 import { PickerBoundary } from "./location/PickerBoundary"
 import { ShareLocationButton } from "./location/ShareLocationButton"
+import { useContactShare } from "./contact/useContactShare"
+import { ShareContactButton } from "./contact/ShareContactButton"
 import { canShareLocation } from "@lib/locationSupport"
+import { canShareContact } from "@lib/contactSupport"
+import { siteHasFeature } from "../../../native/platform"
+import { normalizePicked, type PickedContact } from "../../../native/contacts"
+import { isVCardFile, parseVCards } from "@lib/vcard"
 import { canRecordVoice } from "./recordingFormat"
 import { loadDraft, saveDraft } from "./draft"
 import { useTypingEmitter } from "@stores/typing/useTypingEmitter"
@@ -91,6 +97,28 @@ interface ChatInputProps {
 // Inert composer parts while recording: they read as disabled.
 const RECORDING_DISABLED = "[&_*]:text-ink-gray-4 [&_button]:bg-transparent!"
 
+// A share sends one message per contact, so a whole exported address book must not flood the channel.
+const MAX_SHARED_CONTACTS = 10
+const MAX_VCARD_BYTES = 10 * 1024 * 1024
+
+/** Each shared .vcf's usable contacts in file order, with counts of what was dropped and why. */
+const readSharedContacts = async (files: File[]) => {
+    const contacts: PickedContact[] = []
+    let empty = 0
+    let unreadable = 0
+    for (const file of files) {
+        const text = file.size > MAX_VCARD_BYTES ? "" : await file.text().catch(() => "")
+        const cards = parseVCards(text)
+        if (!cards.length) unreadable++
+        for (const card of cards) {
+            const contact = normalizePicked(card)
+            if (contact) contacts.push(contact)
+            else empty++
+        }
+    }
+    return { contacts, empty, unreadable }
+}
+
 const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDirectMessage, parentChannelID, disableSchedule, covered = false }, ref) => {
     const { call } = useContext(FrappeContext) as FrappeConfig
     const [files, setFiles] = useAtom(uploadedFilesAtom(channelID))
@@ -124,11 +152,6 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
         setLinkSignal((n) => n + 1)
     }
     const onAddFile = useAttachFile(channelID)
-    // Files from an OS share, held by ShareTarget for the channel the user picked: this one only.
-    useEffect(() => {
-        const files = consumeSharedFiles(channelID)
-        if (files.length) onAddFile(files)
-    }, [channelID])
     const filesRef = useRef<(files: File[]) => void>(() => { })
     filesRef.current = onAddFile
     // Escape / Backspace-when-empty cancel the active reply (reads the latest replyTo).
@@ -312,6 +335,40 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
     const { recording } = voice
     const clearReply = useCallback(() => setReplyTo(null), [setReplyTo])
     const share = useLocationShare({ channelID, quietSendMode, stopTyping, replyTo, clearReply })
+    const contactShare = useContactShare({ channelID, quietSendMode, stopTyping, replyTo, clearReply })
+    const contactSharingEnabled = canShareContact() && siteHasFeature("contact_messages")
+
+    // A shared file is handed over once for this channel: .vcf cards open the contact sheet.
+    useEffect(() => {
+        const shared = consumeSharedFiles(channelID)
+        if (!shared.length) return
+        if (!siteHasFeature("contact_messages")) {
+            onAddFile(shared)
+            return
+        }
+        const vcards = shared.filter(isVCardFile)
+        const attachments = shared.filter((file) => !isVCardFile(file))
+        if (attachments.length) onAddFile(attachments)
+        if (!vcards.length) return
+        const unreadable = () => toast.error(_("Couldn't read the shared contacts. Share them again from Contacts."))
+        void readSharedContacts(vcards)
+            .then(({ contacts, empty, unreadable: unread }) => {
+                if (!contacts.length) {
+                    if (unread) return unreadable()
+                    return toast.error(
+                        empty === 1
+                            ? _("This contact has no phone number or email to share. Add one in Contacts, then share again.")
+                            : _("These contacts have no phone number or email to share. Add one in Contacts, then share again."),
+                    )
+                }
+                if (empty === 1) toast.info(_("1 contact had no phone number or email and was left out"))
+                else if (empty > 1) toast.info(_("{0} contacts had no phone number or email and were left out", [String(empty)]))
+                if (contacts.length > MAX_SHARED_CONTACTS)
+                    toast.info(_("Only the first {0} contacts were added. Share the rest in another message.", [String(MAX_SHARED_CONTACTS)]))
+                contactShare.share(contacts.slice(0, MAX_SHARED_CONTACTS))
+            })
+            .catch(unreadable)
+    }, [channelID])
 
     // Contains a failed picker load here; a lazy rejection stays cached until reload.
     const handlePickerError = useCallback(() => {
@@ -461,6 +518,7 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                     </Suspense>
                 </PickerBoundary>
             )}
+            {contactShare.sheet}
             <QuietHoursBanner mode={quietSendMode} />
             {/* Pending scheduled messages for this channel. Thread composers cannot schedule. */}
             {!disableSchedule && <ScheduledMessagesBanner channelID={channelID} />}
@@ -522,6 +580,7 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                                         channelID={channelID}
                                         onRecord={canRecordVoice() ? voice.start : undefined}
                                         onShareLocation={canShareLocation() ? share.openPicker : undefined}
+                                        onShareContact={contactSharingEnabled ? contactShare.start : undefined}
                                     />
                                 </div>
                                 <div className="flex-1 min-w-0 dark:bg-surface-elevation-2 bg-surface-gray-1 rounded-2xl [&_.tiptap]:min-h-10 [&_.tiptap]:max-h-64 [&_.tiptap]:overflow-y-auto [&_.tiptap]:py-2">
@@ -606,11 +665,12 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                                         <Separator orientation="vertical" className="mx-1 h-4!" />
                                         <CreatePollDialog channelID={channelID} />
                                         <AttachFrappeDocumentDialog channelID={channelID} />
-                                        {(canRecordVoice() || canShareLocation()) && (
+                                        {(canRecordVoice() || canShareLocation() || contactSharingEnabled) && (
                                             <Separator orientation="vertical" className="mx-1 h-4!" />
                                         )}
                                         {canRecordVoice() && <VoiceNoteButton onRecord={voice.start} />}
                                         {canShareLocation() && <ShareLocationButton onClick={share.openPicker} />}
+                                        {contactSharingEnabled && <ShareContactButton onClick={contactShare.start} />}
                                     </div>
                                     <div className="flex-1" />
                                     {recording ? (

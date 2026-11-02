@@ -15,6 +15,8 @@ import type { UserData } from "@db"
 import _ from "@lib/translate"
 import { ChannelIcon } from "@components/common/ChannelIcon/ChannelIcon"
 import { escapeHtml } from "@utils/htmlUtils"
+import { isVCardFile } from "@lib/vcard"
+import { siteHasFeature } from "../../native/platform"
 
 /**
  * Web Share Target landing page. The manifest's `share_target` sends OS share-
@@ -77,6 +79,11 @@ const ShareTarget = () => {
     const sharedText = text || title
     const sharedUrl = url && !sharedText.includes(url) ? url : ""
     const hasShare = Boolean(sharedText || sharedUrl || sharedFileCount > 0)
+    // A contact card opens the share-contact sheet in the chat, not a file, so it gets no file row.
+    const previewFiles = useMemo(
+        () => (siteHasFeature("contact_messages") ? sharedFiles.filter((file) => !isVCardFile(file)) : sharedFiles),
+        [sharedFiles],
+    )
     // File names stand in for the rows only when no shared file could be read.
     const showNames = !sharedText && !sharedUrl && !sharedFiles.length && !!sharedNames
 
@@ -140,10 +147,10 @@ const ShareTarget = () => {
                         {sharedText && sharedUrl && <span className="line-clamp-1 break-all text-ink-gray-5">{sharedUrl}</span>}
                     </div>
                 )}
-                {sharedFiles.length > 0 && (
+                {previewFiles.length > 0 && (
                     // Capped, so a big share leaves the conversation list in view.
                     <div className="flex max-h-44 flex-col gap-2 overflow-y-auto">
-                        {sharedFiles.map((file, index) => <SharedFileRow key={index} file={file} />)}
+                        {previewFiles.map((file, index) => <SharedFileRow key={index} file={file} />)}
                     </div>
                 )}
                 <Input

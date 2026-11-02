@@ -18,7 +18,7 @@ import { cn } from "@lib/utils"
 import { INITIAL_ZOOM, LocationMap, type MapHandle } from "./LocationMap"
 import { MapNotice } from "./MapNotice"
 import { pickerPanel, type PickerPanel } from "./pickerPanel"
-import { type Snapshot } from "./snapshot"
+import { type FileRef } from "../uploadWithin"
 import { useLocationFix } from "./useLocationFix"
 import { usePickerSend } from "./usePickerSend"
 
@@ -37,7 +37,7 @@ const PickerSummary = ({ title, subtitle }: PickerPanel) => (
 type LocationPickerContentProps = {
     isMobile: boolean
     onClose: () => void
-    onSend: (location: LocationMeta, snapshot: Snapshot | null) => void
+    onSend: (location: LocationMeta, snapshot: FileRef | null) => void
 }
 
 const LocationPickerContent = ({ isMobile, onClose, onSend }: LocationPickerContentProps) => {
@@ -186,7 +186,7 @@ const LocationPickerContent = ({ isMobile, onClose, onSend }: LocationPickerCont
 type LocationPickerProps = {
     open: boolean
     onOpenChange: (open: boolean) => void
-    onSend: (location: LocationMeta, snapshot: Snapshot | null) => void
+    onSend: (location: LocationMeta, snapshot: FileRef | null) => void
 }
 
 /** A map centred on the device, with a draggable pin; sends only the centre's coordinates. */

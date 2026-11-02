@@ -3,22 +3,29 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from "@components/ui/drawer"
 import { useIsMobile } from "@hooks/use-mobile"
 import { useNoDragWhileScrolled } from "@hooks/useNoDragWhileScrolled"
+import { cn } from "@lib/utils"
 
 /**
- * Shell for the message-action dialogs (attach to document, run custom action):
- * a centred Dialog on desktop, a bottom sheet on mobile — the same split the
- * reactions and read-receipts dialogs make by hand, because a centred modal
- * reads wrong on a phone and fights the keyboard. Children render once and fit
- * either shell; pair with ResponsiveDialogHeader for the title.
+ * A centred Dialog on desktop, a bottom sheet on mobile: a centred modal reads
+ * wrong on a phone and fights the keyboard. Children render once and fit either
+ * shell; a `footer` stays in view below the scrolling body in both.
  */
 export const ResponsiveDialog = ({
     open,
     onClose,
     children,
+    footer,
+    bodyClassName = "gap-4 px-4 pb-8 pt-2",
+    dialogClassName,
 }: {
     open: boolean
     onClose: () => void
     children: ReactNode
+    /** Stays in view below the scrolling body in the sheet. */
+    footer?: ReactNode
+    /** The sheet's scrolling body spacing. */
+    bodyClassName?: string
+    dialogClassName?: string
 }) => {
     const isMobile = useIsMobile()
     const noDragProps = useNoDragWhileScrolled()
@@ -26,15 +33,16 @@ export const ResponsiveDialog = ({
     if (isMobile) {
         return (
             <Drawer open={open} onOpenChange={(next) => !next && onClose()}>
-                <DrawerContent>
+                <DrawerContent className="max-h-[90dvh]" onOpenAutoFocus={(event) => event.preventDefault()}>
                     {/* Positional no-drag (see useNoDragWhileScrolled): whichever scroller
                         moves — this wrapper, or a nested list like the attach checklist —
                         stamps itself, so scrolled content scrolls and a pull from the top
                         dismisses. The height cap keeps a long field list scrolling inside
                         the sheet instead of pushing it past the top of the screen. */}
-                    <div {...noDragProps} className="flex max-h-[85dvh] flex-col gap-4 overflow-y-auto px-4 pb-8 pt-2">
+                    <div {...noDragProps} className={cn("flex min-h-0 flex-col overflow-y-auto overscroll-contain", bodyClassName)}>
                         {children}
                     </div>
+                    {footer}
                 </DrawerContent>
             </Drawer>
         )
@@ -42,7 +50,14 @@ export const ResponsiveDialog = ({
 
     return (
         <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-            <DialogContent>{children}</DialogContent>
+            <DialogContent className={cn(footer && "overflow-hidden", dialogClassName)}>
+                {footer ? (
+                    <div className="flex min-h-0 flex-col gap-[inherit] overflow-y-auto">{children}</div>
+                ) : (
+                    children
+                )}
+                {footer}
+            </DialogContent>
         </Dialog>
     )
 }

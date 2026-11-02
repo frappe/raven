@@ -52,6 +52,10 @@ export function savedRowToMessage(r: SavedMessageRow): Message {
     if (messageType === 'Location') {
         return { ...base, message_type: 'Location', text: r.text ?? '', ...(r.file ? { file: r.file } : {}), json: r.json }
     }
+    // A contact's photo is optional too; its json always carries the card.
+    if (messageType === 'Contact') {
+        return { ...base, message_type: 'Contact', text: r.text ?? '', ...(r.file ? { file: r.file } : {}), json: r.json }
+    }
     if (messageType === 'File' || messageType === 'Image') {
         return { ...base, message_type: messageType, text: r.text ?? '', file: r.file ?? '' }
     }

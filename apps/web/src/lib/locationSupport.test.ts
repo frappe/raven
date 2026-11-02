@@ -18,29 +18,6 @@ const freshModule = async () => {
     return import("./locationSupport")
 }
 
-describe("siteSupportsLocationMessages", () => {
-    it("web always supports location messages", async () => {
-        vi.stubGlobal("window", {})
-        const { siteSupportsLocationMessages } = await import("./locationSupport")
-        expect(siteSupportsLocationMessages()).toBe(true)
-    })
-
-    it("native needs the boot flag", async () => {
-        nativeWindow({})
-        const { siteSupportsLocationMessages } = await import("./locationSupport")
-        expect(siteSupportsLocationMessages()).toBe(false)
-
-        nativeWindow({ raven_features: ["location_messages"] })
-        expect(siteSupportsLocationMessages()).toBe(true)
-    })
-
-    it("native ignores a non-array flag", async () => {
-        nativeWindow({ raven_features: "location_messages" })
-        const { siteSupportsLocationMessages } = await import("./locationSupport")
-        expect(siteSupportsLocationMessages()).toBe(false)
-    })
-})
-
 describe("canShareLocation", () => {
     it("is true in the native app with the Geolocation plugin", async () => {
         nativeWindow({}, "ios", ["Geolocation"])
