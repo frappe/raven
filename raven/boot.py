@@ -10,16 +10,29 @@ from raven.frappe_cloud_push import (
 	queue_push_setup,
 )
 
+RAVEN_USER_BOOT_FIELDS = (
+	"chat_style",
+	"time_format",
+	"hide_read_receipts",
+	"quiet_hours_nudge",
+	"onboarded",
+)
+
 
 def boot_session(bootinfo):
 
-	raven_settings = frappe.get_single("Raven Settings")
+	# Boot runs on every page load, also when a failed migrate left the schema behind the code.
+	# as_dict() is a frappe._dict of the fields the schema has; any other field reads as None.
+	raven_settings = frappe.get_single("Raven Settings").as_dict()
 
 	# Scheduled messages run as Server Scripts. The settings panel warns when those are off.
 	bootinfo.server_script_enabled = is_safe_exec_enabled()
 
 	# Opens the first-admin setup flow in the web app.
-	bootinfo.raven_setup_pending = 1 if not raven_settings.setup_completed and is_setup_admin() else 0
+	# A site that predates the field is set up: mark_existing_sites_set_up runs before model
+	# sync, so a failed migrate leaves either no field or a stored 1.
+	setup_completed = raven_settings.get("setup_completed", 1)
+	bootinfo.raven_setup_pending = 1 if not setup_completed and is_setup_admin() else 0
 
 	if raven_settings.frappe_meet_hosted_urls:
 		bootinfo.frappe_meet_hosted_urls = raven_settings.frappe_meet_hosted_urls
@@ -43,23 +56,7 @@ def boot_session(bootinfo):
 
 	document_link_override = frappe.get_hooks("raven_document_link_override")
 
-	if (
-		frappe.session.user
-		and frappe.session.user != "Guest"
-		and frappe.db.exists("Raven User", frappe.session.user)
-	):
-		chat_style, time_format, hide_read_receipts, quiet_hours_nudge, onboarded = frappe.db.get_value(
-			"Raven User",
-			frappe.session.user,
-			["chat_style", "time_format", "hide_read_receipts", "quiet_hours_nudge", "onboarded"],
-		)
-	else:
-		chat_style = "Simple"
-		time_format = "12-hour"
-		hide_read_receipts = 0
-		quiet_hours_nudge = "Nudge"
-		# No Raven User: nothing to set up in the web app.
-		onboarded = 1
+	user_settings = _get_user_boot_settings()
 
 	if document_link_override and len(document_link_override) > 0:
 		bootinfo.raven_document_link_override = True
@@ -68,11 +65,11 @@ def boot_session(bootinfo):
 	if tenor_api_key:
 		bootinfo.tenor_api_key = tenor_api_key
 
-	bootinfo.chat_style = chat_style if chat_style else "Simple"
-	bootinfo.raven_time_format = time_format if time_format else "12-hour"
-	bootinfo.raven_hide_read_receipts = 1 if hide_read_receipts else 0
-	bootinfo.raven_quiet_hours_nudge = quiet_hours_nudge if quiet_hours_nudge else "Nudge"
-	bootinfo.raven_onboarded = 1 if onboarded else 0
+	bootinfo.chat_style = user_settings.chat_style or "Simple"
+	bootinfo.raven_time_format = user_settings.time_format or "12-hour"
+	bootinfo.raven_hide_read_receipts = 1 if user_settings.hide_read_receipts else 0
+	bootinfo.raven_quiet_hours_nudge = user_settings.quiet_hours_nudge or "Nudge"
+	bootinfo.raven_onboarded = 1 if user_settings.onboarded else 0
 
 	# Quiet hours: outside these working hours the composer nudges toward (or
 	# defaults to, per the user's preference above) silent sends. Only shipped
@@ -107,3 +104,19 @@ def boot_session(bootinfo):
 	if raven_settings.push_notification_service == "Raven":
 		bootinfo.vapid_public_key = raven_settings.vapid_public_key
 		bootinfo.firebase_client_config = raven_settings.config
+
+
+def _get_user_boot_settings() -> frappe._dict:
+	# No Raven User: nothing to set up in the web app.
+	# A user that predates the onboarded column is onboarded (mark_existing_users_onboarded).
+	settings = frappe._dict(onboarded=1)
+
+	user = frappe.session.user
+	if not user or user == "Guest" or not frappe.db.exists("Raven User", user):
+		return settings
+
+	# Selecting a column a failed migrate didn't add raises, so ask only for known ones.
+	meta = frappe.get_meta("Raven User")
+	fields = [field for field in RAVEN_USER_BOOT_FIELDS if meta.has_field(field)]
+	settings.update(frappe.db.get_value("Raven User", user, fields, as_dict=True) or {})
+	return settings
