@@ -77,5 +77,5 @@ def contact_fallback_html(contact: dict) -> str:
 	values = [contact["name"]]
 	values += [phone["value"] for phone in contact["phones"]]
 	values += [email["value"] for email in contact["emails"]]
-	lines = "<br>".join(frappe.utils.escape_html(value) for value in values)
-	return f"<p>{lines}</p>"
+	# One paragraph per line: a <br> comes back from the HTML parser as <br/>, which reads as an edit.
+	return "".join(f"<p>{frappe.utils.escape_html(value)}</p>" for value in values)

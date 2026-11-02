@@ -83,7 +83,7 @@ class TestContactSanitizer(IntegrationTestCase):
 			{"name": '"><img src=x>', "phones": [{"value": "1"}], "emails": [{"value": "a@b.co"}]}
 		)
 		self.assertNotIn("<img", html)
-		self.assertEqual(html, "<p>&quot;&gt;&lt;img src=x&gt;<br>1<br>a@b.co</p>")
+		self.assertEqual(html, "<p>&quot;&gt;&lt;img src=x&gt;</p><p>1</p><p>a@b.co</p>")
 
 	def test_unknown_wrapped_label_kept(self):
 		c = sane_contact({"name": "Priya", "phones": [{"value": "1", "label": "_$!<HomeFAX>!$_"}]})
@@ -161,7 +161,7 @@ class TestContactSend(IntegrationTestCase):
 			frappe.parse_json(doc.json),
 			{"name": "Priya", "phones": [{"value": "+91 1"}], "emails": []},
 		)
-		self.assertEqual(doc.text, "<p>Priya<br>+91 1</p>")
+		self.assertEqual(doc.text, "<p>Priya</p><p>+91 1</p>")
 		self.assertEqual(doc.content, "Priya")
 		self.assertEqual(doc.get_notification_message_content(), "👤 Shared a contact: Priya")
 
@@ -229,6 +229,13 @@ class TestContactSend(IntegrationTestCase):
 		doc.json = frappe.as_json({"name": "Priya", "phones": [{"value": "1", "label": {"x": 1}}]})
 		with self.assertRaises(frappe.ValidationError):
 			doc.save()
+
+	def test_contact_survives_an_unrelated_save(self):
+		[msg] = send_message_with_attachments(channel_id=self.channel.name, contact=VALID)
+		doc = frappe.get_doc("Raven Message", msg.name)
+		doc.is_thread = 1
+		doc.save()
+		self.assertEqual(frappe.db.get_value("Raven Message", msg.name, "is_thread"), 1)
 
 	def test_reply_silent_idempotent(self):
 		parent = send_message_with_attachments(channel_id=self.channel.name, content="<p>who?</p>")[0]

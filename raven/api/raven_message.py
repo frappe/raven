@@ -1059,7 +1059,7 @@ def _forward_payloads(message_id: str) -> list[dict]:
 		# front. `json` goes with it: it still holds the unquoted body, and the copy
 		# should have one body that carries the quote.
 		if payload.get("is_reply"):
-			# Voice and Location keep their own body: prepending the quote to a link
+			# Voice, Location and Contact keep their own body: prepending the quote to a link
 			# would mangle it, and `json` is the content.
 			if payload.get("message_type") not in _JSON_PAYLOAD_TYPES:
 				quote = build_reply_blockquote(
