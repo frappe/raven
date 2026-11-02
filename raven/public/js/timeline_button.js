@@ -126,7 +126,7 @@ const render_attachment_rows = (frm, wrapper) => {
     rows.append(`
       <p class="flex">
         <label class="attachment-radio">
-          <input type="radio" name="raven-attachment" data-file-name="${file.name}">
+          <input type="radio" name="raven-attachment" data-file-url="${frappe.utils.escape_html(file.file_url)}">
           <span class="ellipsis">${frappe.utils.escape_html(file.file_name)}</span>
         </label>
         &nbsp;
@@ -138,8 +138,9 @@ const render_attachment_rows = (frm, wrapper) => {
   });
 };
 
+// The form already has each attachment's URL, so no File lookup is needed (and it needs File permission).
 const selected_attachment = (dialog) =>
-  $(dialog.wrapper).find("[data-file-name]:checked").attr("data-file-name") || "";
+  $(dialog.wrapper).find("[data-file-url]:checked").attr("data-file-url") || "";
 
 const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif"];
 
@@ -148,27 +149,21 @@ const message_type_for = (file_url) => {
   return IMAGE_EXTENSIONS.includes(file_url.split(".").pop().toLowerCase()) ? "Image" : "File";
 };
 
-const send_message = (frm, channel, message, attachment) => {
-  const file_url = attachment
-    ? frappe.db.get_value("File", attachment, "file_url").then((r) => r.message?.file_url || "")
-    : Promise.resolve("");
-
-  file_url
-    .then((url) =>
-      frappe.db.insert({
-        doctype: "Raven Message",
-        channel_id: channel,
-        text: message,
-        json: {
-          type: "doc",
-          content: [{ type: "paragraph", content: [{ type: "text", text: message }] }],
-        },
-        message_type: message_type_for(url),
-        file: url,
-        link_doctype: frm.doctype,
-        link_document: frm.docname,
-      }),
-    )
+const send_message = (frm, channel, message, file_url) => {
+  frappe.db
+    .insert({
+      doctype: "Raven Message",
+      channel_id: channel,
+      text: message,
+      json: {
+        type: "doc",
+        content: [{ type: "paragraph", content: [{ type: "text", text: message }] }],
+      },
+      message_type: message_type_for(file_url),
+      file: file_url,
+      link_doctype: frm.doctype,
+      link_document: frm.docname,
+    })
     .then(() => {
       frm.reload_doc();
       frappe.show_alert({ message: __("Message sent"), indicator: "green" });

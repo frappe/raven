@@ -23,8 +23,6 @@ public class RavenNotificationService extends MessagingService {
         options.put("body", data.get("push_body"));
         options.put("site", data.get("sitename"));
         options.put("image", data.get("image"));
-        // With a workspace logo the notification leads with it; without one, with the sender's face.
-        options.put("logo", data.get("workspace_image"));
         options.put("tag", data.get("tag"));
         JSObject payload = new JSObject();
         for (Map.Entry<String, String> entry : data.entrySet()) payload.put(entry.getKey(), entry.getValue());

@@ -12,7 +12,7 @@ import { siteUrl } from "@lib/site"
 // Bundled, because the app is not served from the site that holds this file.
 import ravenLogo from "@raven/public/raven_logo.svg"
 
-const LINKS = [
+const links = () => [
     { label: _("Documentation"), href: "https://docs.frappe.io/raven" },
     { label: _("GitHub"), href: "https://github.com/frappe/raven" },
     { label: _("Website"), href: "https://ravenchat.ai" },
@@ -52,7 +52,7 @@ export const About = () => {
                 </div>
 
                 <ul className="flex flex-col gap-2">
-                    {LINKS.map((link) => (
+                    {links().map((link) => (
                         <li key={link.href}>
                             <a
                                 href={link.href}

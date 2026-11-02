@@ -9,6 +9,7 @@ import { useLocalStorage, useMediaQuery } from "usehooks-ts"
 import { useChannelUnread, useGroupUnreadCount, useWorkspaceUnread } from "@stores/unread/useChannelUnread"
 import { channelUnreadStore } from "@stores/unread/store"
 import { Badge } from "@components/ui/badge"
+import { SidebarTrialCard } from "./TrialCard"
 import { Button } from "@components/ui/button"
 import { Skeleton } from "@components/ui/skeleton"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@components/ui/empty"
@@ -187,6 +188,7 @@ export function ChannelSidebar() {
                     )}
                 </div>
             )}
+            <SidebarTrialCard />
         </nav>
     )
 }

@@ -1,5 +1,9 @@
+from random import choice
+
 import frappe
+import jwt
 import requests
+from frappe.utils import get_sites
 from redis.exceptions import ConnectionError as RedisConnectionError
 
 from raven.raven_cloud_notifications import get_site_name
@@ -84,7 +88,7 @@ def setup_push() -> None:
 def register_site(settings, site_name: str) -> None:
 	"""Save the team's keys and the push settings, and send the device tokens for a new hostname."""
 	server_url = frappe.conf.get(SERVER_URL_CONFIG_KEY).rstrip("/")
-	registration = register_with_raven_cloud(server_url, site_name)
+	registered_name, registration = register_with_raven_cloud(server_url, site_name)
 	settings.update(
 		{
 			"push_notification_service": "Raven",
@@ -98,22 +102,27 @@ def register_site(settings, site_name: str) -> None:
 	# A background job runs as whoever queued it, which may be any user of the site.
 	settings.save(ignore_permissions=True)
 
-	if frappe.db.get_default(REGISTERED_HOST_KEY) != site_name:
+	if frappe.db.get_default(REGISTERED_HOST_KEY) != registered_name:
 		from raven.raven_cloud_notifications import sync_users_tokens_to_raven_cloud
 
-		# Raven Cloud keeps device tokens by hostname, so a new hostname sends them again.
-		sync_users_tokens_to_raven_cloud()
-		frappe.db.set_default(REGISTERED_HOST_KEY, site_name)
+		# Raven Cloud keeps device tokens by hostname, so a new hostname sends them again. Use
+		# registered_name, not a fresh get_site_name(): on a brand new site the two can differ.
+		sync_users_tokens_to_raven_cloud(registered_name)
+		frappe.db.set_default(REGISTERED_HOST_KEY, registered_name)
 
 
-def register_with_raven_cloud(server_url: str, site_name: str) -> dict:
-	"""Exchange a Frappe Cloud team token for the team's keys and the push settings."""
+def register_with_raven_cloud(server_url: str, site_name: str) -> tuple[str, dict]:
+	"""Exchange a Frappe Cloud team token for the team's keys and the push settings.
+
+	Returns the hostname Raven Cloud actually registered alongside them —
+	get_registration_site_name can resolve a different (real) hostname than the one passed in."""
 	from frappe.integrations.frappe_providers.cloud_settings import PilotClient
 
 	client = PilotClient()
 	identity = client.post(
 		client.site_path("central/central.api.pilot.get_team_identity_token"), {"audience": server_url}
 	)
+	site_name = get_registration_site_name(identity["token"], site_name)
 	response = requests.post(
 		f"{server_url}/api/method/raven_cloud.api.frappe_cloud.exchange_frappe_cloud_token",
 		json={"token": identity["token"], "site_name": site_name},
@@ -121,4 +130,17 @@ def register_with_raven_cloud(server_url: str, site_name: str) -> dict:
 		allow_redirects=False,
 	)
 	response.raise_for_status()
-	return response.json()["message"]
+	return site_name, response.json()["message"]
+
+
+def get_registration_site_name(token: str, site_name: str) -> str:
+	if len(get_sites()) != 1:
+		return site_name
+
+	# Raven Cloud verifies the token; locally we only need the hosts for a lazy rename.
+	hosts = jwt.decode(token, options={"verify_signature": False}).get("hosts", [])
+	if not hosts or site_name in hosts:
+		return site_name
+
+	preferred_hosts = [host for host in hosts if not host.startswith("site-")]
+	return choice(preferred_hosts or hosts)

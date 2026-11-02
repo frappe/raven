@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { getDefaultStore } from "jotai"
 
 const sdk = vi.hoisted(() => ({ open: vi.fn(), close: vi.fn() }))
-vi.mock("@frappe-dev/cloud-sdk", () => ({
+vi.mock("@frappe/cloud-sdk", () => ({
     openCloudSettings: sdk.open,
     closeCloudSettings: sdk.close,
 }))
@@ -46,7 +46,7 @@ describe("openBillingDialog", () => {
         await openBillingDialog()
         expect(sdk.open).toHaveBeenCalledOnce()
         const options = sdk.open.mock.calls[0][0]
-        expect(options).toMatchObject({ panels: ["billing", "domains", "advanced"], tab: "billing" })
+        expect(options).toMatchObject({ panels: ["billing", "marketplace", "domains", "advanced"], tab: "billing" })
         expect(store.get(cloudSettingsOpenAtom)).toBe(true)
         options.onClose()
         expect(store.get(cloudSettingsOpenAtom)).toBe(false)

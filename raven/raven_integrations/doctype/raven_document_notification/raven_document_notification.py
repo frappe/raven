@@ -254,7 +254,9 @@ def run_document_notification(doc, method):
 
 	notifications_to_send = []
 
-	for notification in raven_notifications:
+	for row in raven_notifications:
+		# Rows that come out of the cache can be plain dicts.
+		notification = frappe._dict(row)
 		event = event_map.get(method, None)
 		if event and event == notification.send_alert_on:
 			context = get_context(doc)

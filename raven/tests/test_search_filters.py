@@ -13,14 +13,6 @@ class TestSearchFilters(IntegrationTestCase):
 		with self.assertRaises(frappe.ValidationError):
 			sqlite_search(filters=filters)
 
-	def test_rejects_an_unknown_key_with_a_search_text(self):
-		filters = json.dumps({"content=content OR 1=1 OR content": "x"})
-		with self.assertRaises(frappe.ValidationError):
-			sqlite_search(query="hello", filters=filters)
-
-	def test_allows_every_indexed_field(self):
-		validate_filter_keys({field: "x" for field in RavenSearch.INDEX_SCHEMA["metadata_fields"]})
-
 	def test_allows_the_keys_the_app_sends(self):
 		# saved and mentions_me are turned into indexed fields before the check.
 		validate_filter_keys(

@@ -1,8 +1,10 @@
 {
  "actions": [],
+ "allow_bulk_edit": 1,
  "allow_rename": 1,
  "autoname": "hash",
  "creation": "2025-05-10 16:36:21.445325",
+ "deprecated": 1,
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -47,9 +49,9 @@
   }
  ],
  "grid_page_length": 50,
- "index_web_pages_for_search": 1,
+ "link_display_mode": "Search",
  "links": [],
- "modified": "2025-10-03 16:40:21.847775",
+ "modified": "2026-10-28 22:30:54.996766",
  "modified_by": "Administrator",
  "module": "Raven AI",
  "name": "Raven AI File Source",

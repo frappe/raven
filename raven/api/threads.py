@@ -298,8 +298,11 @@ def create_thread(message_id: str):
 
 	users_added_to_thread = []
 
-	# Add the creator of the original message as a participant
+	# Add the author of the original message as a participant. For a bot message that is
+	# the bot: its owner is whoever ran the code, or Guest for an incoming webhook.
 	creator = thread_message.owner
+	if thread_message.is_bot_message and thread_message.bot:
+		creator = frappe.get_cached_value("Raven Bot", thread_message.bot, "raven_user")
 
 	if creator != frappe.session.user:
 		creator_member = frappe.get_doc(

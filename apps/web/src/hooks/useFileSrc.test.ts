@@ -9,10 +9,16 @@ describe("fileSrc", () => {
     it("returns the path unchanged in the browser", () => {
         expect(fileSrc("/private/files/a.png")).toBe("/private/files/a.png")
     })
-    it("prefixes public paths in native", () => {
+    it("routes public site files in native through the media proxy, which keeps them on disk", () => {
         vi.stubEnv("VITE_NATIVE", "1")
         setActiveSite("https://a.com", () => "AT")
-        expect(fileSrc("/files/a.png")).toBe("https://a.com/files/a.png")
+        expect(fileSrc("/files/a.png")).toMatch(/^raven-media:\/\/[0-9a-z]+\/a\.png\?src=https%3A%2F%2Fa\.com%2Ffiles%2Fa\.png$/)
+    })
+    it("prefixes other site paths in native, and leaves other sites alone", () => {
+        vi.stubEnv("VITE_NATIVE", "1")
+        setActiveSite("https://a.com", () => "AT")
+        expect(fileSrc("/assets/raven/a.svg")).toBe("https://a.com/assets/raven/a.svg")
+        expect(fileSrc("https://b.com/files/a.png")).toBe("https://b.com/files/a.png")
     })
     it("routes private paths in native through the media proxy", () => {
         vi.stubEnv("VITE_NATIVE", "1")

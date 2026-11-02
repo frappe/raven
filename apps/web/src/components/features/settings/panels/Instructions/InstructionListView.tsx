@@ -21,6 +21,8 @@ import { isRavenSettingsAdmin } from "../AdminSettingsForm"
 import type { RavenBotInstructionTemplate } from "@raven/types/RavenAI/RavenBotInstructionTemplate"
 import AINotEnabledCallout from "../ai/AINotEnabledCallout"
 import _ from "@lib/translate"
+import { DeprecatedBadge } from "../DeprecatedBadge"
+
 
 export const INSTRUCTIONS_LIST_KEY = "raven-instruction-templates"
 
@@ -66,7 +68,7 @@ const InstructionListView = ({ onOpen, onCreate }: { onOpen: (id: string) => voi
     return (
         <>
             <SettingsPanelHeader actions={isAdmin ? <Button size="sm" onClick={onCreate}>{_("Create")}</Button> : null}>
-                <SettingsPanelTitle>{_("Instruction Templates")}</SettingsPanelTitle>
+                <SettingsPanelTitle>{_("Instruction Templates")} <DeprecatedBadge /></SettingsPanelTitle>
                 <SettingsPanelDescription>{_("Save commonly used instructions as templates for your bots.")}</SettingsPanelDescription>
             </SettingsPanelHeader>
             <SettingsPanelContent className="min-h-0 gap-2">

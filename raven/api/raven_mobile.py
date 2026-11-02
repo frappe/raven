@@ -1,6 +1,6 @@
 import frappe
-from frappe.utils.change_log import get_versions
 
+import raven
 from raven.www.raven import get_favicon
 
 # The app's OAuth redirect URI; the RN app used the bare "raven.thecommit.company:".
@@ -43,19 +43,14 @@ def get_client_id():
 	if not app_name or app_name == "Frappe":
 		app_name = "Raven"
 
-	all_app_versions = get_versions()
-
-	app_versions = {k: v["version"] for k, v in all_app_versions.items()}
-	raven_version = app_versions["raven"]
-	frappe_version = app_versions["frappe"]
-
 	return {
 		"client_id": usable_client_id(frappe.db.get_single_value("Raven Settings", "oauth_client")),
 		"system_timezone": frappe.get_system_settings("time_zone"),
 		"app_name": app_name,
 		"sitename": frappe.local.site,
-		"raven_version": raven_version,
-		"frappe_version": frappe_version,
+		# Read from the modules: Frappe's get_versions is closed to guests.
+		"raven_version": raven.__version__,
+		"frappe_version": frappe.__version__,
 		"min_app_version": MIN_APP_VERSION,
 		# Only a favicon the site set for itself; the app carries Raven's own artwork.
 		"logo": get_favicon(),

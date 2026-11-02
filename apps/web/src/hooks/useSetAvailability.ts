@@ -5,14 +5,14 @@ import { errorResponseToast } from "@components/ui/error-banner"
 import _ from "@lib/translate"
 
 /** The values `Raven User.availability_status` can hold (besides the "" default). */
-export const AVAILABILITY_OPTIONS = [
+export const availabilityOptions = () => [
     { value: "Available", label: _("Available") },
     { value: "Away", label: _("Away") },
     { value: "Do not disturb", label: _("Do not disturb") },
     { value: "Invisible", label: _("Invisible") },
 ] as const
 
-export type AvailabilityStatus = (typeof AVAILABILITY_OPTIONS)[number]["value"]
+export type AvailabilityStatus = ReturnType<typeof availabilityOptions>[number]["value"]
 
 /**
  * Quick availability switching — the shared engine behind the footer's

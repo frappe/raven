@@ -3,7 +3,7 @@ import { useLogout } from "@hooks/useLogout"
 import { UserAvatar } from "@components/features/message/UserAvatar"
 import { Button } from "@components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "@components/ui/dropdown-menu"
-import { AVAILABILITY_OPTIONS, useSetAvailability, type AvailabilityStatus } from "@hooks/useSetAvailability"
+import { availabilityOptions, useSetAvailability, type AvailabilityStatus } from "@hooks/useSetAvailability"
 import { getStatusIndicatorColor } from "@components/features/message/UserAvatar"
 import { cn } from "@lib/utils"
 import { CircleDot } from "lucide-react"
@@ -153,7 +153,7 @@ const StatusSubMenu = () => {
                     value={availability}
                     onValueChange={(value) => setAvailability(value as AvailabilityStatus)}
                 >
-                    {AVAILABILITY_OPTIONS.map((option) => (
+                    {availabilityOptions().map((option) => (
                         <DropdownMenuRadioItem key={option.value} value={option.value}>
                             <span className={cn("size-2 rounded-full", getStatusIndicatorColor(option.value))} />
                             {option.label}

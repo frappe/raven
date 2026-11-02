@@ -74,6 +74,12 @@ const IndexRedirect = () => {
  * silently ignores it. Same route tree; a data router must be created ONCE at module
  * scope, not per render.
  */
+// Components rather than elements: the router tree is built at module load, before the
+// translations may be in place, so the titles are translated when the skeleton renders.
+const SearchSkeleton = () => <ListPageSkeleton title={_("Search")} />
+const LaterSkeleton = () => <ListPageSkeleton title={_("Later")} />
+const ScheduledMessagesSkeleton = () => <ListPageSkeleton title={_("Scheduled Messages")} />
+
 const router = createBrowserRouter(
   createRoutesFromElements(
     // errorElement: the last-resort boundary for uncaught render/route errors
@@ -107,13 +113,13 @@ const router = createBrowserRouter(
           showing its old content (the previous PAGE) instead of the fallback.
           Keys force a fresh boundary per route; a new boundary shows its
           skeleton immediately, even mid-transition. */}
-      <Route path="search" element={<Suspense key="search" fallback={<ListPageSkeleton title={_("Search")} />}><Search /></Suspense>}>
+      <Route path="search" element={<Suspense key="search" fallback={<SearchSkeleton />}><Search /></Suspense>}>
         <Route path=":channelID/:messageID" element={<NotificationChatRoute />} />
       </Route>
-      <Route path="later" element={<Suspense key="later" fallback={<ListPageSkeleton title={_("Later")} />}><Later /></Suspense>}>
+      <Route path="later" element={<Suspense key="later" fallback={<LaterSkeleton />}><Later /></Suspense>}>
         <Route path=":channelID/:messageID" element={<NotificationChatRoute />} />
       </Route>
-      <Route path="scheduled-messages" element={<Suspense key="scheduled-messages" fallback={<ListPageSkeleton title={_("Scheduled Messages")} />}><ScheduledMessages /></Suspense>} />
+      <Route path="scheduled-messages" element={<Suspense key="scheduled-messages" fallback={<ScheduledMessagesSkeleton />}><ScheduledMessages /></Suspense>} />
       {/* Fallback = the page's silhouette WITH the real tab bar: the footer
           lives inside this lazy chunk, so a null fallback blanked the whole
           screen (footer included) for the duration of the load. */}

@@ -437,7 +437,7 @@ const ImageGroupingBehaviour = () => {
         <div className="flex flex-col">
             <SettingsFormLabel htmlFor="sort_channels_by">{_("Image group layout")}</SettingsFormLabel>
             <SettingsFormDescription>
-                {_("Decide how a group of images should appear in the chat stream. 4+ images always use the carousel.")}
+                {_("Decide how a group of images should appear in the chat stream. 5 or more images always use the carousel.")}
             </SettingsFormDescription>
         </div>
         <div className="min-w-40 flex justify-end">

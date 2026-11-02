@@ -2,6 +2,7 @@ import frappe
 from frappe import _
 from frappe.query_builder import JoinType, Order
 from frappe.query_builder.functions import Coalesce
+from frappe.utils.caching import redis_cache
 
 from raven.utils import delete_channel_members_cache, delete_workspace_members_cache
 
@@ -53,6 +54,12 @@ def get_list():
 	)
 
 	return all_workspaces.run(as_dict=True)
+
+
+@redis_cache()
+def get_workspace_names() -> dict[str, str]:
+	"""Every workspace's name by its ID. Cached since this won't change frequently."""
+	return dict(frappe.get_all("Raven Workspace", fields=["name", "workspace_name"], as_list=True))
 
 
 @frappe.whitelist()

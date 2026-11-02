@@ -78,6 +78,8 @@ class IntegrationTestRavenDocumentNotification(IntegrationTestCase):
 		with self.assertRaises(frappe.ValidationError):
 			notification.save()
 
+		# The failed save already stamped the copy in memory; start again from the saved row.
+		notification.reload()
 		notification.enabled = 0
 		notification.save()
 		self.assertEqual(
@@ -109,16 +111,18 @@ class IntegrationTestRavenDocumentNotification(IntegrationTestCase):
 		notification.recipients[0].value = "deleted-channel"
 		notification.insert()
 
-		with patch("frappe.enqueue") as enqueue:
+		# The log call is asserted rather than the row: newer Frappe queues Error Log writes.
+		# The mock still does what the real insert would: run the Error Log's own hook, so the
+		# recursion guard is what keeps the enqueue quiet.
+		with patch("frappe.enqueue") as enqueue, patch("frappe.log_error") as log_error:
+			log_error.side_effect = lambda *args, **kwargs: run_document_notification(
+				frappe.new_doc("Error Log"), "after_insert"
+			)
 			send_raven_notifications(frappe.new_doc("ToDo"), [notification], "ToDo", "x")
 
 		enqueue.assert_not_called()
-		self.assertTrue(
-			frappe.db.exists(
-				"Error Log",
-				{"reference_doctype": "Raven Document Notification", "reference_name": notification.name},
-			)
-		)
+		log_error.assert_called_once()
+		self.assertEqual(log_error.call_args.kwargs["reference_name"], notification.name)
 
 	def evaluate(self, condition):
 		context = get_context(frappe._dict(status="Open", total=500))

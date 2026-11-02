@@ -38,7 +38,11 @@ final class RavenMediaHandler {
         File target = new File(new File(new File(context.getCacheDir(), "media"), folder), file);
         if (!isInsideMedia(context, target)) return reject(400, "bad media path");
         String range = request.getRequestHeaders().get("Range");
-        return target.isFile() ? fromDisk(target, range) : fromSite(src, target, range);
+        if (!target.isFile()) return fromSite(src, target, range);
+        // Trim goes by the folder's date: a file read often is kept, not just one fetched lately.
+        //noinspection ResultOfMethodCallIgnored
+        target.getParentFile().setLastModified(System.currentTimeMillis());
+        return fromDisk(target, range);
     }
 
     // A complete cached file answers Range itself: video seeking never touches the network.
@@ -156,32 +160,72 @@ final class RavenMediaHandler {
         @Override public void close() throws IOException { in.close(); }
     }
 
-    /** Copies what the WebView reads into a part file; only a stream read to its end becomes the file. */
+    /**
+     * Copies what the WebView reads into a part file; only a stream read to its end becomes the file.
+     * Caching is best effort: a part file that can't be made or written stops the copy, never the read.
+     */
     private static final class TeeStream extends InputStream {
         private final InputStream in;
         private final File target, part;
-        private final OutputStream out;
+        private final byte[] one = new byte[1];
+        private OutputStream out;
         private boolean complete;
-        TeeStream(InputStream in, File target) throws IOException {
+        TeeStream(InputStream in, File target) {
             this.in = in;
             this.target = target;
             // Own part file per stream: two requests for one file never write into each other.
             this.part = new File(target.getPath() + "." + System.nanoTime() + ".part");
             //noinspection ResultOfMethodCallIgnored
             target.getParentFile().mkdirs();
-            this.out = new FileOutputStream(part);
+            try {
+                this.out = new FileOutputStream(part);
+            } catch (IOException e) {
+                // Not cached this time; the read goes on.
+            }
         }
-        @Override public int read() throws IOException { int b = in.read(); if (b >= 0) out.write(b); else complete = true; return b; }
+        @Override public int read() throws IOException {
+            return read(one, 0, 1) < 0 ? -1 : one[0] & 0xff;
+        }
         @Override public int read(byte[] buffer, int off, int len) throws IOException {
             int read = in.read(buffer, off, len);
-            if (read > 0) out.write(buffer, off, read); else complete = true;
+            // Only -1 ends the stream; 0 is an empty read, and taking it for the end would keep a cut-off file.
+            if (read > 0) copy(buffer, off, read); else if (read < 0) complete = true;
             return read;
         }
         @Override public void close() throws IOException {
-            in.close();
-            out.close();
+            try {
+                in.close();
+            } finally {
+                keepIfComplete();
+            }
+        }
+        private void keepIfComplete() {
+            if (out == null) return;
+            try {
+                out.close();
+            } catch (IOException e) {
+                complete = false;
+            }
             //noinspection ResultOfMethodCallIgnored
             if (!complete || !part.renameTo(target)) part.delete();
+        }
+        private void copy(byte[] buffer, int off, int len) {
+            if (out == null) return;
+            try {
+                out.write(buffer, off, len);
+            } catch (IOException e) {
+                drop();
+            }
+        }
+        private void drop() {
+            try {
+                out.close();
+            } catch (IOException ignored) {
+                // The part file goes either way.
+            }
+            out = null;
+            //noinspection ResultOfMethodCallIgnored
+            part.delete();
         }
     }
 }

@@ -178,7 +178,9 @@ export function ChatContentView({
             {isMobile && (
                 <>
                     <Drawer open={!!pollDrawerData} onOpenChange={(open) => !open && setPollDrawerData(null)}>
-                        <DrawerContent className="h-[85dvh]">
+                        {/* pb-0: the poll drawer's own scroller carries the safe-area padding,
+                            so option cards scroll to the sheet's true bottom edge under the fade. */}
+                        <DrawerContent className="h-[85dvh] pb-0">
                             <DrawerTitle className="sr-only">{_("Poll")}</DrawerTitle>
                             <DrawerDescription className="sr-only">{_("Poll details and votes")}</DrawerDescription>
                             {pollDrawerData && (

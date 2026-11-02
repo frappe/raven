@@ -67,12 +67,13 @@ const ReactionsBody = ({ reactions }: { reactions: ReactionObject[] }) => {
 
     return (
         <Tabs defaultValue="all">
-            <TabsList className="w-full">
-                <TabsTrigger value="all" className="gap-2 w-full">
+            {/* A few tabs share the width; many keep their size and the row scrolls. */}
+            <TabsList scrollable className="w-full px-4 md:px-6">
+                <TabsTrigger value="all" className="gap-2 flex-1 min-w-fit">
                     {_("All")} <span className="text-ink-gray-5 text-sm-regular">{reactorsByUser.size}</span>
                 </TabsTrigger>
                 {reactions.map((reaction) => (
-                    <TabsTrigger key={reaction.emoji_name} value={reaction.emoji_name} className="gap-2 w-full">
+                    <TabsTrigger key={reaction.emoji_name} value={reaction.emoji_name} className="gap-2 flex-1 min-w-fit">
                         <EmojiGlyph reaction={reaction} />
                         <span className="text-ink-gray-5 text-sm-regular">{reaction.count}</span>
                     </TabsTrigger>

@@ -24,7 +24,7 @@ import _ from "@lib/translate"
 /** Lets the Save button live in the panel HEADER, outside the <form>. */
 const FORM_ID = "settings-profile-form"
 
-const STATUS_OPTIONS = [
+const statusOptions = () => [
     { value: "Available", label: _("Available") },
     { value: "Away", label: _("Away") },
     { value: "Do not disturb", label: _("Do not disturb") },
@@ -137,7 +137,7 @@ const ProfileForm = ({ myProfile }: { myProfile: RavenUser }) => {
                             />
 
                             <SelectFormField name="availability_status" label={_("Availability")}>
-                                {STATUS_OPTIONS.map((option) => (
+                                {statusOptions().map((option) => (
                                     <SelectItem key={option.value} value={option.value}>
                                         <span className="flex items-center gap-2">
                                             <span className={cn("size-2 rounded-full", getStatusIndicatorColor(option.value))} />

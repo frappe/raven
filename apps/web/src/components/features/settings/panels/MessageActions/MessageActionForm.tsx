@@ -162,7 +162,7 @@ const EXAMPLES: Record<string, string> = {
 }
 
 # You can use the values to perform any action like this:
-print(frappe.form_dict.values.field1)`,
+print(frappe.form_dict.get("values").get("field1"))`,
     "Custom Function": `# The API would be called directly with the values from the message action dialog.
 
 # Example:

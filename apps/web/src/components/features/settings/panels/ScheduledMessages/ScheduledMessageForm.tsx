@@ -15,7 +15,7 @@ import { ALL_DAYS, WEEKDAYS, isValidCron, type ScheduledMessageForm as FormValue
 import _ from "@lib/translate"
 
 /** Chip order is Monday first; values are cron's numbering where Sunday is 0. */
-const DAY_CHIPS: { value: string; short: string; long: string }[] = [
+const dayChips = (): { value: string; short: string; long: string }[] => [
     { value: "1", short: _("Mon"), long: _("Monday") },
     { value: "2", short: _("Tue"), long: _("Tuesday") },
     { value: "3", short: _("Wed"), long: _("Wednesday") },
@@ -161,7 +161,7 @@ const WeekdayChips = () => {
                     <FormItem>
                         <FormLabel>{_("On which days?")}</FormLabel>
                         <div className="flex flex-wrap items-center gap-1.5">
-                            {DAY_CHIPS.map((day) => (
+                            {dayChips().map((day) => (
                                 <Button
                                     key={day.value}
                                     type="button"
@@ -207,7 +207,7 @@ const ScheduleSummary = () => {
         if (frequency === "Every Day") {
             summary = _("Sent every day at {0}.", [formattedTime])
         } else if (frequency === "Every Day of the week") {
-            const picked = DAY_CHIPS.filter((d) => days?.includes(d.value))
+            const picked = dayChips().filter((d) => days?.includes(d.value))
             if (picked.length === 7) summary = _("Sent every day at {0}.", [formattedTime])
             else if (picked.length === 5 && WEEKDAYS.every((d) => days?.includes(d))) summary = _("Sent every weekday at {0}.", [formattedTime])
             else if (picked.length > 0) summary = _("Sent every {0} at {1}.", [joinNames(picked.map((d) => d.long)), formattedTime])

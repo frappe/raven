@@ -30,11 +30,11 @@ import { ChannelIcon } from "@components/common/ChannelIcon/ChannelIcon";
 
 const CHANNEL_TYPES: RavenChannel["type"][] = ["Public", "Private", "Open"];
 
-const TYPE_LABELS: Record<RavenChannel["type"], string> = {
+const typeLabels = (): Record<RavenChannel["type"], string> => ({
   Public: _("Public"),
   Private: _("Private"),
   Open: _("Open"),
-};
+});
 
 /**
  * "Channel type" as a VALUE row (select), not three "Change to…" action rows:
@@ -99,7 +99,7 @@ export function ChannelTypeSelect({ channel }: { channel: ChannelListItem }) {
               {CHANNEL_TYPES.map((type) => (
                 <SelectItem key={type} value={type} className="py-2.5">
                   <ChannelIcon type={type} className="size-4" />
-                  {TYPE_LABELS[type]}
+                  {typeLabels()[type]}
                 </SelectItem>
               ))}
             </SelectContent>

@@ -1,3 +1,5 @@
+import frappe
+
 from . import __version__ as app_version
 
 app_name = "raven"
@@ -15,8 +17,13 @@ app_logo_url = "/assets/raven/raven_logo.svg"
 
 # include js, css files in header of desk.html
 app_include_js = "raven.bundle.js"
-# Raven's own desk icons, e.g. frappe.utils.icon("raven").
-app_include_icons = ["/assets/raven/icons/raven.svg"]
+# Raven's own desk icons, e.g. frappe.utils.icon("raven"). Frappe 15 puts "/assets/" in front
+# of the path itself; Frappe 16 takes the full path.
+app_include_icons = [
+	"raven/icons/raven.svg"
+	if frappe.__version__.startswith("15.")
+	else "/assets/raven/icons/raven.svg"
+]
 
 add_to_apps_screen = [
 	{
@@ -142,6 +149,7 @@ doc_events = {
 		"after_insert": "raven.raven.doctype.raven_user.raven_user.add_user_to_raven",
 		"on_update": "raven.raven.doctype.raven_user.raven_user.add_user_to_raven",
 		"on_trash": "raven.raven.doctype.raven_user.raven_user.remove_user_from_raven",
+		"after_rename": "raven.raven.doctype.raven_user.raven_user.rename_raven_user",
 	},
 	"Department": {
 		"after_insert": "raven.raven_integrations.controllers.department.after_insert",
@@ -290,6 +298,8 @@ on_session_creation = "raven.api.user_availability.set_user_active"
 
 # The bundled native app runs from its own origins; allow them on API calls without site config.
 before_request = ["raven.api.native.set_cors"]
+# Frappe 15 ignores the origin set_cors chooses, so Raven writes the CORS headers there itself.
+after_request = ["raven.api.native.add_cors_headers"]
 on_logout = "raven.api.user_availability.set_user_inactive"
 
 export_python_type_annotations = True
@@ -303,3 +313,7 @@ raven_document_link_override = "raven.api.document_link.get_new_app_document_lin
 ignore_translatable_strings_from = ["frappe"]
 
 sqlite_search = ["raven.api.search.RavenSearch"]
+
+# Expose method source code through the API discovery endpoints. Safe for open
+# source apps and helps API clients understand what a method does.
+expose_discovery_source = True

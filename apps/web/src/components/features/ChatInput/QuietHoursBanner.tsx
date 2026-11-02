@@ -20,6 +20,7 @@ import { hasRole } from "@lib/permissions"
 import { quietHoursNudgeAtom, type QuietHoursNudge } from "@utils/preferences"
 import { currentQuietPeriodStartMs } from "@utils/quietHours"
 import _ from "@lib/translate"
+import { isApple } from "@utils/platform"
 
 /**
  * One banner on screen, ever. Multiple composers can be mounted at once — a
@@ -129,7 +130,7 @@ const QuietHoursBannerContent = ({ mode, onDismiss }: { mode: QuietSendMode; onD
             ? _("It's outside working hours - your messages will be sent silently.")
             : isMobile
                 ? _("It's outside working hours - hold the send to message without pinging anyone.")
-                : _("It's outside working hours - send silently to let people rest (⌘⇧↵).")
+                : _("It's outside working hours - send silently to let people rest ({0}).", [isApple ? "⌘⇧↵" : "Ctrl+Shift+Enter"])
 
     return (
         <div className="flex items-center gap-1.5 rounded-md bg-surface-gray-2 dark:bg-surface-elevation-2 py-1 pl-3 pr-1 md:mx-0 mx-1">

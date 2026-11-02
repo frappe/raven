@@ -88,7 +88,7 @@ export const WorkspaceAccessPicker = ({
                                 <Tooltip>
                                     <TooltipTrigger asChild>{row}</TooltipTrigger>
                                     <TooltipContent>
-                                        {_("You are not an admin of this workspace, so you cannot manage it's members.")}
+                                        {_("You are not an admin of this workspace, so you cannot manage its members.")}
                                     </TooltipContent>
                                 </Tooltip>
                             )}

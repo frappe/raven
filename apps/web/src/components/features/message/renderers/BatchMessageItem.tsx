@@ -166,6 +166,7 @@ export const BatchMessageItem = ({
                 <DocumentLinkRenderer
                     doctype={linkedDocMember.link_doctype!}
                     docname={linkedDocMember.link_document!}
+                    messageCreation={linkedDocMember.creation}
                     // Fixed width in the fit-content bubble column — see MessageContent.
                     className={isLeftRight ? "w-96 max-w-full" : undefined}
                 />

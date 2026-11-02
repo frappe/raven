@@ -15,7 +15,7 @@ import { UserAvatar } from '@components/features/message/UserAvatar'
 import { hapticTick } from '@utils/haptics'
 import { useAtom } from 'jotai'
 
-const FOOTER_LINKS = [
+const footerLinks = () => [
     {
         icon: HomeIcon,
         title: _("Home"),
@@ -67,7 +67,7 @@ export default AppMobileFooter
 /** Renders a skeleton where the buttons are not clickable */
 export const AppMobileFooterSkeleton = () => {
     return <AppMobileFooterContainer>
-        {FOOTER_LINKS.map((link) => (
+        {footerLinks().map((link) => (
             <FooterNavLinkSkeleton key={link.to} icon={<link.icon />} title={link.title} />
         ))}
     </AppMobileFooterContainer>

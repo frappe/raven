@@ -11,18 +11,21 @@ import android.graphics.Paint;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.service.notification.StatusBarNotification;
+import android.text.TextUtils;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.Person;
 import androidx.core.graphics.drawable.IconCompat;
 import com.getcapacitor.JSObject;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import org.json.JSONArray;
+import org.json.JSONException;
 
 /**
  * A message notification: chat-style, with the sender's face per message and a conversation's
- * messages stacked, or, for a workspace with a logo, the standard layout with the logo on the right.
- * Posted by the notification service, and by the page for a push from another saved site.
+ * messages stacked. Posted by the notification service, and by the page for a push from another saved site.
  */
 final class ConversationNotification {
     private ConversationNotification() {}
@@ -32,53 +35,42 @@ final class ConversationNotification {
         String tag = options.getString("tag");
         int id = (int) (System.currentTimeMillis() % Integer.MAX_VALUE);
         NotificationManager manager = context.getSystemService(NotificationManager.class);
-        // A workspace logo needs the standard layout: the conversation one has no picture on the right.
-        String logoUrl = options.getString("logo");
-        boolean branded = logoUrl != null && !logoUrl.isEmpty();
-        String url = branded ? logoUrl : options.getString("image");
-        // Only the conversation layout stacks earlier messages; the standard one replaces them.
-        List<NotificationCompat.MessagingStyle.Message> history = branded ? Collections.emptyList() : history(manager, tag);
+        String url = options.getString("image");
+        List<NotificationCompat.MessagingStyle.Message> history = history(manager, tag);
         Bitmap picture = AvatarCache.cached(context, url);
-        show(context, manager, options, tag, id, history, picture, branded, false);
+        String place = place(context, options);
+        show(context, manager, options, place, tag, id, history, picture, false);
         // A picture that has to be fetched arrives after the notification, and updates it in place.
         if (picture != null || url == null || url.isEmpty()) return;
         Bitmap fetched = AvatarCache.fetch(context, url);
-        if (fetched != null) show(context, manager, options, tag, id, history, fetched, branded, true);
+        if (fetched != null) show(context, manager, options, place, tag, id, history, fetched, true);
     }
 
     private static void show(
         Context context,
         NotificationManager manager,
         JSObject options,
+        String place,
         String tag,
         int id,
         List<NotificationCompat.MessagingStyle.Message> history,
         Bitmap picture,
-        boolean branded,
         boolean update
     ) {
         String title = options.getString("title", "");
         String body = options.getString("body", "");
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, RavenApplication.MESSAGES_CHANNEL)
             .setSmallIcon(R.drawable.ic_launcher_foreground);
-        if (branded) {
-            builder.setContentTitle(title)
-                .setContentText(body)
-                .setSubText(options.getString("site"))
-                .setStyle(new NotificationCompat.BigTextStyle().bigText(body));
-            if (picture != null) builder.setLargeIcon(picture);
-        } else {
-            // MessagingStyle needs a named device user; only the senders' messages are shown.
-            NotificationCompat.MessagingStyle style = new NotificationCompat.MessagingStyle(new Person.Builder().setName("You").build())
-                .setConversationTitle(options.getString("site"))
-                .setGroupConversation(true);
-            for (NotificationCompat.MessagingStyle.Message message : history) style.addMessage(message);
-            Person.Builder sender = new Person.Builder().setName(title);
-            Bitmap round = circle(picture);
-            if (round != null) sender.setIcon(IconCompat.createWithBitmap(round));
-            style.addMessage(body, System.currentTimeMillis(), sender.build());
-            builder.setStyle(style);
-        }
+        // MessagingStyle needs a named device user; only the senders' messages are shown.
+        NotificationCompat.MessagingStyle style = new NotificationCompat.MessagingStyle(new Person.Builder().setName("You").build())
+            .setConversationTitle(place)
+            .setGroupConversation(true);
+        for (NotificationCompat.MessagingStyle.Message message : history) style.addMessage(message);
+        Person.Builder sender = new Person.Builder().setName(title);
+        Bitmap round = circle(picture);
+        if (round != null) sender.setIcon(IconCompat.createWithBitmap(round));
+        style.addMessage(body, System.currentTimeMillis(), sender.build());
+        builder.setStyle(style);
         builder.setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             // The face arriving must not sound a second time for the same message.
@@ -88,6 +80,29 @@ final class ConversationNotification {
         // (tag, 0) is the identity FCM posts under, so a tagged post replaces the
         // background entry for the same conversation as well as an earlier re-post.
         manager.notify(tag, tag != null ? 0 : id, notification);
+    }
+
+    /** The header's context: the workspace and the site, each only when there are several to tell apart. */
+    private static String place(Context context, JSObject options) {
+        JSObject data = options.getJSObject("data");
+        List<String> parts = new ArrayList<>();
+        // The site sends a channel's workspace only when it has several.
+        String workspace = data == null ? null : data.getString("workspace");
+        if (workspace != null && !workspace.isEmpty()) parts.add(workspace);
+        String site = options.getString("site");
+        if (site != null && !site.isEmpty() && manySites(context)) parts.add(site);
+        return parts.isEmpty() ? null : TextUtils.join(" · ", parts);
+    }
+
+    /** The saved sites, as the page keeps them in Preferences (apps/web/src/native/sites.ts). */
+    private static boolean manySites(Context context) {
+        String sites = context.getSharedPreferences("CapacitorStorage", Context.MODE_PRIVATE).getString("sites", null);
+        if (sites == null) return false;
+        try {
+            return new JSONArray(sites).length() > 1;
+        } catch (JSONException e) {
+            return false;
+        }
     }
 
     // Same extras as an FCM tap, so the messaging plugin reports notificationActionPerformed.

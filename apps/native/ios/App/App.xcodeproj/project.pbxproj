@@ -400,7 +400,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = RavenShare/RavenShare.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 314;
+				CURRENT_PROJECT_VERSION = 317;
 				DEVELOPMENT_TEAM = 2MPAANUE2G;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = RavenShare/Info.plist;
@@ -410,7 +410,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 3.1.0;
+				MARKETING_VERSION = 3.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = raven.thecommit.company.RavenShare;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -424,7 +424,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = RavenShare/RavenShare.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 314;
+				CURRENT_PROJECT_VERSION = 317;
 				DEVELOPMENT_TEAM = 2MPAANUE2G;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = RavenShare/Info.plist;
@@ -434,7 +434,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 3.1.0;
+				MARKETING_VERSION = 3.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = raven.thecommit.company.RavenShare;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -559,7 +559,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 314;
+				CURRENT_PROJECT_VERSION = 317;
 				DEVELOPMENT_TEAM = 2MPAANUE2G;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -567,7 +567,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 3.1.0;
+				MARKETING_VERSION = 3.2.0;
 				OTHER_SWIFT_FLAGS = "$(inherited) \"-D\" \"COCOAPODS\" \"-DDEBUG\"";
 				PRODUCT_BUNDLE_IDENTIFIER = raven.thecommit.company;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -583,7 +583,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 314;
+				CURRENT_PROJECT_VERSION = 317;
 				DEVELOPMENT_TEAM = 2MPAANUE2G;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -591,7 +591,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 3.1.0;
+				MARKETING_VERSION = 3.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = raven.thecommit.company;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
@@ -605,7 +605,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = RavenNotifications/RavenNotifications.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 314;
+				CURRENT_PROJECT_VERSION = 317;
 				DEVELOPMENT_TEAM = 2MPAANUE2G;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = RavenNotifications/Info.plist;
@@ -615,7 +615,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 3.1.0;
+				MARKETING_VERSION = 3.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = raven.thecommit.company.RavenNotifications;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -629,7 +629,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = RavenNotifications/RavenNotifications.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 314;
+				CURRENT_PROJECT_VERSION = 317;
 				DEVELOPMENT_TEAM = 2MPAANUE2G;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = RavenNotifications/Info.plist;
@@ -639,7 +639,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 3.1.0;
+				MARKETING_VERSION = 3.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = raven.thecommit.company.RavenNotifications;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;

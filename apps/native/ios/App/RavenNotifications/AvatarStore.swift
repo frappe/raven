@@ -17,7 +17,7 @@ enum AvatarStore {
     }
 
     /// Keeps a downloaded avatar as an icon-sized jpeg and returns where it landed.
-    /// iOS attaches a jpeg, png or gif only, and a profile picture is often neither.
+    /// A profile picture straight off a phone is megabytes; the icon needs a few kilobytes of it.
     static func keep(_ downloaded: URL, for url: URL) -> URL? {
         guard let file = path(for: url), let icon = icon(from: downloaded) else { return nil }
         try? FileManager.default.removeItem(at: file)

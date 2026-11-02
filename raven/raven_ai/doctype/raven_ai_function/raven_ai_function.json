@@ -1,9 +1,11 @@
 {
  "actions": [],
+ "allow_bulk_edit": 1,
  "allow_rename": 1,
  "autoname": "field:function_name",
  "beta": 1,
  "creation": "2024-08-23 08:43:26.356348",
+ "deprecated": 1,
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -103,9 +105,9 @@
    "label": "Strict"
   }
  ],
- "index_web_pages_for_search": 1,
+ "link_display_mode": "Search",
  "links": [],
- "modified": "2025-06-06 12:57:13.241374",
+ "modified": "2026-10-28 22:30:43.293486",
  "modified_by": "Administrator",
  "module": "Raven AI",
  "name": "Raven AI Function",
@@ -137,6 +139,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "search_fields": "description",
  "sort_field": "creation",
  "sort_order": "DESC",

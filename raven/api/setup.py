@@ -35,6 +35,22 @@ def is_setup_admin() -> bool:
 	return bool(set(SETUP_ADMIN_ROLES) & set(frappe.get_roles()))
 
 
+def is_frappe_cloud_site() -> bool:
+	"""The site runs on Frappe Cloud, v1 or v2. A signup on either opens Raven before the Framework's wizard."""
+	from frappe.integrations.frappe_providers.frappecloud_billing import is_fc_site
+
+	return is_fc_site() or is_frappe_cloud_v2_site()
+
+
+def is_frappe_cloud_v2_site() -> bool:
+	try:
+		from frappe.integrations.frappe_providers.cloud_settings import is_v2_site
+	except ImportError:
+		# Frappe without Cloud Settings is older than any v2 site.
+		return False
+	return is_v2_site()
+
+
 def _raven_users_without_workspace() -> list[dict]:
 	"""
 	Enabled people in Raven who belong to no workspace, except whoever is asking and the
@@ -86,7 +102,9 @@ def _site_users() -> list[dict]:
 	user whose single role profile can't take Raven's.
 	"""
 	stack = profiles_can_stack()
-	can_edit_users = frappe.has_permission("User", ptype="write")
+	# Without shares: Frappe shares every User record with its own user, with write rights, and
+	# a doctype-level check passes as soon as one shared record exists.
+	can_edit_users = frappe.has_permission("User", ptype="write", ignore_share_permissions=True)
 	users = [{**row, "in_raven": True, "addable": True} for row in _raven_users_without_workspace()]
 	for row in _system_users_not_in_raven():
 		profile = row.pop("role_profile_name")
@@ -187,9 +205,12 @@ def finish_frappe_setup():
 	Apps with wizard stages of their own, like ERPNext, still need the real wizard.
 	"""
 	from frappe.desk.page.setup_wizard.setup_wizard import setup_complete
-	from frappe.integrations.frappe_providers.frappecloud_billing import is_fc_site
 
-	if frappe.is_setup_complete() or not is_fc_site() or frappe.get_hooks("setup_wizard_stages"):
+	if (
+		frappe.is_setup_complete()
+		or not is_frappe_cloud_site()
+		or frappe.get_hooks("setup_wizard_stages")
+	):
 		return
 	result = setup_complete(frappe_setup_args())
 	if result.get("status") != "ok":
