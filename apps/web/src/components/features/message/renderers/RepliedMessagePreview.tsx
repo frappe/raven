@@ -1,6 +1,6 @@
 import { RavenMessage } from "@raven/types/RavenMessaging/RavenMessage"
 import { useUser } from "@hooks/useUser"
-import { ChartColumnIcon, MapPin, MicIcon } from "lucide-react"
+import { ChartColumnIcon, MapPin, MicIcon, UserRound } from "lucide-react"
 import FileTypeIcon from "@components/common/FileIcons/FileTypeIcon"
 import { FileImage } from "@components/common/FileImage"
 import { getFileExtension, getFileName } from "@raven/lib/utils/operations"
@@ -57,6 +57,15 @@ export const RepliedMessagePreview = ({ details }: { details: RepliedMessageDeta
                     <span className="flex items-center gap-1">
                         <MapPin className="h-3.5 w-3.5" />
                         <span className="line-clamp-1 md:text-p-base text-p-lg">{_("Location")}</span>
+                    </span>
+                )}
+
+                {details.message_type === "Contact" && (
+                    <span className="flex items-center gap-1">
+                        <UserRound className="h-3.5 w-3.5" />
+                        <span className="line-clamp-1 md:text-p-base text-p-lg">
+                            {details.content || _("Contact")}
+                        </span>
                     </span>
                 )}
 

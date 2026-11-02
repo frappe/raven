@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { contactDetailLine, contactInitials, parseContactJson } from "./contact"
+import { contactDetailLine, contactHref, contactInitials, parseContactJson } from "./contact"
 
 const payload = {
     name: "Priya Sharma",
@@ -64,5 +64,17 @@ describe("contactDetailLine", () => {
 
     it("falls back to the first email", () => {
         expect(contactDetailLine(contact([], [{ value: "a@b.co" }]))).toBe("a@b.co")
+    })
+})
+
+describe("contactHref", () => {
+    it("dials only phone characters", () => {
+        expect(contactHref("phone", "+91 98200-41234")).toBe("tel:+919820041234")
+        expect(contactHref("phone", "javascript:alert(1)")).toBe("tel:1")
+    })
+
+    it("encodes an email so it can't add headers or a body", () => {
+        expect(contactHref("email", "a@b.co")).toBe("mailto:a%40b.co")
+        expect(contactHref("email", "a@b.co?cc=x@evil.test&body=hi")).toBe("mailto:a%40b.co%3Fcc%3Dx%40evil.test%26body%3Dhi")
     })
 })

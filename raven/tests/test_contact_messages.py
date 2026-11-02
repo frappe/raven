@@ -162,6 +162,7 @@ class TestContactSend(IntegrationTestCase):
 			{"name": "Priya", "phones": [{"value": "+91 1"}], "emails": []},
 		)
 		self.assertEqual(doc.text, "<p>Priya<br>+91 1</p>")
+		self.assertEqual(doc.content, "Priya")
 		self.assertEqual(doc.get_notification_message_content(), "👤 Shared a contact: Priya")
 
 	def test_photo_lands_on_message(self):
@@ -271,7 +272,7 @@ class TestContactSend(IntegrationTestCase):
 				files=[{"file_url": pdf.file_url, "file_size": 1}],
 			)
 
-	def test_reply_snapshot_carries_contact_json(self):
+	def test_reply_snapshot_carries_contact_name(self):
 		[contact] = send_message_with_attachments(channel_id=self.channel.name, contact=VALID)
 		reply = send_message_with_attachments(
 			channel_id=self.channel.name,
@@ -282,7 +283,8 @@ class TestContactSend(IntegrationTestCase):
 		snapshot = frappe.parse_json(
 			frappe.db.get_value("Raven Message", reply.name, "replied_message_details")
 		)
-		self.assertEqual(snapshot["json"]["name"], "Priya")
+		self.assertEqual(snapshot["content"], "Priya")
+		self.assertNotIn("json", snapshot)
 
 	def test_forwarded_contact_reply_keeps_payload(self):
 		parent = send_message_with_attachments(channel_id=self.channel.name, content="<p>who?</p>")[0]

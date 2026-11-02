@@ -37,3 +37,7 @@ export const contactInitials = (name: string): string => {
 /** The first phone, else the first email (counts live only in the details sheet). */
 export const contactDetailLine = (contact: ContactPayload): string =>
     contact.phones[0]?.value ?? contact.emails[0]?.value ?? ""
+
+/** A call or mail link that only ever dials or addresses `value`: no extra headers or body. */
+export const contactHref = (kind: "phone" | "email", value: string): string =>
+    kind === "phone" ? `tel:${value.replace(/[^\d+*#,;]/g, "")}` : `mailto:${encodeURIComponent(value)}`

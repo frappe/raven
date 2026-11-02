@@ -296,6 +296,8 @@ class RavenMessage(Document):
 			if not clean:
 				frappe.throw(_("Invalid contact"))
 			self.json = clean
+			# Teasers, search and reminders show a contact by its name, not its numbers.
+			self.content = clean["name"]
 
 	def validate_linked_message(self):
 		"""
@@ -354,9 +356,9 @@ class RavenMessage(Document):
 				"owner": details.owner,
 				"creation": datetime.datetime.strftime(details.creation, "%Y-%m-%d %H:%M:%S"),
 			}
-			# A voice note's preview shows its length, and a contact reply needs its card.
-			# Fetched only then: a text message's `json` is its whole editor document.
-			if details.message_type in ("Voice", "Contact"):
+			# A voice note's preview shows its length. Fetched only then: a text
+			# message's `json` is its whole editor document.
+			if details.message_type == "Voice":
 				snapshot["json"] = json_dict(frappe.db.get_value("Raven Message", self.linked_message, "json"))
 			self.replied_message_details = frappe.as_json(snapshot)
 
@@ -751,8 +753,7 @@ class RavenMessage(Document):
 		elif self.message_type == "Location":
 			return "📍 Shared a location"
 		elif self.message_type == "Contact":
-			name = json_dict(self.json).get("name")
-			return f"👤 Shared a contact: {name}" if name else "👤 Shared a contact"
+			return f"👤 Shared a contact: {self.content}"
 		elif self.text:
 			return self.content
 

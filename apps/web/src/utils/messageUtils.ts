@@ -117,6 +117,9 @@ const teaserBody = (details: LastMessageDetails, maxLength: number): string => {
             return `🎤 ${_("Voice note")}`
         case "Location":
             return `📍 ${_("Location")}`
+        case "Contact":
+            // The server stores a contact's name as its content.
+            return `👤 ${(typeof details.content === "string" && withoutCodeMarkers(toPlainText(details.content, maxLength))) || _("Contact")}`
         default:
             return typeof details.content === "string" && details.content.trim()
                 ? toPlainText(details.content, maxLength)
