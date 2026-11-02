@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react"
-import { Plus, Camera, Images, FileBox, type LucideIcon, FilesIcon, ChartBar, Video, Mic, MapPin } from "lucide-react"
+import { Plus, Camera, Images, FileBox, type LucideIcon, FilesIcon, ChartBar, Video, Mic, MapPin, UserRound } from "lucide-react"
 import { Button } from "@components/ui/button"
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle, DrawerTrigger } from "@components/ui/drawer"
 import { useSetAtom } from "jotai"
@@ -41,12 +41,15 @@ export const MobileComposerActions = ({
     channelID,
     onRecord,
     onShareLocation,
+    onShareContact,
 }: {
     channelID: string
     /** Starts a voice note; absent when this device can't record. */
     onRecord?: () => void
     /** Opens the location picker after the sheet closes; absent when this device can't share one. */
     onShareLocation?: () => void
+    /** Opens the contact picker after the sheet closes; absent when this device can't share one. */
+    onShareContact?: () => void
 }) => {
     const [sheetOpen, setSheetOpen] = useState(false)
     const [pollOpen, setPollOpen] = useState(false)
@@ -116,6 +119,9 @@ export const MobileComposerActions = ({
             : []),
         ...(onShareLocation
             ? [{ icon: MapPin, label: _("Location"), onSelect: () => { afterClose.current = onShareLocation } }]
+            : []),
+        ...(onShareContact
+            ? [{ icon: UserRound, label: _("Contact"), onSelect: () => { afterClose.current = onShareContact } }]
             : []),
         { icon: ChartBar, label: _("Poll"), onSelect: () => setPollOpen(true) },
         { icon: FileBox, label: _("Document"), onSelect: () => setDocOpen(true) },

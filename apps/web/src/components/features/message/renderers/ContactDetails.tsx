@@ -1,22 +1,25 @@
 import { useCallback, useState } from "react"
-import { ChevronLeft, CopyIcon, MailIcon, MessageSquare, PhoneIcon, UserRound } from "lucide-react"
+import { ChevronLeft, CopyIcon, MailIcon, MessageSquare, PhoneIcon, UserPlus, UserRound } from "lucide-react"
 import { toast } from "sonner"
 import { useCopyToClipboard } from "usehooks-ts"
 import { Button } from "@components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@components/ui/dialog"
-import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from "@components/ui/drawer"
+import { DialogDescription, DialogTitle } from "@components/ui/dialog"
+import { DrawerDescription, DrawerTitle } from "@components/ui/drawer"
+import { ResponsiveDialog } from "@components/features/message/actions/dialogs/ResponsiveDialog"
 import { UserProfileDrawer } from "@components/features/dm-channel/UserProfileDrawer"
 import { useCreateDM } from "@hooks/useCreateDM"
 import { useIsMobile } from "@hooks/use-mobile"
 import { contactHref, type ContactField, type ContactPayload } from "@lib/contact"
 import _ from "@lib/translate"
 import { cn } from "@lib/utils"
+import { hasNativePlugin } from "../../../../native/platform"
+import { saveContact } from "../../../../native/contacts"
 import { ContactAvatar } from "./ContactAvatar"
 import { useContactUser } from "./useContactUser"
 
 // Detail and action rows share one look; icons sit in the same lane.
 const rowClass =
-    "flex min-h-11 w-full items-center md:min-h-8 gap-3 rounded-md px-3 text-start text-base text-ink-gray-8 outline-none hover:bg-surface-gray-2 active:bg-surface-gray-2 focus-visible:focus-ring md:text-sm [&>svg]:size-4.5 [&>svg]:shrink-0 [&>svg]:text-ink-gray-6"
+    "flex min-h-11 w-full items-center md:min-h-8 gap-3 rounded-md px-3 text-start text-base text-ink-gray-8 outline-none hover:bg-surface-gray-2 active:bg-surface-gray-2 focus-visible:focus-ring disabled:cursor-default disabled:text-ink-gray-4 md:text-sm [&>svg]:size-4.5 [&>svg]:shrink-0 [&>svg]:text-ink-gray-6"
 
 type DetailRowProps = {
     field: ContactField
@@ -72,6 +75,18 @@ export const ContactDetails = ({ contact, photoUrl, onClose }: ContactDetailsPro
         void copy(value).then((copied) =>
             copied ? toast.success(_("Copied to clipboard")) : toast.error(_("Failed to copy to clipboard")),
         )
+
+    const [saving, setSaving] = useState(false)
+    const save = () => {
+        if (saving) return
+        setSaving(true)
+        void saveContact(contact, photoUrl)
+            .then(() => toast.success(_("Saved to contacts")))
+            .catch(() => toast.error(_("Couldn't save the contact. Try again.")))
+            .finally(() => setSaving(false))
+    }
+
+    const canSave = hasNativePlugin("RavenContacts")
 
     const Title = isMobile ? DrawerTitle : DialogTitle
     const Description = isMobile ? DrawerDescription : DialogDescription
@@ -131,31 +146,21 @@ export const ContactDetails = ({ contact, photoUrl, onClose }: ContactDetailsPro
                 {contact.emails.map((email, index) => (
                     <DetailRow key={`email-${index}`} field={email} kind="email" onCopy={copyValue} />
                 ))}
-                {actions && <div className="my-1 border-t border-outline-gray-2" />}
+                {(actions || canSave) && <div className="my-1 border-t border-outline-gray-2" />}
                 {actions}
+                {canSave && (
+                    <button type="button" className={rowClass} disabled={saving} onClick={save}>
+                        <UserPlus />
+                        {_("Save to contacts")}
+                    </button>
+                )}
             </>
         )
 
-    const body = (
-        <div className={cn("flex min-h-0 flex-col gap-1 overflow-y-auto overscroll-contain", isMobile ? "p-3 pb-6" : "pb-2")}>
+    return (
+        <ResponsiveDialog open onClose={onClose} bodyClassName="gap-1 p-3 pb-6" dialogClassName="gap-1 sm:max-w-sm">
             <Description className="sr-only">{_("Contact details")}</Description>
             {content}
-        </div>
-    )
-
-    if (isMobile) {
-        return (
-            <Drawer open onOpenChange={(next) => !next && onClose()}>
-                <DrawerContent className="max-h-[90dvh]" onOpenAutoFocus={(event) => event.preventDefault()}>
-                    {body}
-                </DrawerContent>
-            </Drawer>
-        )
-    }
-
-    return (
-        <Dialog open onOpenChange={(next) => !next && onClose()}>
-            <DialogContent className="sm:max-w-sm">{body}</DialogContent>
-        </Dialog>
+        </ResponsiveDialog>
     )
 }

@@ -32,7 +32,11 @@ import { useVoiceRecording } from "./useVoiceRecording"
 import { useLocationShare } from "./location/useLocationShare"
 import { PickerBoundary } from "./location/PickerBoundary"
 import { ShareLocationButton } from "./location/ShareLocationButton"
+import { useContactShare } from "./contact/useContactShare"
+import { ShareContactButton } from "./contact/ShareContactButton"
 import { canShareLocation } from "@lib/locationSupport"
+import { canShareContact } from "@lib/contactSupport"
+import { siteHasFeature } from "../../../native/platform"
 import { canRecordVoice } from "./recordingFormat"
 import { loadDraft, saveDraft } from "./draft"
 import { useTypingEmitter } from "@stores/typing/useTypingEmitter"
@@ -312,6 +316,8 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
     const { recording } = voice
     const clearReply = useCallback(() => setReplyTo(null), [setReplyTo])
     const share = useLocationShare({ channelID, quietSendMode, stopTyping, replyTo, clearReply })
+    const contactShare = useContactShare({ channelID, quietSendMode, stopTyping, replyTo, clearReply })
+    const contactSharingEnabled = canShareContact() && siteHasFeature("contact_messages")
 
     // Contains a failed picker load here; a lazy rejection stays cached until reload.
     const handlePickerError = useCallback(() => {
@@ -461,6 +467,7 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                     </Suspense>
                 </PickerBoundary>
             )}
+            {contactShare.sheet}
             <QuietHoursBanner mode={quietSendMode} />
             {/* Pending scheduled messages for this channel. Thread composers cannot schedule. */}
             {!disableSchedule && <ScheduledMessagesBanner channelID={channelID} />}
@@ -522,6 +529,7 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                                         channelID={channelID}
                                         onRecord={canRecordVoice() ? voice.start : undefined}
                                         onShareLocation={canShareLocation() ? share.openPicker : undefined}
+                                        onShareContact={contactSharingEnabled ? contactShare.start : undefined}
                                     />
                                 </div>
                                 <div className="flex-1 min-w-0 dark:bg-surface-elevation-2 bg-surface-gray-1 rounded-2xl [&_.tiptap]:min-h-10 [&_.tiptap]:max-h-64 [&_.tiptap]:overflow-y-auto [&_.tiptap]:py-2">
@@ -606,11 +614,12 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                                         <Separator orientation="vertical" className="mx-1 h-4!" />
                                         <CreatePollDialog channelID={channelID} />
                                         <AttachFrappeDocumentDialog channelID={channelID} />
-                                        {(canRecordVoice() || canShareLocation()) && (
+                                        {(canRecordVoice() || canShareLocation() || contactSharingEnabled) && (
                                             <Separator orientation="vertical" className="mx-1 h-4!" />
                                         )}
                                         {canRecordVoice() && <VoiceNoteButton onRecord={voice.start} />}
                                         {canShareLocation() && <ShareLocationButton onClick={share.openPicker} />}
+                                        {contactSharingEnabled && <ShareContactButton onClick={contactShare.start} />}
                                     </div>
                                     <div className="flex-1" />
                                     {recording ? (
