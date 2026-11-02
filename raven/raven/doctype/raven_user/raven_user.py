@@ -1,10 +1,16 @@
 # Copyright (c) 2026, Frappe Technologies Pvt. Ltd. and contributors
 # For license information, please see license.txt
 
+import json
+
 import frappe
 from frappe import _
 from frappe.model.document import Document
+from frappe.model.rename_doc import rename_doc
+from frappe.query_builder.functions import Replace
 from frappe.utils.data import get_url
+
+from raven.utils import delete_member_caches
 
 
 class RavenUser(Document):
@@ -256,3 +262,63 @@ def remove_user_from_raven(doc, method):
 		raven_user = frappe.get_doc("Raven User", {"user": doc.name})
 		raven_user.flags.user_being_deleted = True
 		raven_user.delete(ignore_permissions=True)
+
+
+def rename_raven_user(doc, method=None, old=None, new=None, merge=False):
+	"""
+	A User's ID changed. The Raven User is named after it, so it is renamed too, which
+	updates every Link to it. The IDs Raven keeps as text are rewritten in a background
+	job: that touches the whole messages table, which must not hold up the rename.
+	Frappe itself rewrites owner and modified_by everywhere, the same way.
+	"""
+	if not old or not new or not frappe.db.exists("Raven User", old):
+		return
+	if not frappe.db.exists("Raven User", new):
+		# The User rename already passed its own permission check.
+		rename_doc("Raven User", old, new, force=True, ignore_permissions=True, show_alert=False)
+
+	# Cached member lists still name the old ID. One call for all of them: a user can be on
+	# thousands of threads, and no membership changed, so nothing needs broadcasting.
+	delete_member_caches(
+		frappe.get_all("Raven Channel Member", filters={"user_id": new}, pluck="channel_id"),
+		frappe.get_all("Raven Workspace Member", filters={"user": new}, pluck="workspace"),
+	)
+	frappe.get_doc("Raven User", new).invalidate_user_list_cache()
+
+	frappe.enqueue(
+		rewrite_user_id_in_messages,
+		old=old,
+		new=new,
+		queue="long",
+		timeout=36000,
+		enqueue_after_commit=True,
+	)
+
+
+def rewrite_user_id_in_messages(old: str, new: str):
+	"""
+	Mentions keep the user ID as plain text, and a message's reactions and likes keep user
+	lists inside JSON, so none of them follow a rename. Reactions are rewritten only on the
+	messages the user reacted to, found through the reaction rows.
+	"""
+	mention = frappe.qb.DocType("Raven Mention")
+	frappe.qb.update(mention).set(mention.user, new).where(mention.user == old).run()
+
+	# The IDs sit quoted inside JSON, so the quoted form is what is replaced.
+	quoted_old, quoted_new = json.dumps(old), json.dumps(new)
+	message = frappe.qb.DocType("Raven Message")
+	reacted = frappe.get_all(
+		"Raven Message Reaction", filters={"owner": ("in", [old, new])}, pluck="message", distinct=True
+	)
+	if reacted:
+		(
+			frappe.qb.update(message)
+			.set(message.message_reactions, Replace(message.message_reactions, quoted_old, quoted_new))
+			.where(message.name.isin(reacted))
+		).run()
+	liked_by = message._liked_by
+	(
+		frappe.qb.update(message)
+		.set(liked_by, Replace(liked_by, quoted_old, quoted_new))
+		.where(liked_by.like(f"%{quoted_old}%"))
+	).run()

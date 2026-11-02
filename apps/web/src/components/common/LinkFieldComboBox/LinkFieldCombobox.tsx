@@ -44,16 +44,22 @@ const LINK_ITEM_STYLES = cn(FILTER_ITEM_STYLES, "h-auto my-0.5")
  * shallow compare on `item` is what makes the memo actually hit; a new search
  * result is a new object and re-renders as it must.
  */
-const LinkItemContent = memo(({ item }: { item: ResultItem }) => (
-    <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
-        <span className="truncate text-base-medium text-ink-gray-7"><MarkdownRenderer content={item.label || item.value} /></span>
-        {item.description && item.description !== (item.label || item.value) && (
-            <span className="truncate text-p-xs text-ink-gray-4">
-                <MarkdownRenderer content={item.description} />
-            </span>
-        )}
-    </div>
-))
+const LinkItemContent = memo(({ item }: { item: ResultItem }) => {
+    // Strings only: the search returns a doctype's title field and name as they are, and
+    // a numeric title field or an integer-named document arrives as a number.
+    const label = String(item.label || item.value)
+    const description = item.description == null ? "" : String(item.description)
+    return (
+        <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
+            <span className="truncate text-base-medium text-ink-gray-7"><MarkdownRenderer content={label} /></span>
+            {description && description !== label && (
+                <span className="truncate text-p-xs text-ink-gray-4">
+                    <MarkdownRenderer content={description} />
+                </span>
+            )}
+        </div>
+    )
+})
 
 export interface LinkFieldComboboxProps {
     /** DocType to be fetched */

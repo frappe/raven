@@ -22,6 +22,15 @@ def boot():
 	return data
 
 
+def cloud_settings_boot() -> dict:
+	"""Frappe's Cloud Settings boot context. Frappe without Cloud Settings is older than any v2 site."""
+	try:
+		from frappe.integrations.frappe_providers.cloud_settings import get_boot_context
+	except ImportError:
+		return {"enabled": False}
+	return get_boot_context()
+
+
 def app_boot():
 	"""The parts of Desk's boot the app reads, built with Desk's own helpers."""
 	try:
@@ -44,8 +53,9 @@ def app_boot():
 	set_time_zone(bootinfo)
 	bootinfo.sysdefaults = frappe.defaults.get_defaults()
 	bootinfo.sysdefaults["setup_complete"] = frappe.is_setup_complete()
-	# The setup flow reads it to tell a Frappe Cloud signup from a site needing the Desk wizard.
+	# Frappe Cloud v1 and v2, as Desk's boot has them: the setup flow reads both.
 	bootinfo.is_fc_site = is_fc_site()
+	bootinfo.cloud_settings = cloud_settings_boot()
 	load_translations(bootinfo)
 	bootinfo.lang = str(bootinfo.lang)
 	load_conf_settings(bootinfo)

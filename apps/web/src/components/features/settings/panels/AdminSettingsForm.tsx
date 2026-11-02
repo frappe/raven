@@ -51,7 +51,7 @@ export function AdminSettingsForm({
     formId,
     children,
 }: {
-    title: string
+    title: React.ReactNode
     description: string
     formId: string
     children: React.ReactNode

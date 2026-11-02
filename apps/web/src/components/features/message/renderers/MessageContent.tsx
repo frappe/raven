@@ -237,6 +237,7 @@ export const MessageContent = ({ message, showLinkPreview = true, showLinkedDocu
                 <DocumentLinkRenderer
                     doctype={message.link_doctype}
                     docname={message.link_document}
+                    messageCreation={message.creation}
                     className={bubble ? "w-96 max-w-full" : undefined}
                 />
             )}

@@ -1,7 +1,7 @@
 {
   "private": true,
   "name": "raven",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "description": "Messaging Application",
   "workspaces": [
     "apps/web",
@@ -21,7 +21,8 @@
     "native:ios": "cd apps/native && yarn ios",
     "native:android": "cd apps/native && yarn android",
     "native:testflight": "cd apps/native && yarn testflight",
-    "native:playstore": "cd apps/native && yarn playstore"
+    "native:playstore": "cd apps/native && yarn playstore",
+    "native:version": "bash apps/native/scripts/sync-version.sh"
   },
   "keywords": [],
   "author": "",
