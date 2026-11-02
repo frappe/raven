@@ -143,6 +143,14 @@ const settingsTabs = (): {
         },
         // Integrations settings
         {
+            id: "agents",
+            group: "integrations",
+            label: _("Agents"),
+            icon: BotIcon,
+            component: AgentsPanel,
+            description: _("Use agents to send reminders, run AI assistants, and more."),
+        },
+        {
             id: "hr",
             group: "integrations",
             label: "Frappe HR",
@@ -190,14 +198,6 @@ const settingsTabs = (): {
             icon: WebhookIcon,
             component: WebhooksPanel,
             description: _("Fire webhooks on specific events like when a message is sent or channel is created."),
-        },
-        {
-            id: "agents",
-            group: "ai",
-            label: _("Agents"),
-            icon: BotIcon,
-            component: AgentsPanel,
-            description: _("Use agents to send reminders, run AI assistants, and more."),
         },
         {
             id: "functions",

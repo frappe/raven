@@ -313,6 +313,21 @@ def delete_channel_members_cache(channel_id: str):
 	)
 
 
+def delete_member_caches(channel_ids: list[str], workspace_ids: list[str]):
+	"""
+	Drops many member caches in one Redis call, now and again after commit. For a change
+	that touches no membership, such as a user rename: nothing is broadcast, and clients
+	pick the fresh rows up on their next fetch.
+	"""
+	keys = [f"raven:channel_members:{channel}" for channel in channel_ids] + [
+		f"raven:workspace_members:{workspace}" for workspace in workspace_ids
+	]
+	if not keys:
+		return
+	frappe.cache().delete_value(keys)
+	frappe.db.after_commit.add(lambda: frappe.cache().delete_value(keys))
+
+
 def get_channel_member(channel_id: str, user: str = None) -> dict:
 	"""
 	Get the channel member ID

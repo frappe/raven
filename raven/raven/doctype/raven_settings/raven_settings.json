@@ -119,30 +119,30 @@
    "label": "Enable AI Integration"
   },
   {
-   "default": "1",
+   "default": "0",
    "depends_on": "eval:doc.enable_ai_integration",
    "fieldname": "enable_openai_services",
    "fieldtype": "Check",
    "label": "Enable OpenAI Services"
   },
   {
-   "depends_on": "eval:doc.enable_openai_services;",
+   "depends_on": "eval:doc.enable_ai_integration && doc.enable_openai_services",
    "fieldname": "openai_organisation_id",
    "fieldtype": "Data",
    "label": "OpenAI Organisation ID",
-   "mandatory_depends_on": "eval:doc.enable_openai_services;",
+   "mandatory_depends_on": "eval:doc.enable_ai_integration && doc.enable_openai_services",
    "permlevel": 1
   },
   {
-   "depends_on": "eval:doc.enable_openai_services;",
+   "depends_on": "eval:doc.enable_ai_integration && doc.enable_openai_services",
    "fieldname": "openai_api_key",
    "fieldtype": "Password",
    "label": "OpenAI API Key",
-   "mandatory_depends_on": "eval:doc.enable_openai_services;",
+   "mandatory_depends_on": "eval:doc.enable_ai_integration && doc.enable_openai_services",
    "permlevel": 1
   },
   {
-   "depends_on": "eval:doc.enable_openai_services;",
+   "depends_on": "eval:doc.enable_ai_integration && doc.enable_openai_services",
    "description": "If not set, the integration will use the default project",
    "fieldname": "openai_project_id",
    "fieldtype": "Data",
@@ -343,7 +343,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-10-20 14:12:54.000000",
+ "modified": "2026-10-28 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Raven",
  "name": "Raven Settings",

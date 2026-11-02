@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from "react"
 import { createPortal } from "react-dom"
+import { isFrappeCloudSite } from "@lib/frappe"
 import { isFrappeSetupComplete, isSetupPending, setupDoneStorageKey } from "@utils/setup"
 import { getSetupMode, type SetupMode } from "./setupMode"
 
@@ -25,7 +26,7 @@ export const SetupGate = () => {
 
     if (!mode) return null
     // A Frappe Cloud signup opens Raven before the Framework wizard; finishing Raven's setup completes it too.
-    const needsFrappeWizard = !isFrappeSetupComplete() && !window.frappe?.boot?.is_fc_site
+    const needsFrappeWizard = !isFrappeSetupComplete() && !isFrappeCloudSite()
     if (mode === "admin" && needsFrappeWizard) return <FrappeSetupRedirect />
     return (
         <Suspense fallback={<SetupCover />}>

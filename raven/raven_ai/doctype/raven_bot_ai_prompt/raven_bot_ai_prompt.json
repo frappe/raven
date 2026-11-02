@@ -1,9 +1,11 @@
 {
  "actions": [],
+ "allow_bulk_edit": 1,
  "allow_rename": 1,
  "autoname": "naming_series:",
  "beta": 1,
  "creation": "2024-09-12 18:23:10.771302",
+ "deprecated": 1,
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -45,9 +47,10 @@
    "options": "PR-.#####."
   }
  ],
- "index_web_pages_for_search": 1,
+ "grid_page_length": 50,
+ "link_display_mode": "Search",
  "links": [],
- "modified": "2024-12-07 23:31:02.087933",
+ "modified": "2026-10-28 22:31:03.156749",
  "modified_by": "Administrator",
  "module": "Raven AI",
  "name": "Raven Bot AI Prompt",
@@ -79,6 +82,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "creation",
  "sort_order": "DESC",
  "states": []

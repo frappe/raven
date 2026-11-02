@@ -108,6 +108,23 @@ class TestSetup(IntegrationTestCase):
 		)
 		self.assertEqual(frappe.db.get_single_value("Raven Settings", "setup_completed"), 1)
 
+	def test_complete_setup_finishes_frappe_wizard_for_a_cloud_v2_signup(self):
+		with (
+			patch(
+				"frappe.integrations.frappe_providers.frappecloud_billing.is_fc_site", return_value=False
+			),
+			patch.dict(
+				frappe.conf, {"pilot_endpoint": "https://pilot.example.com", "pilot_auth_token": "token"}
+			),
+			patch("frappe.is_setup_complete", return_value=False),
+			patch("frappe.get_hooks", return_value=[]),
+			patch(
+				"frappe.desk.page.setup_wizard.setup_wizard.setup_complete", return_value={"status": "ok"}
+			) as wizard,
+		):
+			complete_setup([], [])
+		wizard.assert_called_once()
+
 	def test_complete_setup_leaves_frappe_wizard_to_erpnext(self):
 		real_get_hooks = frappe.get_hooks
 

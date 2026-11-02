@@ -6,6 +6,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 [[ -f android/keystore.properties ]] || { echo "android/keystore.properties is missing; the bundle would be unsigned." >&2; exit 1; }
 
+# The version comes from raven/__init__.py.
+bash scripts/sync-version.sh
+
 # Gradle's toolchain check wants JDK 21. Android Studio ships one.
 STUDIO_JDK="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 [[ -d "$STUDIO_JDK" ]] && export JAVA_HOME="$STUDIO_JDK"

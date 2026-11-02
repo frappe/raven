@@ -311,7 +311,10 @@ def message_has_permission(doc, user=None, ptype=None):
 		if not channel_member:
 			return False
 
-		return doc.owner == user
+		if doc.owner == user:
+			return True
+		# A bot's message has no person behind it: the channel's admins can remove it.
+		return bool(ptype == "delete" and doc.is_bot_message and channel_member.get("is_admin"))
 
 	return False
 
