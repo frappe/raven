@@ -107,6 +107,9 @@ function reminderRowToMessage(r: ReminderRow): Message {
     if (messageType === "Voice") {
         return { ...base, message_type: "Text", text: `<p>🎤 ${_("Voice note")}</p>` }
     }
+    if (messageType === "Location") {
+        return { ...base, message_type: "Text", text: `<p>📍 ${_("Location")}</p>` }
+    }
     if (messageType === "File") {
         const fileName = escapeHtml((r.message_file ?? "").split("/").pop() ?? "")
         return { ...base, message_type: "Text", text: r.message_text || `<p>📄 ${fileName || _("Sent a file")}</p>` }
@@ -118,6 +121,7 @@ function reminderRowToMessage(r: ReminderRow): Message {
 const messagePreview = (r: ReminderRow): string => {
     if (r.message_type === "Image") return `📷 ${_("Sent a photo")}`
     if (r.message_type === "Voice") return `🎤 ${_("Voice note")}`
+    if (r.message_type === "Location") return `📍 ${_("Location")}`
     if (r.message_type === "File") return `📄 ${r.message_content || (r.message_file ?? "").split("/").pop() || _("Sent a file")}`
     // A poll's content is its question on the first line, then the options.
     if (r.message_type === "Poll") return `📊 ${r.message_content?.split("\n")[0]?.trim() || _("Poll")}`

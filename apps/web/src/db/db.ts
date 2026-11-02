@@ -2,6 +2,7 @@ import { RavenUser } from "@raven/types/Raven/RavenUser"
 import { siteKey } from "@lib/site"
 import { Dexie, type EntityTable } from "dexie"
 import type { VoiceNoteMeta } from "@lib/voiceNote"
+import type { LocationMeta } from "@lib/location"
 
 export type UserData = Pick<RavenUser, 'name' | 'full_name' | 'user_image' | 'first_name' | 'enabled' | 'type' | 'availability_status' | 'custom_status' | 'contact_number'>
 
@@ -45,6 +46,8 @@ export interface OutboxMessage {
     /** A system document attached to the send (rendered as a card on the message). */
     link_doctype?: string
     link_document?: string
+    /** A shared location; its snapshot, when present, is `files[0]`. */
+    location?: LocationMeta
 }
 
 /**

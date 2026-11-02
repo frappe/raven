@@ -30,7 +30,7 @@ export interface RavenMessage{
 	/**	Is Thread : Check - This message starts a thread	*/
 	is_thread?: 0 | 1
 	/**	Message Type : Select	*/
-	message_type?: "Text" | "Image" | "File" | "Poll" | "System" | "Voice"
+	message_type?: "Text" | "Image" | "File" | "Poll" | "System" | "Voice" | "Location"
 	/**	Content : Long Text	*/
 	content?: string
 	/**	File : Attach	*/

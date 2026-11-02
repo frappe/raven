@@ -1,4 +1,4 @@
-import { BarChart3Icon, File, FileText, Film, MessageSquareText, Mic, Music, type LucideIcon } from "lucide-react"
+import { BarChart3Icon, File, FileText, Film, MapPin, MessageSquareText, Mic, Music, type LucideIcon } from "lucide-react"
 import { getAttachmentKind, type AttachmentKind } from "@utils/attachmentPreview"
 import { formatBytes, getFileExtension } from "@lib/file"
 import { getFileName } from "@raven/lib/utils/operations"
@@ -64,6 +64,18 @@ export const MessagePreview = ({ message }: { message: Message }) => {
                     <Mic className="size-4" />
                 </div>
                 <p className="min-w-0 flex-1 truncate text-sm text-ink-gray-8">{voiceNoteLabel(message.json)}</p>
+            </>
+        )
+    }
+
+    // A location's snapshot is not a downloadable attachment, so it gets its own row.
+    if (message.message_type === "Location") {
+        return (
+            <>
+                <div className="flex size-8 shrink-0 items-center justify-center rounded bg-surface-gray-2 text-ink-gray-6">
+                    <MapPin className="size-4" />
+                </div>
+                <p className="min-w-0 flex-1 truncate text-sm text-ink-gray-8">{_("Location")}</p>
             </>
         )
     }

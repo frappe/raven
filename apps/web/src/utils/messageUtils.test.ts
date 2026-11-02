@@ -18,4 +18,10 @@ describe("getMessageTeaser", () => {
         expect(getMessageTeaser({ message_type: "Voice", content: "" })).toBe("🎤 Voice note")
         vi.unstubAllGlobals()
     })
+
+    it("labels locations without printing the fallback link", () => {
+        vi.stubGlobal("window", {})
+        expect(getMessageTeaser({ message_type: "Location", content: "https://www.google.com/maps/search/?api=1&query=1,2" })).toBe("📍 Location")
+        vi.unstubAllGlobals()
+    })
 })

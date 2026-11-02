@@ -47,6 +47,9 @@ export function searchResultToMessage(r: SearchResult): Message {
     if (messageType === 'Voice') {
         return { ...base, message_type: 'Text', text: `<p>🎤 ${_("Voice note")}</p>` }
     }
+    if (messageType === 'Location') {
+        return { ...base, message_type: 'Text', text: `<p>📍 ${_("Location")}</p>` }
+    }
     if (messageType === 'Poll') {
         return {
             ...base,

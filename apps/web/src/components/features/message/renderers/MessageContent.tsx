@@ -11,6 +11,7 @@ import { MessageFiles } from "./MessageFiles"
 import { MessageVideo } from "./MessageVideo"
 import { MessageAudio } from "./MessageAudio"
 import { MessageVoiceNote } from "./MessageVoiceNote"
+import { MessageLocation } from "./MessageLocation"
 import RichTextRenderer, { isJumbomojiHtml, parseBodySegments } from "./RichTextRenderer"
 import { messageBubbleClass } from "./MessageRow"
 import { cn } from "@lib/utils"
@@ -174,6 +175,7 @@ const MessageMedia = ({ message, fileUrl }: { message: Message; fileUrl: string 
  *  aligns "start" (others) or "end" (own messages). */
 export const MessageContent = ({ message, showLinkPreview = true, showLinkedDocument = true, showReactions = true, interactivePoll = true, bubble }: { message: Message, showLinkPreview?: boolean, showLinkedDocument?: boolean, showReactions?: boolean, interactivePoll?: boolean, bubble?: "start" | "end" }) => {
     const messageFile = "file" in message ? (message.file as string | undefined) : undefined
+    const isLocation = message.message_type === "Location"
 
     // String from fetches, OBJECT from realtime/ack payloads — the shared
     // parser accepts both (a bare JSON.parse dropped live receivers' quotes).
@@ -215,6 +217,8 @@ export const MessageContent = ({ message, showLinkPreview = true, showLinkedDocu
                 <PollMessageContent message={message} interactive={interactivePoll} />
             ) : message.message_type === "Voice" ? (
                 <MessageVoiceNote message={message} />
+            ) : isLocation ? (
+                <MessageLocation message={message} />
             ) : messageFile ? (
                 <>
                     <MessageMedia message={message} fileUrl={messageFile} />
@@ -228,7 +232,7 @@ export const MessageContent = ({ message, showLinkPreview = true, showLinkedDocu
             )}
 
             {/* Preview for the first link in the body (YouTube embed for now) */}
-            {showLinkPreview && <MessageLinkPreview message={message} />}
+            {showLinkPreview && !isLocation && <MessageLinkPreview message={message} />}
 
             {/* Linked document card sits ABOVE the reactions — reactions are always last.
                 In bubble mode the column is fit-content, so the card asks for a fixed

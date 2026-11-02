@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
+import { forwardRef, lazy, Suspense, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
 import { EditorContent, useEditorState } from "@tiptap/react"
 import { FrappeConfig, FrappeContext, useSWRConfig } from "frappe-react-sdk"
 import { useAtom, useAtomValue, useSetAtom } from "jotai"
@@ -29,6 +29,10 @@ import { MobileComposerActions } from "./MobileComposerActions"
 import { VoiceNoteButton } from "./VoiceNoteButton"
 import { VoiceComposer } from "./VoiceComposer"
 import { useVoiceRecording } from "./useVoiceRecording"
+import { useLocationShare } from "./location/useLocationShare"
+import { PickerBoundary } from "./location/PickerBoundary"
+import { ShareLocationButton } from "./location/ShareLocationButton"
+import { canShareLocation } from "@lib/locationSupport"
 import { canRecordVoice } from "./recordingFormat"
 import { loadDraft, saveDraft } from "./draft"
 import { useTypingEmitter } from "@stores/typing/useTypingEmitter"
@@ -50,6 +54,9 @@ import { cn } from "@lib/utils"
 import { randomUUID } from "@lib/uuid"
 import { Separator } from "@components/ui/separator"
 import AttachFrappeDocumentDialog, { LinkedDocumentBanner } from "./AttachFrappeDocumentDialog"
+
+// The map and its dialog stay out of the composer's initial chunk until first open.
+const LocationPicker = lazy(() => import("./location/LocationPicker").then((m) => ({ default: m.LocationPicker })))
 
 interface ChatInputProps {
     channelID: string
@@ -303,6 +310,14 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
 
     const voice = useVoiceRecording({ channelID, editor, quietSendMode, stopTyping, covered })
     const { recording } = voice
+    const clearReply = useCallback(() => setReplyTo(null), [setReplyTo])
+    const share = useLocationShare({ channelID, quietSendMode, stopTyping, replyTo, clearReply })
+
+    // Contains a failed picker load here; a lazy rejection stays cached until reload.
+    const handlePickerError = useCallback(() => {
+        share.setOpen(false)
+        toast.error(_("Couldn't open location. Reload the page and try again."))
+    }, [share.setOpen])
 
     const handleSend = useCallback((opts?: { sendSilently?: boolean }) => {
         if (!editor) return
@@ -438,6 +453,14 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                     busy={scheduleBusy}
                 />
             )}
+            {/* Mounted only while open, so Leaflet stays off the typing path. */}
+            {share.open && (
+                <PickerBoundary onError={handlePickerError}>
+                    <Suspense fallback={null}>
+                        <LocationPicker open onOpenChange={share.setOpen} onSend={share.send} />
+                    </Suspense>
+                </PickerBoundary>
+            )}
             <QuietHoursBanner mode={quietSendMode} />
             {/* Pending scheduled messages for this channel. Thread composers cannot schedule. */}
             {!disableSchedule && <ScheduledMessagesBanner channelID={channelID} />}
@@ -495,7 +518,11 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                             */}
                             <div className={cn("flex items-end gap-0 pe-2 ps-1 py-2 border-t border-outline-gray-2 bg-surface-base mb-[var(--keyboard-height,0px)]", isMobile && !keyboardOpen && "standalone:pb-[max(var(--inset-bottom),0.75rem)]", recording && "hidden")}>
                                 <div className="flex items-center justify-center h-10">
-                                    <MobileComposerActions channelID={channelID} onRecord={canRecordVoice() ? voice.start : undefined} />
+                                    <MobileComposerActions
+                                        channelID={channelID}
+                                        onRecord={canRecordVoice() ? voice.start : undefined}
+                                        onShareLocation={canShareLocation() ? share.openPicker : undefined}
+                                    />
                                 </div>
                                 <div className="flex-1 min-w-0 dark:bg-surface-elevation-2 bg-surface-gray-1 rounded-2xl [&_.tiptap]:min-h-10 [&_.tiptap]:max-h-64 [&_.tiptap]:overflow-y-auto [&_.tiptap]:py-2">
                                     <EditorContent editor={editor} />
@@ -579,12 +606,11 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                                         <Separator orientation="vertical" className="mx-1 h-4!" />
                                         <CreatePollDialog channelID={channelID} />
                                         <AttachFrappeDocumentDialog channelID={channelID} />
-                                        {canRecordVoice() && (
-                                            <>
-                                                <Separator orientation="vertical" className="mx-1 h-4!" />
-                                                <VoiceNoteButton onRecord={voice.start} />
-                                            </>
+                                        {(canRecordVoice() || canShareLocation()) && (
+                                            <Separator orientation="vertical" className="mx-1 h-4!" />
                                         )}
+                                        {canRecordVoice() && <VoiceNoteButton onRecord={voice.start} />}
+                                        {canShareLocation() && <ShareLocationButton onClick={share.openPicker} />}
                                     </div>
                                     <div className="flex-1" />
                                     {recording ? (

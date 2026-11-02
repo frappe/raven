@@ -1,11 +1,21 @@
 declare global {
-    interface Window { Capacitor?: { isNativePlatform(): boolean; getPlatform(): string } }
+    interface Window {
+        Capacitor?: {
+            isNativePlatform(): boolean
+            getPlatform(): string
+            isPluginAvailable?(name: string): boolean
+        }
+    }
 }
 
 // Reads the bridge global only — never imports @capacitor/core, so browser
 // bundles stay free of Capacitor code.
 export const isNative = (): boolean =>
     typeof window !== "undefined" && window.Capacitor?.isNativePlatform?.() === true
+
+// Reads the bridge global: an older app binary may lack a plugin the web code knows.
+export const hasNativePlugin = (name: string): boolean =>
+    isNative() && window.Capacitor?.isPluginAvailable?.(name) === true
 
 export const nativePlatform = (): "ios" | "android" | "web" => {
     const p = typeof window !== "undefined" ? window.Capacitor?.getPlatform?.() : undefined
