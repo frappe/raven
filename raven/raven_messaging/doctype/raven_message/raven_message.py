@@ -215,7 +215,8 @@ class RavenMessage(Document):
 			if mention_id and mention_id not in unique_mentions:
 				self.append("mentions", {"user": mention_id, "is_read": previous.get(mention_id, 0)})
 
-				if mention_id not in previous:
+				# The owner's own mentions never notify (the queries exclude them).
+				if mention_id not in previous and mention_id != self.owner:
 					frappe.publish_realtime(
 						"raven_mention",
 						{
