@@ -2,6 +2,7 @@ import { useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { isRootPath, registerAndroidBack } from "./back"
 import { subscribeLinkClicks } from "./links"
+import { followPendingLink, openSiteLink, subscribeSiteLinks } from "./linkIn"
 import { trackKeyboardInset } from "./keyboard"
 import { toast } from "sonner"
 import _ from "@lib/translate"
@@ -10,7 +11,7 @@ import { openNotificationTarget, subscribeForeignSiteNotifications, subscribeNot
 import { subscribeShareDelivery } from "./shareIn"
 import type { VersionNotice } from "./SitePicker"
 
-/** Listeners that need the router: back, push taps, foreign pushes, share delivery, link clicks. */
+/** Listeners that need the router: back, push taps, foreign pushes, share delivery, link clicks, links from a browser. */
 export default function NativeBridge() {
     const navigate = useNavigate()
 
@@ -23,6 +24,7 @@ export default function NativeBridge() {
         const unLinks = subscribeLinkClicks(navigate)
         const unKeyboard = trackKeyboardInset()
         const unTap = subscribeNotificationTaps((data) => { openNotificationTarget(data, go).catch(() => { }) })
+        const unSiteLinks = subscribeSiteLinks((link) => { openSiteLink(link, go).catch(() => { }) })
         const unForeign = subscribeForeignSiteNotifications()
         void watchNotifications(true)
         // A page leaving takes its listeners with it, and this effect's cleanup does not run.
@@ -30,6 +32,7 @@ export default function NativeBridge() {
         window.addEventListener("pagehide", onLeave)
         const unShare = subscribeShareDelivery(go)
         pendingPath.take().then((path) => path && go(path))
+        followPendingLink(go).catch(() => { })
         pendingNotice.take().then((stored) => {
             if (!stored || disposed) return
             const notice = JSON.parse(stored) as VersionNotice
@@ -40,7 +43,7 @@ export default function NativeBridge() {
             disposed = true
             window.removeEventListener("pagehide", onLeave)
             void watchNotifications(false)
-            unBack(); unLinks(); unKeyboard(); unTap(); unForeign(); unShare()
+            unBack(); unLinks(); unKeyboard(); unTap(); unSiteLinks(); unForeign(); unShare()
         }
     }, [navigate])
 

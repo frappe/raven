@@ -1,4 +1,5 @@
 import { siteFetch, siteKey } from "@lib/site"
+import { isStandalone } from "@utils/platform"
 /**
  * Web push via Raven Cloud (v3+).
  *
@@ -72,17 +73,6 @@ export const isPushSupportedByBrowser = (): boolean =>
 // Same key as NATIVE_TOKEN_KEY in native/push.ts; importing it would pull that module into browser bundles.
 export const isPushEnabled = (): boolean =>
     localStorage.getItem(siteKey(import.meta.env.VITE_NATIVE ? "raven-native-fcm-token" : TOKEN_STORAGE_KEY)) !== null
-
-/**
- * Running as an INSTALLED app (home screen / desktop PWA) rather than a browser
- * tab. Installation is a personal-device signal — offline persistence of user
- * data (rendered shell, boot cache) is gated on it, so shared-machine browser
- * sessions leave nothing extra at rest.
- */
-export const isStandalone = (): boolean =>
-    window.matchMedia("(display-mode: standalone)").matches ||
-    // iOS home-screen apps report through navigator.standalone instead
-    (navigator as { standalone?: boolean }).standalone === true
 
 /** Lazily create the Firebase Messaging instance from boot config. */
 const getMessagingInstance = async () => {

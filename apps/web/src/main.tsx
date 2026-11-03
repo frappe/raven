@@ -10,8 +10,13 @@ scan({
 });
 
 
-import { initPushNotifications, isStandalone } from "@lib/push";
+import { initPushNotifications } from "@lib/push";
+import { isStandalone } from "@utils/platform";
+import { openInApp, wantsApp } from "@utils/openInApp";
 import { loadTranslations } from "@lib/translations";
+
+// A link opened in a phone browser goes to the Raven app once someone chose it; the page loads on behind it.
+if (wantsApp()) openInApp()
 
 const render = () => {
   // After boot lands: the push config (firebase_client_config) comes from it.

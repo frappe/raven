@@ -35,6 +35,13 @@
                 <data android:scheme="raven.thecommit.company" android:host="oauth" />
             </intent-filter>
             <!-- OS share sheet. singleTask: a warm share arrives as onNewIntent, read by RavenShellPlugin. -->
+            <!-- A site link from a browser: raven://open?url=<link> (the web app's OpenInApp). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="raven" android:host="open" />
+            </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <action android:name="android.intent.action.SEND_MULTIPLE" />
