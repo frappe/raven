@@ -26,3 +26,30 @@ class TestRavenBot(FrappeTestCase):
 		message_id = self.bot.send_direct_message("test1@example.com", text="hello")
 
 		self.assertTrue(frappe.db.exists("Raven Message", message_id))
+
+	def test_deleting_a_bot_keeps_its_ai_threads_as_plain_threads(self):
+		workspace = frappe.get_doc(
+			{
+				"doctype": "Raven Workspace",
+				"workspace_name": frappe.generate_hash(length=8),
+				"type": "Public",
+			}
+		).insert()
+		thread = frappe.get_doc(
+			{
+				"doctype": "Raven Channel",
+				"channel_name": frappe.generate_hash(length=10),
+				"type": "Private",
+				"workspace": workspace.name,
+				"is_thread": 1,
+				"is_ai_thread": 1,
+				"thread_bot": self.bot.name,
+			}
+		).insert(ignore_permissions=True)
+
+		frappe.delete_doc("Raven Bot", self.bot.name)
+
+		self.assertFalse(frappe.db.exists("Raven Bot", self.bot.name))
+		self.assertEqual(
+			frappe.db.get_value("Raven Channel", thread.name, ["thread_bot", "is_ai_thread"]), (None, 0)
+		)

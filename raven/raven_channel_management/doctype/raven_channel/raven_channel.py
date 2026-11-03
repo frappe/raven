@@ -5,6 +5,7 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
+from raven.api.workspaces import get_workspace_names
 from raven.utils import (
 	create_members_added_system_message,
 	delete_channel_members_cache,
@@ -302,9 +303,9 @@ class RavenChannel(Document):
 			self.dm_user_1 = self.dm_user_2 = None
 
 		if not self.is_direct_message and not self.workspace and not self.is_dm_thread:
-			workspaces = frappe.get_all("Raven Workspace")
+			workspaces = get_workspace_names()
 			if len(workspaces) == 1:
-				self.workspace = workspaces[0].name
+				self.workspace = next(iter(workspaces))
 
 		self.set_pinned_messages_string()
 

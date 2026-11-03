@@ -57,8 +57,8 @@ jobs:
           context: builds
           file: builds/images/layered/Containerfile
           tags: >
-            ghcr.io/the-commit-company/raven:${{ github.ref_name }},
-            ghcr.io/the-commit-company/raven:${{ env.IMAGE_TAG }}
+            ghcr.io/frappe/raven:${{ github.ref_name }},
+            ghcr.io/frappe/raven:${{ env.IMAGE_TAG }}
           build-args: |
             "FRAPPE_BRANCH=${{ env.FRAPPE_BRANCH }}"
             "APPS_JSON_BASE64=${{ env.APPS_JSON_BASE64 }}"

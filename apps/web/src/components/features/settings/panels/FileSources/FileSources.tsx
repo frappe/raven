@@ -32,6 +32,8 @@ import type { RavenAIFileSource } from "@raven/types/RavenAI/RavenAIFileSource"
 import AINotEnabledCallout from "../ai/AINotEnabledCallout"
 import FileSourceUploadDialog from "./FileSourceUploadDialog"
 import _ from "@lib/translate"
+import { DeprecatedBadge } from "../DeprecatedBadge"
+
 
 const FILE_SOURCES_KEY = "raven-ai-file-sources"
 
@@ -141,7 +143,7 @@ export const FileSources = () => {
                     isAdmin ? <FileSourceUploadDialog onUpload={refresh} open={uploadOpen} onOpenChange={setUploadOpen} /> : null
                 }
             >
-                <SettingsPanelTitle>{_("File Sources")}</SettingsPanelTitle>
+                <SettingsPanelTitle>{_("File Sources")} <DeprecatedBadge /></SettingsPanelTitle>
                 <SettingsPanelDescription>{_("Add files that can be used by AI Agents.")}</SettingsPanelDescription>
             </SettingsPanelHeader>
             <SettingsPanelContent className="min-h-0 gap-2">

@@ -15,7 +15,9 @@ final class NotificationService: UNNotificationServiceExtension {
     private static let onQueue = DispatchSpecificKey<Bool>()
     // Who sent the message, which names the person the notification is shown as coming from.
     private var sender: String?
-    // The site, named beside the sender when this device has more than one to tell apart.
+    // The channel's workspace, sent only when the site has several.
+    private var workspace: String?
+    // The site, named under the sender when this device has more than one to tell apart.
     private var site: String?
     private var manySites: Bool {
         (UserDefaults(suiteName: "group.raven.thecommit.company")?.integer(forKey: "siteCount") ?? 0) > 1
@@ -49,13 +51,11 @@ final class NotificationService: UNNotificationServiceExtension {
         if content.threadIdentifier.isEmpty, let tag = info["tag"] as? String { content.threadIdentifier = tag }
 
         sender = info["from_user"] as? String
-        // Both pictures at once: the sender's face on the left, a channel's workspace logo on the right.
+        workspace = info["workspace"] as? String
         var face: URL?
-        var logo: URL?
-        let both = DispatchGroup()
-        obtain(url(from: info), into: both) { face = $0 }
-        obtain(logoURL(from: info), into: both) { logo = $0 }
-        both.notify(queue: queue) { self.finish(face: face, logo: logo) }
+        let fetched = DispatchGroup()
+        obtain(url(from: info), into: fetched) { face = $0 }
+        fetched.notify(queue: queue) { self.finish(face: face) }
     }
 
     /// A picture from the store, or fetched into it; nil when there is none or it fails.
@@ -90,24 +90,24 @@ final class NotificationService: UNNotificationServiceExtension {
     /// sender to name, the notification is shown as it stands.
     private func asMessage(_ content: UNMutableNotificationContent, face: URL?) -> UNNotificationContent {
         guard !content.title.isEmpty else { return content }
-        // A message notification has room for the sender alone: the site comes along only when
-        // this device is signed in to more than one and the name would be ambiguous.
-        let name = manySites ? [content.title, site].compactMap { $0 }.joined(separator: " · ") : content.title
         let image = face.flatMap { try? Data(contentsOf: $0) }.map { INImage(imageData: $0) }
         let handle = INPersonHandle(value: sender ?? content.title, type: .unknown)
         let person = INPerson(
             personHandle: handle,
             nameComponents: nil,
-            displayName: name,
+            displayName: content.title,
             image: image,
             contactIdentifier: nil,
             customIdentifier: handle.value
         )
+        // The line under the sender: the workspace and site, each only when there are several.
+        let place = [workspace, manySites ? site : nil].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
         let intent = INSendMessageIntent(
-            recipients: nil,
+            // iOS shows the group's name only for a group, which needs a recipient besides this user.
+            recipients: place.isEmpty ? nil : [Self.groupMember],
             outgoingMessageType: .outgoingMessageText,
             content: content.body,
-            speakableGroupName: nil,
+            speakableGroupName: place.isEmpty ? nil : INSpeakableString(spokenPhrase: place),
             conversationIdentifier: content.threadIdentifier.isEmpty ? nil : content.threadIdentifier,
             serviceName: nil,
             sender: person,
@@ -121,24 +121,23 @@ final class NotificationService: UNNotificationServiceExtension {
         return (try? content.updating(from: intent)) ?? content
     }
 
-    private func finish(face: URL? = nil, logo: URL? = nil) {
+    private static let groupMember = INPerson(
+        personHandle: INPersonHandle(value: "raven-member", type: .unknown),
+        nameComponents: nil,
+        displayName: nil,
+        image: nil,
+        contactIdentifier: nil,
+        customIdentifier: "raven-member"
+    )
+
+    private func finish(face: URL? = nil) {
         let body: () -> Void = {
             guard let deliver = self.deliver, let content = self.content else { return }
             self.deliver = nil
-            deliver(self.withLogo(self.asMessage(content, face: face), logo: logo))
+            deliver(self.asMessage(content, face: face))
         }
-        // The pictures arriving call this on the queue already; the timeout calls it from elsewhere.
+        // The face arriving calls this on the queue already; the timeout calls it from elsewhere.
         if DispatchQueue.getSpecific(key: Self.onQueue) == true { body() } else { queue.sync(execute: body) }
-    }
-
-    /// The workspace logo as the picture on the right, a copy since iOS moves an attachment away.
-    private func withLogo(_ content: UNNotificationContent, logo: URL?) -> UNNotificationContent {
-        guard let logo = logo, let dressed = content.mutableCopy() as? UNMutableNotificationContent else { return content }
-        let copy = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".jpg")
-        guard (try? FileManager.default.copyItem(at: logo, to: copy)) != nil,
-              let attachment = try? UNNotificationAttachment(identifier: "workspace", url: copy) else { return content }
-        dressed.attachments = [attachment]
-        return dressed
     }
 
     /// The site's hostname, which is the name it puts on a title it words itself.
@@ -146,12 +145,6 @@ final class NotificationService: UNNotificationServiceExtension {
         if let base = info["base_url"] as? String, let host = URL(string: base)?.host { return host }
         let sitename = info["sitename"] as? String
         return sitename?.isEmpty == false ? sitename : nil
-    }
-
-    /// A channel's workspace logo; a direct message has none.
-    private func logoURL(from info: [AnyHashable: Any]) -> URL? {
-        guard let logo = info["workspace_image"] as? String, !logo.isEmpty else { return nil }
-        return URL(string: logo)
     }
 
     /// The sender's face: the site puts it in the data, and the relay in its own options.

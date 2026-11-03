@@ -1,6 +1,7 @@
+import { isApple } from "@utils/platform"
 
 export const KeyboardMetaKeyIcon = () => {
-    return navigator.platform.startsWith("Mac") || navigator.platform === "iPhone"
+    return isApple
         ? "⌘" // command key
         : "Ctrl"; // control key
 }

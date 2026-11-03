@@ -1,7 +1,7 @@
 import { CheckIcon } from "lucide-react"
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from "@components/ui/drawer"
 import { getStatusIndicatorColor } from "@components/features/message/UserAvatar"
-import { AVAILABILITY_OPTIONS, useSetAvailability } from "@hooks/useSetAvailability"
+import { availabilityOptions, useSetAvailability } from "@hooks/useSetAvailability"
 import { cn } from "@lib/utils"
 import _ from "@lib/translate"
 
@@ -30,7 +30,7 @@ export const StatusDrawer = ({
                     </DrawerDescription>
                 </DrawerHeader>
                 <ul className="flex flex-col px-2 pb-6">
-                    {AVAILABILITY_OPTIONS.map((option) => (
+                    {availabilityOptions().map((option) => (
                         <li key={option.value}>
                             <button
                                 type="button"

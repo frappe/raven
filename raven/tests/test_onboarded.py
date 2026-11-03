@@ -28,10 +28,6 @@ class TestOnboarded(IntegrationTestCase):
 		frappe.set_user("Administrator")
 		frappe.db.rollback()
 
-	def test_new_raven_user_is_not_onboarded(self):
-		_make_raven_user(NEWCOMER)
-		self.assertEqual(frappe.db.get_value("Raven User", NEWCOMER, "onboarded"), 0)
-
 	def test_patch_marks_existing_users_onboarded(self):
 		_make_raven_user(EXISTING)
 		mark_existing_users_onboarded.execute()

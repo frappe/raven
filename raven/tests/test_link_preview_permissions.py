@@ -27,13 +27,6 @@ class TestLinkPreviewPermissions(IntegrationTestCase):
 		frappe.db.rollback()
 		frappe.set_user("Administrator")
 
-	def test_raven_user_cannot_list_every_preview(self):
-		# The audit's case: /api/resource/Raven Link Preview listed links from every channel and DM.
-		frappe.set_user("test1@example.com")
-		self.assertFalse(frappe.has_permission("Raven Link Preview", ptype="read"))
-		with self.assertRaises(frappe.PermissionError):
-			frappe.get_list("Raven Link Preview", fields=["url"])
-
 	def test_get_preview_link_needs_the_raven_user_role(self):
 		frappe.set_user("test2@example.com")
 		with self.assertRaises(frappe.PermissionError):

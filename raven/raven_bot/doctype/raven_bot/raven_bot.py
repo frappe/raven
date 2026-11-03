@@ -131,6 +131,14 @@ class RavenBot(Document):
 		if self.openai_assistant_id:
 			self.delete_openai_assistant()
 
+		# Conversations with the bot stay as ordinary threads. Without the AI flag, a reply
+		# there no longer goes looking for a bot that is gone.
+		frappe.db.set_value(
+			"Raven Channel", {"thread_bot": self.name}, {"thread_bot": None, "is_ai_thread": 0}
+		)
+		# A prompt only uses its bot to sort first for it, so it can lose the link.
+		frappe.db.set_value("Raven Bot AI Prompt", {"raven_bot": self.name}, "raven_bot", None)
+
 		if self.raven_user:
 			frappe.db.set_value("Raven User", self.raven_user, "bot", None)
 			self.db_set("raven_user", None)

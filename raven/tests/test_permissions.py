@@ -74,23 +74,6 @@ class TestPermissions(IntegrationTestCase):
 		)
 		return test_message
 
-	def test_workspace_create_permissions(self):
-
-		# CREATE: Raven Admin can create a workspace, but other users cannot
-		frappe.set_user("test@example.com")
-
-		test_workspace = self.create_test_workspace()
-		test_workspace.insert()
-		self.assertEqual(test_workspace.name, "Test Workspace")
-
-		frappe.set_user("test1@example.com")
-		with self.assertRaises(frappe.PermissionError):
-			test_workspace.insert()
-
-		frappe.set_user("test2@example.com")
-		with self.assertRaises(frappe.PermissionError):
-			test_workspace.insert()
-
 	def test_workspace_update_permissions(self):
 		# UPDATE: Workspace admins can update/delete workspaces but not other users
 

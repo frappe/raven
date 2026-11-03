@@ -39,14 +39,14 @@ public class RavenShellPlugin extends Plugin {
         }).start();
     }
 
-    // Until the page says it is listening, a push is drawn here: the seconds before it loads
-    // would otherwise pass with nothing shown.
-    // Android draws the site as the conversation's header, so the count decides nothing here.
+    // A notification reads the saved sites from Preferences itself, so the count decides nothing here.
     @PluginMethod
     public void setSiteCount(PluginCall call) {
         call.resolve();
     }
 
+    // Until the page says it is listening, a push is drawn here: the seconds before it loads
+    // would otherwise pass with nothing shown.
     @PluginMethod
     public void watchNotifications(PluginCall call) {
         RavenApplication.setPageWatching(Boolean.TRUE.equals(call.getBoolean("watching", false)));

@@ -89,3 +89,12 @@ export const getBootFieldData = (fieldName: string, fallback?: string) => {
 export const isInReadOnlyMode = () => {
     return getBootFieldData('read_only') ?? false
 }
+
+/**
+ * Frappe Cloud v2. Frappe adds `cloud_settings` to boot on a Pilot-managed site and marks it
+ * enabled only for System Managers. Older Frappe has no key at all.
+ */
+export const isFrappeCloudV2Site = (): boolean => window.frappe?.boot?.cloud_settings?.enabled === true
+
+/** Frappe Cloud, v1 or v2. Frappe sets both boot flags only for System Managers. */
+export const isFrappeCloudSite = (): boolean => !!window.frappe?.boot?.is_fc_site || isFrappeCloudV2Site()

@@ -1,5 +1,6 @@
 import { siteFetch, siteKey, siteToken, siteUrl } from "@lib/site"
 import { setSessionUser } from "@lib/sessionUser"
+import { loadTranslations } from "@lib/translations"
 
 const CACHE_KEY = "raven-boot-cache"
 // A site rebuilding its boot after a logout can take seconds; a dead network is shown at SLOW_BOOT_MS long before this.
@@ -9,13 +10,19 @@ const BOOT_TIMEOUT_MS = 20_000
 type Boot = {
     user?: { name?: string }
     user_info?: Record<string, { fullname?: string; image?: string | null }>
+    lang?: string
     __messages?: Record<string, string>
+    translations_version?: string
 }
+
+// Settled once the translations of the latest installed boot are in place.
+let translations: Promise<void> = Promise.resolve()
+export const translationsReady = (): Promise<void> => translations
 
 const install = (boot: Boot) => {
     if (!window.frappe) window.frappe = {}
     window.frappe.boot = boot
-    window.frappe._messages = boot.__messages ?? {}
+    translations = loadTranslations(boot)
     const name = boot.user?.name ?? ""
     const info = boot.user_info?.[name] ?? {}
     setSessionUser({ name, fullName: info.fullname ?? name, image: info.image ?? "" })

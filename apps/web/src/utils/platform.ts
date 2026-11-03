@@ -20,3 +20,6 @@ export const isStandalone = (): boolean =>
     window.matchMedia("(display-mode: standalone)").matches ||
     // iOS home-screen apps report through navigator.standalone instead
     (navigator as { standalone?: boolean }).standalone === true
+
+/** Mac, iPhone and iPad: where the modifier key is ⌘ and shortcuts are shown as glyphs. */
+export const isApple = typeof navigator !== "undefined" && (navigator.platform.startsWith("Mac") || isIOS)

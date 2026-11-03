@@ -22,6 +22,15 @@ def boot():
 	return data
 
 
+def cloud_settings_boot() -> dict:
+	"""Frappe's Cloud Settings boot context. Frappe without Cloud Settings is older than any v2 site."""
+	try:
+		from frappe.integrations.frappe_providers.cloud_settings import get_boot_context
+	except ImportError:
+		return {"enabled": False}
+	return get_boot_context()
+
+
 def app_boot():
 	"""The parts of Desk's boot the app reads, built with Desk's own helpers."""
 	try:
@@ -44,8 +53,9 @@ def app_boot():
 	set_time_zone(bootinfo)
 	bootinfo.sysdefaults = frappe.defaults.get_defaults()
 	bootinfo.sysdefaults["setup_complete"] = frappe.is_setup_complete()
-	# The setup flow reads it to tell a Frappe Cloud signup from a site needing the Desk wizard.
+	# Frappe Cloud v1 and v2, as Desk's boot has them: the setup flow reads both.
 	bootinfo.is_fc_site = is_fc_site()
+	bootinfo.cloud_settings = cloud_settings_boot()
 	load_translations(bootinfo)
 	bootinfo.lang = str(bootinfo.lang)
 	load_conf_settings(bootinfo)
@@ -79,6 +89,43 @@ def set_cors():
 		allowed.add("http://localhost")
 	if origin in allowed and from_app(request):
 		frappe.local.allow_cors = origin
+
+
+def add_cors_headers(response=None, request=None):
+	"""after_request: Frappe 15 ignores frappe.local.allow_cors, so write the headers Frappe 16 would.
+
+	Frappe 16 and later read the origin set_cors chose and answer it themselves.
+	"""
+	origin = getattr(frappe.local, "allow_cors", None)
+	if not origin or response is None or request is None:
+		return
+	if frappe_reads_local_cors() or site_config_allows(origin):
+		return
+	headers = {
+		"Access-Control-Allow-Credentials": "true",
+		"Access-Control-Allow-Origin": origin,
+		"Vary": "Origin",
+	}
+	if request.method == "OPTIONS":
+		headers["Access-Control-Allow-Methods"] = request.headers.get("Access-Control-Request-Method")
+		if asked := request.headers.get("Access-Control-Request-Headers"):
+			headers["Access-Control-Allow-Headers"] = asked
+		if not frappe.conf.developer_mode:
+			headers["Access-Control-Max-Age"] = "86400"
+	response.headers.update(headers)
+
+
+def frappe_reads_local_cors():
+	"""Frappe 16 added frappe.local.allow_cors to its own CORS handling."""
+	return int(frappe.__version__.split(".")[0]) >= 16
+
+
+def site_config_allows(origin):
+	"""Frappe 15 adds its own headers for origins in the site's allow_cors, and a second copy breaks CORS."""
+	allowed = frappe.conf.allow_cors
+	if allowed == "*":
+		return True
+	return origin in (allowed if isinstance(allowed, list) else [allowed])
 
 
 def from_app(request):

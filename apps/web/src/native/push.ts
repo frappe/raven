@@ -47,13 +47,17 @@ const mirrorToken = (token: string | null) => {
 let syncing: Promise<void> = Promise.resolve()
 export const syncToken = (token: string) => (syncing = syncing.catch(() => { }).then(() => subscribeToken(token)))
 
+const subscribe = (token: string) =>
+    callNotificationAPI("subscribe", { fcm_token: token, environment: "Mobile", device_information: `${nativePlatform()} native app` })
+
 const subscribeToken = async (token: string) => {
     const old = localStorage.getItem(siteKey(NATIVE_TOKEN_KEY))
-    if (old === token) return
+    // Sent again unchanged: the server drops a token a send failed on, and skips one it still has.
+    if (old === token) return subscribe(token)
     // Two rows, two requests, no order between them: a rotation costs one round trip, not two.
     await Promise.all([
         old ? callNotificationAPI("unsubscribe", { fcm_token: old }).catch(() => { }) : undefined,
-        callNotificationAPI("subscribe", { fcm_token: token, environment: "Mobile", device_information: `${nativePlatform()} native app` }),
+        subscribe(token),
     ])
     localStorage.setItem(siteKey(NATIVE_TOKEN_KEY), token)
     await mirrorToken(token).catch(() => { })

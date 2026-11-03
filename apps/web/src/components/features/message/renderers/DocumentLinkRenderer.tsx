@@ -13,6 +13,7 @@ import {
     FileBoxIcon,
     OctagonAlertIcon,
     CopyIcon,
+    ExternalLinkIcon,
     MinusIcon,
     PrinterIcon,
     WorkflowIcon,
@@ -49,13 +50,15 @@ import { Separator } from "@components/ui/separator"
 dayjs.extend(customParseFormat)
 
 /** Keys of get_preview_data's response that are card chrome, not field rows. */
-const PREVIEW_META_KEYS = new Set(["preview_image", "preview_title", "id", "raven_document_link"])
+const PREVIEW_META_KEYS = new Set(["preview_image", "preview_title", "id", "raven_document_link", "creation"])
 
 type PreviewData = Record<string, string | number | null> & {
     preview_image?: string
     preview_title?: string
     id?: string
     raven_document_link?: string
+    /** Server-shaped timestamp of the document itself. */
+    creation?: string
 }
 
 type BadgeTheme = "gray" | "blue" | "green" | "amber" | "red" | "violet"
@@ -187,7 +190,20 @@ export const documentPreviewSwrKey = (doctype: string, docname: string) =>
  * image box). The preview DATA waits for visibility, poll-style, so a channel
  * full of linked documents only fetches what the user actually sees.
  */
-export const DocumentLinkRenderer = ({ doctype, docname, className }: { doctype: string; docname: string; className?: string }) => {
+export const DocumentLinkRenderer = ({
+    doctype,
+    docname,
+    messageCreation,
+    className,
+}: {
+    doctype: string
+    docname: string
+    /** Creation of the message that links the document. Lets the card tell a
+     *  record that was deleted and made again under the same name from the one
+     *  the message meant. */
+    messageCreation?: string
+    className?: string
+}) => {
     const { meta, workflowDoc } = useDoctypeMeta(doctype)
     const { ref, hasBeenInView } = useHasBeenInView()
 
@@ -197,7 +213,13 @@ export const DocumentLinkRenderer = ({ doctype, docname, className }: { doctype:
     return (
         <div ref={ref} className={cn("w-full max-w-xl py-1", className)}>
             {hasBeenInView ? (
-                <LoadedDocumentLink doctype={doctype} docname={docname} meta={meta} workflowDoc={workflowDoc} />
+                <LoadedDocumentLink
+                    doctype={doctype}
+                    docname={docname}
+                    messageCreation={messageCreation}
+                    meta={meta}
+                    workflowDoc={workflowDoc}
+                />
             ) : (
                 <DocumentLinkSkeleton meta={meta} />
             )}
@@ -233,31 +255,48 @@ const DocumentLinkSkeleton = ({ meta }: { meta?: DoctypeMeta }) => {
     )
 }
 
-/** Deleted doc / no permission: a quiet reference, not an error box in chat. */
-const DocumentLinkFallback = ({ doctype, docname }: { doctype: string; docname: string }) => (
+/** Deleted doc / no permission: a quiet reference, not an error box in chat.
+ *  `replaced` means another record now holds this name. The name must not
+ *  link then: it would open a document the message never meant. */
+const DocumentLinkFallback = ({ doctype, docname, replaced }: { doctype: string; docname: string; replaced?: boolean }) => (
     <div className={`${cardSurface} flex items-center gap-2`}>
         <Badge variant="outline" theme="gray">
             {doctype}
         </Badge>
-        <a
-            href={defaultDocRoute(doctype, docname)}
-            target="_blank"
-            rel="noreferrer"
-            className="truncate text-p-sm text-ink-gray-7 hover:underline"
-        >
-            {docname}
-        </a>
+        {replaced ? (
+            <span className="truncate text-p-sm text-ink-gray-7">{docname}</span>
+        ) : (
+            <a
+                href={defaultDocRoute(doctype, docname)}
+                target="_blank"
+                rel="noreferrer"
+                className="truncate text-p-sm text-ink-gray-7 hover:underline"
+            >
+                {docname}
+            </a>
+        )}
+        {replaced && <span className="shrink-0 text-p-sm text-ink-gray-5">{_("Deleted")}</span>}
     </div>
 )
+
+/**
+ * A document created after the message that links it cannot be the one the
+ * message meant: the original was deleted and the name reused. Both timestamps
+ * are server-shaped strings, so they compare the same way the stream sorts.
+ */
+const isReplacedDocument = (preview: PreviewData, messageCreation?: string) =>
+    Boolean(preview.creation && messageCreation && preview.creation > messageCreation)
 
 const LoadedDocumentLink = ({
     doctype,
     docname,
+    messageCreation,
     meta,
     workflowDoc,
 }: {
     doctype: string
     docname: string
+    messageCreation?: string
     meta?: DoctypeMeta
     workflowDoc?: WorkflowMeta
 }) => {
@@ -274,6 +313,9 @@ const LoadedDocumentLink = ({
     if (isLoading) return <DocumentLinkSkeleton meta={meta} />
     const preview = data?.message
     if (error || !preview) return <DocumentLinkFallback doctype={doctype} docname={docname} />
+    if (isReplacedDocument(preview, messageCreation)) {
+        return <DocumentLinkFallback doctype={doctype} docname={docname} replaced />
+    }
     return (
         <DocumentCard
             doctype={doctype}
@@ -361,6 +403,17 @@ const DocumentCard = ({
                 {/* Flat action row — every action is one click. The only dropdown
                     left is Workflow, whose options are per-document by nature. */}
                 <div className="flex shrink-0 items-center gap-1">
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            {/* A real link, so middle-click and long-press work as for any link. */}
+                            <Button variant="ghost" size="sm" isIconButton asChild>
+                                <a href={route} target="_blank" rel="noreferrer" aria-label={_("Open")}>
+                                    <ExternalLinkIcon />
+                                </a>
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{_("Open")}</TooltipContent>
+                    </Tooltip>
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <Button variant="ghost" size="sm" isIconButton aria-label={_("Copy link")} onClick={copyLink}>

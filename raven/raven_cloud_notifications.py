@@ -57,10 +57,14 @@ def delete_token_from_raven_cloud(user_id, token):
 	)
 
 
-def sync_users_tokens_to_raven_cloud():
+def sync_users_tokens_to_raven_cloud(site_name: str | None = None):
 	"""
 	Sync all the tokens available on this site to Raven Cloud
+
+	site_name defaults to get_site_name(); a caller that just registered a different
+	hostname passes it explicitly instead.
 	"""
+	site_name = site_name or get_site_name()
 	raven_settings = frappe.get_single("Raven Settings")
 	tokens = frappe.db.get_all("Raven Push Token", fields=["user", "fcm_token"], order_by="user")
 
@@ -71,7 +75,7 @@ def sync_users_tokens_to_raven_cloud():
 		api_key=raven_settings.push_notification_api_key,
 		api_secret=raven_settings.get_password("push_notification_api_secret"),
 		method="POST",
-		params={"site_name": get_site_name(), "tokens": json.dumps(tokens)},
+		params={"site_name": site_name, "tokens": json.dumps(tokens)},
 	)
 	message = response.get("message")
 

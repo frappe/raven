@@ -8,6 +8,9 @@ PROJECT=ios/App/App.xcodeproj/project.pbxproj
 UPLOAD=1
 [[ "${1:-}" == "--no-upload" ]] && UPLOAD=0
 
+# The version comes from raven/__init__.py.
+bash scripts/sync-version.sh
+
 current=$(grep -m1 -o 'CURRENT_PROJECT_VERSION = [0-9]*' "$PROJECT" | grep -o '[0-9]*$')
 version=$(grep -m1 -o 'MARKETING_VERSION = [0-9.]*' "$PROJECT" | grep -o '[0-9.]*$')
 if (( UPLOAD )); then

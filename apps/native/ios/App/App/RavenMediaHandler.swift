@@ -52,6 +52,8 @@ final class RavenMediaHandler: NSObject, WKURLSchemeHandler {
         // Least recently used first.
         var used: [Int] = []
         var waiting: [Int: [(Data?) -> Void]] = [:]
+        // A body without a size to check can't be told apart from one cut off: it's served, never kept.
+        var unsized = false
         init(src: URL, target: URL) { self.src = src; self.target = target }
     }
     // Net queue only, oldest first.
@@ -67,7 +69,12 @@ final class RavenMediaHandler: NSObject, WKURLSchemeHandler {
         if schemeTask.request.mainDocumentURL == url { return fail(schemeTask, status: 403) }
         let target = folder.appendingPathComponent(host).appendingPathComponent(url.lastPathComponent)
         let range = schemeTask.request.value(forHTTPHeaderField: "Range")
-        if FileManager.default.fileExists(atPath: target.path) { return fromDisk(schemeTask, file: target, range: range) }
+        if FileManager.default.fileExists(atPath: target.path) {
+            // Trim goes by the folder's date: a file read often is kept, not just one fetched lately.
+            let folder = target.deletingLastPathComponent().path
+            disk.async { try? FileManager.default.setAttributes([.modificationDate: Date()], ofItemAtPath: folder) }
+            return fromDisk(schemeTask, file: target, range: range)
+        }
         let delivery = Delivery(scheme: schemeTask)
         live[ObjectIdentifier(schemeTask)] = delivery
         let bearer = token
@@ -142,11 +149,16 @@ final class RavenMediaHandler: NSObject, WKURLSchemeHandler {
         request.setValue("Bearer \(bearer)", forHTTPHeaderField: "Authorization")
         let from = index * Self.block
         request.setValue("bytes=\(from)-\(from + Self.block - 1)", forHTTPHeaderField: "Range")
-        session.dataTask(with: request) { data, response, _ in
+        session.dataTask(with: request) { data, response, error in
             let waiters = file.waiting.removeValue(forKey: index) ?? []
-            guard let http = response as? HTTPURLResponse, let data = data, http.statusCode == 200 || http.statusCode == 206 else {
+            guard error == nil, let http = response as? HTTPURLResponse, let data = data, http.statusCode == 200 || http.statusCode == 206 else {
                 return waiters.forEach { $0(nil) }
             }
+            // A compressed body's declared size is the compressed one, so only a plain body is checked.
+            let size = http.value(forHTTPHeaderField: "Content-Encoding") == nil ? http.expectedContentLength : -1
+            // A body short of the size the site declared was cut off.
+            if size >= 0 && Int64(data.count) != size { return waiters.forEach { $0(nil) } }
+            if size < 0 { file.unsized = true }
             if let type = http.value(forHTTPHeaderField: "Content-Type") { file.type = self.inert(type) }
             if http.statusCode == 200 {
                 // A site that ignores ranges sends the whole file: it is every block at once.
@@ -192,7 +204,7 @@ final class RavenMediaHandler: NSObject, WKURLSchemeHandler {
 
     /// A file read end to end goes to disk, where replays and seeks are answered at once.
     private func keepIfWhole(_ file: File) {
-        guard let total = file.total else { return }
+        guard let total = file.total, !file.unsized else { return }
         let count = (total + Self.block - 1) / Self.block
         guard file.blocks.count == count else { return }
         // The blocks themselves, in order: joining them first would hold the file in memory twice.

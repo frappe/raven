@@ -7,6 +7,7 @@ from frappe.frappeclient import FrappeClient
 from frappe.utils import get_datetime, get_system_timezone
 from pytz import timezone, utc
 
+from raven.api.workspaces import get_workspace_names
 from raven.raven_cloud_notifications import get_site_name
 from raven.utils import get_channel_members, make_api_call
 
@@ -16,6 +17,13 @@ MAX_NOTIFICATION_CONTENT_LENGTH = 1000
 def with_site(title: str) -> str:
 	"""Names the site in a title for a mobile device that draws it itself: one app shows many sites."""
 	return f"{title} · {get_site_name()}"
+
+
+def shown_workspace(workspace: str) -> str:
+	"""A push names the channel's workspace only when the site has several to tell apart."""
+	workspaces = get_workspace_names()
+	# A workspace deleted under the channel leaves the notification without one, not unsent.
+	return workspaces.get(workspace, "") if len(workspaces) > 1 else ""
 
 
 def site_tag(key: str) -> str:
@@ -154,15 +162,6 @@ def send_push_notification_via_raven_cloud(message, raven_settings):
 
 		image = get_image_absolute_url(message_owner_image)
 
-		# A channel is shown as its workspace: two workspaces can name a channel the same.
-		workspace_name, workspace_image = "", ""
-		if not channel_doc.is_direct_message and channel_doc.workspace:
-			# A workspace deleted under the channel leaves the notification without one, not unsent.
-			workspace_name, logo = frappe.get_cached_value(
-				"Raven Workspace", channel_doc.workspace, ["workspace_name", "logo"]
-			) or ("", "")
-			workspace_image = get_image_absolute_url(logo) if logo else ""
-
 		data = {
 			"base_url": frappe.utils.get_url(allow_header_override=False),
 			"message_url": url,
@@ -177,8 +176,12 @@ def send_push_notification_via_raven_cloud(message, raven_settings):
 			"is_thread": "1" if channel_doc.is_thread else "0",
 			"creation": get_milliseconds_since_epoch(message.creation),
 			"image": image if image else "",
-			"workspace": workspace_name or "",
-			"workspace_image": workspace_image or "",
+			# A channel is shown with its workspace: two workspaces can name a channel the same.
+			"workspace": (
+				shown_workspace(channel_doc.workspace)
+				if channel_doc.workspace and not channel_doc.is_direct_message
+				else ""
+			),
 		}
 
 		if replied_users:

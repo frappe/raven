@@ -22,9 +22,11 @@ const MarkdownImpl = lazy(() => import('./markdown-impl'))
 const stripHtmlTags = (text: string) => text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
 
 const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, className }) => {
+    // Callers pass server data that is not always the string the type says.
+    const text = typeof content === "string" ? content : String(content ?? "")
     return (
-        <Suspense fallback={<span className={className}>{stripHtmlTags(content)}</span>}>
-            <MarkdownImpl content={content} className={className} />
+        <Suspense fallback={<span className={className}>{stripHtmlTags(text)}</span>}>
+            <MarkdownImpl content={text} className={className} />
         </Suspense>
     )
 }
