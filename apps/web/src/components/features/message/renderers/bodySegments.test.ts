@@ -31,6 +31,12 @@ describe("parseBodySegments", () => {
         ])
     })
 
+    it("breaks a lone KLIPY GIF out as bare", () => {
+        expect(shape('<p><img data-type="gif" src="https://static.klipy.com/ii/a" width="498" height="280"></p>')).toEqual([
+            { standalone: true, jumbo: false },
+        ])
+    })
+
     it("keeps an inline GIF (text around it) inside the bubble", () => {
         expect(shape('<p>look at this <img src="https://media.tenor.com/abc.gif"></p>')).toEqual([
             { standalone: false, jumbo: false },
