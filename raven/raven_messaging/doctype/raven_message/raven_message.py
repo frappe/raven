@@ -167,8 +167,10 @@ class RavenMessage(Document):
 		text_content = soup.get_text(" ", strip=True)
 
 		# A GIF-only message has no text; give the DM list + notifications a preview.
+		# KLIPY GIFs carry data-type="gif"; Tenor GIFs are known by their host.
 		if not text_content and any(
-			"media.tenor.com" in (img.get("src") or "") for img in soup.find_all("img")
+			img.get("data-type") == "gif" or "media.tenor.com" in (img.get("src") or "")
+			for img in soup.find_all("img")
 		):
 			text_content = "Sent a GIF"
 

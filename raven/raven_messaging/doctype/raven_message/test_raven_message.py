@@ -38,6 +38,13 @@ class TestRavenMessage(FrappeTestCase):
 	def test_gif_only_message(self):
 		self.assertEqual(content_of('<p><img src="https://media.tenor.com/a.gif"></p>'), "Sent a GIF")
 
+	def test_klipy_gif_only_message(self):
+		html = '<p><img data-type="gif" src="https://static.klipy.com/ii/abc" alt="Hello"></p>'
+		self.assertEqual(content_of(html), "Sent a GIF")
+
+	def test_plain_image_is_not_a_gif(self):
+		self.assertNotEqual(content_of('<p><img src="https://example.com/a.png"></p>'), "Sent a GIF")
+
 	def test_editing_keeps_read_state_of_unchanged_mentions(self):
 		channel = frappe.get_doc(
 			{
