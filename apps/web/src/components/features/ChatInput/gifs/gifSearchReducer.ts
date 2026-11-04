@@ -29,7 +29,8 @@ export const gifSearchReducer = (state: GifSearchState, action: GifSearchAction)
             if (action.query === state.query) return state
             return { ...initialGifSearchState, query: action.query }
         case "loaded":
-            return { ...state, items: [...state.items, ...action.page.items], page: state.page + 1, hasNext: action.page.hasNext, status: "idle" }
+            // An empty page ends the list: with no new last tile, nothing would ask for the next page.
+            return { ...state, items: [...state.items, ...action.page.items], page: state.page + 1, hasNext: action.page.hasNext && action.page.items.length > 0, status: "idle" }
         case "failed":
             return { ...state, status: "error", rateLimited: action.rateLimited }
         case "loadMore":

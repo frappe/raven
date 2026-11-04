@@ -1,5 +1,5 @@
 import { fileSrc } from "@hooks/useFileSrc"
-import { Fragment, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react"
+import { Fragment, useCallback, useEffect, useRef, useState, useSyncExternalStore, type ComponentProps } from "react"
 import { useAtom, useAtomValue, useSetAtom } from "jotai"
 import {
     ContextMenu,
@@ -118,13 +118,6 @@ export const MessageActionMenu = ({
     const [hovered, setHovered] = useState<{ message: Message; top: number; left?: number; right?: number } | null>(null)
     /** While the toolbar's ellipsis menu is open, hover-clearing is suspended. */
     const toolbarMenuOpenRef = useRef(false)
-    // `hovered` holds the message as it was on hover. A send confirmed under a still pointer
-    // swaps its placeholder for the server's message, so the toolbar reads the store's copy.
-    const channelState = useSyncExternalStore(
-        useCallback((onChange: () => void) => channelMessagesStore.subscribe(channelID, onChange), [channelID]),
-        () => channelMessagesStore.getState(channelID),
-    )
-    const toolbarMessage = hovered && selectCurrentMessage(channelState, hovered.message)
 
     /**
      * The message actually under the pointer, WITHOUT resolving its batch. Deliberately
@@ -621,9 +614,10 @@ export const MessageActionMenu = ({
                         <Reply className="size-4" />
                     </div>
                     {/* Desktop-only: hovered is only ever set from mouseover */}
-                    {hovered && toolbarMessage && (
-                        <MessageHoverToolbar
-                            message={toolbarMessage}
+                    {hovered && (
+                        <CurrentMessageHoverToolbar
+                            channelID={channelID}
+                            message={hovered.message}
                             top={hovered.top}
                             left={hovered.left}
                             right={hovered.right}
@@ -827,6 +821,25 @@ export const MessageActionMenu = ({
             )}
         </ContextMenu>
     )
+}
+
+/**
+ * The toolbar for the store's current copy of `message`: a send confirmed under a still pointer
+ * swaps the hovered placeholder for the server's message. Mounted only while hovering, so writes
+ * to the channel re-render this, not the whole menu.
+ */
+const CurrentMessageHoverToolbar = ({ channelID, message, onMenuOpenChange, ...props }: ComponentProps<typeof MessageHoverToolbar> & { channelID: string }) => {
+    const channelState = useSyncExternalStore(
+        useCallback((onChange: () => void) => channelMessagesStore.subscribe(channelID, onChange), [channelID]),
+        () => channelMessagesStore.getState(channelID),
+    )
+    const current = selectCurrentMessage(channelState, message)
+    // Deleting the message unmounts an open toolbar menu without reporting the close;
+    // report it here, or hover stays suspended.
+    useEffect(() => {
+        if (!current) onMenuOpenChange(false)
+    }, [current, onMenuOpenChange])
+    return current ? <MessageHoverToolbar message={current} onMenuOpenChange={onMenuOpenChange} {...props} /> : null
 }
 
 const SheetActionRow = ({ action, onDone }: { action: MessageAction; onDone: () => void }) => (

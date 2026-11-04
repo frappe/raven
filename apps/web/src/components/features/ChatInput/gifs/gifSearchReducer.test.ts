@@ -43,6 +43,11 @@ describe("gifSearchReducer", () => {
         expect(s.status).toBe("idle")
     })
 
+    it("ends the list on an empty page, even if KLIPY says there is more", () => {
+        const s = gifSearchReducer(initialGifSearchState, { type: "loaded", page: { items: [], hasNext: true } })
+        expect(s.hasNext).toBe(false)
+    })
+
     it("loads more only when there is a next page and nothing is loading", () => {
         const done = { ...initialGifSearchState, status: "idle" as const, hasNext: false }
         expect(gifSearchReducer(done, { type: "loadMore" })).toBe(done)

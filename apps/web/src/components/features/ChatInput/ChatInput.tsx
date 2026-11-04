@@ -294,11 +294,13 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
         // Never null here: tiles show only GIFs buildGifHtml can build (see pickPreview).
         const content = buildGifHtml(gif)
         if (!content) return
-        enqueueSend(call, { channelID, batchId: randomUUID(), owner: currentUser, content, files: [], ...replyContext(replyTo), sendSilently: quietSendMode === "auto" ? true : undefined })
-        if (replyTo) setReplyTo(null)
+        // While a send waits on uploads the reply is its own: dispatchSend reads replyTo when it goes out.
+        const reply = pendingSend ? null : replyTo
+        enqueueSend(call, { channelID, batchId: randomUUID(), owner: currentUser, content, files: [], ...replyContext(reply), sendSilently: quietSendMode === "auto" ? true : undefined })
+        if (reply) setReplyTo(null)
         registerShare(gif.slug, query)
         if (!isMobile) editor?.commands.focus()
-    }, [call, channelID, currentUser, replyTo, setReplyTo, quietSendMode, isMobile, editor])
+    }, [call, channelID, currentUser, pendingSend, replyTo, setReplyTo, quietSendMode, isMobile, editor])
     // The site admin's KLIPY key turns GIFs on.
     const klipyEnabled = !!getKlipyConfig()
 
