@@ -1,5 +1,4 @@
-import { useEffect } from "react"
-import { preconnect } from "react-dom"
+import { useEffect, useRef } from "react"
 import { SearchIcon } from "lucide-react"
 import { VirtuosoMasonry, type ItemContent } from "@virtuoso.dev/masonry"
 import { Button } from "@components/ui/button"
@@ -66,10 +65,16 @@ const GifNotice = ({ text, onRetry, className }: { text: string; onRetry?: () =>
 
 /** Search + 2-column masonry of KLIPY GIFs, trending until the user types. Results stay in KLIPY's order. */
 export const GifPicker = ({ onPick, className }: { onPick: (gif: KlipyGif, query: string) => void; className?: string }) => {
-    // KLIPY's GIF files come from here; the connection opens while the first API call runs.
-    preconnect("https://static.klipy.com")
     const isMobile = useIsMobile()
     const { state, setQuery, loadMore, retry } = useGifSearch()
+    // Tiles stay clickable while the popover or sheet animates closed: a double-click would
+    // send twice. Each open mounts a new picker, so one pick per picker is one per open.
+    const picked = useRef(false)
+    const pick = (gif: KlipyGif, query: string) => {
+        if (picked.current) return
+        picked.current = true
+        onPick(gif, query)
+    }
 
     const failed = state.status === "error"
     const errorText = state.rateLimited
@@ -84,7 +89,7 @@ export const GifPicker = ({ onPick, className }: { onPick: (gif: KlipyGif, query
             <VirtuosoMasonry
                 columnCount={2}
                 data={state.items}
-                context={{ onPick, query: state.query, count: state.items.length, loadMore }}
+                context={{ onPick: pick, query: state.query, count: state.items.length, loadMore }}
                 ItemContent={GifTile}
                 className="overscroll-contain"
                 style={{ height: "100%" }}

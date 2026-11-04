@@ -3,13 +3,22 @@
  * and rewriting media URLs: https://docs.klipy.com/integration-requirements
  */
 
-const API_BASE = "https://api.klipy.com/api/v1"
+import { preconnect } from "react-dom"
+
+const API_ORIGIN = "https://api.klipy.com"
+const API_BASE = `${API_ORIGIN}/api/v1`
 const PER_PAGE = 24
 /** A request KLIPY hasn't answered by now is treated as failed. */
 const TIMEOUT_MS = 10_000
 
 /** KLIPY's media delivery hosts, from its network requirements. */
 const KLIPY_MEDIA_HOSTS = ["static.klipy.com", "static1.klipy.com", "static2.klipy.com"]
+
+/** Opens the connections a picker needs before it asks: the API (a CORS fetch) and the media host. */
+export const preconnectKlipy = () => {
+    preconnect(API_ORIGIN, { crossOrigin: "anonymous" })
+    preconnect(`https://${KLIPY_MEDIA_HOSTS[0]}`)
+}
 
 export type KlipyMedia = { url: string; width: number; height: number; size?: number }
 

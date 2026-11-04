@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { buildGifHtml, fetchGifs, isKlipyMediaUrl, localeFromLanguage, pickMedia, pickPreview, registerShare, type KlipyGif, type KlipyMedia } from "./klipy"
+import { preconnect } from "react-dom"
+import { buildGifHtml, fetchGifs, isKlipyMediaUrl, localeFromLanguage, pickMedia, pickPreview, preconnectKlipy, registerShare, type KlipyGif, type KlipyMedia } from "./klipy"
 
 const media = (url: string, width = 498, height = 280) => ({ url, width, height })
 const gif = (over: Partial<KlipyGif> = {}): KlipyGif => ({
@@ -12,6 +13,16 @@ const gif = (over: Partial<KlipyGif> = {}): KlipyGif => ({
         sm: { gif: media("https://static.klipy.com/ii/c", 220, 124) },
     },
     ...over,
+})
+
+vi.mock("react-dom", () => ({ preconnect: vi.fn() }))
+
+describe("preconnectKlipy", () => {
+    it("opens the API connection in CORS mode and the media host as for images", () => {
+        preconnectKlipy()
+        expect(preconnect).toHaveBeenCalledWith("https://api.klipy.com", { crossOrigin: "anonymous" })
+        expect(preconnect).toHaveBeenCalledWith("https://static.klipy.com")
+    })
 })
 
 describe("isKlipyMediaUrl", () => {

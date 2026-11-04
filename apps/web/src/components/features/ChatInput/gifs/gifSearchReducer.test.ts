@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { KlipyGif } from "@lib/klipy"
-import { gifSearchReducer, initialGifSearchState } from "./gifSearchReducer"
+import { gifSearchReducer, initialGifSearchState, openGifSearch } from "./gifSearchReducer"
 
 const gif = (id: number): KlipyGif => ({ id, slug: `g${id}`, type: "gif", file: {} })
 const [gifA, gifB, gifC] = [gif(1), gif(2), gif(3)]
@@ -10,6 +10,12 @@ describe("gifSearchReducer", () => {
         let s = gifSearchReducer(initialGifSearchState, { type: "loaded", page: { items: [gifA], hasNext: false } })
         s = gifSearchReducer(s, { type: "query", query: "cat" })
         expect(s).toMatchObject({ query: "cat", items: [], hasNext: true, status: "loading", rateLimited: false })
+    })
+
+    // Reopening the picker within minutes shows trending at once, without a request.
+    it("opens on a remembered trending page", () => {
+        expect(openGifSearch({ items: [gifA], hasNext: true })).toMatchObject({ query: "", items: [gifA], page: 1, hasNext: true, status: "idle" })
+        expect(openGifSearch(undefined)).toBe(initialGifSearchState)
     })
 
     // A trailing space, or typing back to the same text, re-sends the query; a reset would refetch it.

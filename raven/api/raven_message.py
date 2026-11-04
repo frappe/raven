@@ -236,11 +236,11 @@ def send_message_with_attachments(
 
 	content = content or ""
 	has_text = bool(frappe.utils.strip_html_tags(content).strip())
-	# A custom emoji is an inline <img> with no text, so strip_html_tags leaves it
-	# empty — but a message that is only a custom emoji is NOT empty. (Standard emojis
+	# A custom emoji or a GIF is an <img> with no text, so strip_html_tags leaves it
+	# empty — but a message that is only one of them is NOT empty. (Standard emojis
 	# are unicode text and already count as has_text.)
-	has_custom_emoji = 'data-type="customEmoji"' in content
-	has_body = has_text or has_custom_emoji
+	has_image_body = 'data-type="customEmoji"' in content or 'data-type="gif"' in content
+	has_body = has_text or has_image_body
 
 	has_linked_document = bool(link_doctype and link_document)
 

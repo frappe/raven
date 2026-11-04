@@ -19,6 +19,10 @@ export type GifSearchAction =
 /** Opens on trending (the empty query), already loading its first page. */
 export const initialGifSearchState: GifSearchState = { query: "", items: [], page: 0, hasNext: true, status: "loading", rateLimited: false }
 
+/** The picker's opening state: a remembered trending page, else trending to load. */
+export const openGifSearch = (trending: KlipyPage | undefined): GifSearchState =>
+    trending ? { ...initialGifSearchState, items: trending.items, page: 1, hasNext: trending.hasNext, status: "idle" } : initialGifSearchState
+
 export const gifSearchReducer = (state: GifSearchState, action: GifSearchAction): GifSearchState => {
     switch (action.type) {
         case "query":

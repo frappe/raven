@@ -1,5 +1,5 @@
 import { fileSrc } from "@hooks/useFileSrc"
-import { Fragment, useEffect, useRef, useState } from "react"
+import { Fragment, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { useAtom, useAtomValue, useSetAtom } from "jotai"
 import {
     ContextMenu,
@@ -15,6 +15,7 @@ import {
 import { Button } from "@components/ui/button"
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from "@components/ui/drawer"
 import { channelMessagesStore } from "@stores/messages/store"
+import { selectCurrentMessage } from "@stores/messages/selectors"
 import { messageActionTargetAtom, messagePressTargetAtom, replyToMessageAtom } from "@utils/channelAtoms"
 import { useIsMobile } from "@hooks/use-mobile"
 import { cn } from "@lib/utils"
@@ -117,6 +118,13 @@ export const MessageActionMenu = ({
     const [hovered, setHovered] = useState<{ message: Message; top: number; left?: number; right?: number } | null>(null)
     /** While the toolbar's ellipsis menu is open, hover-clearing is suspended. */
     const toolbarMenuOpenRef = useRef(false)
+    // `hovered` holds the message as it was on hover. A send confirmed under a still pointer
+    // swaps its placeholder for the server's message, so the toolbar reads the store's copy.
+    const channelState = useSyncExternalStore(
+        useCallback((onChange: () => void) => channelMessagesStore.subscribe(channelID, onChange), [channelID]),
+        () => channelMessagesStore.getState(channelID),
+    )
+    const toolbarMessage = hovered && selectCurrentMessage(channelState, hovered.message)
 
     /**
      * The message actually under the pointer, WITHOUT resolving its batch. Deliberately
@@ -613,9 +621,9 @@ export const MessageActionMenu = ({
                         <Reply className="size-4" />
                     </div>
                     {/* Desktop-only: hovered is only ever set from mouseover */}
-                    {hovered && (
+                    {hovered && toolbarMessage && (
                         <MessageHoverToolbar
-                            message={hovered.message}
+                            message={toolbarMessage}
                             top={hovered.top}
                             left={hovered.left}
                             right={hovered.right}

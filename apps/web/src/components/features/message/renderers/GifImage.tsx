@@ -9,7 +9,7 @@ const positiveSize = (value?: string): number | undefined => {
     return Number.isFinite(size) && size > 0 ? size : undefined
 }
 
-/** Same box as the GIF, so one that fails to load (removed by KLIPY, offline) leaves the row's height alone. */
+/** Same box as the GIF, so one that fails to load (offline, blocked) leaves the row's height alone. KLIPY serves its own image for a removed GIF. */
 export const GifUnavailable = ({ style }: { style: CSSProperties }) => (
     <span
         role="img"

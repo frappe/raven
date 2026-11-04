@@ -23,6 +23,8 @@ import { ScheduledMessagesBanner } from "@components/features/schedule-send/Sche
 import { SCHEDULED_MESSAGES_KEY } from "@components/features/schedule-send/ScheduledMessagesList"
 import type { SchedulePick } from "@lib/timeUtils"
 import { ReplyPreviewBanner } from "./ReplyPreviewBanner"
+import { replyContext } from "./replyContext"
+import { GifPickerButton } from "./gifs/GifPickerButton"
 import { MentionWarningBanner } from "./MentionWarningBanner"
 import { QuietHoursBanner } from "./QuietHoursBanner"
 import { MobileComposerActions } from "./MobileComposerActions"
@@ -32,6 +34,7 @@ import { TypingIndicator } from "./TypingIndicator"
 import { useIsMobile } from "@hooks/use-mobile"
 import { useIsKeyboardOpen } from "@hooks/useIsKeyboardOpen"
 import { enqueueSend } from "@stores/messages/messageSender"
+import { buildGifHtml, getKlipyConfig, registerShare, type KlipyGif } from "@lib/klipy"
 import { editingMessageAtom, linkedDocumentAtom, replyToMessageAtom } from "@utils/channelAtoms"
 import { getLastEditableMessage } from "@components/features/message/actions/editTarget"
 import { useChannelById } from "@stores/channels/useChannelList"
@@ -229,24 +232,8 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
         const outgoingFiles = files.map((f) => ({ file_url: f.fileURL, file_size: f.size, width: f.width, height: f.height }))
         const batchId = randomUUID()
 
-        // Reply context: send the linked message id + a snapshot of it so the reply
-        // preview renders immediately (the snapshot matches ReplyMessage's expected shape).
-        const linkedMessage = replyTo?.name
-        const repliedMessageDetails = replyTo
-            ? JSON.stringify({
-                // No `text` (HTML): the server's snapshot doesn't store it and the
-                // preview renders `content`, so this stays byte-compatible with what
-                // the server sends back when the send is confirmed.
-                content: replyTo.content ?? "",
-                file: (replyTo as typeof replyTo & { file?: string }).file ?? "",
-                message_type: replyTo.message_type,
-                owner: replyTo.owner,
-                creation: replyTo.creation,
-            })
-            : undefined
-
         // Shows the message on screen, saves it to the outbox, then sends it.
-        enqueueSend(call, { channelID, batchId, owner: currentUser, content, files: outgoingFiles, linkedMessage, repliedMessageDetails, sendSilently: opts?.sendSilently, linkedDocument: linkedDocument ?? undefined })
+        enqueueSend(call, { channelID, batchId, owner: currentUser, content, files: outgoingFiles, ...replyContext(replyTo), sendSilently: opts?.sendSilently, linkedDocument: linkedDocument ?? undefined })
 
         // Clear the composer right away — the message is already on screen
         editor.commands.clearContent()
@@ -301,6 +288,19 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
     // button advertises it and offers the loud override) — resolved HERE, the
     // one dispatch gate, so Enter, the button, and held sends all agree.
     const quietSendMode = useQuietSendMode()
+
+    /** A picked GIF goes out as a message of its own: the draft, staged files and document stay. */
+    const sendGif = useCallback((gif: KlipyGif, query: string) => {
+        // Never null here: tiles show only GIFs buildGifHtml can build (see pickPreview).
+        const content = buildGifHtml(gif)
+        if (!content) return
+        enqueueSend(call, { channelID, batchId: randomUUID(), owner: currentUser, content, files: [], ...replyContext(replyTo), sendSilently: quietSendMode === "auto" ? true : undefined })
+        if (replyTo) setReplyTo(null)
+        registerShare(gif.slug, query)
+        if (!isMobile) editor?.commands.focus()
+    }, [call, channelID, currentUser, replyTo, setReplyTo, quietSendMode, isMobile, editor])
+    // The site admin's KLIPY key turns GIFs on.
+    const klipyEnabled = !!getKlipyConfig()
 
     const handleSend = useCallback((opts?: { sendSilently?: boolean }) => {
         if (!editor) return
@@ -483,7 +483,7 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                             // keyboard: --keyboard-height (set by the keyboard plugin) lifts the row.
                             <div className={cn("flex items-end gap-0 pe-2 ps-1 py-2 border-t border-outline-gray-2 bg-surface-base mb-[var(--keyboard-height,0px)]", isMobile && !keyboardOpen && "standalone:pb-[max(var(--inset-bottom),0.75rem)]")}>
                                 <div className="flex items-center justify-center h-10">
-                                    <MobileComposerActions channelID={channelID} />
+                                    <MobileComposerActions channelID={channelID} onPickGif={klipyEnabled ? sendGif : undefined} />
                                 </div>
                                 <div className="flex-1 min-w-0 dark:bg-surface-elevation-2 bg-surface-gray-1 rounded-2xl [&_.tiptap]:min-h-10 [&_.tiptap]:max-h-64 [&_.tiptap]:overflow-y-auto [&_.tiptap]:py-2">
                                     <EditorContent editor={editor} />
@@ -533,6 +533,7 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                                     <Separator orientation="vertical" className="mx-1 h-4!" />
                                     {editor && <MentionButton editor={editor} />}
                                     {editor && <EmojiPickerButton editor={editor} />}
+                                    {klipyEnabled && <GifPickerButton onPick={sendGif} />}
                                     <Separator orientation="vertical" className="mx-1 h-4!" />
                                     <CreatePollDialog channelID={channelID} />
                                     <AttachFrappeDocumentDialog channelID={channelID} />
