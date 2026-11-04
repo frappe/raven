@@ -24,10 +24,10 @@ export type KlipyGif = {
     file: Partial<Record<KlipySize, Partial<Record<KlipyFormat, KlipyMedia>>>>
 }
 
-export type KlipyPage = { items: KlipyGif[]; page: number; hasNext: boolean }
+export type KlipyPage = { items: KlipyGif[]; hasNext: boolean }
 
 /** The trending and search response body. */
-type KlipyListResponse = { data?: { data?: KlipyGif[]; current_page?: number; has_next?: boolean } }
+type KlipyListResponse = { data?: { data?: KlipyGif[]; has_next?: boolean } }
 
 /** `status` is KLIPY's HTTP status (429 = rate limited); 0 means no answer (offline, timeout) or no key. */
 export class KlipyError extends Error {
@@ -61,6 +61,13 @@ export const isKlipyMediaUrl = (src: string): boolean => {
 export const pickMedia = (gif: KlipyGif, size: "md" | "sm"): KlipyMedia | undefined => {
     const formats = gif.file?.[size]
     return formats?.webp ?? formats?.gif
+}
+
+/** A grid tile's media: only for a GIF that can be sent, with both files on KLIPY's hosts. */
+export const pickPreview = (gif: KlipyGif): KlipyMedia | undefined => {
+    const preview = pickMedia(gif, "sm")
+    const sent = pickMedia(gif, "md")
+    return preview && sent && isKlipyMediaUrl(preview.url) && isKlipyMediaUrl(sent.url) ? preview : undefined
 }
 
 const escapeAttribute = (value: string) =>
@@ -110,7 +117,7 @@ export const fetchGifs = async ({ query, page }: { query: string; page: number }
         if (!response.ok) throw new KlipyError(response.status)
         // A captive portal or proxy can answer 200 with an HTML page.
         const body: KlipyListResponse = await response.json().catch(() => { throw new KlipyError(response.status) })
-        return { items: body.data?.data ?? [], page: body.data?.current_page ?? page, hasNext: !!body.data?.has_next }
+        return { items: body.data?.data ?? [], hasNext: !!body.data?.has_next }
     } finally {
         clearTimeout(timer)
     }

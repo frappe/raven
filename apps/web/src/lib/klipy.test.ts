@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { buildGifHtml, fetchGifs, isKlipyMediaUrl, localeFromLanguage, pickMedia, registerShare, type KlipyGif, type KlipyMedia } from "./klipy"
+import { buildGifHtml, fetchGifs, isKlipyMediaUrl, localeFromLanguage, pickMedia, pickPreview, registerShare, type KlipyGif, type KlipyMedia } from "./klipy"
 
 const media = (url: string, width = 498, height = 280) => ({ url, width, height })
 const gif = (over: Partial<KlipyGif> = {}): KlipyGif => ({
@@ -33,6 +33,20 @@ describe("pickMedia", () => {
     it("is undefined when the size is missing", () => expect(pickMedia(gif({ file: {} }), "md")).toBeUndefined())
     it("is undefined for an item with no file at all", () => {
         expect(pickMedia({ ...gif(), file: undefined } as unknown as KlipyGif, "md")).toBeUndefined()
+    })
+})
+
+describe("pickPreview", () => {
+    it("is the small media of a GIF that can be sent", () => expect(pickPreview(gif())?.url).toBe("https://static.klipy.com/ii/c"))
+
+    // Tapping a tile sends the md media: a tile without it would do nothing.
+    it("is undefined when there is nothing to send", () => {
+        expect(pickPreview(gif({ file: { sm: gif().file.sm } }))).toBeUndefined()
+    })
+
+    it("is undefined when either media is off KLIPY's hosts", () => {
+        expect(pickPreview(gif({ file: { ...gif().file, sm: { gif: media("https://evil.com/c") } } }))).toBeUndefined()
+        expect(pickPreview(gif({ file: { ...gif().file, md: { gif: media("https://evil.com/b") } } }))).toBeUndefined()
     })
 })
 
@@ -99,7 +113,7 @@ describe("fetchGifs", () => {
 
     it("maps the response and keeps KLIPY's order", async () => {
         vi.stubGlobal("fetch", ok(page))
-        expect(await fetchGifs({ query: "", page: 2 })).toEqual({ items: [gif()], page: 2, hasNext: true })
+        expect(await fetchGifs({ query: "", page: 2 })).toEqual({ items: [gif()], hasNext: true })
     })
 
     it("fails without a key", async () => {
