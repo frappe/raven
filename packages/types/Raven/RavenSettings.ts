@@ -14,8 +14,8 @@ export interface RavenSettings{
 	idx?: number
 	/**	Automatically add system users to Raven : Check	*/
 	auto_add_system_users?: 0 | 1
-	/**	Tenor API Key : Data	*/
-	tenor_api_key?: string
+	/**	KLIPY API Key : Data - From the KLIPY Partner Panel (partner.klipy.com). Turns on GIFs.	*/
+	klipy_api_key?: string
 	/**	Enable AI Integration : Check	*/
 	enable_ai_integration?: 0 | 1
 	/**	Enable OpenAI Services : Check	*/
