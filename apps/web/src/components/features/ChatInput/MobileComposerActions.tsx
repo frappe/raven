@@ -1,11 +1,13 @@
 import { useRef, useState } from "react"
-import { Plus, Camera, Images, FileBox, type LucideIcon, FilesIcon, ChartBar, Video } from "lucide-react"
+import { Plus, Camera, Images, FileBox, type LucideIcon, FilesIcon, ChartBar, Video, ImagePlay } from "lucide-react"
 import { Button } from "@components/ui/button"
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle, DrawerTrigger } from "@components/ui/drawer"
 import { useSetAtom } from "jotai"
 import { preparingFilesAtom, useAttachFile, type PreparingFile } from "./useFileInput"
 import { CreatePollDialog } from "./CreatePollDialog"
 import AttachFrappeDocumentDialog from "./AttachFrappeDocumentDialog"
+import { GifSheet } from "./gifs/GifSheet"
+import { preconnectKlipy, type KlipyGif } from "@lib/klipy"
 import { isAndroid } from "@utils/platform"
 import _ from "@lib/translate"
 
@@ -14,8 +16,8 @@ let pickCount = 0
 
 /**
  * Mobile composer overflow: a single "+" opens a bottom sheet of circle icon
- * tiles (camera / photos / files / document / poll — WhatsApp-style). The
- * poll/document dialogs are driven in controlled mode (they live OUTSIDE the
+ * tiles (camera / photos / files / poll / document / GIF — WhatsApp-style). The
+ * poll/document dialogs and the GIF sheet are driven in controlled mode (they live OUTSIDE the
  * sheet, so closing it before opening them is safe); every attach path funnels
  * through the shared useAttachFile, so size/type validation still applies.
  *
@@ -38,12 +40,16 @@ let pickCount = 0
  */
 export const MobileComposerActions = ({
     channelID,
+    onPickGif,
 }: {
     channelID: string
+    /** Sends a picked GIF; the GIF tile shows only when it's passed. */
+    onPickGif?: (gif: KlipyGif, query: string) => void
 }) => {
     const [sheetOpen, setSheetOpen] = useState(false)
     const [pollOpen, setPollOpen] = useState(false)
     const [docOpen, setDocOpen] = useState(false)
+    const [gifOpen, setGifOpen] = useState(false)
     const onAddFile = useAttachFile(channelID)
     const setPreparing = useSetAtom(preparingFilesAtom(channelID))
     const cameraInputRef = useRef<HTMLInputElement>(null)
@@ -88,6 +94,7 @@ export const MobileComposerActions = ({
         { icon: FilesIcon, label: _("Files"), onSelect: () => (iosApp ? pickNative("files") : fileInputRef.current?.click()) },
         { icon: ChartBar, label: _("Poll"), onSelect: () => setPollOpen(true) },
         { icon: FileBox, label: _("Document"), onSelect: () => setDocOpen(true) },
+        ...(onPickGif ? [{ icon: ImagePlay, label: _("GIF"), onSelect: () => setGifOpen(true) }] : []),
     ]
 
     return (
@@ -103,7 +110,14 @@ export const MobileComposerActions = ({
             <input type="file" accept="image/*,video/*" multiple ref={galleryInputRef} className="hidden" onChange={onPicked} />
             <input type="file" multiple ref={fileInputRef} className="hidden" onChange={onPicked} />
 
-            <Drawer open={sheetOpen} onOpenChange={setSheetOpen}>
+            <Drawer
+                open={sheetOpen}
+                onOpenChange={(open) => {
+                    setSheetOpen(open)
+                    // The GIF tile is a tap away: open KLIPY's connections now.
+                    if (open && onPickGif) preconnectKlipy()
+                }}
+            >
                 <DrawerTrigger asChild>
                     <Button type="button" variant="ghost" size="lg" isIconButton aria-label={_("More actions")} className="rounded-full">
                         <Plus className="size-8" />
@@ -137,6 +151,7 @@ export const MobileComposerActions = ({
             {/* Controlled dialogs opened from the sheet rows (triggers hidden). */}
             <CreatePollDialog channelID={channelID} open={pollOpen} onOpenChange={setPollOpen} hideTrigger />
             <AttachFrappeDocumentDialog channelID={channelID} open={docOpen} onOpenChange={setDocOpen} hideTrigger />
+            {onPickGif && <GifSheet open={gifOpen} onOpenChange={setGifOpen} onPick={onPickGif} />}
         </>
     )
 }
