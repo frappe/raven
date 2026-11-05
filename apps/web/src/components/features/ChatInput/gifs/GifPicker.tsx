@@ -66,6 +66,8 @@ const GifNotice = ({ text, onRetry, className }: { text: string; onRetry?: () =>
 /** Search + 2-column masonry of KLIPY GIFs, trending until the user types. Results stay in KLIPY's order. */
 export const GifPicker = ({ onPick, className }: { onPick: (gif: KlipyGif, query: string) => void; className?: string }) => {
     const isMobile = useIsMobile()
+    // InputGroup and Input take the same size; a mismatch leaves the input shorter than its box.
+    const searchSize = isMobile ? "lg" : "md"
     const { state, setQuery, loadMore, retry } = useGifSearch()
     // Tiles stay clickable while the popover or sheet animates closed: a double-click would
     // send twice. Each open mounts a new picker, so one pick per picker is one per open.
@@ -103,10 +105,10 @@ export const GifPicker = ({ onPick, className }: { onPick: (gif: KlipyGif, query
 
     return (
         <div className={cn("flex h-full min-h-0 flex-col gap-2", className)}>
-            <InputGroup variant="subtle">
+            <InputGroup variant="subtle" size={searchSize}>
                 <InputGroupAddon><SearchIcon /></InputGroupAddon>
                 <Input
-                    type="search"
+                    inputSize={searchSize}
                     enterKeyHint="search"
                     placeholder={_("Search KLIPY")}
                     aria-label={_("Search KLIPY")}
@@ -114,11 +116,11 @@ export const GifPicker = ({ onPick, className }: { onPick: (gif: KlipyGif, query
                     onChange={(e) => setQuery(e.target.value)}
                 />
             </InputGroup>
-            <div className="min-h-0 flex-1 overflow-hidden">{body}</div>
+            {/* -mx cancels the tiles' side padding, so their edges line up with the search box. */}
+            <div className="-mx-0.75 min-h-0 flex-1 overflow-hidden">{body}</div>
             {/* A page that failed after earlier ones keeps the grid; say why it stopped. */}
             {failed && state.items.length > 0 && <GifNotice text={errorText} onRetry={retry} />}
             <p role="status" className="sr-only">{statusText}</p>
-            <p className="text-center text-xs text-ink-gray-5">{_("Powered by KLIPY")}</p>
         </div>
     )
 }

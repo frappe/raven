@@ -28,7 +28,7 @@ export const GifPickerButton = ({ onPick }: { onPick: (gif: KlipyGif, query: str
             <PopoverContent
                 side="top"
                 align="start"
-                className="h-[26rem] w-[22rem] p-2"
+                className="h-[27rem] w-[22rem] border-0 p-3"
                 // After a pick, focus stays in the composer (onPick put it there); Escape returns it to this button.
                 onCloseAutoFocus={(e) => {
                     if (picked.current) e.preventDefault()
