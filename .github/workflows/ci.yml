@@ -9,6 +9,7 @@ on:
   pull_request:
     paths:
       - raven/**
+  workflow_dispatch:
 
 jobs:
   tests:
