@@ -134,7 +134,7 @@ function AgentNameCell({ bot, onOpen }: { bot: RavenBot; onOpen: (id: string) =>
             <button
                 type="button"
                 onClick={() => onOpen(bot.name)}
-                className="group text-left min-w-0 cursor-pointer"
+                className="group text-start min-w-0 cursor-pointer"
             >
                 <div className="flex items-center gap-2 min-w-0">
                     <Avatar className="h-8 w-8 rounded-md">

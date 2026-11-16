@@ -120,7 +120,7 @@ const ChannelHeader = ({ channelID, showActions = true, onOpenChannel }: Channel
             </div>
 
             {/* Right side */}
-            <div className="flex items-center gap-1 ml-auto shrink-0 pl-1">
+            <div className="flex items-center gap-1 ms-auto shrink-0 ps-1">
                 {onOpenChannel && !isMobile && (
                     <Tooltip>
                         <TooltipTrigger asChild>

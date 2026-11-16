@@ -99,9 +99,9 @@ const NavUserMenu = () => {
                 collisionPadding={16}
             >
                 <DropdownMenuLabel className="p-0 font-normal">
-                    <div className="flex items-center gap-2 p-1.5 text-left text-sm">
+                    <div className="flex items-center gap-2 p-1.5 text-start text-sm">
                         <UserAvatar user={userData} size="md" className="rounded-lg" showStatusIndicator={true} showBotIndicator={false} addColoredFallback={false} />
-                        <div className="flex flex-col gap-0.5 text-left text-sm">
+                        <div className="flex flex-col gap-0.5 text-start text-sm">
                             <span className="truncate font-semibold text-ink-gray-8">{userData.full_name}</span>
                             <span className="truncate text-xs text-ink-gray-5">{userData.name}</span>
                         </div>

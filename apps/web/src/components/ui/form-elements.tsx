@@ -87,7 +87,7 @@ export const SelectFormField = ({ name, rules, label, isRequired, formDescriptio
                     <Select onValueChange={field.onChange} value={field.value} disabled={disabled || readOnly} aria-readonly={readOnly}>
                         <FormControl>
                             {/* svg:last-child = Radix's chevron; the clear × takes its slot. */}
-                            <SelectTrigger className={showClear ? "w-full pr-7 [&>svg:last-child]:hidden" : "w-full"}>
+                            <SelectTrigger className={showClear ? "w-full pe-7 [&>svg:last-child]:hidden" : "w-full"}>
                                 <SelectValue placeholder={placeholder} />
                             </SelectTrigger>
                         </FormControl>
@@ -160,7 +160,7 @@ export const DateField = ({ name, rules, label, isRequired, formDescription, inp
                         variant="ghost"
                         size="xs"
                         isIconButton
-                        className="absolute top-1/2 ltr:right-2 rtl:left-2 -translate-y-1/2"
+                        className="absolute top-1/2 end-2 -translate-y-1/2"
                     >
                         <CalendarIcon />
                         <span className="sr-only">{_("Select date")}</span>

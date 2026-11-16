@@ -45,7 +45,7 @@ export function MainPageSkeleton() {
     return (
         <div className="flex h-screen">
             {/* Workspace Switcher Skeleton - Left narrow bar */}
-            <div className="w-[60px] border-r border-outline-gray-2 bg-surface-sidebar flex flex-col items-center gap-4 py-6">
+            <div className="w-[60px] border-e border-outline-gray-2 bg-surface-sidebar flex flex-col items-center gap-4 py-6">
                 <Skeleton className="w-8 h-8 rounded-md" />
                 <Skeleton className="w-8 h-8 rounded-md" />
                 <Skeleton className="w-8 h-8 rounded-md" />
@@ -54,7 +54,7 @@ export function MainPageSkeleton() {
             </div>
 
             {/* Channel Sidebar Skeleton */}
-            <div className="w-[280px] border-r border-outline-gray-2 bg-surface-sidebar flex flex-col">
+            <div className="w-[280px] border-e border-outline-gray-2 bg-surface-sidebar flex flex-col">
                 {/* Sidebar Header */}
                 <div className="h-(--app-header-height) border-b border-outline-gray-2 px-4 flex items-center justify-between">
                     <Skeleton className="h-4 w-32" />
@@ -80,7 +80,7 @@ export function MainPageSkeleton() {
                                 <Skeleton className="h-4 w-28" />
                             </div>
                             {/* Group channels */}
-                            <div className="ml-3 space-y-2">
+                            <div className="ms-3 space-y-2">
                                 {Array.from({ length: 4 }).map((_, j) => (
                                     <div key={j} className="flex items-center gap-2">
                                         <Skeleton className="h-3.5 w-3.5 rounded shrink-0" />

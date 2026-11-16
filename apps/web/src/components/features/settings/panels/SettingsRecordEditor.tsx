@@ -102,7 +102,7 @@ const Create = <T extends FieldValues>({
                         </Button>
                     }
                 >
-                    <SettingsPanelTitle className="items-center h-auto -ml-2">
+                    <SettingsPanelTitle className="items-center h-auto -ms-2">
                         <BackButton onBack={onBack} label={backLabel} />
                         {createTitle}
                     </SettingsPanelTitle>
@@ -198,7 +198,7 @@ const DetailContent = <T extends FieldValues>({
                         </div>
                     }
                 >
-                    <SettingsPanelTitle className="items-center h-auto -ml-2">
+                    <SettingsPanelTitle className="items-center h-auto -ms-2">
                         <BackButton onBack={onBack} label={backLabel} />
                         {title(data)}
                         {hasChanges ? <Badge variant="subtle">{_("Not Saved")}</Badge> : badge?.(data)}

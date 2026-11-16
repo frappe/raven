@@ -322,10 +322,10 @@ const WorkspaceSwitcherItem = ({
             <span className="truncate text-lg md:text-sm leading-snug">{workspace.workspace_name}</span>
             {/* The current workspace shows the check; the others surface their unread */}
             {isCurrent ? (
-                <Check className="ml-auto h-4 w-4 text-ink-gray-8" />
+                <Check className="ms-auto h-4 w-4 text-ink-gray-8" />
             ) : (
                 unread > 0 && (
-                    <Badge size="sm" variant="ghost" theme="gray" className="ml-auto shrink-0">
+                    <Badge size="sm" variant="ghost" theme="gray" className="ms-auto shrink-0">
                         {unread > 9 ? "9+" : unread}
                     </Badge>
                 )
@@ -395,7 +395,7 @@ const ChannelGroup = ({
                     </button>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                    <ul className="md:ml-3.5 ml-4.5 flex min-w-0 translate-x-px flex-col gap-1 border-l border-outline-gray-1 dark:border-outline-gray-2 pl-2 py-0.5">
+                    <ul className="md:ms-3.5 ms-4.5 flex min-w-0 translate-x-px rtl:-translate-x-px flex-col gap-1 border-s border-outline-gray-1 dark:border-outline-gray-2 ps-2 py-0.5">
                         {channels.map((channel) => (
                             <li key={channel.name}>
                                 <ChannelRow channel={channel} workspaceID={workspaceID} />
@@ -404,7 +404,7 @@ const ChannelGroup = ({
                     </ul>
                 </CollapsibleContent>
                 {pinnedActiveChannel && (
-                    <ul className="ml-3.5 flex min-w-0 translate-x-px flex-col gap-1 border-l border-outline-gray-1 px-2 py-0.5">
+                    <ul className="ms-3.5 flex min-w-0 translate-x-px rtl:-translate-x-px flex-col gap-1 border-s border-outline-gray-1 px-2 py-0.5">
                         <li>
                             <ChannelRow channel={pinnedActiveChannel} workspaceID={workspaceID} />
                         </li>

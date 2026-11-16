@@ -12,6 +12,7 @@ import {
 } from "@lib/customEmojiShortcodes"
 import { cn } from "@lib/utils"
 import _ from "@lib/translate"
+import { textDirection } from "@lib/locale"
 
 /**
  * Renders a message body from the HTML the backend stores in `message.text`
@@ -142,6 +143,9 @@ const parseHtml = (html: string, shortcodes: CustomEmojiShortcodes | null): DOMN
     return dom
 }
 
+/** Blocks that take their direction from their own text. The composer uses the same set. */
+const AUTO_DIRECTION_TAGS = new Set(["p", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "ul", "ol", "li"])
+
 const options: HTMLReactParserOptions = {
     replace: (node) => {
         // Phone numbers in plain text become tel: links, detected at RENDER
@@ -169,6 +173,12 @@ const options: HTMLReactParserOptions = {
         // <pre> branch below, which runs on the parent before this strips a child.
         if (node.attribs?.class) delete node.attribs.class
 
+        // Each block reads in its own language's direction, as in the composer: Arabic
+        // right to left in an English interface, English left to right in an Arabic one.
+        // Set here, not stored, so old messages get it too.
+        const dir = AUTO_DIRECTION_TAGS.has(node.name) ? textDirection(textContent(node)) : undefined
+        if (dir) node.attribs.dir = dir
+
         // Mentions: swap the stored span for an interactive component that
         // resolves the live name, flags self-mentions, and links channels.
         const mentionType = node.attribs?.["data-type"]
@@ -192,7 +202,7 @@ const options: HTMLReactParserOptions = {
         // EditedMessageBody. A data-* marker for the same reason as spoilers:
         // classes don't survive the strip above.
         if (node.name === "span" && node.attribs?.["data-edited"] !== undefined) {
-            return <span className="ml-1 text-sm text-ink-gray-5">{domToReact(node.children as DOMNode[], options)}</span>
+            return <span className="ms-1 text-sm text-ink-gray-5">{domToReact(node.children as DOMNode[], options)}</span>
         }
 
         // Custom emoji: an inline <img data-type="customEmoji">. Render it sized like an

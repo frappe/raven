@@ -144,7 +144,7 @@ export const DocumentPrintDialog = ({
             <Drawer open={open} onOpenChange={onOpenChange}>
                 <DrawerContent>
                     <div className="flex h-[88dvh] flex-col gap-3 px-4 pb-[calc(var(--inset-bottom)+0.75rem)] pt-1">
-                        <DrawerTitle className="text-left">{_("Print {0}", [docname])}</DrawerTitle>
+                        <DrawerTitle className="text-start">{_("Print {0}", [docname])}</DrawerTitle>
                         {/* sr-only: the title already carries the document name on
                             screen; screen readers get the full purpose. */}
                         <DrawerDescription className="sr-only">

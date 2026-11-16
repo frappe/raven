@@ -23,10 +23,11 @@ import { Island } from "@components/layout/Island"
 
 type ThreadTab = 'participating' | 'ai' | 'other'
 
-const TABS: { key: ThreadTab; label: string }[] = [
-    { key: 'participating', label: 'Participating' },
-    { key: 'other', label: 'Other' },
-    { key: 'ai', label: 'AI Agents' },
+/** A function, so the labels are translated when used, not when the module loads. */
+const threadTabs = (): { key: ThreadTab; label: string }[] => [
+    { key: 'participating', label: _('Participating') },
+    { key: 'other', label: _('Other') },
+    { key: 'ai', label: _('AI Agents') },
 ]
 
 /** The thread pane (Outlet) reads this off the location state — the parent channel of the
@@ -67,7 +68,7 @@ export default function Threads() {
     const list = (
         <div className="relative flex flex-col flex-1 min-h-0 overflow-hidden">
             <PageHeader title={_("Threads")}>
-                <div className="ml-auto hidden md:flex items-center gap-2 px-1">
+                <div className="ms-auto hidden md:flex items-center gap-2 px-1">
                     <Label htmlFor="unread-toggle" className="text-xs font-medium text-ink-gray-4 cursor-pointer">
                         {_("Unread only")}
                     </Label>
@@ -81,12 +82,12 @@ export default function Threads() {
             <div className="flex flex-col flex-1 overflow-hidden">
                 <div className="p-2 shrink-0 space-y-3 z-0">
                     <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-gray-4 pointer-events-none" />
+                        <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-gray-4 pointer-events-none" />
                         <Input
                             placeholder={_("Search threads...")}
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="pl-9 pr-9 h-9 md:h-8 text-xl md:text-base"
+                            className="ps-9 pe-9 h-9 md:h-8 text-xl md:text-base"
                             autoFocus={!isMobile}
                         />
                         {search && (
@@ -94,7 +95,7 @@ export default function Threads() {
                                 type="button"
                                 onClick={() => setSearch("")}
                                 aria-label={_("Clear search")}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-gray-4 hover:text-ink-gray-8"
+                                className="absolute end-2 top-1/2 -translate-y-1/2 text-ink-gray-4 hover:text-ink-gray-8"
                             >
                                 <X className="h-4 w-4" />
                             </button>
@@ -103,9 +104,9 @@ export default function Threads() {
                     <div className="flex flex-row items-center gap-1 md:justify-between">
                         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ThreadTab)} className="min-w-0 shrink-0">
                             <TabsList variant="subtle" size="md">
-                                {TABS.map(tab => (
+                                {threadTabs().map(tab => (
                                     <TabsTrigger key={tab.key} value={tab.key}>
-                                        {_(tab.label)}
+                                        {tab.label}
                                     </TabsTrigger>
                                 ))}
                             </TabsList>

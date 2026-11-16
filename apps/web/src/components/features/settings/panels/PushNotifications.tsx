@@ -11,7 +11,7 @@ import { useRavenSettings } from "@hooks/fetchers/useRavenSettings"
 import type { RavenSettings } from "@raven/types/Raven/RavenSettings"
 import { AdminSettingsForm } from "./AdminSettingsForm"
 import { hasRole } from "@lib/permissions"
-import _ from "@lib/translate"
+import _, { withElements } from "@lib/translate"
 
 const FORM_ID = "settings-notifications-form"
 const DEFAULT_RAVEN_CLOUD_URL = "https://cloud.ravenchat.ai"
@@ -79,18 +79,20 @@ const PushNotificationFields = () => {
         <>
             <div className="text-p-sm text-ink-gray-7">
                 <p>{_("Push notifications are sent through Raven Cloud. To set it up:")}</p>
-                <ol className="mt-2 list-decimal space-y-1 pl-5">
+                <ol className="mt-2 list-decimal space-y-1 ps-5">
                     <li>
-                        <a
-                            href={DEFAULT_RAVEN_CLOUD_URL}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1 text-ink-blue-link underline"
-                        >
-                            {_("Create a Raven Cloud account")}
-                            <ExternalLinkIcon className="size-3.5" />
-                        </a>{" "}
-                        {_("and add your site to get an API Key and API Secret.")}
+                        {withElements(_("{0} and add your site to get an API Key and API Secret."), [
+                            <a
+                                key="link"
+                                href={DEFAULT_RAVEN_CLOUD_URL}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 text-ink-blue-link underline"
+                            >
+                                {_("Create a Raven Cloud account")}
+                                <ExternalLinkIcon className="size-3.5" />
+                            </a>,
+                        ])}
                     </li>
                     <li>{_("Enter the credentials below and save.")}</li>
                     <li>{_("Register the site on Raven Cloud, then sync your users' devices.")}</li>
@@ -108,7 +110,7 @@ const PushNotificationFields = () => {
                 inputProps={{ placeholder: DEFAULT_RAVEN_CLOUD_URL, autoComplete: "off", maxLength: 300 }}
                 formDescription={
                     <>
-                        {_("You can keep this as \"{0}\" if you are using the default Raven Cloud instance.", [DEFAULT_RAVEN_CLOUD_URL])}
+                        {_('You can keep this as "{0}" if you are using the default Raven Cloud instance.', [DEFAULT_RAVEN_CLOUD_URL])}
                         <br />
                         {_("Only change this if you are using a custom Raven Cloud instance.")}
                     </>

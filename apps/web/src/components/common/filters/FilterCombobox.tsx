@@ -195,8 +195,8 @@ export function FilterCombobox({
                         // plus the list's p-px = 30px. Matching the row it lives in beats
                         // matching the popover's own h-8 search field, which is a separate
                         // surface. No `!` needed: cn() puts className after the variant classes.
-                        // pr-7 while clearable: room for the clear button sitting on top.
-                        className={cn(FILTER_TRIGGER_STYLES, onClear && "pr-7", triggerClassName)}
+                        // pe-7 while clearable: room for the clear button sitting on top.
+                        className={cn(FILTER_TRIGGER_STYLES, onClear && "pe-7", triggerClassName)}
                     >
                         {trigger}
                         {!onClear && <ChevronDownIcon className="size-4 shrink-0 text-ink-gray-4" />}

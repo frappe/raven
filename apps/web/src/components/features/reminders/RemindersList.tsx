@@ -436,7 +436,7 @@ const RemindersList = ({ searchQuery, channel, mode, onSelect, selectedID, selec
                                         // Shown only while the card is hovered, while its menu is open, or while
                                         // the button has keyboard focus. Opacity rather than display, so the
                                         // button stays in the tab order and nothing shifts when it appears.
-                                        className="absolute right-4 top-2 hidden md:flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 has-[[data-state=open]]:opacity-100"
+                                        className="absolute end-4 top-2 hidden md:flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 has-[[data-state=open]]:opacity-100"
                                         onClick={(e) => e.stopPropagation()}
                                     >
                                         <DropdownMenu onOpenChange={(next) => setMenuFor(next ? reminder.name : null)}>

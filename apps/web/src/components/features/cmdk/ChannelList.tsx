@@ -59,7 +59,7 @@ const ChannelList = ({ text }: { text: string }) => {
         >
             <ChannelIcon type={channel.type} className="h-4 w-4 shrink-0" />
             <span className="truncate">{channel.channel_name}</span>
-            <div className='flex items-center gap-1 ml-auto'>
+            <div className='flex items-center gap-1 ms-auto'>
                 {channel.is_archived ? (
                     <Badge variant="subtle" size='sm'>
                         {_("Archived")}

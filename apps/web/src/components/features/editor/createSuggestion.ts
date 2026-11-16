@@ -87,7 +87,7 @@ export function createSuggestionRender<T, A>(
                 renderer = new ReactRenderer(ListComponent, { editor: start.editor, props: props() })
                 const anchor = start.editor.view.dom.closest("[data-raven-editor]") ?? document.body
                 const element = renderer.element as HTMLElement
-                element.className = "absolute left-0 bottom-full z-50 mb-2"
+                element.className = "absolute start-0 bottom-full z-50 mb-2"
                 anchor.appendChild(element)
                 update()
             },

@@ -31,9 +31,8 @@ export const PollQuestionHeader: React.FC<PollQuestionHeaderProps> = ({ poll, cl
             // mentally diff against now — near deadlines are when it matters.
             if (end.isSame(dayjs(), "day")) return _("This poll will end today at {0}.", [time])
             if (end.isSame(dayjs().add(1, "day"), "day")) return _("This poll will end tomorrow at {0}.", [time])
-            return _("This poll will end on {0}.", [
-                end.format(timeFormat === "12-hour" ? "Do MMM YYYY - h:mma" : "Do MMM YYYY - HH:mm"),
-            ])
+            const date = end.format(timeFormat === "12-hour" ? "Do MMM YYYY - h:mma" : "Do MMM YYYY - HH:mm")
+            return _("This poll will end on {0}.", [date])
         } catch {
             return _("This poll will end on a future date.")
         }

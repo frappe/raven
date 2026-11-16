@@ -219,7 +219,7 @@ const DrawerBody = ({ onNavigate, onClose }: {
                     editing ? "max-h-12 opacity-100" : "max-h-0 opacity-0",
                 )}
             >
-                <div className="flex items-center justify-between pb-1 pl-4 pr-3">
+                <div className="flex items-center justify-between pb-1 ps-4 pe-3">
                     <span className="text-p-sm text-ink-gray-5">{_("Drag to reorder")}</span>
                     <Button variant="subtle" size="sm" onClick={() => setEditing(false)}>
                         {_("Done")}
@@ -298,7 +298,7 @@ const DrawerBody = ({ onNavigate, onClose }: {
                                             <button
                                                 type="button"
                                                 onClick={() => openChannel(row)}
-                                                className="flex py-2.5 w-full items-center gap-1 rounded-md px-2 text-left active:bg-surface-gray-2"
+                                                className="flex py-2.5 w-full items-center gap-1 rounded-md px-2 text-start active:bg-surface-gray-2"
                                             >
                                                 <ChannelIcon type={row.channel.type} className="size-4.5 shrink-0 text-ink-gray-6" />
                                                 <span className="min-w-0 flex-1 truncate text-base-medium text-ink-gray-8">

@@ -273,9 +273,9 @@ const QuickImportPopover = ({ doctype }: { doctype: string }) => {
             <PopoverContent className="w-[360px]">
                 <div className="flex flex-col gap-2">
                     <div className="relative">
-                        <SearchIcon className="text-ink-gray-5 absolute top-1/2 ltr:left-2.5 rtl:right-2.5 size-4 -translate-y-1/2" />
+                        <SearchIcon className="text-ink-gray-5 absolute top-1/2 start-2.5 size-4 -translate-y-1/2" />
                         <Input
-                            className="pl-8"
+                            className="ps-8"
                             value={searchText}
                             onChange={(e) => setSearchText(e.target.value)}
                             placeholder={_("Search")}

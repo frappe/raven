@@ -127,7 +127,7 @@ export const ChannelTable = ({ data }: { data: ChannelSidebarData }) => {
 
   return (
     <ListView
-      className="flex-1 min-h-0 pr-2"
+      className="flex-1 min-h-0 pe-2"
       data={tableData}
       columns={columns}
       getRowId={(row) => row.name}

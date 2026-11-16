@@ -65,13 +65,13 @@ export const BaseThreadMessage = ({
             </div>
 
             {/* Participants and reply count */}
-            <div className="flex items-center gap-2 mt-3 ml-12 relative z-10">
+            <div className="flex items-center gap-2 mt-3 ms-12 relative z-10">
                 {!channelDetails.isDirectMessage ? (
                     <GroupedAvatars users={channelDetails.participants} max={3} size="xs" />
                 ) : <div className="h-6" />}
                 {count > 0 ? (
                     <span className={cn("text-xs text-ink-gray-8", isUnread ? "font-bold" : "font-semibold")}>
-                        {_(`${count} ${count === 1 ? 'Reply' : 'Replies'}`)}
+                        {count === 1 ? _("1 Reply") : _("{0} Replies", [String(count)])}
                     </span>
                 ) : null}
             </div>

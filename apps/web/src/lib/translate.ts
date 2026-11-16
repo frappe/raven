@@ -1,3 +1,5 @@
+import { createElement, Fragment, type ReactNode } from "react";
+
 function _(txt: string, replace?: string[], context = null) {
     if (!txt) return txt;
     if (typeof txt != "string") return txt;
@@ -42,4 +44,16 @@ function format(str: string, args: string[]) {
         }
     );
 }
+
+/**
+ * Puts React elements (a link, a name in bold, code) at the `{0}`, `{1}` placeholders of an
+ * already translated sentence. Pass `_("…")` in, not the English: the string extractor only
+ * finds `_()` calls. Keeping the whole sentence as one string lets each language order it.
+ */
+export function withElements(translated: string, elements: ReactNode[]): ReactNode[] {
+    return translated.split(/\{(\d+)\}/).map((part, index) =>
+        index % 2 === 1 ? createElement(Fragment, { key: index }, elements[Number(part)]) : part
+    );
+}
+
 export default _;

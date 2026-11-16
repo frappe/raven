@@ -407,6 +407,12 @@ export const ForwardMessageDialog = ({
             .finally(() => setSending(false))
     }
 
+    const recipientName = !recipient
+        ? ""
+        : recipient.kind === "channel"
+            ? `#${recipient.channel.channel_name ?? recipient.channel.name}`
+            : recipient.user.first_name || recipient.user.full_name || recipient.user.name
+
     return (
         // Desktop dialog, mobile bottom sheet — the same shell as the attach and
         // run-action dialogs.
@@ -453,13 +459,7 @@ export const ForwardMessageDialog = ({
                     className="min-w-0 max-sm:order-first"
                 >
                     <span className="truncate">
-                        {recipient
-                            ? _("Forward to {0}", [
-                                recipient.kind === "channel"
-                                    ? `#${recipient.channel.channel_name ?? recipient.channel.name}`
-                                    : recipient.user.first_name || recipient.user.full_name || recipient.user.name,
-                            ])
-                            : _("Forward")}
+                        {recipient ? _("Forward to {0}", [recipientName]) : _("Forward")}
                     </span>
                 </Button>
             </DialogFooter>

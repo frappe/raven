@@ -90,7 +90,7 @@ const GeneralTab = () => {
                             doctype="Server Script"
                             filters={[["disabled", "=", 0], ["script_type", "=", "API"]]}
                             rules={{ required: action === "Server Script" ? _("Server Script is required") : false }}
-                            formDescription={_("The Server Script to run. It must be of type \"API\".")}
+                            formDescription={_('The Server Script to run. It must be of type "API".')}
                         />
                         <a
                             href={serverScript ? `/app/server-script/${serverScript}` : "/app/server-script/list"}

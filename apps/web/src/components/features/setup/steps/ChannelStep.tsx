@@ -91,7 +91,9 @@ const ChannelForm = ({ setup, isLast, finishing, onDone, onPreview, onBusyChange
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
                 <p className="text-p-base text-ink-gray-7">
-                    {_("Where your team talks in {0}. Add more anytime from the sidebar.", [workspaceName ?? _("your workspace")])}
+                    {workspaceName
+                        ? _("Where your team talks in {0}. Add more anytime from the sidebar.", [workspaceName])
+                        : _("Where your team talks in your workspace. Add more anytime from the sidebar.")}
                 </p>
                 {createError && <ErrorBanner error={createError} />}
                 {updateError && <ErrorBanner error={updateError} />}

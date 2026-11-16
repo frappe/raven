@@ -1,5 +1,6 @@
 import { cn } from "@lib/utils"
 import "./spinner.css"
+import _ from "@lib/translate"
 
 type SpinnerSize = "xs" | "sm" | "md" | "lg"
 
@@ -46,7 +47,7 @@ function Spinner({
   return (
     <svg
       role="status"
-      aria-label="Loading"
+      aria-label={_("Loading")}
       width={16}
       height={16}
       className={cn("fui-spinner inline-block shrink-0", colorClass, track && "fui-spinner--track", className)}

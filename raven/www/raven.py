@@ -25,6 +25,12 @@ def get_context(context):
 		except Exception as e:
 			raise frappe.SessionBootFailed from e
 
+	boot["layout_direction"] = layout_direction()
+	# The scheduled messages settings warn when server scripts are off. Same default as Frappe.
+	# Site config often holds 0 or 1, and the client checks for false.
+	boot["server_script_enabled"] = frappe.session.user != "Guest" and bool(
+		frappe.conf.get("server_script_enabled", False)
+	)
 	boot_json = frappe.as_json(boot, indent=None, separators=(",", ":"))
 	boot_json = SCRIPT_TAG_PATTERN.sub("", boot_json)
 
@@ -32,7 +38,14 @@ def get_context(context):
 	boot_json = json.dumps(boot_json)
 
 	context.update(
-		{"build_version": frappe.utils.get_build_version(), "boot": boot_json, "csrf_token": csrf_token}
+		{
+			"build_version": frappe.utils.get_build_version(),
+			"boot": boot_json,
+			"csrf_token": csrf_token,
+			# On the html tag, so the first paint already has the right direction.
+			"lang": frappe.local.lang,
+			"layout_direction": boot["layout_direction"],
+		}
 	)
 
 	app_name = frappe.get_website_settings("app_name") or frappe.get_system_settings("app_name")
@@ -56,18 +69,6 @@ def get_context(context):
 	if frappe.session.user != "Guest":
 		capture("active_site", "raven")
 
-		boot["push_relay_server_url"] = frappe.conf.get("push_relay_server_url")
-
-		# add server_script_enabled in boot
-		if "server_script_enabled" in frappe.conf:
-			enabled = frappe.conf.server_script_enabled
-		else:
-			enabled = True
-		boot["server_script_enabled"] = enabled
-	else:
-		boot["server_script_enabled"] = False
-		boot["push_relay_server_url"] = None
-
 	return context
 
 
@@ -85,6 +86,7 @@ def get_boot():
 		raise frappe.SessionBootFailed from e
 
 	boot["push_relay_server_url"] = frappe.conf.get("push_relay_server_url")
+	boot["layout_direction"] = layout_direction()
 	boot_json = frappe.as_json(boot, indent=None, separators=(",", ":"))
 	boot_json = SCRIPT_TAG_PATTERN.sub("", boot_json)
 
@@ -92,6 +94,13 @@ def get_boot():
 	boot_json = json.dumps(boot_json)
 
 	return boot_json
+
+
+def layout_direction() -> str:
+	"""Right to left for the user's language when Frappe says so, else left to right."""
+	from frappe.utils.jinja_globals import is_rtl
+
+	return "rtl" if is_rtl() else "ltr"
 
 
 def get_favicon():

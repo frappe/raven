@@ -15,6 +15,7 @@ import { Button } from "@components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@components/ui/select"
 import { TableVirtuoso } from "react-virtuoso"
 import { forwardRef, useMemo } from "react"
+import _ from "@lib/translate"
 
 /**
  * A reusable DataTable component for displaying tabular data.
@@ -146,13 +147,13 @@ export function DataTable<TData>({
         const direction = getColumnSortDirection(column)
 
         if (direction === "asc") {
-            return <ArrowUpIcon className="ml-2 h-4 w-4" />
+            return <ArrowUpIcon className="ms-2 h-4 w-4" />
         }
         if (direction === "desc") {
-            return <ArrowDownIcon className="ml-2 h-4 w-4" />
+            return <ArrowDownIcon className="ms-2 h-4 w-4" />
         }
         // No active sort: show neutral icon (only if sortable)
-        return <ChevronsUpDownIcon className="ml-2 h-4 w-4 opacity-50" />
+        return <ChevronsUpDownIcon className="ms-2 h-4 w-4 opacity-50" />
     }
 
     /**
@@ -176,7 +177,7 @@ export function DataTable<TData>({
         if (sortable) {
             return (
                 <Button
-                    className="flex items-center hover:text-ink-gray-8 transition-colors -ml-2 px-2 py-1 rounded"
+                    className="flex items-center hover:text-ink-gray-8 transition-colors -ms-2 px-2 py-1 rounded"
                     onClick={() => handleSortClick(column)}
                     variant="ghost"
                     size="sm"
@@ -291,7 +292,7 @@ export function DataTable<TData>({
                                         >
                                             {emptyState ?? (
                                                 <span className="text-ink-gray-4">
-                                                    No data available.
+                                                    {_("No data available.")}
                                                 </span>
                                             )}
                                         </TableCell>
@@ -382,7 +383,7 @@ function DataTablePagination({
             <div className="flex items-center gap-4">
                 {/* Page size selector */}
                 <div className="flex items-center gap-2">
-                    <span className="text-sm text-ink-gray-4">Rows per page</span>
+                    <span className="text-sm text-ink-gray-4">{_("Rows per page")}</span>
                     <Select
                         value={String(pagination.pageSize)}
                         onValueChange={onPageSizeChange}
@@ -415,7 +416,7 @@ function DataTablePagination({
                         disabled={!canGoPrevious}
                     >
                         <ChevronLeftIcon className="h-4 w-4" />
-                        <span className="sr-only">Previous page</span>
+                        <span className="sr-only">{_("Previous page")}</span>
                     </Button>
                     <Button
                         variant="outline"
@@ -425,7 +426,7 @@ function DataTablePagination({
                         disabled={!canGoNext}
                     >
                         <ChevronRightIcon className="h-4 w-4" />
-                        <span className="sr-only">Next page</span>
+                        <span className="sr-only">{_("Next page")}</span>
                     </Button>
                 </div>
             </div>

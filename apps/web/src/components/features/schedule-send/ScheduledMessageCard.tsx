@@ -127,7 +127,7 @@ export const ScheduledMessageCard = ({
                 on top (time · destination · kebab), message body below. */}
                     <div
                         className={cn(
-                            "overflow-hidden rounded-md border border-outline-gray-2 bg-surface-base text-left select-none",
+                            "overflow-hidden rounded-md border border-outline-gray-2 bg-surface-base text-start select-none",
                             // CSS :active, not state — a Virtuoso-recycled instance can't
                             // highlight the wrong row.
                             "active:border-outline-gray-3",
@@ -142,7 +142,7 @@ export const ScheduledMessageCard = ({
                                 <>
                                     <span className="shrink-0 text-ink-gray-4">·</span>
                                     <ChannelIcon type={channel.type} className="size-3.5 shrink-0 text-ink-gray-6" />
-                                    <span className="text-sm min-w-0 -ml-0.5">{channel.channel_name}</span>
+                                    <span className="text-sm min-w-0 -ms-0.5">{channel.channel_name}</span>
                                     <span className="shrink-0 text-ink-gray-4">·</span>
                                     {workspace && <span className="truncate text-xs text-ink-gray-4">{workspace.workspace_name}</span>}
                                 </>

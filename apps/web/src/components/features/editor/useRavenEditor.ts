@@ -14,6 +14,7 @@ import { UserMention } from "./userMention"
 import { ChannelMention } from "./channelMention"
 import { CustomEmoji } from "./customEmoji"
 import { Spoiler } from "./spoiler"
+import { AutoDirection } from "./autoDirection"
 import { EmojiSuggestion } from "./emoji"
 import { isSuggestionPopupOpen } from "./suggestion"
 import { convertFenceLineToCodeBlock } from "./codeBlockFence"
@@ -123,6 +124,7 @@ export const useRavenEditor = ({ mode = "chat", onUpdate, submitRef, linkRef, fi
         TableKit,
         CustomEmoji,
         Spoiler,
+        AutoDirection,
     ]
     // Mentions are a chat thing: a form-edited document has nobody to notify.
     if (mode === "chat") extensions.push(UserMention, ChannelMention)

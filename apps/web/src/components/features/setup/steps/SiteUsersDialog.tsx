@@ -172,7 +172,7 @@ const SiteUserRow = ({ user, selected, onToggle }: { user: SiteUser; selected: b
                 aria-pressed={selected}
                 disabled={disabled}
                 className={cn(
-                    "flex w-full items-center gap-2.5 rounded py-1.5 pl-1.5 pr-3 text-left transition-colors",
+                    "flex w-full items-center gap-2.5 rounded py-1.5 ps-1.5 pe-3 text-start transition-colors",
                     disabled ? "cursor-default opacity-60" : "cursor-pointer hover:bg-surface-gray-2",
                     selected && "bg-surface-gray-1",
                 )}

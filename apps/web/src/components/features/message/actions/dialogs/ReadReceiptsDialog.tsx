@@ -35,7 +35,7 @@ export const ReadReceiptsDialog = ({
                     scroll to the drawer's true bottom edge instead of clipping at a
                     padding line. */}
                 <DrawerContent className="pb-0">
-                    <DrawerTitle className="px-4 pb-4 pt-1 text-left text-2xl-semibold text-ink-gray-9">
+                    <DrawerTitle className="px-4 pb-4 pt-1 text-start text-2xl-semibold text-ink-gray-9">
                         {_("Read by")}
                     </DrawerTitle>
                     <DrawerDescription className="sr-only">{_("Who has read this message")}</DrawerDescription>

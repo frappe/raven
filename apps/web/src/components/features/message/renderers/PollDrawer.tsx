@@ -138,7 +138,7 @@ export const PollDrawer: React.FC<PollDrawerProps> = ({ messageID, onClose }) =>
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-2 md:border-b h-11 shrink-0">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <h2 className="text-lg-medium mb-0">Poll</h2>
+                    <h2 className="text-lg-medium mb-0">{_("Poll")}</h2>
                     {pollStatusBadge && (
                         <Badge variant="outline" theme={pollStatusBadge.theme}>
                             {pollStatusBadge.icon && <pollStatusBadge.icon />}
@@ -154,7 +154,7 @@ export const PollDrawer: React.FC<PollDrawerProps> = ({ messageID, onClose }) =>
                                 variant="ghost"
                                 size="sm"
                                 isIconButton
-                                aria-label="Poll settings"
+                                aria-label={_("Poll settings")}
                             >
                                 <MoreVertical />
                             </Button>
@@ -182,7 +182,7 @@ export const PollDrawer: React.FC<PollDrawerProps> = ({ messageID, onClose }) =>
                         size="sm"
                         isIconButton
                         onClick={onClose}
-                        aria-label="Close drawer"
+                        aria-label={_("Close drawer")}
                         className="md:inline-flex hidden"
                     >
                         <X />

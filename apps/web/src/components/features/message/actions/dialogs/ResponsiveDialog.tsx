@@ -67,7 +67,7 @@ export const ResponsiveDialogHeader = ({
     if (isMobile) {
         return (
             <div className="flex flex-col gap-1">
-                <DrawerTitle className="text-left">{title}</DrawerTitle>
+                <DrawerTitle className="text-start">{title}</DrawerTitle>
                 <DrawerDescription className={hideDescription ? "sr-only" : undefined}>{description}</DrawerDescription>
             </div>
         )

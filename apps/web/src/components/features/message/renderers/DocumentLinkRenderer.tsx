@@ -620,7 +620,7 @@ const UserValue = ({ id }: { id: string }) => {
         // As a middle-aligned inline box, the avatar stays out of it: the
         // cell's baseline is the name's own text baseline.
         <span className="break-words">
-            <span className="mr-1.5 inline-block size-5 align-middle">
+            <span className="me-1.5 inline-block size-5 align-middle">
                 <UserAvatar user={user} size="xs" />
             </span>
             {user.full_name}
@@ -745,7 +745,7 @@ const WorkflowTransitions = ({
             {data.message.map((transition) => (
                 <DropdownMenuItem key={transition.name} onSelect={() => applyTransition(transition.action)}>
                     <span className="font-medium">{transition.action}</span>
-                    <span className="ml-auto flex items-center gap-1 pl-3 text-p-xs text-ink-gray-5">
+                    <span className="ms-auto flex items-center gap-1 ps-3 text-p-xs text-ink-gray-5">
                         {transition.state}
                         <ArrowRightIcon className="size-3" />
                         {transition.next_state}

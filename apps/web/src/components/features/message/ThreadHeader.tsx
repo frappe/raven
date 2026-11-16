@@ -48,7 +48,7 @@ export const ThreadHeader = ({ onClose, onOpenChannel, onLeave, onRequestDelete,
     const paneHost = PANE_HOSTS.find((p) => path.startsWith(p + "/"))
     const goBack = useMobileBack(paneHost ?? "/threads")
 
-    return <div className="flex items-center justify-between h-11 pl-2 pr-4 md:pl-4 md:pr-2 py-0 md:py-2 border-b shrink-0">
+    return <div className="flex items-center justify-between h-11 ps-2 pe-4 md:ps-4 md:pe-2 py-0 md:py-2 border-b shrink-0">
         <div className="flex min-w-0 items-center gap-1">
             <div className="flex items-center justify-center md:hidden">
                 <Button variant="ghost" size="lg" isIconButton onClick={goBack} aria-label={_("Back")}>

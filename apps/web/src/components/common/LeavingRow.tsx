@@ -20,7 +20,7 @@ export const LeavingRow = ({ leaving = false, children }: { leaving?: boolean; c
     <div
         className={cn(
             "grid [grid-template-rows:1fr] transition-[grid-template-rows,opacity,translate] duration-300 ease-in-out motion-reduce:transition-none",
-            leaving && "[grid-template-rows:0fr] opacity-0 translate-x-6 min-h-px",
+            leaving && "[grid-template-rows:0fr] opacity-0 translate-x-6 rtl:-translate-x-6 min-h-px",
         )}
         inert={leaving ? true : undefined}
     >

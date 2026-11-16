@@ -60,7 +60,7 @@ const PollSkeleton = ({ content }: { content?: string | null }) => {
             <div className="flex flex-col gap-3">
                 {options.map((option, i) => (
                     <div key={i} className="flex items-center gap-2 h-7 bg-surface-gray-1 truncate animate-pulse max-w-full rounded-full [corner-shape:squircle] text-sm">
-                        <span className="min-w-0 flex-1 wrap-break-word h-7 px-3.5 py-1.5 text-ink-gray-7 pr-[calc(12ch+14px)] leading-snug">{option}</span>
+                        <span className="min-w-0 flex-1 wrap-break-word h-7 px-3.5 py-1.5 text-ink-gray-7 pe-[calc(12ch+14px)] leading-snug">{option}</span>
                     </div>
                 ))}
             </div>

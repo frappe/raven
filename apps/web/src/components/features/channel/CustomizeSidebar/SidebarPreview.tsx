@@ -81,7 +81,7 @@ export const SidebarPreview = ({ data, globalSort }: SidebarPreviewProps) => {
                                     open={isGroupOpen(groupName, channels.length > 0)}
                                     onOpenChange={(open) => setOpenGroups((prev) => ({ ...prev, [groupName]: open }))}
                                 >
-                                    <ul className="ml-3.5 flex min-w-0 translate-x-px flex-col gap-1 border-l border-outline-gray-1 px-2 py-0.5">
+                                    <ul className="ms-3.5 flex min-w-0 translate-x-px rtl:-translate-x-px flex-col gap-1 border-s border-outline-gray-1 px-2 py-0.5">
                                         {channels.map((channel) => (
                                             <li key={channel.name}>
                                                 <PreviewRow channel={channel} />

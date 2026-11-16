@@ -59,7 +59,7 @@ export const DatePickerPopover = ({ value, onChange, size = "sm", className }: D
                         size="xs"
                         isIconButton
                         aria-label={_("Select date")}
-                        className="absolute top-1/2 -translate-y-1/2 ltr:right-1.5 rtl:left-1.5"
+                        className="absolute top-1/2 -translate-y-1/2 end-1.5"
                     >
                         <CalendarIcon />
                     </Button>
