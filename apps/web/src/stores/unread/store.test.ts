@@ -39,6 +39,15 @@ describe("channelUnreadStore.markUnread", () => {
 		expect(channelUnreadStore.getServerWatermark(ch)).toBe("2026-06-10 11:00:00.000000")
 	})
 
+	it("keeps a newer message when the same mark arrives twice", () => {
+		const ch = "ch-markunread-twice"
+		channelUnreadStore.markUnread(ch, "2026-06-10 10:00:00.000000", 1)
+		channelUnreadStore.increment(ch, "2026-06-10 11:00:00.000000")
+		// The POST response and the realtime event carry the same mark; the second must not undo the increment.
+		channelUnreadStore.markUnread(ch, "2026-06-10 10:00:00.000000", 1)
+		expect(channelUnreadStore.getState(ch).count).toBe(2)
+	})
+
 	it("notifies that channel's subscribers", () => {
 		const ch = "ch-markunread-3"
 		let calls = 0
@@ -46,5 +55,36 @@ describe("channelUnreadStore.markUnread", () => {
 		channelUnreadStore.markUnread(ch, "2026-06-10 10:00:00.000000", 1)
 		expect(calls).toBe(1)
 		unsub()
+	})
+})
+
+describe("channelUnreadStore read hold", () => {
+	it("keeps the server count for the open channel while held", () => {
+		const ch = "ch-hold-reconcile"
+		channelUnreadStore.setActiveReadChannel(ch)
+		channelUnreadStore.markUnread(ch, "2026-06-10 10:00:00.000000", 2)
+		channelUnreadStore.reconcile(new Map([[ch, 2]]))
+		expect(channelUnreadStore.getState(ch).count).toBe(2)
+		channelUnreadStore.setActiveReadChannel(null)
+	})
+
+	it("counts new messages in the open channel while held", () => {
+		const ch = "ch-hold-2"
+		channelUnreadStore.setActiveReadChannel(ch)
+		channelUnreadStore.markUnread(ch, "2026-06-10 10:00:00.000000", 2)
+		channelUnreadStore.increment(ch, "2026-06-10 11:00:00.000000")
+		expect(channelUnreadStore.getState(ch).count).toBe(3)
+		channelUnreadStore.setActiveReadChannel(null)
+	})
+
+	it("treats the open channel as read again once released", () => {
+		const ch = "ch-hold-4"
+		channelUnreadStore.setActiveReadChannel(ch)
+		channelUnreadStore.markUnread(ch, "2026-06-10 10:00:00.000000", 2)
+		channelUnreadStore.releaseRead(ch)
+		channelUnreadStore.increment(ch, "2026-06-10 11:00:00.000000")
+		expect(channelUnreadStore.isReadHeld(ch)).toBe(false)
+		expect(channelUnreadStore.getState(ch).count).toBe(2)
+		channelUnreadStore.setActiveReadChannel(null)
 	})
 })

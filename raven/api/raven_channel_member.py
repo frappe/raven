@@ -65,8 +65,8 @@ def track_visit(channel_id: str, last_visit: str = None):
 def mark_channel_as_unread(channel_id: str, message_id: str = None):
 	"""
 	Mark a channel as unread for the current user. Message-anchored: the anchor
-	message and everything after it become unread. Returns the resulting unread
-	count (also broadcast to the user's other sessions for live badge updates).
+	message and everything after it become unread. Returns the unread count and the
+	new last_visit (also broadcast to the user's other sessions for live badge updates).
 	"""
 	frappe.has_permission("Raven Channel", doc=channel_id, throw=True)
 	return set_channel_unread(channel_id=channel_id, message_id=message_id)
