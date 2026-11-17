@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form"
 import { useFrappeUpdateDoc } from "frappe-react-sdk"
 import { toast } from "sonner"
 import { useRavenSettings } from "@hooks/fetchers/useRavenSettings"
-import { hasRole } from "@lib/permissions"
+import { isRavenSettingsAdmin } from "@lib/permissions"
 import { Alert, AlertDescription } from "@components/ui/alert"
 import { getErrorMessageAsMarkdown } from "@components/ui/error-banner"
 import { Button } from "@components/ui/button"
@@ -19,9 +19,6 @@ import {
 import type { RavenSettings } from "@raven/types/Raven/RavenSettings"
 import _ from "@lib/translate"
 import { useSaveHotkey } from "@hooks/useSaveHotkey"
-
-/** Only Raven Admins / System Managers may edit Raven Settings. */
-export const isRavenSettingsAdmin = () => hasRole("Raven Admin") || hasRole("System Manager")
 
 /**
  * Shared scaffold for the admin-facing Raven Settings panels (AI, HR, Notifications).

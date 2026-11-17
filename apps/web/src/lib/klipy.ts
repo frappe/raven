@@ -107,6 +107,20 @@ export const localeFromLanguage = (lang?: string): string | undefined => {
     return region ? region.toLowerCase() : undefined
 }
 
+/** The timeout covers the body too: a stalled body fails like a stalled answer. */
+const getJson = async <T>(url: string): Promise<T> => {
+    const abort = new AbortController()
+    const timer = setTimeout(() => abort.abort(), TIMEOUT_MS)
+    try {
+        const response = await fetch(url, { signal: abort.signal }).catch(() => { throw new KlipyError(0) })
+        if (!response.ok) throw new KlipyError(response.status)
+        // A captive portal or proxy can answer 200 with an HTML page.
+        return await response.json().catch(() => { throw new KlipyError(response.status) })
+    } finally {
+        clearTimeout(timer)
+    }
+}
+
 export const fetchGifs = async ({ query, page }: { query: string; page: number }): Promise<KlipyPage> => {
     const config = getKlipyConfig()
     if (!config) throw new KlipyError(0)
@@ -118,18 +132,13 @@ export const fetchGifs = async ({ query, page }: { query: string; page: number }
     const locale = localeFromLanguage(navigator.language)
     if (locale) params.set("locale", locale)
 
-    const abort = new AbortController()
-    const timer = setTimeout(() => abort.abort(), TIMEOUT_MS)
-    try {
-        const url = `${API_BASE}/${encodeURIComponent(config.apiKey)}/gifs/${q ? "search" : "trending"}?${params}`
-        const response = await fetch(url, { signal: abort.signal }).catch(() => { throw new KlipyError(0) })
-        if (!response.ok) throw new KlipyError(response.status)
-        // A captive portal or proxy can answer 200 with an HTML page.
-        const body: KlipyListResponse = await response.json().catch(() => { throw new KlipyError(response.status) })
-        return { items: body.data?.data ?? [], hasNext: !!body.data?.has_next }
-    } finally {
-        clearTimeout(timer)
-    }
+    const body = await getJson<KlipyListResponse>(`${API_BASE}/${encodeURIComponent(config.apiKey)}/gifs/${q ? "search" : "trending"}?${params}`)
+    return { items: body.data?.data ?? [], hasNext: !!body.data?.has_next }
+}
+
+/** Throws a KlipyError unless KLIPY takes `apiKey`. It answers an unknown key with a 404. */
+export const verifyKlipyKey = async (apiKey: string): Promise<void> => {
+    await getJson(`${API_BASE}/${encodeURIComponent(apiKey)}/gifs/trending?per_page=1`)
 }
 
 /** Tells KLIPY a GIF was sent, which tunes its ranking. Best effort. */

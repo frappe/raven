@@ -301,7 +301,7 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
         registerShare(gif.slug, query)
         if (!isMobile) editor?.commands.focus()
     }, [call, channelID, currentUser, pendingSend, replyTo, setReplyTo, quietSendMode, isMobile, editor])
-    // The site admin's KLIPY key turns GIFs on.
+    // The site admin's KLIPY key turns GIFs on. Mobile has no Settings to add one in, so its tile waits for the key.
     const klipyEnabled = !!getKlipyConfig()
 
     const handleSend = useCallback((opts?: { sendSilently?: boolean }) => {
@@ -535,7 +535,7 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                                     <Separator orientation="vertical" className="mx-1 h-4!" />
                                     {editor && <MentionButton editor={editor} />}
                                     {editor && <EmojiPickerButton editor={editor} />}
-                                    {klipyEnabled && <GifPickerButton onPick={sendGif} />}
+                                    <GifPickerButton onPick={sendGif} />
                                     <Separator orientation="vertical" className="mx-1 h-4!" />
                                     <CreatePollDialog channelID={channelID} />
                                     <AttachFrappeDocumentDialog channelID={channelID} />

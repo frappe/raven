@@ -14,7 +14,7 @@ import usePaginatedList from "@hooks/usePaginatedList"
 import useCreateHotkey from "@hooks/useCreateHotkey"
 import type { RavenWebhook } from "@raven/types/RavenIntegrations/RavenWebhook"
 import { getDateObject } from "@lib/date"
-import { isRavenSettingsAdmin } from "../AdminSettingsForm"
+import { isRavenSettingsAdmin } from "@lib/permissions"
 import _ from "@lib/translate"
 
 export const WEBHOOKS_LIST_KEY = "raven-webhooks"

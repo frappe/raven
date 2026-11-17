@@ -3,22 +3,35 @@ import { ImagePlayIcon } from "lucide-react"
 import { Button } from "@components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip"
-import { preconnectKlipy, type KlipyGif } from "@lib/klipy"
+import { getKlipyConfig, preconnectKlipy, type KlipyGif } from "@lib/klipy"
 import _ from "@lib/translate"
 import { GifPicker } from "./GifPicker"
+import { GifSetupNotice } from "./GifSetupNotice"
 
-/** Desktop composer toolbar: the GIF picker in a popover. A pick sends and closes it. */
+/**
+ * Desktop composer toolbar: the GIF picker in a popover. A pick sends and closes it.
+ * Shown even without a KLIPY key, so admins find where to turn GIFs on.
+ */
 export const GifPickerButton = ({ onPick }: { onPick: (gif: KlipyGif, query: string) => void }) => {
     const [open, setOpen] = useState(false)
     const picked = useRef(false)
+    // Read on open as well: an admin can add the key from another composer's popover.
+    const [enabled, setEnabled] = useState(() => !!getKlipyConfig())
+    const preconnect = enabled ? preconnectKlipy : undefined
 
     return (
-        <Popover open={open} onOpenChange={setOpen}>
+        <Popover
+            open={open}
+            onOpenChange={(next) => {
+                if (next) setEnabled(!!getKlipyConfig())
+                setOpen(next)
+            }}
+        >
             <Tooltip>
                 <TooltipTrigger asChild>
                     <PopoverTrigger asChild>
                         {/* Hover or focus is a likely click: open KLIPY's connections now. */}
-                        <Button type="button" variant="ghost" size="sm" isIconButton aria-label={_("GIF")} onPointerEnter={preconnectKlipy} onFocus={preconnectKlipy}>
+                        <Button type="button" variant="ghost" size="sm" isIconButton aria-label={_("GIF")} onPointerEnter={preconnect} onFocus={preconnect}>
                             <ImagePlayIcon />
                         </Button>
                     </PopoverTrigger>
@@ -35,13 +48,17 @@ export const GifPickerButton = ({ onPick }: { onPick: (gif: KlipyGif, query: str
                     picked.current = false
                 }}
             >
-                <GifPicker
-                    onPick={(gif, query) => {
-                        picked.current = true
-                        setOpen(false)
-                        onPick(gif, query)
-                    }}
-                />
+                {enabled ? (
+                    <GifPicker
+                        onPick={(gif, query) => {
+                            picked.current = true
+                            setOpen(false)
+                            onPick(gif, query)
+                        }}
+                    />
+                ) : (
+                    <GifSetupNotice onEnabled={() => setEnabled(true)} />
+                )}
             </PopoverContent>
         </Popover>
     )

@@ -77,6 +77,9 @@ export const hasRole = (role: string) => {
     return window.frappe?.boot?.user?.roles?.includes(role) || false
 }
 
+/** Only Raven Admins / System Managers may edit Raven Settings. */
+export const isRavenSettingsAdmin = () => hasRole("Raven Admin") || hasRole("System Manager")
+
 /**
  * Whether the current user may change a channel's settings (rename, change type,
  * archive, delete, manage members): they are an admin OF the channel, or a Raven

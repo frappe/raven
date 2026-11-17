@@ -14,7 +14,7 @@ import { useGifSearch } from "./useGifSearch"
 type GifTileContext = { onPick: (gif: KlipyGif, query: string) => void; query: string; count: number; loadMore: () => void }
 
 /** Two skeleton columns of uneven heights, so loading looks like the grid it becomes. */
-const SKELETON_COLUMNS = [[120, 88, 140, 100], [96, 132, 84, 120]]
+const SKELETON_COLUMNS = [[120, 88, 144, 100], [96, 132, 84, 120]]
 
 /** The tile's box from KLIPY's size, so the masonry measures it before the GIF loads. */
 const aspectRatio = (width: number, height: number) => (width > 0 && height > 0 ? `${width} / ${height}` : "1 / 1")
@@ -45,11 +45,12 @@ const GifTile: ItemContent<KlipyGif, GifTileContext> = ({ data: gif, index, cont
     )
 }
 
-const GifGridSkeleton = () => (
+/** `still` drops the pulse, for a grid that stands in for one rather than loading it. */
+export const GifGridSkeleton = ({ still }: { still?: boolean }) => (
     <div className="flex gap-1.5 p-0.75">
         {SKELETON_COLUMNS.map((heights, column) => (
             <div key={column} className="flex flex-1 flex-col gap-1.5">
-                {heights.map((height, row) => <Skeleton key={row} style={{ height }} />)}
+                {heights.map((height, row) => <Skeleton key={row} className={cn(still && "animate-none")} style={{ height }} />)}
             </div>
         ))}
     </div>

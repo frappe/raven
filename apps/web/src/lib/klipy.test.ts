@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { preconnect } from "react-dom"
-import { buildGifHtml, fetchGifs, isKlipyMediaUrl, localeFromLanguage, pickMedia, pickPreview, preconnectKlipy, registerShare, type KlipyGif, type KlipyMedia } from "./klipy"
+import { buildGifHtml, fetchGifs, isKlipyMediaUrl, localeFromLanguage, pickMedia, pickPreview, preconnectKlipy, registerShare, verifyKlipyKey, type KlipyGif, type KlipyMedia } from "./klipy"
 
 const media = (url: string, width = 498, height = 280) => ({ url, width, height })
 const gif = (over: Partial<KlipyGif> = {}): KlipyGif => ({
@@ -156,6 +156,22 @@ describe("fetchGifs", () => {
         await vi.advanceTimersByTimeAsync(10_000)
         await result
         vi.useRealTimers()
+    })
+})
+
+describe("verifyKlipyKey", () => {
+    afterEach(() => vi.unstubAllGlobals())
+
+    it("asks for one trending GIF with the given key, not boot's", async () => {
+        const fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({}) })
+        vi.stubGlobal("fetch", fetch)
+        await verifyKlipyKey("NEW KEY")
+        expect(fetch.mock.calls[0][0]).toBe("https://api.klipy.com/api/v1/NEW%20KEY/gifs/trending?per_page=1")
+    })
+
+    it("rejects with KLIPY's 404 for an unknown key", async () => {
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 404, json: async () => ({}) }))
+        await expect(verifyKlipyKey("nope")).rejects.toMatchObject({ name: "KlipyError", status: 404 })
     })
 })
 

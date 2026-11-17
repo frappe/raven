@@ -6,7 +6,7 @@ import { SettingsDialog, SettingsPanel, SettingsPanelContent, SettingsPanelDescr
 import { Spinner } from '@components/ui/spinner';
 import _ from '@lib/translate'
 import { useAtom } from 'jotai'
-import { BellDotIcon, BellRingIcon, BotIcon, BrainCogIcon, Building2Icon, CalendarSyncIcon, CpuIcon, FileTextIcon, FolderIcon, FunctionSquareIcon, IdCardIcon, InfoIcon, KeyboardIcon, PaletteIcon, PanelLeftIcon, SlidersHorizontalIcon, SmilePlusIcon, UserIcon, UsersIcon, WebhookIcon, ZapIcon } from 'lucide-react'
+import { BellDotIcon, BellRingIcon, BotIcon, BrainCogIcon, Building2Icon, CalendarSyncIcon, CpuIcon, FileTextIcon, FolderIcon, FunctionSquareIcon, IdCardIcon, ImagePlayIcon, InfoIcon, KeyboardIcon, PaletteIcon, PanelLeftIcon, SlidersHorizontalIcon, SmilePlusIcon, UserIcon, UsersIcon, WebhookIcon, ZapIcon } from 'lucide-react'
 import { useHotkeys } from 'react-hotkeys-hook';
 import useCurrentRavenUser from '@raven/lib/hooks/useCurrentRavenUser';
 import { UserAvatar } from '../message/UserAvatar';
@@ -25,6 +25,7 @@ const CustomizeSidebarPanel = lazy(() =>
 );
 const About = lazy(() => import('./panels/About').then((m) => ({ default: m.About })));
 const AISettingsPanel = lazy(() => import('./panels/AISettings').then((m) => ({ default: m.AISettings })));
+const GifsPanel = lazy(() => import('./panels/Gifs').then((m) => ({ default: m.Gifs })));
 const FrappeHRPanel = lazy(() => import('./panels/FrappeHR').then((m) => ({ default: m.FrappeHR })));
 const NotificationsPanel = lazy(() => import('./panels/PushNotifications').then((m) => ({ default: m.PushNotifications })));
 const UsersPanel = lazy(() => import('./panels/Users/Users').then((m) => ({ default: m.Users })));
@@ -158,6 +159,14 @@ const settingsTabs = (): {
             component: FrappeHRPanel,
             panelTitle: _("Frappe HR"),
             description: _("Connect your HR system to Raven to sync employee data and send notifications."),
+        },
+        {
+            id: "gifs",
+            group: "integrations",
+            label: _("GIFs"),
+            icon: ImagePlayIcon,
+            component: GifsPanel,
+            description: _("Let people search and send GIFs from KLIPY."),
         },
         {
             id: "document-notifications",

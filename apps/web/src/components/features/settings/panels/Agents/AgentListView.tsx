@@ -19,7 +19,7 @@ import { TablePagination } from "@components/ui/table-pagination"
 import usePaginatedList from "@hooks/usePaginatedList"
 import useCreateHotkey from "@hooks/useCreateHotkey"
 import { BotIcon, CircleCheckIcon, CircleXIcon, SparklesIcon } from "lucide-react"
-import { isRavenSettingsAdmin } from "../AdminSettingsForm"
+import { isRavenSettingsAdmin } from "@lib/permissions"
 import type { RavenBot } from "@raven/types/RavenBot/RavenBot"
 import _ from "@lib/translate"
 
