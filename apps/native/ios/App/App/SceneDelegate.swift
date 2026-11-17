@@ -10,7 +10,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window?.applyStoredTheme()
         // A cold-start share arrives here, not in openURLContexts; the proxy replays
         // the URL only into its own handler.
-        for context in connectionOptions.urlContexts where context.url.scheme == "raven" { receiveShare(context.url) }
+        for context in connectionOptions.urlContexts where Self.isShare(context.url) { receiveShare(context.url) }
 
         SceneDelegateProxy.shared.scene(scene, willConnectTo: session, options: connectionOptions)
     }
@@ -24,11 +24,14 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         // Share extension handoff (`raven://?title=…&type=…&url=…`, see README manual
         // step 2). Scene-based apps never get application(_:open:), where send-intent's
         // README puts this, so it lives here.
-        let shares = URLContexts.filter { $0.url.scheme == "raven" }
+        let shares = URLContexts.filter { Self.isShare($0.url) }
         for context in shares { receiveShare(context.url) }
         let rest = URLContexts.subtracting(shares)
         if !rest.isEmpty { SceneDelegateProxy.shared.scene(scene, openURLContexts: rest) }
     }
+
+    // `raven://open?url=` is a site link from a browser, left to the App plugin's appUrlOpen.
+    private static func isShare(_ url: URL) -> Bool { url.scheme == "raven" && url.host != "open" }
 
     private func receiveShare(_ url: URL) {
         guard let params = URLComponents(url: url, resolvingAgainstBaseURL: true)?.queryItems else { return }

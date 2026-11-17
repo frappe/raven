@@ -32,16 +32,20 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(RavenSocketPlugin.class);
         registerPlugin(RavenDownloadPlugin.class);
         registerPlugin(RavenMediaPlugin.class);
-        // A share or notification tap only ever arrives as a fresh launch or onNewIntent.
+        // A share, notification tap or browser link only ever arrives as a fresh launch or onNewIntent.
         // A recreated activity (process death, Recents) gets the task's root intent
         // again; drop it, or the share or tap the user already acted on replays.
         Intent launch = getIntent();
         boolean fromHistory = launch != null && (launch.getFlags() & Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) != 0;
-        boolean replayable = RavenShellPlugin.isShare(launch) || (launch != null && launch.hasExtra("google.message_id"));
+        boolean replayable = RavenShellPlugin.isShare(launch) || (launch != null && (launch.hasExtra("google.message_id") || isSiteLink(launch)));
         if (replayable && (savedInstanceState != null || fromHistory)) setIntent(new Intent());
         super.onCreate(savedInstanceState);
         serveMediaProxy();
         publishSystemBarInsets();
+    }
+
+    private static boolean isSiteLink(Intent intent) {
+        return Intent.ACTION_VIEW.equals(intent.getAction()) && intent.getData() != null && "raven".equals(intent.getData().getScheme());
     }
 
     // Media proxy requests are answered here; everything else keeps Capacitor's client.

@@ -11,6 +11,7 @@ import { getDefaultSite, loadSites, refreshSite } from "./sites"
 import { SitePicker } from "./SitePicker"
 import { hideNativeSplash } from "./splash"
 import { initNativePush } from "./push"
+import { routeLaunchLink } from "./linkIn"
 
 // A site that does not answer holds boot for its timeouts. Past this the page says so and
 // offers the way out. Longer than a healthy open on a slow network, shorter than the first timeout.
@@ -45,6 +46,8 @@ const socketUrl = (origin: string) => {
 /** The default site with live tokens opens the app; anything else shows the picker. */
 const boot = async () => {
     document.documentElement.classList.add("native")
+    // A browser link the app was opened with picks the site first: the default one may be down.
+    await routeLaunchLink().catch(() => { })
     const url = await getDefaultSite()
     const site = url ? (await loadSites()).find((s) => s.url === url) : undefined
     if (site) slowBoot = setTimeout(() => render(<BootErrorScreen status="connecting" host={new URL(site.url).host} />), SLOW_BOOT_MS)
