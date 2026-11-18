@@ -13,11 +13,13 @@ import { isMaskedPassword } from "@lib/password"
 import _ from "@lib/translate"
 
 interface PasswordFieldProps extends Omit<FormElementProps, "readOnly"> {
+    /** On the input group, e.g. a taller field in a mobile sheet. */
+    className?: string
     inputProps?: Omit<ComponentProps<"input">, "value" | "onChange" | "onBlur" | "name" | "ref" | "type">
 }
 
 /** A password field with a show/hide button (Mod+I), as frappe-ui's Password. */
-export const PasswordField = ({ name, label, rules, isRequired, formDescription, hideLabel, disabled, inputProps }: PasswordFieldProps) => {
+export const PasswordField = ({ name, label, rules, isRequired, formDescription, hideLabel, disabled, className, inputProps }: PasswordFieldProps) => {
     const { control } = useFormContext()
     const [show, setShow] = useState(false)
     const toggle = () => setShow((shown) => !shown)
@@ -50,7 +52,7 @@ export const PasswordField = ({ name, label, rules, isRequired, formDescription,
         render={({ field }) => (
             <FormItem className="flex flex-col">
                 <FormLabel className={hideLabel ? "sr-only" : ""}>{label}{isRequired && <FormRequiredIndicator />}</FormLabel>
-                <InputGroup>
+                <InputGroup className={className}>
                     <FormControl>
                         <Input {...field} ref={(el) => { field.ref(el); inputRef.current = el }} {...inputProps} type={show ? "text" : "password"} onKeyDown={onKeyDown} />
                     </FormControl>

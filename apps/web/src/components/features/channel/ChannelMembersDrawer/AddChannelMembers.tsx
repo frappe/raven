@@ -136,9 +136,7 @@ const AddChannelMembers = ({ channelID, existingMemberIds }: AddChannelMembersPr
             <DrawerNested open={open} onOpenChange={handleOpenChange}>
                 <DrawerTrigger asChild>{trigger}</DrawerTrigger>
                 <DrawerContent className="h-[85dvh]">
-                    {/* iOS form-sheet convention: actions in a TOP bar, no footer —
-                        the search keyboard covers the bottom of the sheet, so a
-                        footer's Add button would vanish exactly while selecting. */}
+                    {/* Actions in a top bar, next to the search: a footer would sit below the long list. */}
                     <DrawerActionBar
                         title={_('Add members')}
                         leading={

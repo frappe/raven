@@ -50,7 +50,7 @@ export const SiteUsersDialog = ({ users, selected, onSelectedChange, trigger }: 
             <Drawer open={open} onOpenChange={onOpenChange}>
                 <DrawerTrigger asChild>{trigger}</DrawerTrigger>
                 <DrawerContent className="h-[85dvh]">
-                    {/* Actions in a top bar: the search keyboard would cover a footer. */}
+                    {/* Actions in a top bar, next to the search: a footer would sit below the long list. */}
                     <DrawerActionBar
                         title={title}
                         leading={
