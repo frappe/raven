@@ -87,9 +87,9 @@ function DrawerContent({ className, children, showHandle = true, keepKeyboard = 
                     // default. Callers that want edge-to-edge content (e.g. the full
                     // emoji picker) pass p-0, which wins over this.
                     "fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-xl border-t border-outline-gray-2 bg-surface-elevation-1 outline-none pb-[var(--inset-bottom)]",
-                    // The native app never resizes the page for the keyboard: a sheet that keeps it up sits on top
-                    // of it. Only the native app sets --keyboard-height; a browser resizes the page itself.
-                    keepKeyboard && "bottom-[var(--keyboard-height,0px)]",
+                    // The native app never resizes the page for the keyboard, so every sheet lifts above it,
+                    // capped to the space left. Only the native app sets --keyboard-height.
+                    "bottom-[var(--keyboard-height,0px)] max-h-[calc(100dvh-var(--keyboard-height,0px))]",
                     className
                 )}
                 onOpenAutoFocus={(event) => {
@@ -109,11 +109,10 @@ function DrawerContent({ className, children, showHandle = true, keepKeyboard = 
 
 /**
  * iOS-style sheet header: leading action (usually Cancel) — centered title —
- * trailing primary action. The convention for FORM/PICKER sheets: their
- * keyboard covers the bottom of the sheet, so a footer's primary button is
- * unreachable exactly while the user is typing; the top bar stays visible.
- * Menu-style sheets need no action bar, and desktop dialogs keep their
- * bottom-right footer.
+ * trailing primary action. For tall picker sheets (a search over a long list):
+ * the actions stay next to the search instead of below the list. Form sheets
+ * follow the other sheets on their screen; menu sheets need no action bar, and
+ * desktop dialogs keep their bottom-right footer.
  *
  * Renders the accessible DrawerTitle itself — the sheet body only needs to add
  * a (sr-only) DrawerDescription.

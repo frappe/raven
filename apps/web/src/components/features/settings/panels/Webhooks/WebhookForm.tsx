@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs"
 import { Label } from "@components/ui/label"
 import { Switch } from "@components/ui/switch"
 import { Badge } from "@components/ui/badge"
-import { DataField } from "@components/ui/form-elements"
+import { DataField, PasswordField } from "@components/ui/form-elements"
 import {
     Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue,
 } from "@components/ui/select"
@@ -136,11 +136,11 @@ const GeneralWebhookForm = ({ isEdit }: { isEdit: boolean }) => {
             </div>
 
             {security ? (
-                <DataField
+                <PasswordField
                     name="webhook_secret"
                     label={_("Webhook Secret")}
                     isRequired
-                    inputProps={{ type: "password" }}
+                    
                     rules={{
                         required: security ? _("Webhook secret is required") : false,
                         maxLength: { value: 140, message: _("Webhook secret should not exceed 140 characters") },

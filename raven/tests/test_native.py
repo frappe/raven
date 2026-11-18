@@ -44,6 +44,8 @@ APP_READS = (
 	"chat_style",
 	"raven_time_format",
 	"raven_hide_read_receipts",
+	"raven_password_login",
+	"raven_logout_on_password_reset",
 	"raven_quiet_hours_nudge",
 	"quiet_hours",
 	"link_preview_blocked_domains",

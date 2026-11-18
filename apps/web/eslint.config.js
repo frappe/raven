@@ -46,6 +46,10 @@ export default tseslint.config(
     rules: {
       ...reactHooks.configs.recommended.rules,
       'raven/no-import-time-translation': 'error',
+      // App forms clear a field's error when it is edited; react-hook-form's own default doesn't.
+      'no-restricted-imports': ['error', {
+        paths: [{ name: 'react-hook-form', importNames: ['useForm'], message: 'Import useForm from @lib/form.' }],
+      }],
       'react-refresh/only-export-components': [
         'warn',
         { allowConstantExport: true },

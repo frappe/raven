@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react"
-import { useForm, useWatch } from "react-hook-form"
+import { useWatch } from "react-hook-form"
+import { useForm } from "@lib/form"
 import { useFrappeUpdateDoc, type FrappeError } from "frappe-react-sdk"
 import useCurrentRavenUser from "@raven/lib/hooks/useCurrentRavenUser"
 import type { RavenUser } from "@raven/types/Raven/RavenUser"
 import { Button } from "@components/ui/button"
 import ErrorBanner from "@components/ui/error-banner"
 import { Form } from "@components/ui/form"
-import { DataField } from "@components/ui/form-elements"
+import { DataField, PasswordField } from "@components/ui/form-elements"
 import { useIsMobile } from "@hooks/use-mobile"
 import _ from "@lib/translate"
 import { markOnboardedInBootCache } from "@utils/setup"
@@ -98,13 +99,13 @@ const ProfileFormBody = ({ isLast, finishing, onDone, onPreview, onBusyChange, p
                     inputProps={{ autoFocus: !isMobile }}
                 />
                 {askPassword && (
-                    <DataField
+                    <PasswordField
                         name="password"
                         label={_("Password")}
                         isRequired
                         formDescription={_("You'll need it to sign in to this site.")}
                         rules={{ validate: (value) => !!value || _("Password is required") }}
-                        inputProps={{ type: "password", autoComplete: "new-password" }}
+                        inputProps={{ autoComplete: "new-password" }}
                     />
                 )}
                 <StepFooter>

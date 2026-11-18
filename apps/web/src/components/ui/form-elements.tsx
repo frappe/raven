@@ -16,7 +16,10 @@ import { Select, SelectContent, SelectTrigger, SelectValue } from "./select"
 import { Switch } from "./switch"
 import { Checkbox } from "./checkbox"
 
-interface FormElementProps {
+// In its own file, as this one is over the 300-line limit.
+export { PasswordField } from "./password-field"
+
+export interface FormElementProps {
     name: string,
     rules?: Omit<RegisterOptions<FieldValues, string>, "disabled" | "valueAsNumber" | "valueAsDate" | "setValueAs">,
     label: string,
@@ -319,8 +322,9 @@ export const CheckboxFormField = ({ name, rules, label, isRequired, formDescript
                     </FormControl>
                     <FormLabel className="!mt-0 cursor-pointer">{label}{isRequired && <FormRequiredIndicator />}</FormLabel>
                 </div>
-                {formDescription && <FormDescription>{formDescription}</FormDescription>}
-                <FormMessage />
+                {/* Under the label, not the box: the checkbox's width plus the row gap. */}
+                {formDescription && <FormDescription className="ps-6">{formDescription}</FormDescription>}
+                <FormMessage className="ps-6" />
             </FormItem>
         )}
     />

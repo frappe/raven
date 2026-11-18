@@ -1,4 +1,5 @@
-import { useForm } from "react-hook-form"
+import { useState } from "react"
+import { useForm } from "@lib/form"
 import { SAVE_TOAST_ID } from "@lib/toast"
 import useSaveHotkey from "@hooks/useSaveHotkey"
 import { FrappeError, useFrappeUpdateDoc } from "frappe-react-sdk"
@@ -7,6 +8,7 @@ import useCurrentRavenUser from "@raven/lib/hooks/useCurrentRavenUser"
 import type { RavenUser } from "@raven/types/Raven/RavenUser"
 import { getStatusIndicatorColor } from "@components/features/message/UserAvatar"
 import { ProfileImageMenu } from "@components/features/profile/ProfileImageMenu"
+import ChangePasswordDialog from "@components/features/profile/ChangePasswordDialog"
 import { Button } from "@components/ui/button"
 import { Form } from "@components/ui/form"
 import { DataField, SelectFormField } from "@components/ui/form-elements"
@@ -165,9 +167,28 @@ const ProfileForm = ({ myProfile }: { myProfile: RavenUser }) => {
                             />
                         </form>
                     </Form>
+
+                    <PasswordRow />
                 </div>
             </SettingsPanelContent>
         </>
+    )
+}
+
+const PasswordRow = () => {
+    const [open, setOpen] = useState(false)
+    const passwordLogin = window.frappe?.boot?.raven_password_login !== 0
+    if (!passwordLogin) return null
+
+    return (
+        <div className="flex items-center justify-between gap-4">
+            <div className="flex min-w-0 flex-col gap-1">
+                <span className="text-p-sm-medium text-ink-gray-7">{_("Password")}</span>
+                <span className="text-p-sm text-ink-gray-6">{_("Change the password you sign in with")}</span>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => setOpen(true)}>{_("Change password")}</Button>
+            <ChangePasswordDialog open={open} onOpenChange={setOpen} />
+        </div>
     )
 }
 

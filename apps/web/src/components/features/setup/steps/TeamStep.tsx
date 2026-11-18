@@ -1,5 +1,6 @@
 import { useContext, useEffect, useMemo, useState } from "react"
-import { useForm, useWatch } from "react-hook-form"
+import { useWatch } from "react-hook-form"
+import { useForm } from "@lib/form"
 import { FrappeContext, type FrappeConfig, type FrappeError } from "frappe-react-sdk"
 import { Button } from "@components/ui/button"
 import ErrorBanner from "@components/ui/error-banner"

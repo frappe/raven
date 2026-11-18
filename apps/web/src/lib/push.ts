@@ -68,10 +68,13 @@ export const isRavenPushConfigured = (): boolean => getBootPushConfig() !== null
 export const isPushSupportedByBrowser = (): boolean =>
     !!import.meta.env.VITE_NATIVE || ("serviceWorker" in navigator && "Notification" in window && "PushManager" in window)
 
-/** Whether THIS device has push enabled (source of truth: the stored token). */
+/** THIS device's FCM token, or null when push is off here. */
 // Same key as NATIVE_TOKEN_KEY in native/push.ts; importing it would pull that module into browser bundles.
-export const isPushEnabled = (): boolean =>
-    localStorage.getItem(siteKey(import.meta.env.VITE_NATIVE ? "raven-native-fcm-token" : TOKEN_STORAGE_KEY)) !== null
+export const getPushToken = (): string | null =>
+    localStorage.getItem(siteKey(import.meta.env.VITE_NATIVE ? "raven-native-fcm-token" : TOKEN_STORAGE_KEY))
+
+/** Whether THIS device has push enabled (source of truth: the stored token). */
+export const isPushEnabled = (): boolean => getPushToken() !== null
 
 /**
  * Running as an INSTALLED app (home screen / desktop PWA) rather than a browser

@@ -1,5 +1,6 @@
 import { useEffect } from "react"
-import { useForm, useWatch } from "react-hook-form"
+import { useWatch } from "react-hook-form"
+import { useForm } from "@lib/form"
 import { useFrappePostCall, useFrappeUpdateDoc } from "frappe-react-sdk"
 import { ChannelNameInput, channelNameRules } from "@components/features/channel/CreateChannel/ChannelNameInput"
 import { ChannelTypeSelector } from "@components/features/channel/CreateChannel/ChannelTypeSelector"

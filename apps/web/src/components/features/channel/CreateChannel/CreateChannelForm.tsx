@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useContext } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
-import { useForm, useWatch } from 'react-hook-form'
+import { useWatch } from 'react-hook-form'
+import { useForm } from '@lib/form'
 import { Button } from '@components/ui/button'
 import { toast } from 'sonner'
 import { DialogFooter } from '@components/ui/dialog'

@@ -6,7 +6,7 @@ import { ExternalLinkIcon, TriangleAlertIcon } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@components/ui/alert"
 import { Button } from "@components/ui/button"
 import { errorResponseToast } from "@components/ui/error-banner"
-import { DataField } from "@components/ui/form-elements"
+import { DataField, PasswordField } from "@components/ui/form-elements"
 import { useRavenSettings } from "@hooks/fetchers/useRavenSettings"
 import type { RavenSettings } from "@raven/types/Raven/RavenSettings"
 import { AdminSettingsForm } from "./AdminSettingsForm"
@@ -124,12 +124,12 @@ const PushNotificationFields = () => {
                 }}
                 inputProps={{ placeholder: _("Your API Key"), ...NO_AUTOFILL }}
             />
-            <DataField
+            <PasswordField
                 name="push_notification_api_secret"
                 label={_("API Secret")}
                 isRequired
                 rules={{ required: _("Please add your Push Notification API Secret") }}
-                inputProps={{ type: "password", placeholder: "••••••••••••••••••••••••••••••••", ...NO_AUTOFILL }}
+                inputProps={{ placeholder: "••••••••••••••••••••••••••••••••", ...NO_AUTOFILL }}
             />
 
             <ServiceActions />
