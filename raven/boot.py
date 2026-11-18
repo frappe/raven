@@ -1,6 +1,7 @@
 from urllib.parse import urlsplit
 
 import frappe
+from frappe.utils import cint
 from frappe.utils.safe_exec import is_safe_exec_enabled
 
 from raven.api.setup import is_setup_admin
@@ -73,6 +74,13 @@ def boot_session(bootinfo):
 	bootinfo.raven_hide_read_receipts = 1 if hide_read_receipts else 0
 	bootinfo.raven_quiet_hours_nudge = quiet_hours_nudge if quiet_hours_nudge else "Nudge"
 	bootinfo.raven_onboarded = 1 if onboarded else 0
+	# For "Change password"; System Settings is already cached for the request.
+	bootinfo.raven_logout_on_password_reset = cint(
+		frappe.get_system_settings("logout_on_password_reset")
+	)
+	bootinfo.raven_password_login = (
+		0 if cint(frappe.get_system_settings("disable_user_pass_login")) else 1
+	)
 
 	# Quiet hours: outside these working hours the composer nudges toward (or
 	# defaults to, per the user's preference above) silent sends. Only shipped

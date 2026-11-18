@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { NavLink, Navigate } from "react-router"
 import { toast } from "sonner"
-import { ArrowLeftRight, Bookmark, Bell, CalendarClock, LogOut, Sun, Moon, SunMoon, ChevronDown, Edit, SlidersHorizontal, ChevronRight } from "lucide-react"
+import { ArrowLeftRight, Bookmark, Bell, CalendarClock, LogOut, Sun, Moon, SunMoon, ChevronDown, Edit, SlidersHorizontal, ChevronRight, KeyRound } from "lucide-react"
 import { siteUrl } from "@lib/site"
 import useCurrentRavenUser from "@raven/lib/hooks/useCurrentRavenUser"
 import { useTheme } from "@components/theme-provider"
@@ -14,6 +14,7 @@ import { EditProfileDrawer } from "@components/features/profile/EditProfileDrawe
 import { PreferencesDrawer } from "@components/features/profile/PreferencesDrawer"
 import { useScheduledMessagesCount } from "@components/features/schedule-send/useScheduledMessages"
 import { ProfileImageMenu } from "@components/features/profile/ProfileImageMenu"
+import ChangePasswordDialog from "@components/features/profile/ChangePasswordDialog"
 import { PageHeader } from "@components/layout/PageHeader"
 import AppMobileFooter from "@components/features/header/AppMobileFooter"
 import { getStatusIndicatorColor } from "@components/features/message/UserAvatar"
@@ -40,6 +41,8 @@ const Profile = () => {
     const [prefsOpen, setPrefsOpen] = useState(false)
     const scheduledCount = useScheduledMessagesCount()
     const [confirmLogoutOpen, setConfirmLogoutOpen] = useState(false)
+    const [passwordOpen, setPasswordOpen] = useState(false)
+    const passwordLogin = window.frappe?.boot?.raven_password_login !== 0
 
     // Source of truth for "enabled on this device" is the stored FCM token (lib/push).
     const [pushOn, setPushOn] = useState<boolean>(() => isPushEnabled())
@@ -168,7 +171,11 @@ const Profile = () => {
                         </NavLink>
                     )}
 
-                    <ProfileRow icon={Edit} label={_("Edit profile")} onClick={() => setEditOpen(true)} className="rounded-b-lg" />
+                    <ProfileRow icon={Edit} label={_("Edit profile")} onClick={() => setEditOpen(true)} className={cn(!passwordLogin && "rounded-b-lg")} />
+
+                    {passwordLogin && (
+                        <ProfileRow icon={KeyRound} label={_("Change password")} onClick={() => setPasswordOpen(true)} className="rounded-b-lg" />
+                    )}
 
                     {/* <Separator className="my-2" /> */}
 
@@ -191,6 +198,7 @@ const Profile = () => {
 
             <EditProfileDrawer open={editOpen} onOpenChange={setEditOpen} />
             <PreferencesDrawer open={prefsOpen} onOpenChange={setPrefsOpen} />
+            <ChangePasswordDialog open={passwordOpen} onOpenChange={setPasswordOpen} />
 
             <AlertDialog open={confirmLogoutOpen} onOpenChange={setConfirmLogoutOpen}>
                 <AlertDialogContent>
