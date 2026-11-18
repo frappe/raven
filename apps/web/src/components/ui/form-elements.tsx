@@ -16,7 +16,10 @@ import { Select, SelectContent, SelectTrigger, SelectValue } from "./select"
 import { Switch } from "./switch"
 import { Checkbox } from "./checkbox"
 
-interface FormElementProps {
+// In its own file, as this one is over the 300-line limit.
+export { PasswordField } from "./password-field"
+
+export interface FormElementProps {
     name: string,
     rules?: Omit<RegisterOptions<FieldValues, string>, "disabled" | "valueAsNumber" | "valueAsDate" | "setValueAs">,
     label: string,

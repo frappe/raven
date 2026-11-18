@@ -5,7 +5,7 @@ import { toast } from "sonner"
 import { Separator } from "@components/ui/separator"
 import { Alert, AlertDescription } from "@components/ui/alert"
 import { Button } from "@components/ui/button"
-import { DataField, SelectFormField, SwitchFormField } from "@components/ui/form-elements"
+import { DataField, SelectFormField, SwitchFormField, PasswordField } from "@components/ui/form-elements"
 import { SelectItem } from "@components/ui/select"
 import { AdminSettingsForm } from "./AdminSettingsForm"
 import type { RavenSettings } from "@raven/types/Raven/RavenSettings"
@@ -97,12 +97,12 @@ const AISettingsFields = () => {
                                 }}
                                 inputProps={{ placeholder: "org-************************", autoComplete: "off" }}
                             />
-                            <DataField
+                            <PasswordField
                                 name="openai_api_key"
                                 label={_("OpenAI API Key")}
                                 isRequired
                                 rules={{ required: _("Please add your OpenAI API Key") }}
-                                inputProps={{ type: "password", placeholder: "••••••••••••••••••••", autoComplete: "off" }}
+                                inputProps={{ placeholder: "••••••••••••••••••••", autoComplete: "off" }}
                             />
                             <DataField
                                 name="openai_project_id"
@@ -166,11 +166,11 @@ const AISettingsFields = () => {
                                 </Button>
                             </div>
                             {localProvider === "OpenAI Compatible" ? (
-                                <DataField
+                                <PasswordField
                                     name="openai_compatible_api_key"
                                     label={_("API Key")}
                                     formDescription={_("Optional — only if your provider requires it.")}
-                                    inputProps={{ type: "password", placeholder: "••••••••••••••••••••", autoComplete: "off" }}
+                                    inputProps={{ placeholder: "••••••••••••••••••••", autoComplete: "off" }}
                                 />
                             ) : null}
                             {testResult && (
