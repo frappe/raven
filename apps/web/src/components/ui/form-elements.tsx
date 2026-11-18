@@ -319,8 +319,9 @@ export const CheckboxFormField = ({ name, rules, label, isRequired, formDescript
                     </FormControl>
                     <FormLabel className="!mt-0 cursor-pointer">{label}{isRequired && <FormRequiredIndicator />}</FormLabel>
                 </div>
-                {formDescription && <FormDescription>{formDescription}</FormDescription>}
-                <FormMessage />
+                {/* Under the label, not the box: the checkbox's width plus the row gap. */}
+                {formDescription && <FormDescription className="ps-6">{formDescription}</FormDescription>}
+                <FormMessage className="ps-6" />
             </FormItem>
         )}
     />
