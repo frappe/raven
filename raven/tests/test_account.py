@@ -6,7 +6,7 @@ from frappe.tests import IntegrationTestCase
 from frappe.utils import add_to_date, now_datetime
 from frappe.utils.password import check_password, update_password
 
-from raven.api.account import change_password, get_request_bearer_token
+from raven.api.account import change_password, get_request_bearer_token, send_password_reset_link
 from raven.api.raven_mobile import NATIVE_REDIRECT_URI
 from raven.boot import boot_session
 from raven.raven.doctype.raven_push_token.raven_push_token import RavenPushToken
@@ -206,3 +206,58 @@ class TestChangePassword(IntegrationTestCase):
 		finally:
 			del frappe.local.request
 
+
+class TestSendPasswordResetLink(IntegrationTestCase):
+	"""A Raven admin emails a user a link to set a new password, as desk's Reset Password does."""
+
+	ADMIN = "test@example.com"
+	MEMBER = "test1@example.com"
+	OUTSIDER = "test2@example.com"
+
+	def setUp(self):
+		super().setUp()
+		frappe.set_user("Administrator")
+		frappe.get_doc("User", self.ADMIN).add_roles("Raven User", "Raven Admin")
+		frappe.get_doc("User", self.MEMBER).add_roles("Raven User")
+		self.mail = patch("frappe.core.doctype.user.user.User.password_reset_mail")
+		self.sent = self.mail.start()
+
+	def tearDown(self):
+		self.mail.stop()
+		frappe.set_user("Administrator")
+		frappe.db.rollback()
+		super().tearDown()
+
+	def reset_key(self, user):
+		return frappe.db.get_value("User", user, "reset_password_key")
+
+	def test_raven_admin_emails_a_member_a_link(self):
+		frappe.set_user(self.ADMIN)
+		self.assertIsNone(send_password_reset_link(self.MEMBER))  # the link only goes by email
+		self.assertTrue(self.reset_key(self.MEMBER))
+		self.assertEqual(self.sent.call_count, 1)
+
+	def test_member_cannot_send(self):
+		frappe.set_user(self.MEMBER)
+		with self.assertRaises(frappe.PermissionError):
+			send_password_reset_link(self.ADMIN)
+		self.sent.assert_not_called()
+
+	def test_refuses_someone_not_in_raven(self):
+		frappe.set_user(self.ADMIN)
+		with self.assertRaises(frappe.ValidationError):
+			send_password_reset_link(self.OUTSIDER)
+		self.sent.assert_not_called()
+
+	def test_refuses_a_disabled_user(self):
+		frappe.db.set_value("User", self.MEMBER, "enabled", 0)
+		frappe.set_user(self.ADMIN)
+		with self.assertRaises(frappe.ValidationError):
+			send_password_reset_link(self.MEMBER)
+		self.sent.assert_not_called()
+
+	def test_refuses_administrator(self):
+		frappe.set_user(self.ADMIN)
+		with self.assertRaises(frappe.ValidationError):
+			send_password_reset_link("Administrator")
+		self.sent.assert_not_called()

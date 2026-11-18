@@ -1,4 +1,5 @@
 import frappe
+from frappe import _
 from frappe.core.doctype.user.user import change_password as frappe_change_password
 from frappe.utils import cint
 
@@ -24,6 +25,24 @@ def change_password(
 		# Session logout leaves app tokens and push subscriptions behind; a lost phone would keep both.
 		after_password_change(revoke_app_tokens, user, keep_access_token=get_request_bearer_token())
 		after_password_change(remove_push_tokens, user, keep_fcm_token=keep_push_token)
+
+
+@frappe.whitelist(methods=["POST"])
+def send_password_reset_link(user: str) -> None:
+	"""Email a Raven user a link to set a new password, as desk's Reset Password does."""
+	frappe.only_for(("System Manager", "Raven Admin"))
+
+	raven_user_enabled = frappe.db.get_value("Raven User", {"user": user, "type": "User"}, "enabled")
+	if (
+		user == "Administrator"
+		or not raven_user_enabled
+		or not frappe.db.get_value("User", user, "enabled")
+	):
+		frappe.throw(_("Reset links can only be sent to active Raven users."))
+
+	# Called directly: Frappe's reset_password endpoint rate-limits by IP, which an admin
+	# resetting a few people in a row would hit. The link is never returned to the caller.
+	frappe.get_doc("User", user)._reset_password(send_email=True)
 
 
 def after_password_change(step, *args, **kwargs) -> None:

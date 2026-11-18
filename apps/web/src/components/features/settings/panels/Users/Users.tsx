@@ -1,7 +1,7 @@
 import { useCallback, useDeferredValue, useMemo, useState, useSyncExternalStore } from "react"
 import { useFrappePostCall } from "frappe-react-sdk"
 import { toast } from "sonner"
-import { CircleCheckIcon, CircleOffIcon, EllipsisVertical, KeyRoundIcon, SearchIcon, UsersIcon } from "lucide-react"
+import { CircleCheckIcon, CircleOffIcon, EllipsisVertical, KeyRoundIcon, MailIcon, SearchIcon, UsersIcon } from "lucide-react"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@components/ui/empty"
 import {
     SettingsPanelContent,
@@ -58,17 +58,25 @@ export const Users = () => {
             .catch((error) => errorResponseToast(_("Could not enable user"), error))
     }, [enableUser])
 
+    const { call: sendResetLink } = useFrappePostCall("raven.api.account.send_password_reset_link")
+    const sendReset = useCallback((user: UserData) => {
+        sendResetLink({ user: user.name })
+            .then(() => toast.success(_("Password reset email sent to {0}", [user.name])))
+            .catch((error) => errorResponseToast(_("Could not send reset email"), error))
+    }, [sendResetLink])
+
     const columns = useMemo<ColumnDef<UserData>[]>(() => {
         if (!canManageAccess) return userColumns()
         const actions: RowActions = {
             onManageAccess: openAccess,
+            onSendReset: sendReset,
             // You can't disable yourself: that would log you out mid-click.
             onEnable: canEditAccounts ? enable : undefined,
             onDisable: canEditAccounts ? openDisable : undefined,
             currentUser,
         }
         return [...userColumns(), actionsColumn(actions)]
-    }, [canManageAccess, canEditAccounts, openAccess, enable, openDisable, currentUser])
+    }, [canManageAccess, canEditAccounts, openAccess, sendReset, enable, openDisable, currentUser])
     const [search, setSearch] = useState("")
     // Filtering is in memory. Deferring keeps typing smooth on big user lists.
     const query = useDeferredValue(search.trim().toLowerCase())
@@ -181,6 +189,7 @@ const userColumns = (): ColumnDef<UserData>[] => [
 
 type RowActions = {
     onManageAccess: (user: UserData) => void
+    onSendReset: (user: UserData) => void
     /** Account actions are only given to System Managers. */
     onEnable?: (user: UserData) => void
     onDisable?: (user: UserData) => void
@@ -226,6 +235,13 @@ const actionsColumn = (actions: RowActions): ColumnDef<UserData> => ({
                     <KeyRoundIcon />
                     {_("Manage access")}
                 </DropdownMenuItem>
+                {/* Your own password is changed from Profile; Administrator has no reset email. */}
+                {row.original.enabled && row.original.name !== actions.currentUser && row.original.name !== "Administrator" && (
+                    <DropdownMenuItem onClick={() => actions.onSendReset(row.original)}>
+                        <MailIcon />
+                        {_("Send password reset email")}
+                    </DropdownMenuItem>
+                )}
                 <AccountMenuItem user={row.original} actions={actions} />
             </DropdownMenuContent>
         </DropdownMenu>
