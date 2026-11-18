@@ -1,4 +1,4 @@
-import { useForm } from "react-hook-form"
+import { useForm } from "@lib/form"
 import { SAVE_TOAST_ID } from "@lib/toast"
 import useSaveHotkey from "@hooks/useSaveHotkey"
 import { FrappeError, useFrappeUpdateDoc } from "frappe-react-sdk"

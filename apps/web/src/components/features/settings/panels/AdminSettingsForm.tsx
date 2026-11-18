@@ -1,6 +1,6 @@
 import { useEffect } from "react"
 import { SAVE_TOAST_ID } from "@lib/toast"
-import { useForm } from "react-hook-form"
+import { useForm } from "@lib/form"
 import { useFrappeUpdateDoc } from "frappe-react-sdk"
 import { toast } from "sonner"
 import { useRavenSettings } from "@hooks/fetchers/useRavenSettings"

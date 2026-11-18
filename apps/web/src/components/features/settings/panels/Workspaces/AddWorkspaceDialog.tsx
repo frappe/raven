@@ -1,6 +1,7 @@
 import { useState } from "react"
 import useCreateHotkey from "@hooks/useCreateHotkey"
-import { Controller, useForm } from "react-hook-form"
+import { Controller } from "react-hook-form"
+import { useForm } from "@lib/form"
 import { toast } from "sonner"
 import { PlusIcon } from "lucide-react"
 import { Button } from "@components/ui/button"
