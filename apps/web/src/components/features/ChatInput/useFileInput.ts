@@ -8,6 +8,8 @@ import { toast } from 'sonner'
 import { formatBytes, getFileExtension } from '@raven/lib/utils/operations'
 import { randomUUID } from '@lib/uuid'
 import { measureMediaDimensions } from '@lib/mediaDimensions'
+import { getFileChunkSize, uploadInChunks, type SendChunk } from '@lib/chunkedUpload'
+import { errorResponseToast } from '@components/ui/error-banner'
 import _ from '@lib/translate'
 
 /**
@@ -96,8 +98,7 @@ export const pendingSendAtom = atomFamily((_channelID: string) => atom<false | {
  * - `sysdefaults.allowed_file_extensions`: newline/comma list of permitted
  *   extensions; empty → every type is allowed.
  *
- * TODO: large files can be uploaded in chunks (`frappe.boot.file_chunk_size`). We
- * don't chunk yet, so anything over `max_file_size` is rejected outright for now.
+ * Files over `file_chunk_size` upload in chunks; `max_file_size` still caps the whole file.
  */
 const getMaxFileSize = (): number => {
     const size = Number(window.frappe?.boot?.max_file_size)
@@ -130,6 +131,8 @@ const filterAllowedFiles = (files: File[]): File[] => {
     })
 }
 
+type UploadResponse = Awaited<ReturnType<FrappeConfig['file']['uploadFile']>>
+
 export const useAttachFile = (channelID: string) => {
 
     const { file } = useContext(FrappeContext) as FrappeConfig
@@ -161,21 +164,23 @@ export const useAttachFile = (channelID: string) => {
         }))
         setUploadingFiles((prevFiles) => [...prevFiles, ...filesToBeUploaded])
 
-        // The upload can't be aborted (the SDK has no abort signal), so we instead
-        // check at settle-time whether the file is still tracked: if the user removed
-        // it mid-upload it's gone from uploadingFilesAtom, and we drop the result
-        // rather than resurrecting it (as an uploaded file or an error).
+        // A request can't be aborted (the SDK has no abort signal). Removing a file takes it
+        // out of uploadingFilesAtom, so chunking stops before its next chunk and the result
+        // is dropped rather than resurrected (as an uploaded file or an error).
         const store = getDefaultStore()
         const isStillTracked = (id: string) => store.get(uploadingFilesAtom(channelID)).some((item) => item.id === id)
+
+        const sendChunk: SendChunk<UploadResponse> = (blob, fields, onLoaded) => file.uploadFile(blob, {
+            doctype: 'Raven Message',
+            isPrivate: true,
+            otherData: fields,
+        }, (uploadedBytes) => onLoaded(uploadedBytes))
 
         for (const f of filesToBeUploaded) {
             // Measured in parallel with the upload — resolved long before it.
             const dimensions = measureMediaDimensions(f.file)
-            file.uploadFile(f.file, {
-                doctype: 'Raven Message',
-                isPrivate: true
-            }, (_uploadedBytes, _totalBytes, progress) => {
-                const progressPercentage = Math.round((progress?.progress ?? 0) * 100)
+            const onProgress = (fraction: number) => {
+                const progressPercentage = Math.round(fraction * 100)
                 setUploadingFiles((prevFiles) => {
                     const current = prevFiles.find((item) => item.id === f.id)
                     // Skip redundant writes (the rounded % often repeats) — returning the
@@ -183,8 +188,13 @@ export const useAttachFile = (channelID: string) => {
                     if (!current || current.uploadProgress === progressPercentage) return prevFiles
                     return prevFiles.map((item) => item.id === f.id ? { ...item, uploadProgress: progressPercentage, status: 'uploading' as const } : item)
                 })
-            }).then(async res => {
-                if (!isStillTracked(f.id)) return
+            }
+            uploadInChunks(f.file, getFileChunkSize(), sendChunk, {
+                onProgress,
+                shouldContinue: () => isStillTracked(f.id),
+            }).then(async outcome => {
+                if (outcome.cancelled || !isStillTracked(f.id)) return
+                const res = outcome.result
                 const dims = await dimensions
                 // When upload is finished, add the file to the uploaded files atom and remove from the uploading files atom
                 setUploadedFiles((prevFiles) => [...prevFiles, {
@@ -202,9 +212,9 @@ export const useAttachFile = (channelID: string) => {
 
                 // A held send (pendingSendAtom) is dispatched by ChatInput once
                 // uploadingFilesAtom drains — no per-file bookkeeping needed here.
-            }).catch(() => {
+            }).catch((error) => {
                 if (!isStillTracked(f.id)) return
-                toast.error("There was an error while uploading the file " + f.file.name)
+                errorResponseToast(_('Could not upload {0}', [f.fileName]), error)
                 setUploadingFiles((prevFiles) => prevFiles.map((item) => item.id === f.id ? { ...item, status: 'error' as const } : item))
             })
         }

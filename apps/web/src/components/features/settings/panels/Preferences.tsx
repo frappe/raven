@@ -22,6 +22,7 @@ import Picker from "@emoji-mart/react"
 import { errorResponseToast } from "@components/ui/error-banner"
 import { LinkSettingsAdminSection } from "./LinkSettingsAdminSection"
 import { QuietHoursAdminSection } from "./QuietHoursAdminSection"
+import { FileUploadsAdminSection } from "./FileUploadsAdminSection"
 import { Fragment } from "react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip"
 
@@ -212,6 +213,10 @@ const Preferences = () => {
                         {/* ---- Link previews (admin-only rows; header gated the same) ---- */}
                         {isAdmin && <SettingsSectionHeader>{_("Link previews")}</SettingsSectionHeader>}
                         <LinkSettingsAdminSection withLeadingSeparator={false} />
+
+                        {/* ---- File uploads (admin-only row; header gated the same) ---- */}
+                        {isAdmin && <SettingsSectionHeader>{_("File uploads")}</SettingsSectionHeader>}
+                        <FileUploadsAdminSection withLeadingSeparator={false} />
                     </div>
 
                 </div>
