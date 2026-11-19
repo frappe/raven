@@ -22,6 +22,7 @@ import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } 
 import { CSS } from "@dnd-kit/utilities"
 import ScheduledMessagesDialog from "@components/features/schedule-send/ScheduledMessagesDialog"
 import { scheduledMessagesDialogOpenAtom, useScheduledMessagesCount } from "@components/features/schedule-send/useScheduledMessages"
+import AppSwitcher from "@components/layout/PrimarySidebar/AppSwitcher"
 
 /**
  * Dropping a drag makes the browser fire ONE click on whatever ends up under
@@ -39,10 +40,6 @@ const suppressNextClick = () => {
     window.setTimeout(() => window.removeEventListener("click", eat, { capture: true }), 300)
 }
 
-const RavenLogo = () => {
-    return <img src={siteUrl("/assets/raven/raven_logo.svg")} alt="Raven Logo" className="w-8 h-8" />
-}
-
 /**
  * Component to render the first sidebar - only used on Desktop. 
  * The component has navigation links to pages, the user avatar with logout and a settings button.
@@ -57,7 +54,7 @@ const PrimarySidebar = () => {
                     The nav icons above and the saved/profile block below stay put —
                     workspaces are the only unbounded list on the rail. */}
                 <div className="flex min-h-0 flex-col items-center gap-3">
-                    <RavenLogo />
+                    <AppSwitcher />
                     <div className="px-3.5 w-full">
                         <Separator />
                     </div>
