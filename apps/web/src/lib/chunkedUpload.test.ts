@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { DEFAULT_CHUNK_SIZE, getChunkPlan, getFileChunkSize, isTransientUploadError, uploadInChunks, type SendChunk, type UploadFields } from "./chunkedUpload"
+import { getChunkPlan, getFileChunkSize, isTransientUploadError, uploadInChunks, type SendChunk, type UploadFields } from "./chunkedUpload"
 
 const makeFile = (size: number, name = "report.pdf") => new File([new Uint8Array(size)], name, { type: "application/pdf" })
 
@@ -37,10 +37,15 @@ describe("getFileChunkSize", () => {
         vi.stubGlobal("window", { frappe: { boot: { file_chunk_size: 1024 } } })
         expect(getFileChunkSize()).toBe(1024)
     })
-    it("falls back to 25 MB when boot has no usable value", () => {
-        vi.stubGlobal("window", { frappe: { boot: { file_chunk_size: 0 } } })
-        expect(getFileChunkSize()).toBe(DEFAULT_CHUNK_SIZE)
-        expect(DEFAULT_CHUNK_SIZE).toBe(25 * 1024 * 1024)
+    it("doesn't chunk when the server sends no chunk size", async () => {
+        // Frappe v15 has no chunked uploads, so it sends no file_chunk_size.
+        vi.stubGlobal("window", { frappe: { boot: {} } })
+        const size = 25 * 1024 * 1024 + 1
+        const { calls, send } = recordingSender()
+        const fractions: number[] = []
+        await uploadInChunks(makeFile(size), getFileChunkSize(), send, { onProgress: (f) => fractions.push(f) })
+        expect(calls.map((c) => c.fields)).toEqual([{ total_file_size: size }])
+        expect(fractions).toEqual([1])
     })
 })
 

@@ -4,12 +4,14 @@
  * file; chunks only keep each request under proxy body limits.
  */
 
-export const DEFAULT_CHUNK_SIZE = 25 * 1024 * 1024
-
-/** Chunk size the server expects (site_config `file_chunk_size`), else Frappe's 25 MB default. */
+/**
+ * Chunk size the server boots with. Frappe v15 can't chunk and sends none, so every
+ * file then goes in one request.
+ */
 export const getFileChunkSize = (): number => {
     const size = Number(window.frappe?.boot?.file_chunk_size)
-    return Number.isFinite(size) && size > 0 ? size : DEFAULT_CHUNK_SIZE
+    // Not Infinity: getChunkPlan's `0 * Infinity` start offset is NaN.
+    return Number.isFinite(size) && size > 0 ? size : Number.MAX_SAFE_INTEGER
 }
 
 export type ChunkPlanItem = { index: number; start: number; end: number }
