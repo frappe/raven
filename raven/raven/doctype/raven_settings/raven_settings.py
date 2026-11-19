@@ -35,6 +35,7 @@ class RavenSettings(Document):
 		google_processor_location: DF.Literal["us", "eu"]
 		google_project_id: DF.Data | None
 		google_service_account_json_key: DF.Password | None
+		klipy_api_key: DF.Data | None
 		local_llm_api_url: DF.Data | None
 		local_llm_provider: DF.Literal["LM Studio", "Ollama", "LocalAI", "OpenAI Compatible"]
 		oauth_client: DF.Link | None
@@ -48,12 +49,16 @@ class RavenSettings(Document):
 		push_notification_service: DF.Literal["Frappe Cloud", "Raven"]
 		setup_completed: DF.Check
 		show_if_a_user_is_on_leave: DF.Check
-		tenor_api_key: DF.Data | None
 		use_website_favicon: DF.Check
 		vapid_public_key: DF.Data | None
 		working_hours_end: DF.Time | None
 		working_hours_start: DF.Time | None
 	# end: auto-generated types
+
+	def on_update(self):
+		# Boot is cached per user and carries the key; every copy is now stale.
+		if self.has_value_changed("klipy_api_key"):
+			frappe.cache.delete_key("bootinfo")
 
 	def validate(self):
 		if self.auto_create_department_channel:

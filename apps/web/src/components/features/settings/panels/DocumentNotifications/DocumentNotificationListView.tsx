@@ -13,7 +13,7 @@ import { TablePagination } from "@components/ui/table-pagination"
 import usePaginatedList from "@hooks/usePaginatedList"
 import useCreateHotkey from "@hooks/useCreateHotkey"
 import type { RavenDocumentNotification } from "@raven/types/RavenIntegrations/RavenDocumentNotification"
-import { isRavenSettingsAdmin } from "../AdminSettingsForm"
+import { isRavenSettingsAdmin } from "@lib/permissions"
 import _ from "@lib/translate"
 
 export const DOC_NOTIFICATIONS_LIST_KEY = "raven-document-notifications"

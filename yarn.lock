@@ -3736,6 +3736,18 @@
   resolved "https://registry.yarnpkg.com/@ungap/structured-clone/-/structured-clone-1.3.0.tgz#d06bbb384ebcf6c505fde1c3d0ed4ddffe0aaff8"
   integrity sha512-WmoN8qaIAo7WTYWbAZuG8PYEhn5fkz7dZrqTBZ7dtt//lL2Gwms1IcnQ5yHqjDfX8Ft5j4YzDM23f87zBfDe9g==
 
+"@virtuoso.dev/gurx@1.2.3":
+  version "1.2.3"
+  resolved "https://registry.yarnpkg.com/@virtuoso.dev/gurx/-/gurx-1.2.3.tgz#527bdca5085553ac8cdb6b33d2eee13c7d9ba4d4"
+  integrity sha512-zqIzVOQgJGEbrG+hvNiNHdrtM2G/9zBVgBSRUAW2yT8iUOouSHAsPIxpCU/xsAYEwicXURGhU6cxzgBPVjXL+g==
+
+"@virtuoso.dev/masonry@1.4.3":
+  version "1.4.3"
+  resolved "https://registry.yarnpkg.com/@virtuoso.dev/masonry/-/masonry-1.4.3.tgz#110a02b69bbb199f6c922c3d18267d1446462c20"
+  integrity sha512-3LxsW2TxlWn061NWZFSi8FhLVK0bwNfGZNPMMsKBg5uxhgVUo8j7XaEuOMgY9UO/EuIFMijAyHDc3DO3A5+KCA==
+  dependencies:
+    "@virtuoso.dev/gurx" "1.2.3"
+
 "@vitejs/plugin-react@^6.0.1":
   version "6.0.2"
   resolved "https://registry.yarnpkg.com/@vitejs/plugin-react/-/plugin-react-6.0.2.tgz#f70cb8ed0ce225dbc3055d78070f820d8aa35eda"

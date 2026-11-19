@@ -1,6 +1,9 @@
+import hashlib
+import hmac
 from urllib.parse import urlsplit
 
 import frappe
+from frappe.utils.password import get_encryption_key
 from frappe.utils.safe_exec import is_safe_exec_enabled
 
 from raven.api.setup import is_setup_admin
@@ -39,8 +42,6 @@ def boot_session(bootinfo):
 	if blocked_domains:
 		bootinfo.link_preview_blocked_domains = blocked_domains
 
-	tenor_api_key = raven_settings.tenor_api_key
-
 	document_link_override = frappe.get_hooks("raven_document_link_override")
 
 	if (
@@ -53,6 +54,10 @@ def boot_session(bootinfo):
 			frappe.session.user,
 			["chat_style", "time_format", "hide_read_receipts", "quiet_hours_nudge", "onboarded"],
 		)
+		if raven_settings.klipy_api_key:
+			# KLIPY expects every client to hold the key; it is not a secret.
+			bootinfo.klipy_api_key = raven_settings.klipy_api_key
+			bootinfo.raven_klipy_customer_id = klipy_customer_id(frappe.session.user)
 	else:
 		chat_style = "Simple"
 		time_format = "12-hour"
@@ -63,10 +68,6 @@ def boot_session(bootinfo):
 
 	if document_link_override and len(document_link_override) > 0:
 		bootinfo.raven_document_link_override = True
-
-	# Only a key the site set for itself: Raven ships no Tenor key of its own.
-	if tenor_api_key:
-		bootinfo.tenor_api_key = tenor_api_key
 
 	bootinfo.chat_style = chat_style if chat_style else "Simple"
 	bootinfo.raven_time_format = time_format if time_format else "12-hour"
@@ -107,3 +108,8 @@ def boot_session(bootinfo):
 	if raven_settings.push_notification_service == "Raven":
 		bootinfo.vapid_public_key = raven_settings.vapid_public_key
 		bootinfo.firebase_client_config = raven_settings.config
+
+
+def klipy_customer_id(user: str) -> str:
+	"""KLIPY's per-user id: stable for the user, never their email."""
+	return hmac.new(get_encryption_key().encode(), user.encode(), hashlib.sha256).hexdigest()

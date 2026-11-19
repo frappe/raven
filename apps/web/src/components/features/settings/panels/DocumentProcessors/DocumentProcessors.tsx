@@ -14,7 +14,7 @@ import {
     SettingsPanelContent, SettingsPanelDescription, SettingsPanelHeader, SettingsPanelTitle,
 } from "@components/ui/settings-dialog"
 import { Skeleton } from "@components/ui/skeleton"
-import { isRavenSettingsAdmin } from "../AdminSettingsForm"
+import { isRavenSettingsAdmin } from "@lib/permissions"
 import { useRavenSettings } from "@hooks/fetchers/useRavenSettings"
 import AINotEnabledCallout from "../ai/AINotEnabledCallout"
 import { isProcessorActive } from "../ai/processorState"

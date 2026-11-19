@@ -70,6 +70,21 @@ class TestSendAttachments(IntegrationTestCase):
 		messages = self.send()
 		self.assertEqual(messages[0].file, self.file_url)
 
+	def test_gif_only_message_sends(self):
+		# A GIF is an <img> with no text, like a custom emoji.
+		frappe.set_user("test1@example.com")
+		gif = '<p><img data-type="gif" src="https://static.klipy.com/ii/a" alt="Hi" width="498" height="280"></p>'
+		messages = send_message_with_attachments(channel_id=self.channel.name, content=gif)
+		self.assertEqual(len(messages), 1)
+		self.assertEqual(messages[0].content, "Sent a GIF")
+
+	def test_empty_message_is_rejected(self):
+		frappe.set_user("test1@example.com")
+		with self.assertRaises(frappe.ValidationError):
+			send_message_with_attachments(
+				channel_id=self.channel.name, content="<p><img src='/files/a.png'></p>"
+			)
+
 	def test_cannot_forward_a_made_up_message(self):
 		# The audit's case: an old-client forward with someone else's file and no real message.
 		frappe.set_user("test3@example.com")

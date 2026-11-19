@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import type { Message } from "@raven/types/common/Message"
-import { applyInitialPage, upsertMessage } from "./reducers"
-import { selectStreamBlocks } from "./selectors"
+import { applyInitialPage, removeOptimisticBatch, upsertMessage, upsertMessages } from "./reducers"
+import { selectCurrentMessage, selectStreamBlocks } from "./selectors"
 import { initialChannelState } from "./types"
 
 const msg = (name: string, creation: string, overrides: Partial<Message> = {}): Message => {
@@ -207,5 +207,33 @@ describe("selectStreamBlocks", () => {
         const blockA = (blocks: typeof before) =>
             blocks.find((b) => b.message_type !== "date" && b.name === "a")
         expect(blockA(after)).toBe(blockA(before))
+    })
+})
+
+describe("selectCurrentMessage", () => {
+    const placeholder = msg("b1-text", "2026-06-10 09:00:00.000000", { message_batch_id: "b1", _status: "sending" } as Partial<Message>)
+    const confirmed = msg("x9", "2026-06-10 09:00:00.100000", { message_batch_id: "b1" })
+
+    it("is the store's copy of the message", () => {
+        const state = stateOf([msg("a", "2026-06-10 08:00:00.000000", { text: "old" })])
+        const updated = upsertMessage(state, msg("a", "2026-06-10 08:00:00.000000", { text: "new", modified: "2026-06-10 08:05:00.000000" }))
+        expect(selectCurrentMessage(updated, msg("a", "2026-06-10 08:00:00.000000", { text: "old" }))?.text).toBe("new")
+    })
+
+    // The server confirmed the send while the pointer stayed on it.
+    it("is the confirmed message for a placeholder the server replaced", () => {
+        const sending = upsertMessage(stateOf([]), placeholder)
+        const resolved = upsertMessages(removeOptimisticBatch(sending, "b1"), [confirmed])
+        expect(selectCurrentMessage(resolved, placeholder)?.name).toBe("x9")
+    })
+
+    it("is the placeholder while the send is pending", () => {
+        expect(selectCurrentMessage(upsertMessage(stateOf([]), placeholder), placeholder)?.name).toBe("b1-text")
+    })
+
+    it("is undefined once the message is gone", () => {
+        const discarded = removeOptimisticBatch(upsertMessage(stateOf([]), placeholder), "b1")
+        expect(selectCurrentMessage(discarded, placeholder)).toBeUndefined()
+        expect(selectCurrentMessage(stateOf([]), msg("a", "2026-06-10 08:00:00.000000"))).toBeUndefined()
     })
 })

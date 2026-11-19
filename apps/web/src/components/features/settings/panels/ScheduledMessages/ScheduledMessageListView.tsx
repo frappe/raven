@@ -17,7 +17,7 @@ import { timeFormatAtom } from "@utils/preferences"
 import usePaginatedList from "@hooks/usePaginatedList"
 import useCreateHotkey from "@hooks/useCreateHotkey"
 import type { RavenSchedulerEvent } from "@raven/types/RavenIntegrations/RavenSchedulerEvent"
-import { isRavenSettingsAdmin } from "../AdminSettingsForm"
+import { isRavenSettingsAdmin } from "@lib/permissions"
 import ServerScriptsCallout from "./ServerScriptsCallout"
 import _ from "@lib/translate"
 

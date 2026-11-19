@@ -1,7 +1,7 @@
 import type { Message } from "@raven/types/common/Message"
 import { getDateObject } from "@lib/date"
 import { isThreadParent } from "@utils/messageUtils"
-import { ChannelMessagesState, DateBlock, MessageBatchBlock, StreamBlock, UnreadBlock } from "./types"
+import { ChannelMessagesState, DateBlock, isOptimistic, MessageBatchBlock, StreamBlock, UnreadBlock } from "./types"
 
 /**
  * Derives the render list for the chat stream: messages in ascending order,
@@ -221,4 +221,19 @@ export const selectStreamBlocks = (
     const blocks = buildBlocks(state, pinned, firstUnread)
     blocksCache.set(state, { pinnedMessagesString: pinned, firstUnreadMessage: firstUnread, blocks })
     return blocks
+}
+
+/**
+ * A message as the store holds it now, for UI that kept an older copy (the hover toolbar).
+ * A confirmed send replaces its placeholder under the server's name; the batch id carries
+ * over, so the placeholder resolves to its batch's newest message.
+ */
+export const selectCurrentMessage = (state: ChannelMessagesState, message: Message): Message | undefined => {
+    const current = state.byId.get(message.name)
+    if (current || !isOptimistic(message)) return current
+    for (let i = state.order.length - 1; i >= 0; i--) {
+        const candidate = state.byId.get(state.order[i])
+        if (candidate?.message_batch_id === message.message_batch_id) return candidate
+    }
+    return undefined
 }

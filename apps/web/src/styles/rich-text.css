@@ -437,6 +437,12 @@
   @apply my-1 h-auto max-w-96 rounded-md;
 }
 
+/* Lifts the 384px cap above: GIFs take photo bounds (480px) from their inline
+   width. A narrow column still caps them; aspect-ratio keeps the height in step. */
+.tiptap img.gif {
+  @apply max-w-full;
+}
+
 .tiptap img[data-type="emoji"],
 .tiptap .emoji {
   /* w-auto + object-contain: keep the emoji's aspect ratio (don't squish non-square

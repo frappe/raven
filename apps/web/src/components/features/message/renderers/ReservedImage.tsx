@@ -39,6 +39,7 @@ export const ReservedImage = ({
                 src={useFileSrc(src)}
                 alt={alt}
                 loading="lazy"
+                decoding="async"
                 onLoad={() => setLoaded(true)}
                 className={cn(
                     "h-full w-full object-cover transition-opacity duration-300",

@@ -16,7 +16,7 @@
   "working_hours_end",
   "integrations_tab",
   "integrations_section",
-  "tenor_api_key",
+  "klipy_api_key",
   "ai_section",
   "enable_ai_integration",
   "enable_openai_services",
@@ -66,11 +66,11 @@
    "label": "Integrations"
   },
   {
-   "fieldname": "tenor_api_key",
+   "description": "From the KLIPY Partner Panel (partner.klipy.com). Turns on GIFs.",
+   "fieldname": "klipy_api_key",
    "fieldtype": "Data",
-   "label": "Tenor API Key",
-   "length": 320,
-   "permlevel": 1
+   "label": "KLIPY API Key",
+   "length": 320
   },
   {
    "fieldname": "integrations_section",
@@ -343,7 +343,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-10-28 12:00:00.000000",
+ "modified": "2026-11-04 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Raven",
  "name": "Raven Settings",

@@ -12,6 +12,7 @@ import {
 } from "@lib/customEmojiShortcodes"
 import { cn } from "@lib/utils"
 import _ from "@lib/translate"
+import { GifImage } from "./GifImage"
 
 /**
  * Renders a message body from the HTML the backend stores in `message.text`
@@ -205,6 +206,12 @@ const options: HTMLReactParserOptions = {
             // `emoji` class → sized by `.tiptap .emoji` (same rule as the composer),
             // which beats `.tiptap img` on specificity. Consistent inline emoji size.
             return <img src={fileSrc(src)} alt={alt} title={alt} loading="lazy" className="emoji" />
+        }
+
+        // KLIPY GIF: host check and sizing live in GifImage.
+        if (node.name === "img" && node.attribs?.["data-type"] === "gif") {
+            const { src, alt, width, height } = node.attribs
+            return <GifImage src={src} alt={alt} width={width} height={height} />
         }
 
         // Code blocks: <pre><code class="language-xxx">…</code></pre>. Returning
