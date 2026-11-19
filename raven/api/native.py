@@ -8,6 +8,8 @@ APP_ORIGINS = ("capacitor://localhost", "https://localhost")
 # answered by the same rule. The origin allowlist is the real boundary, and those origins only
 # exist on the user's own device.
 APP_HEADER = "X-Raven-App"
+# Features the app checks on every launch. A list so later features add entries.
+RAVEN_FEATURES = ["location_messages"]
 
 
 @frappe.whitelist()
@@ -19,6 +21,7 @@ def boot():
 	data = frappe.sessions.get() if frappe.cache.hget("bootinfo", frappe.session.user) else app_boot()
 	data["push_relay_server_url"] = frappe.conf.get("push_relay_server_url")
 	data["server_script_enabled"] = frappe.conf.get("server_script_enabled", True)
+	data["raven_features"] = RAVEN_FEATURES
 	return data
 
 

@@ -14,7 +14,7 @@ import { cn } from "@lib/utils"
  */
 // Bundled, not served by the site: the native app has no site under its origin, and a
 // cross-origin mask image fails CORS.
-const ICON_URLS = import.meta.glob<string>("/src/assets/brand_icons/*.svg", { eager: true, query: "?url", import: "default" })
+const ICON_URLS = import.meta.glob<string>("/src/assets/brand_icons/*.{svg,png}", { eager: true, query: "?url", import: "default" })
 const iconUrl = (file: string) => ICON_URLS[`/src/assets/brand_icons/${file}`]
 export type BrandSpec = {
     file: string
@@ -23,6 +23,8 @@ export type BrandSpec = {
      *  a slightly-inset copy of the glyph's silhouette, so the plate hides
      *  under the opaque mark but shows through every cutout. */
     counterspace?: string
+    /** Corner rounding for a square app-icon image (full-colour logos only). */
+    rounded?: string
 }
 export const BRAND = {
     // Plate shapes: the YouTube mark is a wide rounded rect (~17-83% tall),
@@ -39,6 +41,9 @@ export const BRAND = {
     reddit: { file: "reddit.svg", color: "#FF4500" },
     zoom: { file: "zoom.svg", color: "#0B5CFF" },
     googleMeet: { file: "Google_Meet.svg", color: null },
+    googleMaps: { file: "google-maps.png", color: null },
+    appleMaps: { file: "apple-maps.png", color: null, rounded: "rounded-[22%]" },
+    waze: { file: "waze.png", color: null },
     wikipedia: { file: "wikipedia.svg", color: "var(--ink-gray-9)" },
     figma: { file: "Figma.svg", color: null },
     frappeMeet: { file: "frappemeet.svg", color: null },
@@ -49,6 +54,9 @@ export const BRAND = {
     github: { file: "github.svg", color: "var(--ink-gray-9)" },
     hackerNews: { file: "ycombinator.svg", color: "#FF6600" },
 } satisfies Record<string, BrandSpec>
+
+/** Maps app (or map-link provider) id → its logo. */
+export const MAPS_BRAND = { google: BRAND.googleMaps, apple: BRAND.appleMaps, waze: BRAND.waze }
 
 /** Server provider names (Raven Link Preview.provider) → brand glyph. */
 export const PROVIDER_BRAND: Record<string, BrandSpec> = {
@@ -85,7 +93,7 @@ const maskStyle = (brand: BrandSpec): CSSProperties => ({
 
 export const BrandIcon = ({ brand, className }: { brand: BrandSpec; className?: string }) => {
     if (!brand.color) {
-        return <img src={iconUrl(brand.file)} alt="" className={cn("size-12", className)} />
+        return <img src={iconUrl(brand.file)} alt="" className={cn("size-12", brand.rounded, className)} />
     }
     if (brand.counterspace) {
         return (

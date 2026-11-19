@@ -5,6 +5,7 @@ import type { Message } from "@raven/types/common/Message"
 import type { OutboxMessage } from "@db"
 import { getAttachmentKind } from "@utils/attachmentPreview"
 import { parseVoiceJson, type VoiceNoteMeta } from "@lib/voiceNote"
+import { parseLocationJson, senderMapsProvider, type LocationMeta } from "@lib/location"
 import _ from "@lib/translate"
 import { channelMessagesStore } from "./store"
 import { channelUnreadStore } from "@stores/unread/store"
@@ -57,33 +58,13 @@ const optimisticImageThumbnail = (width: number, height: number) => {
 
 const optimisticNow = () => dayjs().tz(SYSTEM_TIMEZONE).format("YYYY-MM-DD HH:mm:ss.SSS") + "000"
 
-/**
- * Builds the messages we show on screen the instant the user hits send — before the
- * server confirms them — attachments first, then the text. They all share `batchId`
- * (the client_id) and are marked "sending". `creation` (the timestamp) is passed in
- * when we rebuild a saved send after a refresh, so it looks exactly as it did before.
- */
-export const buildOptimisticMessages = (
-    channelID: string,
-    batchId: string,
-    owner: string,
-    content: string,
+/** One placeholder per outgoing file, in send order. */
+const filePlaceholders = (
     files: OutgoingFile[],
-    creation: string = optimisticNow(),
-    reply?: { linkedMessage: string; repliedMessageDetails?: string },
-    linkedDocument?: { doctype: string; docname: string },
-): OptimisticMessage[] => {
-    const base = (extra: Partial<Message>): OptimisticMessage =>
-        ({
-            owner,
-            creation,
-            channel_id: channelID,
-            message_batch_id: batchId,
-            _status: "sending",
-            ...extra,
-        }) as unknown as OptimisticMessage
-
-    const messages = files.map((file, i) => {
+    batchId: string,
+    base: (extra: Partial<Message>) => OptimisticMessage,
+): OptimisticMessage[] =>
+    files.map((file, i) => {
         const isImage = getAttachmentKind(file.file_url) === "image"
         return base({
             name: `${batchId}-${i}`,
@@ -103,9 +84,48 @@ export const buildOptimisticMessages = (
             ...(file.voice ? { message_type: "Voice" as const, json: file.voice } : {}),
         })
     })
+
+/**
+ * Builds the messages we show on screen the instant the user hits send — before the
+ * server confirms them — attachments first, then the text. They all share `batchId`
+ * (the client_id) and are marked "sending". `creation` (the timestamp) is passed in
+ * when we rebuild a saved send after a refresh, so it looks exactly as it did before.
+ */
+export const buildOptimisticMessages = (
+    channelID: string,
+    batchId: string,
+    owner: string,
+    content: string,
+    files: OutgoingFile[],
+    creation: string = optimisticNow(),
+    reply?: { linkedMessage: string; repliedMessageDetails?: string },
+    linkedDocument?: { doctype: string; docname: string },
+    location?: LocationMeta,
+): OptimisticMessage[] => {
+    const base = (extra: Partial<Message>): OptimisticMessage =>
+        ({
+            owner,
+            creation,
+            channel_id: channelID,
+            message_batch_id: batchId,
+            _status: "sending",
+            ...extra,
+        }) as unknown as OptimisticMessage
+
+    // A location is one message: its snapshot (when present) rides on it, and the
+    // composer never pairs it with text.
+    const locationPlaceholder = location
+        ? base({
+              name: `${batchId}-location`,
+              message_type: "Location",
+              json: location,
+              ...(files[0] ? { file: files[0].file_url, file_size: files[0].file_size } : {}),
+          })
+        : undefined
+    const messages: OptimisticMessage[] = locationPlaceholder ? [locationPlaceholder] : filePlaceholders(files, batchId, base)
     // Mirror the backend: a document-only send still needs one (empty Text) message
     // to carry the link — the card is the content.
-    if (content || (linkedDocument && files.length === 0)) {
+    if (!location && (content || (linkedDocument && files.length === 0))) {
         messages.push(base({ name: `${batchId}-text`, message_type: "Text", text: content }))
     }
 
@@ -150,13 +170,15 @@ export const enqueueSend = (
         sendSilently?: boolean
         /** A system document going out with the message (rendered as a card). */
         linkedDocument?: { doctype: string; docname: string }
+        /** A shared location; its snapshot, when present, travels as `files[0]`. */
+        location?: LocationMeta
     },
 ) => {
-    const { channelID, batchId, owner, content, files, linkedMessage, repliedMessageDetails, sendSilently, linkedDocument } = params
+    const { channelID, batchId, owner, content, files, linkedMessage, repliedMessageDetails, sendSilently, linkedDocument, location } = params
     const creation = optimisticNow()
     const reply = linkedMessage ? { linkedMessage, repliedMessageDetails } : undefined
 
-    const placeholders = buildOptimisticMessages(channelID, batchId, owner, content, files, creation, reply, linkedDocument)
+    const placeholders = buildOptimisticMessages(channelID, batchId, owner, content, files, creation, reply, linkedDocument, location)
     channelMessagesStore.addOptimisticMessages(channelID, batchId, placeholders)
 
     // Sending means you're caught up — clear the unread badge instantly (the read tracker
@@ -176,9 +198,10 @@ export const enqueueSend = (
         replied_message_details: repliedMessageDetails,
         ...(sendSilently ? { send_silently: true } : {}),
         ...(linkedDocument ? { link_doctype: linkedDocument.doctype, link_document: linkedDocument.docname } : {}),
+        ...(location ? { location } : {}),
     })
 
-    submitSend(client, channelID, batchId, content, files, linkedMessage, { sendSilently, linkedDocument })
+    submitSend(client, channelID, batchId, content, files, linkedMessage, { sendSilently, linkedDocument, location })
 }
 
 /**
@@ -221,6 +244,8 @@ export const submitSend = (
         suppressErrorToast?: boolean
         sendSilently?: boolean
         linkedDocument?: { doctype: string; docname: string }
+        /** The shared point; `maps` picks the server's fallback link provider. */
+        location?: LocationMeta
     },
 ) => {
     inFlight.add(batchId)
@@ -237,6 +262,7 @@ export const submitSend = (
             // Linked document rides the last message too (the caption when there's text).
             link_doctype: opts?.linkedDocument?.doctype ?? null,
             link_document: opts?.linkedDocument?.docname ?? null,
+            location: opts?.location ? { ...opts.location, maps: senderMapsProvider() } : null,
         })
         .then((res) => {
             channelMessagesStore.resolveOptimisticSend(channelID, batchId, res.message ?? [])
@@ -275,7 +301,7 @@ export const retrySend = async (client: PostClient, channelID: string, batchId: 
         .map((m) => ({
             file_url: (m as { file?: string }).file as string,
             file_size: (m as { file_size?: number }).file_size ?? 0,
-            voice: m.message_type === "Voice" ? parseVoiceJson(m.json) ?? undefined : undefined,
+            ...(m.message_type === "Voice" ? { voice: parseVoiceJson(m.json) ?? undefined } : {}),
         }))
     // The reply lives on whichever placeholder carries linked_message (the last one).
     const linkedMessage = placeholders
@@ -288,6 +314,9 @@ export const retrySend = async (client: PostClient, channelID: string, batchId: 
     // isSettling — if a reconnect flush grabbed it in that window, let that send win.
     if (inFlight.has(batchId)) return
 
+    // Fall back to the saved record when the placeholder json is unusable.
+    const location = locationFromPlaceholders(placeholders) ?? record?.location
+
     channelMessagesStore.retryOptimisticSend(channelID, batchId)
     setOutboxStatus(batchId, "sending")
     // Linked document and the silent flag both come from the outbox record —
@@ -295,7 +324,14 @@ export const retrySend = async (client: PostClient, channelID: string, batchId: 
     submitSend(client, channelID, batchId, content, files, linkedMessage, {
         sendSilently: record?.send_silently,
         linkedDocument: record ? linkedDocumentOf(record) : undefined,
+        location,
     })
+}
+
+/** A Location placeholder's point, rebuilt for a retry (undefined when unusable). */
+const locationFromPlaceholders = (placeholders: Message[]): LocationMeta | undefined => {
+    const location = placeholders.find((m) => m.message_type === "Location")
+    return location ? parseLocationJson(location.json) ?? undefined : undefined
 }
 
 /** Discard a failed send: remove it both from the screen and from the saved outbox. */
@@ -321,6 +357,7 @@ export const injectOutboxRecord = (record: OutboxMessage) => {
         record.creation,
         record.linked_message ? { linkedMessage: record.linked_message, repliedMessageDetails: record.replied_message_details } : undefined,
         linkedDocumentOf(record),
+        record.location,
     )
     channelMessagesStore.addOptimisticMessages(record.channel_id, record.client_id, placeholders)
     // failed AND rejected both render as a failed bubble (Retry / Discard).
@@ -352,6 +389,7 @@ export const retryOutboxRecord = (client: PostClient, record: OutboxMessage): Pr
             record.creation,
             record.linked_message ? { linkedMessage: record.linked_message, repliedMessageDetails: record.replied_message_details } : undefined,
             linkedDocumentOf(record),
+            record.location,
         )
         channelMessagesStore.addOptimisticMessages(record.channel_id, record.client_id, placeholders)
     } else {
@@ -364,5 +402,6 @@ export const retryOutboxRecord = (client: PostClient, record: OutboxMessage): Pr
         suppressErrorToast: true,
         sendSilently: record.send_silently,
         linkedDocument: linkedDocumentOf(record),
+        location: record.location,
     })
 }

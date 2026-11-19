@@ -71,7 +71,7 @@
    "fieldname": "message_type",
    "fieldtype": "Select",
    "label": "Message Type",
-   "options": "Text\nImage\nFile\nPoll\nSystem\nVoice"
+   "options": "Text\nImage\nFile\nPoll\nSystem\nVoice\nLocation"
   },
   {
    "fieldname": "message_reactions",

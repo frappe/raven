@@ -18,4 +18,9 @@ describe("buildReplySnapshot", () => {
         const voice = { ...base, message_type: "Voice", file: "/private/files/v.m4a", json: '{"duration":7,"waveform":[1]}' } as unknown as Message
         expect(JSON.parse(buildReplySnapshot(voice)!).json).toEqual({ duration: 7, waveform: [1] })
     })
+
+    it("does not carry a location's payload", () => {
+        const location = { ...base, message_type: "Location", text: "<p>link</p>", json: '{"latitude":1,"longitude":2}' } as unknown as Message
+        expect("json" in JSON.parse(buildReplySnapshot(location)!)).toBe(false)
+    })
 })

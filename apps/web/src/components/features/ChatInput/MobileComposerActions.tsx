@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react"
-import { Plus, Camera, Images, FileBox, type LucideIcon, FilesIcon, ChartBar, Video, Mic } from "lucide-react"
+import { Plus, Camera, Images, FileBox, type LucideIcon, FilesIcon, ChartBar, Video, Mic, MapPin } from "lucide-react"
 import { Button } from "@components/ui/button"
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle, DrawerTrigger } from "@components/ui/drawer"
 import { useSetAtom } from "jotai"
@@ -40,10 +40,13 @@ let pickCount = 0
 export const MobileComposerActions = ({
     channelID,
     onRecord,
+    onShareLocation,
 }: {
     channelID: string
     /** Starts a voice note; absent when this device can't record. */
     onRecord?: () => void
+    /** Opens the location picker after the sheet closes; absent when this device can't share one. */
+    onShareLocation?: () => void
 }) => {
     const [sheetOpen, setSheetOpen] = useState(false)
     const [pollOpen, setPollOpen] = useState(false)
@@ -54,14 +57,13 @@ export const MobileComposerActions = ({
     const videoCaptureRef = useRef<HTMLInputElement>(null)
     const galleryInputRef = useRef<HTMLInputElement>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
-    // A voice note starts once the sheet is gone: the recorder's start-up work would stall
-    // the sheet's exit, and it snaps back into view until it unmounts.
-    const recordAfterClose = useRef<(() => void) | null>(null)
+    // A tile's follow-up starts once the sheet is gone: overlays fight for focus, and the recorder's start-up stalls the exit.
+    const afterClose = useRef<(() => void) | null>(null)
     const sheetBody = useCallback(
         () => () => {
-            const record = recordAfterClose.current
-            recordAfterClose.current = null
-            record?.()
+            const open = afterClose.current
+            afterClose.current = null
+            open?.()
         },
         [],
     )
@@ -108,9 +110,12 @@ export const MobileComposerActions = ({
                 onSelect: () => {
                     // In the tap: iOS only lets audio start from a user gesture.
                     unlockAudioContext()
-                    recordAfterClose.current = onRecord
+                    afterClose.current = onRecord
                 },
             }]
+            : []),
+        ...(onShareLocation
+            ? [{ icon: MapPin, label: _("Location"), onSelect: () => { afterClose.current = onShareLocation } }]
             : []),
         { icon: ChartBar, label: _("Poll"), onSelect: () => setPollOpen(true) },
         { icon: FileBox, label: _("Document"), onSelect: () => setDocOpen(true) },

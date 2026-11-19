@@ -64,6 +64,13 @@ export const PROVIDER_CATEGORIES: Array<{ label: string; options: ProviderOption
         ],
     },
     {
+        label: 'Maps',
+        options: [
+            { id: 'Google Maps', label: 'Google Maps', brand: BRAND.googleMaps },
+            { id: 'Apple Maps', label: 'Apple Maps', brand: BRAND.appleMaps },
+        ],
+    },
+    {
         label: 'Workspace',
         options: [
             { id: 'Raven Link', label: 'Raven', brand: BRAND.raven },

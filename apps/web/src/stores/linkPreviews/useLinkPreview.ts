@@ -1,6 +1,7 @@
 import { useCallback, useContext, useEffect, useSyncExternalStore } from "react"
 import { FrappeConfig, FrappeContext, useFrappeEventListener } from "frappe-react-sdk"
 import type { Message } from "@raven/types/common/Message"
+import { firstLink } from "@lib/firstLink"
 import type { StreamBlock } from "@stores/messages/types"
 import { linkPreviewStore, type LinkPreviewData, type LinkPreviewEntry } from "./store"
 
@@ -28,13 +29,8 @@ export const useLinkPreview = (url?: string): LinkPreviewEntry | undefined => {
 }
 
 /** A message's previewable link — the first one, same rule as the renderer. */
-const firstLink = (message: Message): string | undefined => {
-    if (message.hide_link_preview) return undefined
-    return message.links
-        ?.split("\n")
-        .map((line) => line.trim())
-        .find(Boolean)
-}
+const previewLink = (message: Message): string | undefined =>
+    message.hide_link_preview ? undefined : firstLink(message.links)
 
 /**
  * Prefetch previews for the WHOLE loaded window the moment its blocks
@@ -53,7 +49,7 @@ export const useWindowLinkPreviewPrefetch = (blocks: StreamBlock[]) => {
             if (block.message_type === "date" || block.message_type === "unread") continue
             const messages = block.message_type === "batch" ? block.messages : [block]
             for (const message of messages) {
-                const href = firstLink(message)
+                const href = previewLink(message)
                 if (href) linkPreviewStore.register(href)
             }
         }

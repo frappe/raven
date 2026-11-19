@@ -27,6 +27,8 @@ class RavenMessageLinks(Document):
 			"Frappe Meet",
 			"Google Meet",
 			"Zoom",
+			"Google Maps",
+			"Apple Maps",
 			"YouTube",
 			"YouTube Music",
 			"Spotify",

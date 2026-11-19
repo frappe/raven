@@ -59,6 +59,10 @@ PROVIDER_DOMAINS = [
 	("Frappe", ("frappe.io",)),
 ]
 
+# Mirror of matchMapLink in apps/web/src/lib/mapLinks.ts — keep in sync.
+GOOGLE_HOST = re.compile(r"^(www\.)?google\.(com|[a-z]{2}|com?\.[a-z]{2})$")
+GOOGLE_MAPS_HOST = re.compile(r"^maps\.google\.(com|[a-z]{2}|com?\.[a-z]{2})$")
+
 # Length of the unique url column on Raven Link Preview. Longer URLs never
 # get a preview doc. Truncating them would corrupt the join key.
 MAX_PREVIEW_URL_LENGTH = 500
@@ -157,9 +161,10 @@ def is_tracking_param(key: str) -> bool:
 def detect_provider(normalized_url: str | None) -> str:
 	"""
 	Classify a normalized URL into one of the Provider select options.
-	Pure domain matching, no network. The stored provider is only used for
-	search filtering. Rendering keeps the client's own matcher chain.
-	Returns "" for URLs that did not normalize (mailto, tel).
+	Domain matching with one path-aware rule (map links), no network. The
+	stored provider is only used for search filtering. Rendering keeps the
+	client's own matcher chain. Returns "" for URLs that did not normalize
+	(mailto, tel).
 	"""
 	if not normalized_url:
 		return ""
@@ -187,6 +192,18 @@ def detect_provider(normalized_url: str | None) -> str:
 			return "Raven Link"
 		if any(_path_is_under(path, prefix) for prefix in SITE_APP_PATH_PREFIXES):
 			return "Site Document Link"
+
+	# Map links are the one path-aware rule: google.com/search is not a map,
+	# google.com/maps is. Mirrors matchMapLink in the web client.
+	path = parts.path
+	if GOOGLE_MAPS_HOST.match(host) or host == "maps.app.goo.gl":
+		return "Google Maps"
+	if host == "goo.gl" and path.startswith("/maps"):
+		return "Google Maps"
+	if GOOGLE_HOST.match(host) and path.startswith("/maps"):
+		return "Google Maps"
+	if host in ("maps.apple.com", "maps.apple"):
+		return "Apple Maps"
 
 	for provider, domains in PROVIDER_DOMAINS:
 		for domain in domains:
