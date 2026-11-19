@@ -1,5 +1,6 @@
 import frappe
 from frappe import _
+from frappe.utils import get_email_address
 
 from raven.utils import get_channel_members
 
@@ -89,7 +90,7 @@ def add_participants(event, channel):
 					"doctype": "Event Participants",
 					"reference_doctype": "Contact",
 					"reference_docname": contact_name,
-					"email": participant,
+					"email": get_email_address(participant),
 					"parent": event.name,
 					"parenttype": "Event",
 					"parentfield": "event_participants",
