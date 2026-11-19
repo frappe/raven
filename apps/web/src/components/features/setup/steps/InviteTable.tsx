@@ -2,7 +2,6 @@ import { useFieldArray, useFormContext } from "react-hook-form"
 import { Check, Plus, X } from "lucide-react"
 import { Button } from "@components/ui/button"
 import { Input } from "@components/ui/input"
-import { useUserCookieData } from "@hooks/useUserCookieData"
 import _ from "@lib/translate"
 import { cn } from "@lib/utils"
 import { validateInviteEmail, validateInviteFirstName, type InviteError } from "./inviteValidation"
@@ -36,7 +35,7 @@ const asRule = (error: InviteError | null) => (error ? errorText(error) : true)
 export const InviteTable = ({ invited, label }: { invited: Invitee[]; label: string }) => {
     const { control, register, clearErrors, formState: { errors } } = useFormContext<InviteForm>()
     const { fields, append, remove, update } = useFieldArray({ control, name: "rows" })
-    const { name: currentUser } = useUserCookieData()
+    const currentUserEmail: string = window.frappe?.boot?.user?.email ?? ""
 
     return (
         <div className="flex flex-col gap-1.5">
@@ -71,7 +70,7 @@ export const InviteTable = ({ invited, label }: { invited: Invitee[]; label: str
                                         aria-invalid={!!rowErrors?.email || undefined}
                                         className="focus-visible:bg-surface-gray-1"
                                         {...register(`rows.${index}.email`, {
-                                            validate: (_value, values) => asRule(validateInviteEmail(values.rows[index], { rows: values.rows, invited, currentUser })),
+                                            validate: (_value, values) => asRule(validateInviteEmail(values.rows[index], { rows: values.rows, invited, currentUserEmail })),
                                         })}
                                     />
                                     <Input

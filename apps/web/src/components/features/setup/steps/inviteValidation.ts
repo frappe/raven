@@ -10,12 +10,12 @@ export const normalizeEmail = (email: string) => email.trim().toLowerCase()
 /** Empty rows are skipped; anything typed must be a new, valid address that isn't the admin's own. */
 export const validateInviteEmail = (
     row: Invitee,
-    { rows, invited, currentUser }: { rows: Invitee[]; invited: Invitee[]; currentUser: string },
+    { rows, invited, currentUserEmail }: { rows: Invitee[]; invited: Invitee[]; currentUserEmail: string },
 ): InviteError | null => {
     const email = normalizeEmail(row.email)
     if (!email) return row.first_name.trim() ? "email_required" : null
     if (!EMAIL_PATTERN.test(email)) return "email_invalid"
-    if (email === normalizeEmail(currentUser)) return "self"
+    if (email === normalizeEmail(currentUserEmail)) return "self"
     const listed = rows.filter((other) => normalizeEmail(other.email) === email).length
     if (listed > 1 || invited.some((person) => normalizeEmail(person.email) === email)) return "duplicate"
     return null

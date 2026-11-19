@@ -29,7 +29,6 @@ import { Input } from "@components/ui/input"
 import { DataField } from "@components/ui/form-elements"
 import ErrorBanner from "@components/ui/error-banner"
 import { usersStore } from "@stores/usersStore"
-import { useUserCookieData } from "@hooks/useUserCookieData"
 import _ from "@lib/translate"
 import { useWorkspaces } from "@hooks/useWorkspaces"
 import useCreateHotkey from "@hooks/useCreateHotkey"
@@ -87,14 +86,14 @@ const UserForm = ({ onClose }: { onClose: VoidFunction }) => {
     const [userExists, setUserExists] = useState(false)
     const [ravenUserExists, setRavenUserExists] = useState(false)
     const [isSelf, setIsSelf] = useState(false)
-    const { name: currentUser } = useUserCookieData()
+    const currentUserEmail: string | undefined = window.frappe?.boot?.user?.email
 
     const { call } = useContext(FrappeContext) as FrappeConfig
     const { loading, call: inviteUser, error } = useFrappePostCall("raven.api.raven_users.invite_user")
 
     const onEmailBlur = () => {
         const email = form.getValues("email")
-        const self = email.trim().toLowerCase() === currentUser?.toLowerCase()
+        const self = email.trim().toLowerCase() === currentUserEmail?.toLowerCase()
         setIsSelf(self)
         if (!email) {
             setUserExists(false)
@@ -116,7 +115,13 @@ const UserForm = ({ onClose }: { onClose: VoidFunction }) => {
                 fieldname: "name",
             })
             .then((res: { message?: { name?: string } }) => {
-                const exists = Boolean(res.message?.name)
+                const userID = res.message?.name
+                if (userID && usersStore.getUser(userID)) {
+                    setRavenUserExists(true)
+                    setUserExists(false)
+                    return
+                }
+                const exists = Boolean(userID)
                 setUserExists(exists)
                 if (exists) {
                     // Unregister first/last name so their required rules don't block submit
