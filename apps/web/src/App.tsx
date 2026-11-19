@@ -283,11 +283,13 @@ const getSiteName = () => {
 }
 
 // Same rule as desk: socket.io is proxied on the page's origin, except under
-// `bench start`, where it listens on its own port.
+// `bench start` or Vite dev, where it listens on its own port.
 const getSocketPort = (): string | undefined => {
   if (import.meta.env.VITE_SOCKET_PORT) return import.meta.env.VITE_SOCKET_PORT
+  // A remote backend keeps its own default port; the SDK swaps in any port given here.
+  if (import.meta.env.VITE_FRAPPE_PATH) return undefined
   const boot = window.frappe?.boot
-  if (boot?.dev_server && boot.socketio_port) return String(boot.socketio_port)
+  if (boot?.dev_server || import.meta.env.DEV) return String(boot?.socketio_port ?? 9000)
   return window.location.port || undefined
 }
 
