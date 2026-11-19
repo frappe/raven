@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { uploadSnapshotWithin } from "./useSnapshotUpload"
+import { uploadFileWithin, withTimeout } from "./uploadWithin"
 
 const FILE = { size: 12 } as File
 const UPLOADED = { name: "file-1", file_url: "/files/location.webp", file_size: 12 }
@@ -10,11 +10,11 @@ const removed = () => async () => undefined
 
 afterEach(() => vi.useRealTimers())
 
-describe("uploadSnapshotWithin", () => {
+describe("uploadFileWithin", () => {
     it("skips the upload when the render outlasts the cap", async () => {
         vi.useFakeTimers()
         const upload = vi.fn(uploaded())
-        const result = uploadSnapshotWithin({
+        const result = uploadFileWithin({
             render: () => new Promise((resolve) => setTimeout(() => resolve(FILE), 6000)),
             upload,
             remove: removed(),
@@ -31,7 +31,7 @@ describe("uploadSnapshotWithin", () => {
     it("deletes an upload that lands after the cap", async () => {
         vi.useFakeTimers()
         const remove = vi.fn(removed())
-        const result = uploadSnapshotWithin({
+        const result = uploadFileWithin({
             render: inTime(),
             upload: () => new Promise((resolve) => setTimeout(() => resolve(UPLOADED), 6000)),
             remove,
@@ -47,7 +47,7 @@ describe("uploadSnapshotWithin", () => {
 
     it("returns the uploaded file when it lands in time", async () => {
         const remove = vi.fn(removed())
-        const result = uploadSnapshotWithin({
+        const result = uploadFileWithin({
             render: inTime(),
             upload: uploaded(),
             remove,
@@ -56,7 +56,7 @@ describe("uploadSnapshotWithin", () => {
         })
 
         await expect(result).resolves.toEqual({
-            snapshot: { file_url: "/files/location.webp", file_size: 12 },
+            file: { file_url: "/files/location.webp", file_size: 12 },
             name: "file-1",
         })
         expect(remove).not.toHaveBeenCalled()
@@ -67,7 +67,7 @@ describe("uploadSnapshotWithin", () => {
         let finishUpload: ((file: typeof UPLOADED) => void) | undefined
         const remove = vi.fn(removed())
         const token = { abandoned: false }
-        const result = uploadSnapshotWithin({
+        const result = uploadFileWithin({
             render: inTime(),
             upload: () => new Promise((resolve) => { finishUpload = resolve }),
             remove,
@@ -87,7 +87,7 @@ describe("uploadSnapshotWithin", () => {
         const remove = vi.fn(async () => {
             throw new Error("file already gone")
         })
-        const result = uploadSnapshotWithin({
+        const result = uploadFileWithin({
             render: inTime(),
             upload: () => new Promise((resolve) => setTimeout(() => resolve(UPLOADED), 6000)),
             remove,
@@ -99,5 +99,18 @@ describe("uploadSnapshotWithin", () => {
         await expect(result).resolves.toBeNull()
         await vi.advanceTimersByTimeAsync(1000)
         expect(remove).toHaveBeenCalledWith("file-1")
+    })
+})
+
+describe("withTimeout", () => {
+    it("times out a slow snapshot", async () => {
+        vi.useFakeTimers()
+        const result = withTimeout(new Promise(() => {}), 5000)
+        vi.advanceTimersByTime(5000)
+        await expect(result).resolves.toBeNull()
+    })
+
+    it("passes a fast result through", async () => {
+        await expect(withTimeout(Promise.resolve("ok"), 5000)).resolves.toBe("ok")
     })
 })

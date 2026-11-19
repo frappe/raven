@@ -1,16 +1,13 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import {
     SNAPSHOT_HEIGHT,
     SNAPSHOT_WIDTH,
     drawSnapshot,
     snapshotDrawPlan,
     snapshotFileName,
-    withTimeout,
 } from "./snapshot"
 
 const zoomOf = (url: string): number => Number(url.split("/")[3])
-
-afterEach(() => vi.useRealTimers())
 
 const META = { latitude: 12.9756, longitude: 77.6066 }
 
@@ -48,19 +45,6 @@ describe("snapshotFileName", () => {
 
     it("uses png when the browser encodes png", () => {
         expect(snapshotFileName("image/png")).toBe("location.png")
-    })
-})
-
-describe("withTimeout", () => {
-    it("times out a slow snapshot", async () => {
-        vi.useFakeTimers()
-        const result = withTimeout(new Promise(() => {}), 5000)
-        vi.advanceTimersByTime(5000)
-        await expect(result).resolves.toBeNull()
-    })
-
-    it("passes a fast result through", async () => {
-        await expect(withTimeout(Promise.resolve("ok"), 5000)).resolves.toBe("ok")
     })
 })
 

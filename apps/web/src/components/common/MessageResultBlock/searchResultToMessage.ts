@@ -1,5 +1,6 @@
 import { Message, BaseMessage } from "@raven/types/common/Message"
 import { SearchResult } from "@hooks/useSqliteSearch"
+import { escapeHtml } from "@utils/htmlUtils"
 import _ from "@lib/translate"
 
 /**
@@ -49,6 +50,9 @@ export function searchResultToMessage(r: SearchResult): Message {
     }
     if (messageType === 'Location') {
         return { ...base, message_type: 'Text', text: `<p>📍 ${_("Location")}</p>` }
+    }
+    if (messageType === 'Contact') {
+        return { ...base, message_type: 'Text', text: `<p>👤 ${escapeHtml(r.content?.trim() || _("Contact"))}</p>` }
     }
     if (messageType === 'Poll') {
         return {

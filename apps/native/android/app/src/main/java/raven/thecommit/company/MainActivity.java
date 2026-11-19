@@ -32,6 +32,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(RavenSocketPlugin.class);
         registerPlugin(RavenDownloadPlugin.class);
         registerPlugin(RavenMediaPlugin.class);
+        registerPlugin(RavenContactsPlugin.class);
         // A share or notification tap only ever arrives as a fresh launch or onNewIntent.
         // A recreated activity (process death, Recents) gets the task's root intent
         // again; drop it, or the share or tap the user already acted on replays.

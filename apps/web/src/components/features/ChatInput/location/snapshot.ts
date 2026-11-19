@@ -6,7 +6,6 @@ export const SNAPSHOT_TIMEOUT_MS = 5000
 export const SNAPSHOT_MIN_ZOOM = 15
 export const SNAPSHOT_MAX_ZOOM = 18
 
-export type Snapshot = { file_url: string; file_size: number }
 export type SnapshotDrawPlan = { tiles: MapTile[] }
 
 // Leaflet's zoom can be fractional mid-animation; tile URLs need an integer.
@@ -17,22 +16,6 @@ const clampZoom = (zoom: number): number =>
 export const snapshotDrawPlan = (meta: LocationMeta, zoom: number): SnapshotDrawPlan => ({
     tiles: tilesFor(meta.latitude, meta.longitude, clampZoom(zoom), SNAPSHOT_WIDTH, SNAPSHOT_HEIGHT, 256),
 })
-
-/** `promise`'s value, or null once `ms` passes; rejections become null too. */
-export const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T | null> =>
-    new Promise((resolve) => {
-        const timer = setTimeout(() => resolve(null), ms)
-        promise.then(
-            (value) => {
-                clearTimeout(timer)
-                resolve(value)
-            },
-            () => {
-                clearTimeout(timer)
-                resolve(null)
-            },
-        )
-    })
 
 const loadTile = (url: string): Promise<HTMLImageElement> =>
     new Promise((resolve, reject) => {

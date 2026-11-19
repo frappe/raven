@@ -10,6 +10,7 @@ class RavenBridgeViewController: CAPBridgeViewController {
         bridge?.registerPluginInstance(RavenSocketPlugin())
         bridge?.registerPluginInstance(RavenDownloadPlugin())
         bridge?.registerPluginInstance(RavenMediaPlugin())
+        bridge?.registerPluginInstance(RavenContactsPlugin())
     }
 
     // The media scheme must be registered before the WKWebView exists.

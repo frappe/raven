@@ -1,12 +1,12 @@
 import { useContext, useLayoutEffect, useRef, useState } from "react"
 import { FrappeContext, type FrappeConfig } from "frappe-react-sdk"
 import type { LocationMeta } from "@lib/location"
-import { siteSupportsLocationMessages } from "@lib/locationSupport"
-import { SNAPSHOT_TIMEOUT_MS, renderLocationSnapshot, type Snapshot } from "./snapshot"
-import { uploadSnapshotWithin, type UploadToken, type UploadedSnapshot } from "./useSnapshotUpload"
+import { siteHasFeature } from "../../../../native/platform"
+import { SNAPSHOT_TIMEOUT_MS, renderLocationSnapshot } from "./snapshot"
+import { uploadFileWithin, type FileRef, type TimedUpload, type UploadToken } from "../uploadWithin"
 
 type PickerSendOptions = {
-    onSend: (location: LocationMeta, snapshot: Snapshot | null) => void
+    onSend: (location: LocationMeta, snapshot: FileRef | null) => void
     onClose: () => void
     getLocation: () => LocationMeta | null
     getZoom: () => number
@@ -36,9 +36,9 @@ export const usePickerSend = ({ onSend, onClose, getLocation, getZoom }: PickerS
         const token: UploadToken = { abandoned: false }
         tokenRef.current = token
         // An older site sends a plain link, so the snapshot step is skipped.
-        let uploaded: UploadedSnapshot | null = null
-        if (siteSupportsLocationMessages()) {
-            uploaded = await uploadSnapshotWithin({
+        let uploaded: TimedUpload | null = null
+        if (siteHasFeature("location_messages")) {
+            uploaded = await uploadFileWithin({
                 render: () => renderLocationSnapshot(location, zoom),
                 upload: async (file) => {
                     const response = await fileApi.uploadFile(file, { doctype: "Raven Message", isPrivate: true })
@@ -53,7 +53,7 @@ export const usePickerSend = ({ onSend, onClose, getLocation, getZoom }: PickerS
             if (uploaded) void db.deleteDoc("File", uploaded.name).catch(() => {})
             return
         }
-        onSend(location, uploaded?.snapshot ?? null)
+        onSend(location, uploaded?.file ?? null)
         onClose()
     }
 

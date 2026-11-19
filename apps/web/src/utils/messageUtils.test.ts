@@ -24,4 +24,11 @@ describe("getMessageTeaser", () => {
         expect(getMessageTeaser({ message_type: "Location", content: "https://www.google.com/maps/search/?api=1&query=1,2" })).toBe("📍 Location")
         vi.unstubAllGlobals()
     })
+
+    it("labels contacts with their name, falling back to Contact", () => {
+        vi.stubGlobal("window", {})
+        expect(getMessageTeaser({ message_type: "Contact", content: "Priya" })).toBe("👤 Priya")
+        expect(getMessageTeaser({ message_type: "Contact", content: "" })).toBe("👤 Contact")
+        vi.unstubAllGlobals()
+    })
 })

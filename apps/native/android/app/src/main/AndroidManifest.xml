@@ -43,6 +43,10 @@
                 <data android:mimeType="image/*" />
                 <data android:mimeType="application/*" />
                 <data android:mimeType="video/*" />
+                <!-- Contact cards from the Contacts app. -->
+                <data android:mimeType="text/x-vcard" />
+                <data android:mimeType="text/vcard" />
+                <data android:mimeType="text/directory" />
             </intent-filter>
 
         </activity>

@@ -1,4 +1,4 @@
-export type Message = FileMessage | TextMessage | ImageMessage | PollMessage | SystemMessage | VoiceMessage | LocationMessage
+export type Message = FileMessage | TextMessage | ImageMessage | PollMessage | SystemMessage | VoiceMessage | LocationMessage | ContactMessage
 
 export interface BaseMessage {
     name: string,
@@ -7,7 +7,7 @@ export interface BaseMessage {
     channel_id: string,
     creation: string,
     modified: string,
-    message_type: 'Text' | 'File' | 'Image' | 'Poll' | 'System' | 'Voice' | 'Location',
+    message_type: 'Text' | 'File' | 'Image' | 'Poll' | 'System' | 'Voice' | 'Location' | 'Contact',
     message_reactions?: string | null,
     is_continuation: 1 | 0
     /** Stable React key for the stream row (stream selector decoration). A
@@ -64,6 +64,14 @@ export interface LocationMessage extends BaseMessage {
     text: string,
     message_type: 'Location'
     /** Snapshot image attached at send. */
+    file?: string,
+    file_size?: number,
+}
+
+export interface ContactMessage extends BaseMessage {
+    text: string,
+    message_type: 'Contact'
+    /** Photo attached at send. */
     file?: string,
     file_size?: number,
 }

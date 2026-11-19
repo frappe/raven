@@ -18,4 +18,10 @@ describe("searchResultToMessage", () => {
         const row = { id: "m2", author: "a@x.com", channel_id: "ch", creation: "2026-10-23 10:00:00", message_type: "Location", content: "https://www.google.com/maps/search/?api=1&query=1,2" } as unknown as SearchResult
         expect(searchResultToMessage({ ...row, message_type: "Location" }).text).toBe("<p>📍 Location</p>")
     })
+
+    it("shows a contact's name, falling back to Contact", () => {
+        const row = { id: "m3", author: "a@x.com", channel_id: "ch", creation: "2026-10-23 10:00:00", message_type: "Contact", content: "Priya" } as unknown as SearchResult
+        expect(searchResultToMessage(row).text).toBe("<p>👤 Priya</p>")
+        expect(searchResultToMessage({ ...row, content: "" }).text).toBe("<p>👤 Contact</p>")
+    })
 })

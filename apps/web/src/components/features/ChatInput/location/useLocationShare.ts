@@ -3,13 +3,13 @@ import { FrappeContext, type FrappeConfig } from "frappe-react-sdk"
 import type { Message } from "@raven/types/common/Message"
 import type { QuietSendMode } from "@hooks/useQuietHours"
 import { senderMapsUrl, type LocationMeta } from "@lib/location"
-import { siteSupportsLocationMessages } from "@lib/locationSupport"
+import { siteHasFeature } from "../../../../native/platform"
 import { sessionUser } from "@lib/sessionUser"
 import { randomUUID } from "@lib/uuid"
 import { enqueueSend } from "@stores/messages/messageSender"
 import { escapeHtml } from "@utils/htmlUtils"
 import { buildReplySnapshot } from "@utils/replySnapshot"
-import type { Snapshot } from "./snapshot"
+import type { FileRef } from "../uploadWithin"
 
 /** The link an older site shows in place of a Location message. */
 export const locationFallbackHtml = (meta: LocationMeta): string => {
@@ -30,8 +30,8 @@ export const useLocationShare = ({ channelID, quietSendMode, stopTyping, replyTo
     const openPicker = useCallback(() => setOpen(true), [])
 
     /** A location goes out alone: its coordinates and snapshot, the current reply, quiet hours. */
-    const send = useCallback((location: LocationMeta, snapshot: Snapshot | null) => {
-        const supported = siteSupportsLocationMessages()
+    const send = useCallback((location: LocationMeta, snapshot: FileRef | null) => {
+        const supported = siteHasFeature("location_messages")
         enqueueSend(call, {
             channelID,
             batchId: randomUUID(),
