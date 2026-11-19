@@ -1,11 +1,12 @@
 import { RavenMessage } from "@raven/types/RavenMessaging/RavenMessage"
 import { useUser } from "@hooks/useUser"
-import { ChartColumnIcon } from "lucide-react"
+import { ChartColumnIcon, MicIcon } from "lucide-react"
 import FileTypeIcon from "@components/common/FileIcons/FileTypeIcon"
 import { FileImage } from "@components/common/FileImage"
 import { getFileExtension, getFileName } from "@raven/lib/utils/operations"
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@components/ui/hover-card"
 import _ from "@lib/translate"
+import { voiceNoteLabel } from "./voiceNoteLabel"
 
 /**
  * The snapshot of a replied-to message (matches the backend's replied_message_details
@@ -18,6 +19,8 @@ export interface RepliedMessageDetails {
     message_type: RavenMessage["message_type"]
     owner: string
     creation: string
+    /** Voice notes only: `{ duration, waveform }`. */
+    json?: unknown
 }
 
 /**
@@ -40,6 +43,13 @@ export const RepliedMessagePreview = ({ details }: { details: RepliedMessageDeta
                     <span className="flex items-center gap-1">
                         <ChartColumnIcon className="h-3.5 w-3.5" />
                         <span className="line-clamp-1 md:text-p-base text-p-lg">Poll: {details.content.split("\n")[0]}</span>
+                    </span>
+                )}
+
+                {details.message_type === "Voice" && (
+                    <span className="flex items-center gap-1">
+                        <MicIcon className="h-3.5 w-3.5" />
+                        <span className="line-clamp-1 md:text-p-base text-p-lg">{voiceNoteLabel(details.json)}</span>
                     </span>
                 )}
 

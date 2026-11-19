@@ -1,3 +1,5 @@
+import math
+
 import frappe
 from frappe import _
 from frappe.query_builder import Case, JoinType, Order
@@ -51,6 +53,13 @@ def send_message(
 
 IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "ico", "heic", "heif"}
 
+# Mirror of AUDIO_EXTENSIONS in apps/web/src/utils/attachmentPreview.ts — keep in sync.
+AUDIO_EXTENSIONS = {"mp3", "wav", "ogg", "oga", "m4a", "aac", "flac", "opus", "weba"}
+
+# The client caps recordings at 600 s; headroom covers the time it takes to stop.
+_MAX_AUDIO_SECONDS = 660
+_MAX_WAVEFORM_BARS = 64
+
 # Inline-image display caps (mirror the web client's reserved box). The stored
 # aspect ratio is what prevents reflow; the absolute thumbnail size only needs
 # to be reasonable. The client mirrors these values for its optimistic
@@ -68,9 +77,60 @@ def _sane_dimension(value) -> int | None:
 	return number if 0 < number <= 10000 else None
 
 
+def _file_extension(file_url: str) -> str:
+	return file_url.rsplit(".", 1)[-1].split("?")[0].lower() if "." in file_url else ""
+
+
+def _is_audio(file_url: str) -> bool:
+	return _file_extension(file_url) in AUDIO_EXTENSIONS
+
+
+def _sane_duration(value) -> float | None:
+	"""A plausible voice note length in seconds from an untrusted client, or None."""
+	if isinstance(value, bool):
+		return None
+	try:
+		number = float(value)
+	except (TypeError, ValueError):
+		return None
+	return number if 0 < number <= _MAX_AUDIO_SECONDS else None
+
+
+def _sane_waveform(value) -> list[int] | None:
+	"""Bar heights clamped to 0-100 and capped in count; non-numeric bars are dropped."""
+	if not isinstance(value, list):
+		return None
+	bars = []
+	for bar in value[:_MAX_WAVEFORM_BARS]:
+		if isinstance(bar, bool) or not isinstance(bar, (int, float)) or not math.isfinite(bar):
+			continue
+		bars.append(min(100, max(0, round(bar))))
+	return bars
+
+
+def attach_voice_payloads(rows: list[dict], id_field: str = "name") -> list[dict]:
+	"""
+	Add `json` to the Voice rows of a list query that doesn't select it. One extra
+	query, only for voice notes: a text message's `json` is its whole editor document.
+	"""
+	voice_ids = [row[id_field] for row in rows if row.get("message_type") == "Voice"]
+	if not voice_ids:
+		return rows
+	# The caller has already authorized these rows. Raven Message's list permission is
+	# owner-only, so a permission-checked query would drop other people's notes.
+	payloads = dict(
+		frappe.get_all(
+			"Raven Message", filters={"name": ["in", voice_ids]}, fields=["name", "json"], as_list=True
+		)
+	)
+	for row in rows:
+		if row.get("message_type") == "Voice":
+			row["json"] = payloads.get(row[id_field])
+	return rows
+
+
 def _file_message_type(file_url: str) -> str:
-	ext = file_url.rsplit(".", 1)[-1].split("?")[0].lower() if "." in file_url else ""
-	return "Image" if ext in IMAGE_EXTENSIONS else "File"
+	return "Image" if _file_extension(file_url) in IMAGE_EXTENSIONS else "File"
 
 
 def _set_image_dimensions(doc):
@@ -218,6 +278,9 @@ def send_message_with_attachments(
 	it without a File lookup. (A bare URL string per file is also tolerated.)
 	Videos may also carry `width`/`height`, measured by the client's browser at
 	attach time — stored so the message reserves its display box up front.
+	A voice note's file carries `voice: {"duration", "waveform"}`, measured by the
+	client when it recorded the clip; it becomes a `Voice` message with that payload
+	in `json`. Unusable metadata sends the audio as a plain file.
 
 	`send_silently` suppresses notifications for the whole batch (the flag is set on
 	every message before insert).
@@ -279,6 +342,13 @@ def send_message_with_attachments(
 			if width and height:
 				spec["thumbnail_width"] = width
 				spec["thumbnail_height"] = height
+		# A voice note. Unusable metadata sends it as a plain file, never fails the send.
+		voice = f.get("voice") if isinstance(f, dict) else None
+		if spec["message_type"] == "File" and isinstance(voice, dict) and _is_audio(file_url):
+			duration = _sane_duration(voice.get("duration"))
+			if duration:
+				spec["message_type"] = "Voice"
+				spec["json"] = {"duration": duration, "waveform": _sane_waveform(voice.get("waveform")) or []}
 		specs.append(spec)
 	# A document-only send has no text and no files — it still needs one message
 	# to carry the link, so an empty Text message hosts it (the card IS the content).
@@ -425,34 +495,36 @@ def get_pinned_messages(channel_id: str):
 	pinnedMessagesString = frappe.db.get_value("Raven Channel", channel_id, "pinned_messages_string")
 	pinnedMessages = pinnedMessagesString.split("\n") if pinnedMessagesString else []
 
-	return frappe.db.get_all(
-		"Raven Message",
-		filters={"name": ["in", pinnedMessages]},
-		fields=[
-			"name",
-			"owner",
-			"creation",
-			"bot",
-			"text",
-			"file",
-			"message_type",
-			"message_reactions",
-			"_liked_by",
-			"channel_id",
-			"thumbnail_width",
-			"thumbnail_height",
-			"file_thumbnail",
-			"link_doctype",
-			"link_document",
-			"replied_message_details",
-			"hide_link_preview",
-			"is_bot_message",
-			"content",
-			"is_edited",
-			"is_thread",
-			"is_forwarded",
-		],
-		order_by="creation desc",
+	return attach_voice_payloads(
+		frappe.db.get_all(
+			"Raven Message",
+			filters={"name": ["in", pinnedMessages]},
+			fields=[
+				"name",
+				"owner",
+				"creation",
+				"bot",
+				"text",
+				"file",
+				"message_type",
+				"message_reactions",
+				"_liked_by",
+				"channel_id",
+				"thumbnail_width",
+				"thumbnail_height",
+				"file_thumbnail",
+				"link_doctype",
+				"link_document",
+				"replied_message_details",
+				"hide_link_preview",
+				"is_bot_message",
+				"content",
+				"is_edited",
+				"is_thread",
+				"is_forwarded",
+			],
+			order_by="creation desc",
+		)
 	)
 
 
@@ -534,7 +606,7 @@ def get_saved_messages(
 	else:
 		query = query.orderby(raven_message.creation, order=Order.asc)
 
-	return query.run(as_dict=True)
+	return attach_voice_payloads(query.run(as_dict=True))
 
 
 @frappe.whitelist()
@@ -934,12 +1006,14 @@ def _forward_payloads(message_id: str) -> list[dict]:
 		# front. `json` goes with it: it still holds the unquoted body, and the copy
 		# should have one body that carries the quote.
 		if payload.get("is_reply"):
-			quote = build_reply_blockquote(
-				payload.get("replied_message_details"), linked_message=member.get("linked_message")
-			)
-			if quote:
-				payload["text"] = quote + (payload.get("text") or "")
-			payload.pop("json", None)
+			# A voice note has no body to carry the quote; its `json` is the payload.
+			if payload.get("message_type") != "Voice":
+				quote = build_reply_blockquote(
+					payload.get("replied_message_details"), linked_message=member.get("linked_message")
+				)
+				if quote:
+					payload["text"] = quote + (payload.get("text") or "")
+				payload.pop("json", None)
 			# The copy carries the quote in its body, so it is not a reply: leaving the
 			# snapshot on it would be dead data describing another channel's message.
 			payload.pop("is_reply", None)

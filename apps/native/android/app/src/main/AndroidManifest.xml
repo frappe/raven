@@ -78,4 +78,10 @@
     <!-- The composer's capture inputs: without this the WebView file chooser hides the camera. -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <!-- Voice notes: the WebView can't open the mic without these. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
+    <!-- RavenHaptics drives the vibrator directly. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 </manifest>

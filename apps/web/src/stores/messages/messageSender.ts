@@ -4,6 +4,7 @@ import type { FrappeError } from "frappe-react-sdk"
 import type { Message } from "@raven/types/common/Message"
 import type { OutboxMessage } from "@db"
 import { getAttachmentKind } from "@utils/attachmentPreview"
+import { parseVoiceJson, type VoiceNoteMeta } from "@lib/voiceNote"
 import _ from "@lib/translate"
 import { channelMessagesStore } from "./store"
 import { channelUnreadStore } from "@stores/unread/store"
@@ -17,12 +18,14 @@ export type PostClient = {
 }
 
 /** An already-uploaded attachment going out with a send: its stable URL + size,
- *  and (for videos) the display size measured in-browser at attach time. */
+ *  (for videos) the display size measured in-browser at attach time, and
+ *  (for voice notes) the duration + waveform measured when recorded. */
 export type OutgoingFile = {
     file_url: string
     file_size: number
     width?: number
     height?: number
+    voice?: VoiceNoteMeta
 }
 
 /**
@@ -97,6 +100,7 @@ export const buildOptimisticMessages = (
                     ? optimisticImageThumbnail(file.width, file.height)
                     : { thumbnail_width: file.width, thumbnail_height: file.height }
                 : {}),
+            ...(file.voice ? { message_type: "Voice" as const, json: file.voice } : {}),
         })
     })
     // Mirror the backend: a document-only send still needs one (empty Text) message
@@ -271,6 +275,7 @@ export const retrySend = async (client: PostClient, channelID: string, batchId: 
         .map((m) => ({
             file_url: (m as { file?: string }).file as string,
             file_size: (m as { file_size?: number }).file_size ?? 0,
+            voice: m.message_type === "Voice" ? parseVoiceJson(m.json) ?? undefined : undefined,
         }))
     // The reply lives on whichever placeholder carries linked_message (the last one).
     const linkedMessage = placeholders

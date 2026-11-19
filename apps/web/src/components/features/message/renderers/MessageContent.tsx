@@ -10,6 +10,7 @@ import { MessageImages } from "./MessageImages"
 import { MessageFiles } from "./MessageFiles"
 import { MessageVideo } from "./MessageVideo"
 import { MessageAudio } from "./MessageAudio"
+import { MessageVoiceNote } from "./MessageVoiceNote"
 import RichTextRenderer, { isJumbomojiHtml, parseBodySegments } from "./RichTextRenderer"
 import { messageBubbleClass } from "./MessageRow"
 import { cn } from "@lib/utils"
@@ -212,6 +213,8 @@ export const MessageContent = ({ message, showLinkPreview = true, showLinkedDocu
                 arrives as message_type "File" but should render as a player) */}
             {message.message_type === "Poll" ? (
                 <PollMessageContent message={message} interactive={interactivePoll} />
+            ) : message.message_type === "Voice" ? (
+                <MessageVoiceNote message={message} />
             ) : messageFile ? (
                 <>
                     <MessageMedia message={message} fileUrl={messageFile} />
