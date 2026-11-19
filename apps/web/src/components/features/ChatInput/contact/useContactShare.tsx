@@ -119,21 +119,21 @@ export const useContactShare = ({ channelID, quietSendMode, stopTyping, replyTo,
         stopTyping()
         for (const [index, contact] of selected.entries()) {
             const uploaded = uploads[index]
-            // One at a time, across sheets too: concurrent sends to a channel race on its last-message row.
-            sendQueue.current = sendQueue.current.then(() =>
-                enqueueSend(call, {
-                    channelID,
-                    batchId: randomUUID(),
-                    owner: sessionUser().name,
-                    content: "",
-                    files: uploaded ? [uploaded.file] : [],
-                    contact: { name: contact.name, phones: contact.phones, emails: contact.emails },
-                    // The reply rides the first contact only.
-                    linkedMessage: index === 0 ? reply?.name : undefined,
-                    repliedMessageDetails: index === 0 ? buildReplySnapshot(reply) : undefined,
-                    sendSilently: quietSendMode === "auto" ? true : undefined,
-                }),
-            )
+            // Each shows and reaches the outbox now; the posts go one at a time, across sheets too,
+            // as concurrent sends to a channel race on its last-message row.
+            sendQueue.current = enqueueSend(call, {
+                channelID,
+                batchId: randomUUID(),
+                owner: sessionUser().name,
+                content: "",
+                files: uploaded ? [uploaded.file] : [],
+                contact: { name: contact.name, phones: contact.phones, emails: contact.emails },
+                // The reply rides the first contact only.
+                linkedMessage: index === 0 ? reply?.name : undefined,
+                repliedMessageDetails: index === 0 ? buildReplySnapshot(reply) : undefined,
+                sendSilently: quietSendMode === "auto" ? true : undefined,
+                after: sendQueue.current,
+            })
         }
     }, [call, channelID, fileApi, db, replyTo, clearReply, quietSendMode, stopTyping])
 

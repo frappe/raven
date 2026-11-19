@@ -175,9 +175,11 @@ export const enqueueSend = (
         location?: LocationMeta
         /** A shared contact; its photo, when present, travels as `files[0]`. */
         contact?: ContactPayload
+        /** Post once this settles; the message still shows and reaches the outbox at once. */
+        after?: Promise<unknown>
     },
 ) => {
-    const { channelID, batchId, owner, content, files, linkedMessage, repliedMessageDetails, sendSilently, linkedDocument, location, contact } = params
+    const { channelID, batchId, owner, content, files, linkedMessage, repliedMessageDetails, sendSilently, linkedDocument, location, contact, after } = params
     const creation = optimisticNow()
     const reply = linkedMessage ? { linkedMessage, repliedMessageDetails } : undefined
 
@@ -205,8 +207,9 @@ export const enqueueSend = (
         ...(contact ? { contact } : {}),
     })
 
-    // Settles when the server answers (never rejects): callers that must keep order can await it.
-    return submitSend(client, channelID, batchId, content, files, linkedMessage, { sendSilently, linkedDocument, location, contact })
+    // Settles when the server answers (never rejects): callers that must keep order pass it as the next send's `after`.
+    const submit = () => submitSend(client, channelID, batchId, content, files, linkedMessage, { sendSilently, linkedDocument, location, contact })
+    return after ? after.then(submit, submit) : submit()
 }
 
 /**

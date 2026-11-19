@@ -231,11 +231,21 @@ class TestContactSend(IntegrationTestCase):
 			doc.save()
 
 	def test_contact_survives_an_unrelated_save(self):
-		[msg] = send_message_with_attachments(channel_id=self.channel.name, contact=VALID)
-		doc = frappe.get_doc("Raven Message", msg.name)
-		doc.is_thread = 1
-		doc.save()
-		self.assertEqual(frappe.db.get_value("Raven Message", msg.name, "is_thread"), 1)
+		# Quotes are escaped in the stored text; a reparse would write them back bare.
+		for name in ("Priya Sharma", "Sean O'Brien", 'Dr. "Kavi" Rao'):
+			[msg] = send_message_with_attachments(
+				channel_id=self.channel.name, contact={**VALID, "name": name}
+			)
+			doc = frappe.get_doc("Raven Message", msg.name)
+			doc.is_thread = 1
+			doc.save()
+			saved = frappe.db.get_value(
+				"Raven Message", msg.name, ["is_thread", "is_edited", "content", "text"], as_dict=True
+			)
+			self.assertEqual(saved.is_thread, 1)
+			self.assertEqual(saved.is_edited, 0)
+			self.assertEqual(saved.content, name)
+			self.assertEqual(saved.text, msg.text)
 
 	def _boot_phone_region(self, country, mobile):
 		from raven.boot import boot_session

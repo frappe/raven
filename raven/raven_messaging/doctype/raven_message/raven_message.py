@@ -109,7 +109,8 @@ class RavenMessage(Document):
 		"""
 		if not self.text:
 			return
-		if self.message_type == "System":
+		# A contact's text and content are derived from its json on insert (see validate).
+		if self.message_type in ("System", "Contact"):
 			return
 
 		soup = BeautifulSoup(self.text, "html.parser")

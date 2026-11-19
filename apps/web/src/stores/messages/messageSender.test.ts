@@ -304,4 +304,20 @@ describe("enqueueSend", () => {
             expect.objectContaining({ contact: CONTACT, files: [PHOTO] }),
         )
     })
+
+    it("shows and saves a send queued behind another, and posts it once that settles", async () => {
+        const post = vi.fn().mockResolvedValue({ message: [] })
+        let settle = () => { }
+        const before = new Promise<void>((resolve) => { settle = resolve })
+
+        const sent = enqueueSend({ post }, { channelID: "ch", batchId: "b2", owner: "me", content: "", files: [], contact: CONTACT, after: before })
+
+        expect(mocks.addOptimisticMessages).toHaveBeenCalledWith("ch", "b2", [expect.objectContaining({ message_type: "Contact" })])
+        expect(mocks.putOutbox).toHaveBeenCalledWith(expect.objectContaining({ client_id: "b2", contact: CONTACT }))
+        expect(post).not.toHaveBeenCalled()
+
+        settle()
+        await sent
+        expect(post).toHaveBeenCalledTimes(1)
+    })
 })
