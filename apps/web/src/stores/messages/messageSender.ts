@@ -209,13 +209,17 @@ export const enqueueSend = (
 
     // Settles when the server answers (never rejects): callers that must keep order pass it as the next send's `after`.
     const submit = () => submitSend(client, channelID, batchId, content, files, linkedMessage, { sendSilently, linkedDocument, location, contact })
-    return after ? after.then(submit, submit) : submit()
+    if (!after) return submit()
+    // Held until its turn: retries skip ids in inFlight, and the server's dedupe can't catch two posts at once.
+    inFlight.add(batchId)
+    return after.then(submit, submit)
 }
 
 /**
  * The ids of sends whose request to the server is currently running (waiting for a
- * response). Auto-retry checks this so it never sends the same message twice — for
- * example if "back online" and "socket reconnected" both happen at once.
+ * response), or that wait on `after` for their turn. Auto-retry checks this so it
+ * never sends the same message twice — for example if "back online" and "socket
+ * reconnected" both happen at once.
  *
  * This is a different list from the store's `pendingSends`. `pendingSends` is about
  * the server broadcasting our own message back to us (it broadcasts to everyone in

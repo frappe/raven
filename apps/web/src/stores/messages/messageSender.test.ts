@@ -320,4 +320,18 @@ describe("enqueueSend", () => {
         await sent
         expect(post).toHaveBeenCalledTimes(1)
     })
+
+    it("keeps a queued send from auto-retry until its turn, so it posts once", async () => {
+        const post = vi.fn().mockResolvedValue({ message: [] })
+        let settle = () => { }
+        const before = new Promise<void>((resolve) => { settle = resolve })
+
+        const sent = enqueueSend({ post }, { channelID: "ch", batchId: "b2", owner: "me", content: "", files: [], contact: CONTACT, after: before })
+        await retryOutboxRecord({ post }, outboxRecord({ client_id: "b2", location: undefined, contact: CONTACT, files: [] }))
+        expect(post).not.toHaveBeenCalled()
+
+        settle()
+        await sent
+        expect(post).toHaveBeenCalledTimes(1)
+    })
 })
