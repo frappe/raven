@@ -5,8 +5,10 @@ from mimetypes import guess_type
 import blurhash
 import frappe
 from frappe import _
+from frappe.core.api.file import get_max_file_size
 from frappe.core.doctype.file.utils import get_local_image
 from frappe.handler import upload_file
+from frappe.utils import cint
 from frappe.utils.image import optimize_image
 from PIL import Image, ImageOps
 
@@ -184,3 +186,63 @@ def upload_file_with_message():
 	message_doc.save()
 
 	return message_doc
+
+
+UPLOAD_SETTINGS_ROLES = ("System Manager", "Raven Admin")
+# Largest value System Settings' Int column holds.
+MAX_FILE_SIZE_MB_LIMIT = 2147483647
+# The limit is site-wide, so only a System Manager may take it past 1 GB.
+RAVEN_ADMIN_MAX_FILE_SIZE = 1024 * 1024 * 1024
+
+
+@frappe.whitelist()
+def get_upload_settings():
+	"""The site's file size limit as stored (MB, 0 = default), the default in bytes, and the
+	most this user may set in bytes (None = no cap)."""
+	frappe.only_for(UPLOAD_SETTINGS_ROLES)
+
+	return {
+		"max_file_size_mb": cint(frappe.get_system_settings("max_file_size")),
+		"default_max_file_size": _get_default_max_file_size(),
+		"max_allowed_file_size": _get_max_allowed_file_size(),
+	}
+
+
+@frappe.whitelist(methods=["POST"])
+def set_max_file_size(max_file_size_mb: int):
+	"""Let Raven Admins change System Settings' max file size (MB) without desk access."""
+	frappe.only_for(UPLOAD_SETTINGS_ROLES)
+
+	max_file_size_mb = cint(max_file_size_mb)
+	if max_file_size_mb < 0:
+		frappe.throw(_("Max file size can't be negative."))
+	if max_file_size_mb > MAX_FILE_SIZE_MB_LIMIT:
+		frappe.throw(_("Max file size can't be more than {0} MB.").format(MAX_FILE_SIZE_MB_LIMIT))
+
+	if max_allowed := _get_max_allowed_file_size():
+		allowed_mb = max_allowed // (1024 * 1024)
+		if max_file_size_mb * 1024 * 1024 > max_allowed:
+			frappe.throw(
+				_("You can set up to {0} MB. Ask a System Manager for a higher limit.").format(allowed_mb)
+			)
+		if not max_file_size_mb and _get_default_max_file_size() > max_allowed:
+			frappe.throw(
+				_("The site default is above the {0} MB you can set. Enter a size instead.").format(allowed_mb)
+			)
+
+	# Only this field changes; save() runs on_update, which clears the settings cache.
+	system_settings = frappe.get_doc("System Settings")
+	system_settings.max_file_size = max_file_size_mb
+	system_settings.save(ignore_permissions=True)
+
+	return get_max_file_size()
+
+
+def _get_default_max_file_size() -> int:
+	"""Bytes Frappe falls back to when System Settings' max file size is 0."""
+	return cint(frappe.conf.get("max_file_size")) or 25 * 1024 * 1024
+
+
+def _get_max_allowed_file_size() -> int | None:
+	"""Highest effective limit the current user may set, in bytes; None for System Managers."""
+	return None if "System Manager" in frappe.get_roles() else RAVEN_ADMIN_MAX_FILE_SIZE
