@@ -25,6 +25,9 @@ def get_context(context):
 		except Exception as e:
 			raise frappe.SessionBootFailed from e
 
+	# Lets the client pick the socket.io port the same way desk does
+	boot["dev_server"] = frappe._dev_server
+
 	boot_json = frappe.as_json(boot, indent=None, separators=(",", ":"))
 	boot_json = SCRIPT_TAG_PATTERN.sub("", boot_json)
 
@@ -85,6 +88,7 @@ def get_boot():
 		raise frappe.SessionBootFailed from e
 
 	boot["push_relay_server_url"] = frappe.conf.get("push_relay_server_url")
+	boot["dev_server"] = frappe._dev_server
 	boot_json = frappe.as_json(boot, indent=None, separators=(",", ":"))
 	boot_json = SCRIPT_TAG_PATTERN.sub("", boot_json)
 

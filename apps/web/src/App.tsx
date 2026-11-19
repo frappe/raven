@@ -198,7 +198,7 @@ function App({ native }: { native?: NativeProvider }) {
           url={native?.url ?? (import.meta.env.VITE_FRAPPE_PATH ?? '')}
           tokenParams={native ? { useToken: true, type: "Bearer", token: native.getToken } : undefined}
           customHeaders={native ? APP_HEADERS : undefined}
-          socketPort={import.meta.env.VITE_SOCKET_PORT ? import.meta.env.VITE_SOCKET_PORT : undefined}
+          socketPort={getSocketPort()}
           swrConfig={{
             // NO global errorRetryCount: SWR's default retry is UNLIMITED
             // exponential backoff, and that's what we want for the fetches
@@ -280,6 +280,15 @@ const getSiteName = () => {
   else {
     return window.frappe?.boot?.sitename ?? import.meta.env.VITE_SITE_NAME
   }
+}
+
+// Same rule as desk: socket.io is proxied on the page's origin, except under
+// `bench start`, where it listens on its own port.
+const getSocketPort = (): string | undefined => {
+  if (import.meta.env.VITE_SOCKET_PORT) return import.meta.env.VITE_SOCKET_PORT
+  const boot = window.frappe?.boot
+  if (boot?.dev_server && boot.socketio_port) return String(boot.socketio_port)
+  return window.location.port || undefined
 }
 
 
