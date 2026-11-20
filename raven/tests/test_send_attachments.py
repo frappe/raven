@@ -70,6 +70,20 @@ class TestSendAttachments(IntegrationTestCase):
 		messages = self.send()
 		self.assertEqual(messages[0].file, self.file_url)
 
+	def test_create_message_batch_matches_endpoint(self):
+		from raven.api.raven_message import create_message_batch
+
+		frappe.set_user("test1@example.com")
+		files = [{"file_url": self.file_url, "file_size": 10}]
+		docs = create_message_batch(self.channel.name, "<p>hi</p>", files, client_id="k1")
+		self.assertEqual(len(docs), 2)
+		self.assertEqual(docs[-1].message_type, "Text")
+		self.assertEqual({d.message_batch_id for d in docs}, {"k1"})
+
+		# Same client_id is a retry: the existing batch comes back, nothing new is created.
+		again = create_message_batch(self.channel.name, "<p>hi</p>", files, client_id="k1")
+		self.assertEqual([d.name for d in again], [d.name for d in docs])
+
 	def test_cannot_forward_a_made_up_message(self):
 		# The audit's case: an old-client forward with someone else's file and no real message.
 		frappe.set_user("test3@example.com")

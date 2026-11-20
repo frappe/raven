@@ -177,8 +177,8 @@ def _create_batch_idempotent(
 	return _create_batch(channel_id, client_id, specs, send_silently)
 
 
-def validate_files_uploaded_by_user(file_urls: list[str]):
-	"""Throw unless the current user uploaded every one of these files.
+def validate_files_uploaded_by_user(file_urls: list[str], user: str | None = None):
+	"""Throw unless `user` (default: the current user) uploaded every one of these files.
 
 	Without this, a user could send someone else's private file. On insert,
 	older Frappe versions attach any unattached File with that URL to the
@@ -188,11 +188,22 @@ def validate_files_uploaded_by_user(file_urls: list[str]):
 		return
 	uploaded = frappe.get_all(
 		"File",
-		filters={"file_url": ["in", file_urls], "owner": frappe.session.user},
+		filters={"file_url": ["in", file_urls], "owner": user or frappe.session.user},
 		pluck="file_url",
 	)
 	if set(file_urls) - set(uploaded):
 		frappe.throw(_("You can only send files that you uploaded."), frappe.PermissionError)
+
+
+def message_has_body(content: str | None) -> bool:
+	"""Whether HTML content has anything to show: text, or a custom emoji.
+
+	A custom emoji is an inline <img> with no text, so strip_html_tags leaves it
+	empty. Standard emojis are unicode text and already count as text.
+	"""
+	content = content or ""
+	has_text = bool(frappe.utils.strip_html_tags(content).strip())
+	return has_text or 'data-type="customEmoji"' in content
 
 
 @frappe.whitelist(methods=["POST"])
@@ -232,15 +243,34 @@ def send_message_with_attachments(
 	"""
 	if isinstance(files, str):
 		files = frappe.parse_json(files)
-	files = files or []
 
+	return create_message_batch(
+		channel_id,
+		content,
+		files,
+		client_id=client_id,
+		linked_message=linked_message if is_reply else None,
+		send_silently=send_silently,
+		link_doctype=link_doctype,
+		link_document=link_document,
+	)
+
+
+def create_message_batch(
+	channel_id: str,
+	content: str | None,
+	files: list[dict] | None,
+	client_id: str | None = None,
+	linked_message: str | None = None,
+	send_silently: bool = False,
+	link_doctype: str | None = None,
+	link_document: str | int | None = None,
+):
+	"""The send itself, shared by the composer endpoint and scheduled delivery.
+	A set `linked_message` makes the batch a reply."""
+	files = files or []
 	content = content or ""
-	has_text = bool(frappe.utils.strip_html_tags(content).strip())
-	# A custom emoji is an inline <img> with no text, so strip_html_tags leaves it
-	# empty — but a message that is only a custom emoji is NOT empty. (Standard emojis
-	# are unicode text and already count as has_text.)
-	has_custom_emoji = 'data-type="customEmoji"' in content
-	has_body = has_text or has_custom_emoji
+	has_body = message_has_body(content)
 
 	has_linked_document = bool(link_doctype and link_document)
 
@@ -288,7 +318,7 @@ def send_message_with_attachments(
 	# The reply attaches to the LAST message of the batch — the caption when there
 	# is text, otherwise the final attachment. (A files-only reply must still carry
 	# the reply)
-	if is_reply and linked_message and specs:
+	if linked_message and specs:
 		specs[-1]["is_reply"] = True
 		specs[-1]["linked_message"] = linked_message
 
