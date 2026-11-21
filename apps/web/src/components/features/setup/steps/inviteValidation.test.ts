@@ -5,7 +5,7 @@ const row = (email: string, first_name = "Ravi") => ({ email, first_name })
 const context = (rows: { email: string; first_name: string }[], invited: { email: string; first_name: string }[] = []) => ({
     rows,
     invited,
-    currentUser: "admin@acme.com",
+    currentUserEmail: "admin@acme.com",
 })
 
 describe("validateInviteEmail", () => {
