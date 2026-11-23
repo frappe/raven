@@ -1022,8 +1022,12 @@ class RavenMessage(Document):
 		# Reminders anchored on this message; send_reminder's missing-source guard covers the race.
 		frappe.db.delete("Raven Reminder", {"message": self.name})
 
-		# sent_message links back here and would otherwise block this delete
-		frappe.db.delete("Raven Scheduled Message", {"sent_message": self.name})
+		# A Sent row is a log of this message; drop it with the message
+		from raven.raven_messaging.doctype.raven_scheduled_message.raven_scheduled_message import (
+			delete_scheduled_messages,
+		)
+
+		delete_scheduled_messages({"sent_message": self.name})
 
 		# The deleted message may be sitting in clients' unread-notification badges:
 		# a mention of someone, or reactions on the owner's message. Those id sets

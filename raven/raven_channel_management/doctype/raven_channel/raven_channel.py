@@ -55,11 +55,22 @@ class RavenChannel(Document):
 		# delete all members when channel is deleted
 		frappe.db.delete("Raven Channel Member", {"channel_id": self.name})
 
+		# pending scheduled messages here and in this channel's threads turn Failed so their
+		# owners keep the text; read the thread ids before the messages naming them go
+		from raven.raven_messaging.doctype.raven_scheduled_message.raven_scheduled_message import (
+			fail_for_deleted_channels,
+		)
+
+		threads = frappe.get_all(
+			"Raven Message", filters={"channel_id": self.name, "is_thread": 1}, pluck="name"
+		)
+		fail_for_deleted_channels(
+			[self.name, *threads],
+			_("The thread was deleted.") if self.is_thread else _("The channel was deleted."),
+		)
+
 		# delete all messages when channel is deleted
 		frappe.db.delete("Raven Message", {"channel_id": self.name})
-
-		# delete all scheduled messages when channel is deleted
-		frappe.db.delete("Raven Scheduled Message", {"channel_id": self.name})
 
 		# delete all reactions when channel is deleted
 		frappe.db.delete("Raven Message Reaction", {"channel_id": self.name})
