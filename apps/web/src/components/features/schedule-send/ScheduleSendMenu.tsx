@@ -1,13 +1,14 @@
 import { useRef, useState } from "react"
-import dayjs from "dayjs"
+import dayjs, { type Dayjs } from "dayjs"
 import { useFrappeGetCall } from "frappe-react-sdk"
 import { useAtomValue } from "jotai"
 import {
     DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
-    DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger,
+    DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuSwitchItem,
 } from "@components/ui/dropdown-menu"
-import { CalendarClockIcon, SunIcon, SunriseIcon, SunsetIcon, type LucideIcon } from "lucide-react"
+import { BellOffIcon, CalendarClockIcon, MoonIcon, SunIcon, SunriseIcon, SunsetIcon, type LucideIcon } from "lucide-react"
 import { timeFormatAtom } from "@utils/preferences"
+import { useScheduleQuietHint } from "@hooks/useQuietHours"
 import _ from "@lib/translate"
 import { getScheduleMenuSections, toServerDatetime, formatDateTimeLabel, formatTimeLabel } from "@lib/timeUtils"
 import type { SchedulePick, ScheduleMenuSlot, ScheduleSlotId } from "@lib/timeUtils"
@@ -34,19 +35,39 @@ export const useScheduleMenuSections = () => {
 }
 
 /** Turn a picked slot into the payload the composer posts. Null if the slot has passed. */
-export const pickFromSlot = (slot: ScheduleMenuSlot, timeFormat: "12-hour" | "24-hour"): SchedulePick | null => {
+export const pickFromSlot = (
+    slot: ScheduleMenuSlot,
+    timeFormat: "12-hour" | "24-hour",
+    sendSilently: boolean,
+): SchedulePick | null => {
     // The menu may have sat open across the slot's boundary. Re-check at click time
     // so we never post a time the server will reject as past.
     if (!slot.time.isAfter(dayjs())) return null
-    return { serverTime: toServerDatetime(slot.time), label: formatDateTimeLabel(slot.time, timeFormat) }
+    return { serverTime: toServerDatetime(slot.time), label: formatDateTimeLabel(slot.time, timeFormat), sendSilently }
+}
+
+/** Marks a preset that lands outside working hours: a moon, or a bell-off when the
+ *  user's Auto Silent preference will deliver it silently. */
+export const QuietSlotMark = ({ time, sendSilently }: { time: Dayjs; sendSilently: boolean }) => {
+    const hint = useScheduleQuietHint(time, sendSilently)
+    if (!hint) return null
+    const Icon = hint === "auto" ? BellOffIcon : MoonIcon
+    return (
+        <>
+            <Icon className="size-3.5 text-ink-gray-5" aria-hidden />
+            <span className="sr-only">
+                {hint === "auto" ? _("Outside working hours, sends without notification") : _("Outside working hours")}
+            </span>
+        </>
+    )
 }
 
 type ScheduleSendMenuProps = {
     /** A preset slot was picked from the submenu — schedule immediately. */
     onSchedulePick: (pick: SchedulePick) => void
-    /** Open the custom date & time dialog. */
-    onScheduleSend: () => void
-    /** Scheduling needs text and no attachments (v1) — disable the submenu otherwise. */
+    /** Open the custom date & time dialog, carrying the silent choice made here. */
+    onScheduleSend: (sendSilently: boolean) => void
+    /** Nothing to schedule, or uploads still running — disable the submenu. */
     scheduleDisabled?: boolean
 }
 
@@ -64,6 +85,8 @@ export const ScheduleSendMenu = ({ onSchedulePick, onScheduleSend, scheduleDisab
     // into the next open.
     const subTriggerRef = useRef<HTMLDivElement>(null)
     const [subAlignOffset, setSubAlignOffset] = useState(0)
+    // Lives inside DropdownMenuContent too, so every open starts with the switch off.
+    const [sendSilently, setSendSilently] = useState(false)
 
     return (
         <DropdownMenuSub>
@@ -83,9 +106,15 @@ export const ScheduleSendMenu = ({ onSchedulePick, onScheduleSend, scheduleDisab
                     setSubAlignOffset((prev) => (prev === offset ? prev : offset))
                 }}
             >
-                <ScheduleMenuSections onSchedulePick={onSchedulePick} />
+                <ScheduleMenuSections onSchedulePick={onSchedulePick} sendSilently={sendSilently} />
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={onScheduleSend}>
+                <DropdownMenuSwitchItem checked={sendSilently} onCheckedChange={setSendSilently}>
+                    <span className="flex items-center gap-2">
+                        <BellOffIcon />
+                        {_("Send without notification")}
+                    </span>
+                </DropdownMenuSwitchItem>
+                <DropdownMenuItem onSelect={() => onScheduleSend(sendSilently)}>
                     {_("Custom date & time…")}
                 </DropdownMenuItem>
             </DropdownMenuSubContent>
@@ -99,7 +128,7 @@ export const ScheduleSendMenu = ({ onSchedulePick, onScheduleSend, scheduleDisab
  * so one flat list reads faster than another level of menus. Computed inside
  * DropdownMenuSubContent so slot times are fresh on open without per-keystroke cost.
  */
-const ScheduleMenuSections = ({ onSchedulePick }: { onSchedulePick: (pick: SchedulePick) => void }) => {
+const ScheduleMenuSections = ({ onSchedulePick, sendSilently }: { onSchedulePick: (pick: SchedulePick) => void; sendSilently: boolean }) => {
     const timeFormat = useAtomValue(timeFormatAtom)
     const sections = useScheduleMenuSections()
     return (
@@ -115,7 +144,7 @@ const ScheduleMenuSections = ({ onSchedulePick }: { onSchedulePick: (pick: Sched
                                 key={slot.id}
                                 className="justify-between gap-4"
                                 onSelect={() => {
-                                    const pick = pickFromSlot(slot, timeFormat)
+                                    const pick = pickFromSlot(slot, timeFormat, sendSilently)
                                     if (pick) onSchedulePick(pick)
                                 }}
                             >
@@ -123,7 +152,10 @@ const ScheduleMenuSections = ({ onSchedulePick }: { onSchedulePick: (pick: Sched
                                     <Icon />
                                     {slot.label}
                                 </span>
-                                <span className="tabular-nums text-ink-gray-5">{formatTimeLabel(slot.time.format("HH:mm"), timeFormat)}</span>
+                                <span className="flex items-center gap-1.5 tabular-nums text-ink-gray-5">
+                                    <QuietSlotMark time={slot.time} sendSilently={sendSilently} />
+                                    {formatTimeLabel(slot.time.format("HH:mm"), timeFormat)}
+                                </span>
                             </DropdownMenuItem>
                         )
                     })}

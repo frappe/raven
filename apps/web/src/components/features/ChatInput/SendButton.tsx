@@ -31,11 +31,11 @@ type SendButtonProps = {
     /** A preset slot was picked from the schedule submenu — schedule immediately. */
     onSchedulePick: (pick: SchedulePick) => void
     /** Open the custom date & time dialog. */
-    onScheduleSend: () => void
-    /** Scheduling needs text and no attachments (v1) — disable the submenu otherwise. */
+    onScheduleSend: (sendSilently: boolean) => void
+    /** Nothing to schedule, or uploads still running — disable the submenu. */
     scheduleDisabled?: boolean
     disabled?: boolean
-    /** Send is held while attachments finish uploading — show a spinner. */
+    /** Send is held while attachments finish uploading or a schedule is in flight — show a spinner. */
     loading?: boolean
 }
 

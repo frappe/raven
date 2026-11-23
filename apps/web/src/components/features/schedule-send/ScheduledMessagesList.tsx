@@ -17,15 +17,28 @@ import { toast } from "sonner"
 import _ from "@lib/translate"
 import { EditScheduledMessageSheet } from "./EditScheduledMessageSheet"
 import { ScheduledMessageCard } from "./ScheduledMessageCard"
+import type { RepliedMessageDetails } from "@components/features/message/renderers/RepliedMessagePreview"
 
 /** A pending (Scheduled) or Failed scheduled-message row from get_scheduled_messages. */
+export type ScheduledFile = { file_url: string; file_size?: number; width?: number; height?: number }
+
 export type ScheduledMessageRow = {
     name: string
     channel_id: string
-    text: string
+    text?: string
     scheduled_time: string
     status: "Scheduled" | "Failed"
     error?: string
+    send_silently: 0 | 1
+    linked_message?: string
+    link_doctype?: string
+    link_document?: string
+    files: ScheduledFile[]
+    reply_preview?: RepliedMessageDetails | null
+    /** For a thread row, the channel the thread lives in. */
+    thread_parent_channel?: string | null
+    /** The row's channel or thread is gone; only Delete can succeed. */
+    channel_deleted: boolean
 }
 
 import { SCHEDULED_MESSAGES_KEY, scheduledMessageEditingAtom, useScheduledMessages } from "./useScheduledMessages"

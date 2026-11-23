@@ -1,14 +1,15 @@
-import { useState, type ReactNode } from "react"
+import { useId, useState, type ReactNode } from "react"
 import { useAtomValue } from "jotai"
-import { CalendarClockIcon, ChevronDownIcon } from "lucide-react"
-import { Button } from "@components/ui/button"
+import { BellOffIcon, CalendarClockIcon, ChevronDownIcon } from "lucide-react"
+import { Button, buttonVariants } from "@components/ui/button"
+import { Switch } from "@components/ui/switch"
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from "@components/ui/drawer"
 import { timeFormatAtom } from "@utils/preferences"
 import { DRAWER_EXIT_MS } from "@utils/drawer"
 import { formatTimeLabel, type SchedulePick } from "@lib/timeUtils"
 import { cn } from "@lib/utils"
 import _ from "@lib/translate"
-import { SLOT_ICONS, pickFromSlot, useScheduleMenuSections } from "./ScheduleSendMenu"
+import { QuietSlotMark, SLOT_ICONS, pickFromSlot, useScheduleMenuSections } from "./ScheduleSendMenu"
 
 type ScheduleSendSheetProps = {
     open: boolean
@@ -17,9 +18,10 @@ type ScheduleSendSheetProps = {
     sendOptions: ReactNode
     /** A preset slot was picked — schedule immediately. */
     onSchedulePick: (pick: SchedulePick) => void
-    /** Open the custom date & time picker. Called after this sheet has closed. */
-    onScheduleSend: () => void
-    /** Scheduling needs text and no attachments (v1) — hide the row otherwise. */
+    /** Open the custom date & time picker, carrying the silent choice made here.
+     *  Called after this sheet has closed. */
+    onScheduleSend: (sendSilently: boolean) => void
+    /** Nothing to schedule, or uploads still running — hide the row. */
     scheduleDisabled?: boolean
 }
 
@@ -39,6 +41,23 @@ export const SheetRow = ({
         {trailing && <span className="ms-auto flex items-center tabular-nums text-ink-gray-5">{trailing}</span>}
     </Button>
 )
+
+/** A SheetRow-looking label around a real Switch, so tapping anywhere on the row
+ *  toggles it. A Switch inside SheetRow would nest one button in another. */
+const SheetSwitchRow = ({
+    checked, onCheckedChange, children,
+}: { checked: boolean; onCheckedChange: (checked: boolean) => void; children: ReactNode }) => {
+    const id = useId()
+    return (
+        <label
+            htmlFor={id}
+            className={cn(buttonVariants({ variant: "ghost", size: "lg", theme: "gray" }), "w-full cursor-pointer justify-start gap-3 active:bg-surface-gray-2")}
+        >
+            {children}
+            <Switch id={id} size="md" className="ms-auto" checked={checked} onCheckedChange={onCheckedChange} />
+        </label>
+    )
+}
 
 /**
  * Mobile send options as a bottom sheet, opened by a long press on the send button.
@@ -73,6 +92,7 @@ const SheetBody = ({
     sendOptions, onSchedulePick, onScheduleSend, scheduleDisabled, close,
 }: Omit<ScheduleSendSheetProps, "open" | "onOpenChange"> & { close: () => void }) => {
     const [expanded, setExpanded] = useState(false)
+    const [sendSilently, setSendSilently] = useState(false)
     const timeFormat = useAtomValue(timeFormatAtom)
     const sections = useScheduleMenuSections()
 
@@ -111,9 +131,14 @@ const SheetBody = ({
                                 return (
                                     <SheetRow
                                         key={slot.id}
-                                        trailing={formatTimeLabel(slot.time.format("HH:mm"), timeFormat)}
+                                        trailing={
+                                            <span className="flex items-center gap-1.5">
+                                                <QuietSlotMark time={slot.time} sendSilently={sendSilently} />
+                                                {formatTimeLabel(slot.time.format("HH:mm"), timeFormat)}
+                                            </span>
+                                        }
                                         onClick={() => {
-                                            const pick = pickFromSlot(slot, timeFormat)
+                                            const pick = pickFromSlot(slot, timeFormat, sendSilently)
                                             close()
                                             if (pick) onSchedulePick(pick)
                                         }}
@@ -126,12 +151,16 @@ const SheetBody = ({
                         </div>
                     ))}
                     <div className="my-1 border-t border-outline-gray-2" />
+                    <SheetSwitchRow checked={sendSilently} onCheckedChange={setSendSilently}>
+                        <BellOffIcon />
+                        {_("Send without notification")}
+                    </SheetSwitchRow>
                     <SheetRow
                         onClick={() => {
                             // The custom picker is its own sheet. Let this one finish
                             // sliding down first, or the two overlays fight.
                             close()
-                            window.setTimeout(onScheduleSend, DRAWER_EXIT_MS)
+                            window.setTimeout(() => onScheduleSend(sendSilently), DRAWER_EXIT_MS)
                         }}
                     >
                         <CalendarClockIcon />

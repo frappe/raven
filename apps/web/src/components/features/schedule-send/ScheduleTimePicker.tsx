@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react"
+import { useEffect, useId, useState } from "react"
 import dayjs, { type Dayjs } from "dayjs"
 import { Clock } from "lucide-react"
 import { Button } from "@components/ui/button"
 import { Label } from "@components/ui/label"
+import { Switch } from "@components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@components/ui/select"
 import { useIsMobile } from "@hooks/use-mobile"
+import { useScheduleQuietHint } from "@hooks/useQuietHours"
 import { useAtomValue } from "jotai"
 import { timeFormatAtom } from "@utils/preferences"
 import _ from "@lib/translate"
@@ -18,6 +20,8 @@ type ScheduleTimePickerProps = {
     onCancel?: () => void
     /** Live pick updates (null while incomplete/past) — the dialog's preview pane follows these. */
     onPickChange?: (picked: Dayjs | null) => void
+    /** Starting value of the silent switch: the choice made in the menu that opened this. */
+    defaultSendSilently?: boolean
     busy?: boolean
 }
 
@@ -25,8 +29,10 @@ type ScheduleTimePickerProps = {
  * Date + time row for picking a future delivery time, seeded to today + the
  * next open slot. Pure content — the caller owns the overlay and the POST.
  */
-export const ScheduleTimePicker = ({ onConfirm, onCancel, onPickChange, busy }: ScheduleTimePickerProps) => {
+export const ScheduleTimePicker = ({ onConfirm, onCancel, onPickChange, defaultSendSilently = false, busy }: ScheduleTimePickerProps) => {
     const isMobile = useIsMobile()
+    const silentId = useId()
+    const [sendSilently, setSendSilently] = useState(defaultSendSilently)
     const timeFormat = useAtomValue(timeFormatAtom)
     const [date, setDate] = useState<Date>(() => new Date())
     // Next open slot today; "09:00" only when today has none left.
@@ -42,6 +48,7 @@ export const ScheduleTimePicker = ({ onConfirm, onCancel, onPickChange, busy }: 
     const [hours, minutes] = effectiveTime ? effectiveTime.split(":").map(Number) : [0, 0]
     const picked = effectiveTime ? dayjs(date).hour(hours).minute(minutes).second(0).millisecond(0) : null
     const pick = picked && picked.isAfter(dayjs()) ? picked : null
+    const quietHint = useScheduleQuietHint(pick, sendSilently)
 
     // Live pick for the preview pane — keyed on epoch ms, `pick` is rebuilt every render.
     const pickMs = pick ? pick.valueOf() : null
@@ -76,6 +83,16 @@ export const ScheduleTimePicker = ({ onConfirm, onCancel, onPickChange, busy }: 
                     </SelectContent>
                 </Select>
             </div>
+            {/* Always mounted so screen readers announce the hint when a time change brings it in.
+                While empty, -mt-2 cancels the column gap instead of hiding it from them. */}
+            <p role="status" className="text-p-sm text-ink-gray-5 empty:-mt-2">
+                {quietHint === "auto" && _("Lands outside working hours, so it sends without notification (your quiet hours setting).")}
+                {quietHint === "nudge" && _("Lands outside working hours.")}
+            </p>
+            <div className="flex items-center justify-between gap-3 pt-1 md:w-1/2">
+                <Label htmlFor={silentId}>{_("Send without notification")}</Label>
+                <Switch id={silentId} size={isMobile ? "md" : "sm"} checked={sendSilently} onCheckedChange={setSendSilently} />
+            </div>
             {/* Standard footer; mobile buttons share the row edge-to-edge. */}
             <div className={isMobile ? "flex gap-2 pt-2 [&>*]:flex-1" : "flex justify-end gap-2 pt-2"}>
                 {onCancel && (
@@ -89,7 +106,7 @@ export const ScheduleTimePicker = ({ onConfirm, onCancel, onPickChange, busy }: 
                     size={isMobile ? "lg" : "md"}
                     loading={busy}
                     disabled={!pick}
-                    onClick={() => pick && onConfirm({ serverTime: toServerDatetime(pick), label: formatDateTimeLabel(pick, timeFormat) })}
+                    onClick={() => pick && onConfirm({ serverTime: toServerDatetime(pick), label: formatDateTimeLabel(pick, timeFormat), sendSilently })}
                 >
                     {_("Schedule")}
                 </Button>

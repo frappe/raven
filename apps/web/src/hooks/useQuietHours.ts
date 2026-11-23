@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react"
 import { useAtomValue, useSetAtom } from "jotai"
 import { useFrappePostCall } from "frappe-react-sdk"
+import type { Dayjs } from "dayjs"
 import { toast } from "sonner"
 import useCurrentRavenUser from "@raven/lib/hooks/useCurrentRavenUser"
 import { errorResponseToast } from "@components/ui/error-banner"
 import { quietHoursConfigAtom, quietHoursNudgeAtom, type QuietHoursNudge } from "@utils/preferences"
-import { isInQuietHours } from "@utils/quietHours"
+import { isInQuietHours, isInQuietHoursAt } from "@utils/quietHours"
 import _ from "@lib/translate"
 
 /**
@@ -79,5 +80,14 @@ export const useQuietSendMode = (): QuietSendMode => {
     const quiet = useIsInQuietHours()
     const preference = useAtomValue(quietHoursNudgeAtom)
     if (!quiet || preference === "No Nudge") return undefined
+    return preference === "Auto Silent" ? "auto" : "nudge"
+}
+
+/** The hint for a picked send time: "auto" when Auto Silent will deliver it silently,
+ *  "nudge" when it lands outside working hours, null when there's nothing to say. */
+export const useScheduleQuietHint = (time: Dayjs | null, sendSilently: boolean): "nudge" | "auto" | null => {
+    const config = useAtomValue(quietHoursConfigAtom)
+    const preference = useAtomValue(quietHoursNudgeAtom)
+    if (!config || !time || sendSilently || preference === "No Nudge" || !isInQuietHoursAt(time)) return null
     return preference === "Auto Silent" ? "auto" : "nudge"
 }

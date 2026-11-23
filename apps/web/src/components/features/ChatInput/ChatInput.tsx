@@ -11,7 +11,7 @@ import SendButton from "./SendButton"
 import { MentionButton } from "./MentionButton"
 import { EmojiPickerButton } from "./EmojiPickerButton"
 import { CreatePollDialog } from "./CreatePollDialog"
-import { uploadedFilesAtom, uploadingFilesAtom, pendingSendAtom, preparingFilesAtom, useAttachFile } from "./useFileInput"
+import { uploadedFilesAtom, uploadingFilesAtom, pendingSendAtom, preparingFilesAtom, useAttachFile, type UploadedFile } from "./useFileInput"
 import { registerComposerFocus } from "./composerFocus"
 import { consumeSharedFiles } from "./sharedFiles"
 import { useRavenEditor, EDITOR_MIN_H } from "@components/features/editor/useRavenEditor"
@@ -46,6 +46,10 @@ import { randomUUID } from "@lib/uuid"
 import { Separator } from "@components/ui/separator"
 import AttachFrappeDocumentDialog, { LinkedDocumentBanner } from "./AttachFrappeDocumentDialog"
 
+/** Uploaded files in the shape the send and schedule endpoints take. */
+const toOutgoingFiles = (files: UploadedFile[]) =>
+    files.map((f) => ({ file_url: f.fileURL, file_size: f.size, width: f.width, height: f.height }))
+
 interface ChatInputProps {
     channelID: string
     /**
@@ -56,8 +60,6 @@ interface ChatInputProps {
     isDirectMessage?: boolean,
     /** Send in the parentChannelID of the thread if it is a thread */
     parentChannelID?: string | null,
-    /** Thread composers can't schedule — v1 scope: the scheduled-messages dialog has no thread context to display. */
-    disableSchedule?: boolean,
 }
 
 /**
@@ -74,7 +76,7 @@ interface ChatInputProps {
  * finishes (pendingSendAtom). The actual send (dispatchSend) is split out so the
  * normal path and the waiting path share one implementation.
  */
-const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDirectMessage, parentChannelID, disableSchedule }, ref) => {
+const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDirectMessage, parentChannelID }, ref) => {
     const { call } = useContext(FrappeContext) as FrappeConfig
     const [files, setFiles] = useAtom(uploadedFilesAtom(channelID))
     const [pendingSend, setPendingSend] = useAtom(pendingSendAtom(channelID))
@@ -226,7 +228,7 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
         // ClipboardEvent; autolink waits for a delimiter that send never types).
         if (!isEmpty) linkifyBeforeSend(editor)
         const content = isEmpty ? "" : editor.getHTML()
-        const outgoingFiles = files.map((f) => ({ file_url: f.fileURL, file_size: f.size, width: f.width, height: f.height }))
+        const outgoingFiles = toOutgoingFiles(files)
         const batchId = randomUUID()
 
         // Reply context: send the linked message id + a snapshot of it so the reply
@@ -266,26 +268,50 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
         if (!isMobile) editor.commands.focus()
     }, [editor, files, channelID, currentUser, call, setFiles, replyTo, setReplyTo, linkedDocument, setLinkedDocument, persistDraft, stopTyping, isMobile])
 
+    // Disable send when there's genuinely nothing to send (mirrors the handleSend guard).
+    const nothingToSend = !editorHasContent && files.length === 0 && !hasUploadsInFlight && !hasFailedUploads && !linkedDocument
+
+    // Scheduling posts the files as they are now, so every upload must have finished.
+    const scheduleDisabled = nothingToSend || hasUploadsInFlight || hasFailedUploads
+
     const [scheduleOpen, setScheduleOpen] = useState(false)
+    // The silent choice made in the send menu, carried into the custom picker.
+    const [scheduleSilently, setScheduleSilently] = useState(false)
+    const openScheduleDialog = useCallback((sendSilently: boolean) => {
+        setScheduleSilently(sendSilently)
+        setScheduleOpen(true)
+    }, [])
     const [scheduleBusy, setScheduleBusy] = useState(false)
     const { mutate: mutateSWR } = useSWRConfig()
 
-    /** Schedule the composed text for later. Plain POST — no optimistic bubble, no
+    /** Schedule the composed message for later. Plain POST — no optimistic bubble, no
      *  outbox: nothing should appear in the stream until the server delivers it. */
     const handleSchedulePick = useCallback((pick: SchedulePick) => {
-        if (!editor || editor.isEmpty) return
-        linkifyBeforeSend(editor)
-        const content = editor.getHTML()
+        if (!editor || scheduleDisabled || scheduleBusy) return
+        if (editorHasContent) linkifyBeforeSend(editor)
+        const html = editor.getHTML()
         setScheduleBusy(true)
         call.post("raven.api.scheduled_message.create_scheduled_message", {
             channel_id: channelID,
-            text: content,
+            text: editorHasContent ? html : undefined,
             scheduled_time: pick.serverTime,
+            files: toOutgoingFiles(files),
+            linked_message: replyTo?.name,
+            link_doctype: linkedDocument?.doctype,
+            link_document: linkedDocument?.docname,
+            send_silently: pick.sendSilently,
         }).then(() => {
             setScheduleOpen(false)
-            editor.commands.clearContent()
-            persistDraft.cancel()
-            saveDraft(channelID, "")
+            // The composer stays editable while the request runs: clear only what was
+            // scheduled, so anything typed or attached meanwhile survives.
+            if (editor.getHTML() === html) {
+                editor.commands.clearContent()
+                persistDraft.cancel()
+                saveDraft(channelID, "")
+            }
+            setFiles((current) => current.filter((file) => !files.includes(file)))
+            setReplyTo((current) => (current === replyTo ? null : current))
+            setLinkedDocument((current) => (current === linkedDocument ? null : current))
             stopTyping()
             // Badge + list revalidate NOW — the realtime nudge can lag behind our own action.
             mutateSWR((key) => typeof key === "string" && key.startsWith(SCHEDULED_MESSAGES_KEY))
@@ -295,7 +321,7 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
             // Composer content is untouched — the user can retry or send normally.
             errorResponseToast(_("Could not schedule your message"), error)
         }).finally(() => setScheduleBusy(false))
-    }, [editor, call, channelID, persistDraft, stopTyping, isMobile, mutateSWR])
+    }, [editor, scheduleDisabled, scheduleBusy, editorHasContent, files, replyTo, linkedDocument, call, channelID, setFiles, setReplyTo, setLinkedDocument, persistDraft, stopTyping, isMobile, mutateSWR])
 
     // Quiet hours: in "auto" mode every send defaults to silent (the send
     // button advertises it and offers the loud override) — resolved HERE, the
@@ -303,7 +329,8 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
     const quietSendMode = useQuietSendMode()
 
     const handleSend = useCallback((opts?: { sendSilently?: boolean }) => {
-        if (!editor) return
+        // A schedule in flight owns the composer's content; sending it too would deliver it twice.
+        if (!editor || scheduleBusy) return
         // Nothing to send — no meaningful text/content, no uploaded files, nothing staged.
         if (!editorHasContent && files.length === 0 && !hasUploadsInFlight && !hasFailedUploads && !linkedDocument) return
 
@@ -330,13 +357,7 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
         }
 
         dispatchSend({ sendSilently })
-    }, [editor, editorHasContent, files, hasUploadsInFlight, hasFailedUploads, linkedDocument, dispatchSend, setPendingSend, quietSendMode])
-
-    // Disable send when there's genuinely nothing to send (mirrors the handleSend guard).
-    const nothingToSend = !editorHasContent && files.length === 0 && !hasUploadsInFlight && !hasFailedUploads && !linkedDocument
-
-    // Scheduling needs text, no attachments and no reply context (v1) — mirrors the SendButton prop.
-    const scheduleDisabled = disableSchedule || !editorHasContent || !!replyTo || files.length > 0 || hasUploadsInFlight || hasFailedUploads
+    }, [editor, scheduleBusy, editorHasContent, files, hasUploadsInFlight, hasFailedUploads, linkedDocument, dispatchSend, setPendingSend, quietSendMode])
 
     // Held send: once uploads settle, dispatch (or back off if any failed so the
     // user can remove the bad file and retry — we never quietly send without it).
@@ -424,21 +445,20 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
             {/* Absolute overlay above the form — the stream's bottom padding (pb-4)
                 gives it room, so it reads as sitting in the gap, not over content */}
             <TypingIndicator channelID={channelID} />
-            {/* Schedule-send picker — rendered once at the composer root (not for thread composers). */}
-            {!disableSchedule && (
-                <ScheduleSendDialog
-                    open={scheduleOpen}
-                    onOpenChange={setScheduleOpen}
-                    onConfirm={handleSchedulePick}
-                    // Only read the editor while the dialog is up — getHTML() on every
-                    // composer keystroke would be wasted work.
-                    text={scheduleOpen && editor ? editor.getHTML() : undefined}
-                    busy={scheduleBusy}
-                />
-            )}
+            {/* Schedule-send picker — rendered once at the composer root. */}
+            <ScheduleSendDialog
+                open={scheduleOpen}
+                onOpenChange={setScheduleOpen}
+                onConfirm={handleSchedulePick}
+                // Only read the editor while the dialog is up — getHTML() on every
+                // composer keystroke would be wasted work.
+                text={scheduleOpen && editor && editorHasContent ? editor.getHTML() : undefined}
+                defaultSendSilently={scheduleSilently}
+                busy={scheduleBusy}
+            />
             <QuietHoursBanner mode={quietSendMode} />
-            {/* Pending scheduled messages for this channel. Thread composers cannot schedule. */}
-            {!disableSchedule && <ScheduledMessagesBanner channelID={channelID} />}
+            {/* Pending scheduled messages for this channel or thread. */}
+            <ScheduledMessagesBanner channelID={channelID} />
             {/* Warning banner is only shown for primary channels, not DMs, threads in DMs. */}
             {!isDM && mentionedIds.length > 0 && <MentionWarningBanner channelID={parentChannelID ?? channelID} mentionedIds={mentionedIds} isThread={parentChannelID ? true : false} />}
             {/* Outer wrapper carries data-raven-editor and is the popup anchor: the
@@ -495,9 +515,9 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                                         onSendLoud={() => handleSend({ sendSilently: false })}
                                         quietMode={quietSendMode}
                                         onSchedulePick={handleSchedulePick}
-                                        onScheduleSend={() => setScheduleOpen(true)}
+                                        onScheduleSend={openScheduleDialog}
                                         scheduleDisabled={scheduleDisabled}
-                                        loading={!!pendingSend}
+                                        loading={!!pendingSend || scheduleBusy}
                                         disabled={nothingToSend}
                                     />
                                 </div>
@@ -543,9 +563,9 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                                         onSendLoud={() => handleSend({ sendSilently: false })}
                                         quietMode={quietSendMode}
                                         onSchedulePick={handleSchedulePick}
-                                        onScheduleSend={() => setScheduleOpen(true)}
+                                        onScheduleSend={openScheduleDialog}
                                         scheduleDisabled={scheduleDisabled}
-                                        loading={!!pendingSend}
+                                        loading={!!pendingSend || scheduleBusy}
                                         disabled={nothingToSend}
                                     />
                                 </div>
