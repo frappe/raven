@@ -175,7 +175,6 @@ export const AddFileButton = ({ channelID, onAfterAttach }: { channelID: string;
     const fileInputRef = useRef<HTMLInputElement>(null)
 
     const onAddFile = useAttachFile(channelID)
-    const isMobile = useIsMobile()
 
     const onClick = () => {
         fileInputRef.current?.click()
@@ -196,7 +195,7 @@ export const AddFileButton = ({ channelID, onAfterAttach }: { channelID: string;
             }} className='hidden' />
         <Tooltip>
             <TooltipTrigger asChild>
-                <Button variant="ghost" size={isMobile ? "lg" : "sm"} isIconButton onClick={onClick} type='button' aria-label={_("Attach file")}>
+                <Button variant="ghost" size="sm" isIconButton onClick={onClick} type='button' aria-label={_("Attach file")}>
                     <Paperclip />
                 </Button>
             </TooltipTrigger>

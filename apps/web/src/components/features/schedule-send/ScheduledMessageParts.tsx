@@ -62,12 +62,20 @@ export const ScheduledMessageDestination = ({ row, channel, workspace, dmChannel
         const label = channel
             ? _("Thread in {0}", [channel.channel_name])
             : peerName ? _("Thread with {0}", [peerName]) : _("Thread")
+        // Phones show just the name beside the thread icon: the full label and the workspace overflow the band.
+        const text = (
+            <span className="truncate">
+                <span className="md:hidden">{channel?.channel_name || peerName || label}</span>
+                <span className="max-md:hidden">{label}</span>
+            </span>
+        )
         return (
             <>
                 <Dot />
                 {base ? (
                     <button
                         type="button"
+                        aria-label={label}
                         // The after: layer stretches the tap target to the band's full height.
                         className="relative flex min-w-0 cursor-pointer items-center gap-1 rounded-sm hover:text-ink-gray-8 hover:underline after:absolute after:inset-x-0 after:-inset-y-2.5 md:after:-inset-y-1"
                         onClick={(event) => {
@@ -78,10 +86,13 @@ export const ScheduledMessageDestination = ({ row, channel, workspace, dmChannel
                         }}
                     >
                         <MessageSquareTextIcon className="size-3.5 shrink-0" aria-hidden />
-                        <span className="truncate">{label}</span>
+                        {text}
                     </button>
                 ) : (
-                    <span className="truncate min-w-0">{label}</span>
+                    <span className="flex min-w-0 items-center gap-1">
+                        <MessageSquareTextIcon className="size-3.5 shrink-0" aria-hidden />
+                        {text}
+                    </span>
                 )}
                 {workspaceLabel}
             </>
@@ -138,14 +149,11 @@ export const ScheduledMessageBody = ({ row }: { row: ScheduledPayload }) => (
 const ScheduledFiles = ({ row }: { row: ScheduledPayload }) => {
     const setPreview = useSetAtom(attachmentPreviewAtom)
     const { name: currentUser } = useUserCookieData()
-    // The viewer header's time: a card's delivery time; the picker preview has none, so now.
-    const timestamp = row.scheduled_time ? fromServerDatetime(row.scheduled_time).valueOf() : Date.now()
     const files = row.files.map((file, index) => ({
         id: `${index}:${file.file_url}`,
         fileName: getFileName(file.file_url),
         fileURL: file.file_url,
         size: file.file_size ?? 0,
-        timestamp,
     }))
     return (
         <div className="flex flex-wrap gap-2">
@@ -164,7 +172,10 @@ const ScheduledFiles = ({ row }: { row: ScheduledPayload }) => {
                         onClick={(event) => {
                             // The mobile row tap opens the action sheet; this tap opens the file.
                             event.stopPropagation()
-                            setPreview({ attachments: stagedFilesToAttachments(files, currentUser), index, mode: "preview" })
+                            // The viewer header's time: a card's delivery time; the picker preview has none, so now.
+                            const timestamp = row.scheduled_time ? fromServerDatetime(row.scheduled_time).valueOf() : Date.now()
+                            const attachments = stagedFilesToAttachments(files.map((f) => ({ ...f, timestamp })), currentUser)
+                            setPreview({ attachments, index, mode: "preview" })
                         }}
                     />
                 </div>

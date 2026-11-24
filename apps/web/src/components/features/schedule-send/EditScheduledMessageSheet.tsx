@@ -7,11 +7,11 @@ import { Label } from "@components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@components/ui/select"
 import { TooltipProvider } from "@components/ui/tooltip"
 import _ from "@lib/translate"
-import { formatDateTimeLabel } from "@lib/timeUtils"
 import { useScheduledMessageEdit } from "./useScheduledMessageEdit"
+import { useScheduleQuietHint } from "@hooks/useQuietHours"
 import { EditPayload } from "./ScheduledMessageParts"
-import { SilentCheckbox } from "./ScheduleTimePicker"
-import { AddFileButton } from "@components/features/ChatInput/InputFiles"
+import { QuietHint, SilentCheckbox } from "./ScheduleTimePicker"
+import { MobileComposerActions } from "@components/features/ChatInput/MobileComposerActions"
 import { DatePickerPopover } from "@components/features/reminders/DatePickerPopover"
 import type { ScheduledMessageRow } from "./ScheduledMessagesList"
 
@@ -33,14 +33,15 @@ type EditScheduledMessageSheetProps = {
  */
 export const EditScheduledMessageSheet = ({ row, open, onOpenChange, onDone }: EditScheduledMessageSheetProps) => {
     const edit = useScheduledMessageEdit(row, { onDone, onCancel: () => onOpenChange(false) })
-    const { editor, date, setDate, time, setTime, allTimeOptions, timeFormat, picked, pastPick, canSave, loading, onSave, linkSignal, onLinkConsumed } = edit
+    const { editor, date, setDate, time, setTime, allTimeOptions, picked, pastPick, canSave, loading, onSave, linkSignal, onLinkConsumed } = edit
+    const quietHint = useScheduleQuietHint(pastPick ? null : picked)
 
     // repositionInputs={false}: vaul's keyboard handling would shrink the sheet
     // and squish the editor — off, the keyboard just overlays the lower part.
     return (
         <Drawer open={open} onOpenChange={onOpenChange} repositionInputs={false}>
-            {/* If content outgrows the cap, the flex chain squeezes only the text
-                area (everything else is shrink-proof) — the sheet never scrolls. */}
+            {/* If content outgrows the cap, the flex chain squeezes only the message box's
+                scroller (everything else is shrink-proof) — the sheet never scrolls. */}
             <DrawerContent className="max-h-[calc(100dvh-2rem)]">
                 {/* Title inside the px-4 body so it aligns with the fields (same as
                     the Create Channel sheet). */}
@@ -67,25 +68,25 @@ export const EditScheduledMessageSheet = ({ row, open, onOpenChange, onDone }: E
                                     </div>
                                 )}
                             </TooltipProvider>
-                            <div className="shrink-0">
+                            {/* The one scroller, holding the reply, document and files with the text so
+                                long content scrolls instead of being cut off. max-h-none neutralizes .tiptap's
+                                own max-h-[40vh] scroll (nested scrollers fight on touch); min-h-24 keeps a floor. */}
+                            <div className="min-h-24 overflow-y-auto overscroll-contain [&_.tiptap]:max-h-none [&_.tiptap]:min-h-24">
                                 <EditPayload row={row} edit={edit} showFormatting />
-                            </div>
-                            {/* The one scroller. max-h-none neutralizes .tiptap's own
-                                max-h-[40vh] scroll (nested scrollers fight on touch);
-                                min-h-24 keeps a ~4-line floor when squeezed. */}
-                            <div className="min-h-24 overflow-y-auto [&_.tiptap]:max-h-none [&_.tiptap]:min-h-24">
                                 <EditorContent editor={editor} />
                             </div>
-                            <TooltipProvider>
-                                <div className="shrink-0 px-1.5 pb-1.5">
-                                    <AddFileButton channelID={edit.editKey} />
-                                </div>
-                            </TooltipProvider>
+                            {/* The composer's mobile attach sheet: camera, photos and files, with native pickers in the iOS app. */}
+                            <div className="shrink-0 px-1.5 pb-1.5">
+                                <MobileComposerActions channelID={edit.editKey} inEditor />
+                            </div>
                         </div>
                     </div>
-                    {/* Delivery time: date + time side by side on one row, preview underneath. */}
+                    {/* Delivery time: date + time side by side on one row, the quiet-hours hint on the label's. */}
                     <div className="flex shrink-0 flex-col gap-2">
-                        <Label>{_("Delivery time")}</Label>
+                        <div className="flex items-center justify-between gap-3">
+                            <Label>{_("Delivery time")}</Label>
+                            <QuietHint hint={quietHint} />
+                        </div>
                         {/* Grid, not flex — exact equal halves for the two fields. */}
                         <div className="grid grid-cols-2 items-center gap-3">
                             <DatePickerPopover value={date} onChange={setDate} size="lg" />
@@ -111,9 +112,7 @@ export const EditScheduledMessageSheet = ({ row, open, onOpenChange, onDone }: E
                         </div>
                         {/* Clock race: the picked time can pass while the editor sits
                             open — say why Save is off instead of silently disabling it. */}
-                        <p className={pastPick ? "text-p-sm text-ink-red-5" : "text-p-sm text-ink-gray-5"}>
-                            {pastPick ? _("Delivery time is in the past") : formatDateTimeLabel(picked, timeFormat)}
-                        </p>
+                        {pastPick && <p className="text-p-sm text-ink-red-5">{_("Delivery time is in the past")}</p>}
                     </div>
                     <SilentCheckbox checked={edit.sendSilently} onCheckedChange={edit.setSendSilently} className="shrink-0" />
                 </div>

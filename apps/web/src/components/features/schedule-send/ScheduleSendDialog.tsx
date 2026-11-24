@@ -92,7 +92,7 @@ const SchedulePreview = ({ preview, picked }: { preview: ScheduledPayload; picke
             <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-baseline gap-1.5 text-content">
                     {user && <span className="truncate font-medium text-ink-gray-8">{user.full_name}</span>}
-                    <span className="flex shrink-0 items-baseline gap-1 text-xs text-ink-gray-4">
+                    <span className="flex shrink-0 items-baseline gap-1 text-sm md:text-xs text-ink-gray-6">
                         <CalendarClockIcon className="h-3 w-3 shrink-0 self-center" />
                         {picked ? _("Scheduled for {0}", [formatDateTimeLabel(picked, timeFormat)]) : _("Pick a delivery time")}
                     </span>

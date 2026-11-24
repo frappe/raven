@@ -47,8 +47,6 @@ export const ScheduleTimePicker = ({ onConfirm, onCancel, onPickChange, busy }: 
     const picked = effectiveTime ? dayjs(date).hour(hours).minute(minutes).second(0).millisecond(0) : null
     const pick = picked && picked.isAfter(dayjs()) ? picked : null
     const quietHint = useScheduleQuietHint(pick)
-    // The same marks as the preset rows: bell-off when Auto Silent will deliver it silently.
-    const QuietIcon = quietHint === "auto" ? BellOffIcon : MoonIcon
 
     // Live pick for the preview pane — keyed on epoch ms, `pick` is rebuilt every render.
     const pickMs = pick ? pick.valueOf() : null
@@ -58,7 +56,11 @@ export const ScheduleTimePicker = ({ onConfirm, onCancel, onPickChange, busy }: 
 
     return (
         <div className="flex w-full flex-col gap-2">
-            <Label>{_("Delivery time")}</Label>
+            {/* Phones: the fields fill their row, so the hint shares the label's. */}
+            <div className="flex items-center justify-between gap-3">
+                <Label>{_("Delivery time")}</Label>
+                {isMobile && <QuietHint hint={quietHint} />}
+            </div>
             <div className="flex items-center gap-3">
                 {/* Grid, not flex — exact equal halves for the two fields. The pair
                     spans half the dialog; mobile keeps full width for touch. */}
@@ -69,8 +71,7 @@ export const ScheduleTimePicker = ({ onConfirm, onCancel, onPickChange, busy }: 
                             {/* Clock INSIDE SelectValue: the trigger is justify-between, so a
                                 third child would strand the time in the middle. */}
                             <SelectValue>
-                                {/* On a phone the quiet-hours mark takes the clock's place: a trailing icon gets clipped on narrow screens. */}
-                                {isMobile && quietHint ? <QuietIcon className="text-ink-gray-6" aria-hidden /> : <Clock />}
+                                <Clock />
                                 {/* Late tonight every slot may already be past — say so instead of crashing. */}
                                 {effectiveOption?.label ?? _("No times left today")}
                             </SelectValue>
@@ -85,13 +86,8 @@ export const ScheduleTimePicker = ({ onConfirm, onCancel, onPickChange, busy }: 
                         </SelectContent>
                     </Select>
                 </div>
-                {/* Beside the fields, so it adds no row. Mounted while empty, so screen readers
-                    announce it; on a phone the fields fill the row and the time field carries the icon. */}
-                <p role="status" className="flex min-w-0 items-center gap-1.5 text-p-sm text-ink-gray-6 max-md:sr-only">
-                    {quietHint && <QuietIcon className="size-3.5 shrink-0" aria-hidden />}
-                    {quietHint === "auto" && _("Outside working hours, sends silently")}
-                    {quietHint === "nudge" && _("Outside working hours")}
-                </p>
+                {/* Desktop: beside the fields, so it adds no row. */}
+                {!isMobile && <QuietHint hint={quietHint} />}
             </div>
             <SilentCheckbox checked={sendSilently} onCheckedChange={setSendSilently} className="pt-1" />
             {/* Standard footer; mobile buttons share the row edge-to-edge. */}
@@ -124,5 +120,18 @@ export const SilentCheckbox = ({ checked, onCheckedChange, className }: { checke
             <Checkbox id={id} checked={checked} onCheckedChange={(value) => onCheckedChange(value === true)} />
             <Label htmlFor={id} className="cursor-pointer">{_("Send without notification")}</Label>
         </div>
+    )
+}
+
+/** "Outside working hours" with the preset rows' mark (bell-off when Auto Silent sends it silently).
+ *  Mounted while empty, so screen readers announce it when a time change brings it in. */
+export const QuietHint = ({ hint }: { hint: "nudge" | "auto" | null }) => {
+    const Icon = hint === "auto" ? BellOffIcon : MoonIcon
+    return (
+        <p role="status" className="flex min-w-0 items-center gap-1.5 text-p-sm text-ink-gray-6">
+            {hint && <Icon className="size-3.5 shrink-0" aria-hidden />}
+            {hint === "auto" && _("Outside working hours, sends silently")}
+            {hint === "nudge" && _("Outside working hours")}
+        </p>
     )
 }
