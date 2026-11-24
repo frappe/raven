@@ -215,7 +215,11 @@ def get_holiday_list() -> str | None:
 	default company's (ERPNext). None when neither app is installed."""
 	apps = frappe.get_installed_apps()
 	if "hrms" in apps:
-		from hrms.hr.utils import get_holiday_list_for_employee
+		# Newer HRMS versions have the helper in hrms.utils.holiday_list; version 15 in hrms.hr.utils.
+		try:
+			from hrms.utils.holiday_list import get_holiday_list_for_employee
+		except ImportError:
+			from hrms.hr.utils import get_holiday_list_for_employee
 
 		employee = frappe.db.get_value("Employee", {"user_id": frappe.session.user, "status": "Active"})
 		# A user without an Employee record (an admin, a contractor) still gets the
