@@ -24,8 +24,6 @@ type ScheduleSendDialogProps = {
     onConfirm: (pick: SchedulePick) => void
     /** The composer's current HTML — shown as a live preview pane (desktop only). */
     text?: string
-    /** Starting value of the picker's silent switch. */
-    defaultSendSilently?: boolean
     /** Confirm in-flight — disables the buttons. */
     busy?: boolean
 }
@@ -34,7 +32,7 @@ type ScheduleSendDialogProps = {
  * Overlay around ScheduleTimePicker: Dialog on desktop (with a live message
  * preview on top) / Drawer on mobile. The caller owns the POST.
  */
-export const ScheduleSendDialog = ({ open, onOpenChange, onConfirm, text, defaultSendSilently, busy }: ScheduleSendDialogProps) => {
+export const ScheduleSendDialog = ({ open, onOpenChange, onConfirm, text, busy }: ScheduleSendDialogProps) => {
     const isMobile = useIsMobile()
     const [picked, setPicked] = useState<Dayjs | null>(null)
 
@@ -51,7 +49,6 @@ export const ScheduleSendDialog = ({ open, onOpenChange, onConfirm, text, defaul
                             onConfirm={onConfirm}
                             onCancel={() => onOpenChange(false)}
                             onPickChange={setPicked}
-                            defaultSendSilently={defaultSendSilently}
                             busy={busy}
                         />
                     </div>
@@ -72,7 +69,6 @@ export const ScheduleSendDialog = ({ open, onOpenChange, onConfirm, text, defaul
                         onConfirm={onConfirm}
                         onCancel={() => onOpenChange(false)}
                         onPickChange={setPicked}
-                        defaultSendSilently={defaultSendSilently}
                         busy={busy}
                     />
                 </div>

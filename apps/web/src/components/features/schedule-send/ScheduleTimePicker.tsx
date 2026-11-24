@@ -21,8 +21,6 @@ type ScheduleTimePickerProps = {
     onCancel?: () => void
     /** Live pick updates (null while incomplete/past) — the dialog's preview pane follows these. */
     onPickChange?: (picked: Dayjs | null) => void
-    /** Starting value of the silent switch: the choice made in the menu that opened this. */
-    defaultSendSilently?: boolean
     busy?: boolean
 }
 
@@ -30,9 +28,9 @@ type ScheduleTimePickerProps = {
  * Date + time row for picking a future delivery time, seeded to today + the
  * next open slot. Pure content — the caller owns the overlay and the POST.
  */
-export const ScheduleTimePicker = ({ onConfirm, onCancel, onPickChange, defaultSendSilently = false, busy }: ScheduleTimePickerProps) => {
+export const ScheduleTimePicker = ({ onConfirm, onCancel, onPickChange, busy }: ScheduleTimePickerProps) => {
     const isMobile = useIsMobile()
-    const [sendSilently, setSendSilently] = useState(defaultSendSilently)
+    const [sendSilently, setSendSilently] = useState(false)
     const timeFormat = useAtomValue(timeFormatAtom)
     const [date, setDate] = useState<Date>(() => new Date())
     // Next open slot today; "09:00" only when today has none left.

@@ -4,7 +4,7 @@ import { useFrappeGetCall } from "frappe-react-sdk"
 import { useAtomValue } from "jotai"
 import {
     DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
-    DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuSwitchItem,
+    DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger,
 } from "@components/ui/dropdown-menu"
 import { BellOffIcon, CalendarClockIcon, MoonIcon, SunIcon, SunriseIcon, SunsetIcon, type LucideIcon } from "lucide-react"
 import { timeFormatAtom } from "@utils/preferences"
@@ -34,22 +34,19 @@ export const useScheduleMenuSections = () => {
     return getScheduleMenuSections(dayjs(), data?.message ? dayjs(data.message) : null)
 }
 
-/** Turn a picked slot into the payload the composer posts. Null if the slot has passed. */
-export const pickFromSlot = (
-    slot: ScheduleMenuSlot,
-    timeFormat: "12-hour" | "24-hour",
-    sendSilently: boolean,
-): SchedulePick | null => {
+/** Turn a picked slot into the payload the composer posts. Null if the slot has passed.
+ *  Presets leave silent to delivery: quiet hours decide. */
+export const pickFromSlot = (slot: ScheduleMenuSlot, timeFormat: "12-hour" | "24-hour"): SchedulePick | null => {
     // The menu may have sat open across the slot's boundary. Re-check at click time
     // so we never post a time the server will reject as past.
     if (!slot.time.isAfter(dayjs())) return null
-    return { serverTime: toServerDatetime(slot.time), label: formatDateTimeLabel(slot.time, timeFormat), sendSilently }
+    return { serverTime: toServerDatetime(slot.time), label: formatDateTimeLabel(slot.time, timeFormat), sendSilently: false }
 }
 
 /** Marks a preset that lands outside working hours: a moon, or a bell-off when the
  *  user's Auto Silent preference will deliver it silently. */
-export const QuietSlotMark = ({ time, sendSilently }: { time: Dayjs; sendSilently: boolean }) => {
-    const hint = useScheduleQuietHint(time, sendSilently)
+export const QuietSlotMark = ({ time }: { time: Dayjs }) => {
+    const hint = useScheduleQuietHint(time, false)
     if (!hint) return null
     const Icon = hint === "auto" ? BellOffIcon : MoonIcon
     return (
@@ -65,8 +62,8 @@ export const QuietSlotMark = ({ time, sendSilently }: { time: Dayjs; sendSilentl
 type ScheduleSendMenuProps = {
     /** A preset slot was picked from the submenu — schedule immediately. */
     onSchedulePick: (pick: SchedulePick) => void
-    /** Open the custom date & time dialog, carrying the silent choice made here. */
-    onScheduleSend: (sendSilently: boolean) => void
+    /** Open the custom date & time dialog. */
+    onScheduleSend: () => void
     /** Nothing to schedule, or uploads still running — disable the submenu. */
     scheduleDisabled?: boolean
 }
@@ -85,8 +82,6 @@ export const ScheduleSendMenu = ({ onSchedulePick, onScheduleSend, scheduleDisab
     // into the next open.
     const subTriggerRef = useRef<HTMLDivElement>(null)
     const [subAlignOffset, setSubAlignOffset] = useState(0)
-    // Lives inside DropdownMenuContent too, so every open starts with the switch off.
-    const [sendSilently, setSendSilently] = useState(false)
 
     return (
         <DropdownMenuSub>
@@ -106,15 +101,9 @@ export const ScheduleSendMenu = ({ onSchedulePick, onScheduleSend, scheduleDisab
                     setSubAlignOffset((prev) => (prev === offset ? prev : offset))
                 }}
             >
-                <ScheduleMenuSections onSchedulePick={onSchedulePick} sendSilently={sendSilently} />
+                <ScheduleMenuSections onSchedulePick={onSchedulePick} />
                 <DropdownMenuSeparator />
-                <DropdownMenuSwitchItem checked={sendSilently} onCheckedChange={setSendSilently}>
-                    <span className="flex items-center gap-2">
-                        <BellOffIcon />
-                        {_("Send without notification")}
-                    </span>
-                </DropdownMenuSwitchItem>
-                <DropdownMenuItem onSelect={() => onScheduleSend(sendSilently)}>
+                <DropdownMenuItem onSelect={onScheduleSend}>
                     {_("Custom date & time…")}
                 </DropdownMenuItem>
             </DropdownMenuSubContent>
@@ -128,7 +117,7 @@ export const ScheduleSendMenu = ({ onSchedulePick, onScheduleSend, scheduleDisab
  * so one flat list reads faster than another level of menus. Computed inside
  * DropdownMenuSubContent so slot times are fresh on open without per-keystroke cost.
  */
-const ScheduleMenuSections = ({ onSchedulePick, sendSilently }: { onSchedulePick: (pick: SchedulePick) => void; sendSilently: boolean }) => {
+const ScheduleMenuSections = ({ onSchedulePick }: { onSchedulePick: (pick: SchedulePick) => void }) => {
     const timeFormat = useAtomValue(timeFormatAtom)
     const sections = useScheduleMenuSections()
     return (
@@ -144,7 +133,7 @@ const ScheduleMenuSections = ({ onSchedulePick, sendSilently }: { onSchedulePick
                                 key={slot.id}
                                 className="justify-between gap-4"
                                 onSelect={() => {
-                                    const pick = pickFromSlot(slot, timeFormat, sendSilently)
+                                    const pick = pickFromSlot(slot, timeFormat)
                                     if (pick) onSchedulePick(pick)
                                 }}
                             >
@@ -153,7 +142,7 @@ const ScheduleMenuSections = ({ onSchedulePick, sendSilently }: { onSchedulePick
                                     {slot.label}
                                 </span>
                                 <span className="flex items-center gap-1.5 tabular-nums text-ink-gray-5">
-                                    <QuietSlotMark time={slot.time} sendSilently={sendSilently} />
+                                    <QuietSlotMark time={slot.time} />
                                     {formatTimeLabel(slot.time.format("HH:mm"), timeFormat)}
                                 </span>
                             </DropdownMenuItem>

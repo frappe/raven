@@ -275,12 +275,7 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
     const scheduleDisabled = nothingToSend || hasUploadsInFlight || hasFailedUploads
 
     const [scheduleOpen, setScheduleOpen] = useState(false)
-    // The silent choice made in the send menu, carried into the custom picker.
-    const [scheduleSilently, setScheduleSilently] = useState(false)
-    const openScheduleDialog = useCallback((sendSilently: boolean) => {
-        setScheduleSilently(sendSilently)
-        setScheduleOpen(true)
-    }, [])
+    const openScheduleDialog = useCallback(() => setScheduleOpen(true), [])
     const [scheduleBusy, setScheduleBusy] = useState(false)
     const { mutate: mutateSWR } = useSWRConfig()
 
@@ -453,7 +448,6 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                 // Only read the editor while the dialog is up — getHTML() on every
                 // composer keystroke would be wasted work.
                 text={scheduleOpen && editor && editorHasContent ? editor.getHTML() : undefined}
-                defaultSendSilently={scheduleSilently}
                 busy={scheduleBusy}
             />
             <QuietHoursBanner mode={quietSendMode} />
