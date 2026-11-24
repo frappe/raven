@@ -97,7 +97,10 @@ export const ScheduledMessageCard = ({
     const sheetDismissedAtRef = useRef(0)
     const DISMISS_GUARD_MS = 300
     const rowTapHandlers = isMobile && !isEditing ? {
-        onClick: () => {
+        onClick: (event: React.MouseEvent<HTMLDivElement>) => {
+            // Taps in the sheet and confirm dialogs (portalled, but React children of this row)
+            // bubble here too; reopening on them left the sheet open behind the edit sheet.
+            if (!event.currentTarget.contains(event.target as Node)) return
             if (performance.now() - sheetDismissedAtRef.current < DISMISS_GUARD_MS) return
             setActionsOpen(true)
         },
