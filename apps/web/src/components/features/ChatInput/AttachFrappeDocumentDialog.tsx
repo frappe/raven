@@ -150,19 +150,22 @@ const AttachFrappeDocumentDialog = ({ channelID, open, onOpenChange, hideTrigger
     )
 }
 
-/**
- * The staged document's preview chip in the composer (rendered next to the
- * file list). Fetches the document's title through the SAME cache key the
- * message card uses — so the card after send renders without a second fetch.
- */
+/** The composer's staged document as a removable chip, next to the file list. */
 export const LinkedDocumentBanner = ({ channelID }: { channelID: string }) => {
     const linkedDocument = useAtomValue(linkedDocumentAtom(channelID))
+    const setLinkedDocument = useSetAtom(linkedDocumentAtom(channelID))
     if (!linkedDocument) return null
-    return <LinkedDocumentChip channelID={channelID} document={linkedDocument} />
+    // Same paddings as InputFileList's strip: on mobile the gap sits below the pill
+    // (above the input row), on desktop above it.
+    return (
+        <div className="px-2 md:pt-2 pt-0 pb-2 md:pb-0">
+            <LinkedDocumentChip document={linkedDocument} onRemove={() => setLinkedDocument(null)} />
+        </div>
+    )
 }
 
-const LinkedDocumentChip = ({ channelID, document }: { channelID: string; document: LinkedDocument }) => {
-    const setLinkedDocument = useSetAtom(linkedDocumentAtom(channelID))
+/** A linked document as a pill: title over doctype, with a remove button when `onRemove` is given. */
+export const LinkedDocumentChip = ({ document, onRemove }: { document: LinkedDocument; onRemove?: () => void }) => {
     const isMobile = useIsMobile()
     // Title lookup — pre-warms the exact SWR entry DocumentLinkRenderer reads
     // (shared key helper), with the same revalidation behavior as the card.
@@ -174,34 +177,31 @@ const LinkedDocumentChip = ({ channelID, document }: { channelID: string; docume
     )
     const title = data?.message?.preview_title || document.docname
 
-    // Same pill anatomy as InputFiles' FileItem: bordered box, icon, two-line
-    // label (title over doctype), trailing remove button. The wrapper paddings
-    // match InputFileList's strip exactly — on mobile the gap sits BELOW the
-    // pill (above the input row), on desktop above it.
+    // Same pill anatomy as InputFiles' FileItem.
     return (
-        <div className="px-2 md:pt-2 pt-0 pb-2 md:pb-0">
-            <div className="rounded-md border border-outline-gray-2 md:w-64 w-full">
-                <div className="flex items-center gap-2 p-2">
-                    {/* Hovering previews the full document (title + fields) — the
-                        same data the sent card will show, already in the SWR cache. */}
-                    <HoverCard>
-                        <HoverCardTrigger asChild>
-                            <div className="flex min-w-0 flex-1 items-center gap-2">
-                                <div className="shrink-0">
-                                    <FileBoxIcon className={isMobile ? "size-7 text-ink-gray-6" : "size-6 text-ink-gray-6"} aria-hidden="true" />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                    <h4 className="md:text-xs-medium mb-0.5 text-sm-medium leading-snug text-ink-gray-8 truncate">
-                                        {title}
-                                    </h4>
-                                    <p className="md:text-xs text-sm text-ink-gray-5 truncate">{document.doctype}</p>
-                                </div>
+        <div className="rounded-md border border-outline-gray-2 md:w-64 w-full">
+            <div className="flex items-center gap-2 p-2">
+                {/* Hovering previews the full document (title + fields) — the
+                    same data the sent card will show, already in the SWR cache. */}
+                <HoverCard>
+                    <HoverCardTrigger asChild>
+                        <div className="flex min-w-0 flex-1 items-center gap-2">
+                            <div className="shrink-0">
+                                <FileBoxIcon className={isMobile ? "size-7 text-ink-gray-6" : "size-6 text-ink-gray-6"} aria-hidden="true" />
                             </div>
-                        </HoverCardTrigger>
-                        <HoverCardContent side="top" align="start" className="w-96 max-w-[90vw]">
-                            <DocumentPreviewSummary doctype={document.doctype} docname={document.docname} />
-                        </HoverCardContent>
-                    </HoverCard>
+                            <div className="min-w-0 flex-1">
+                                <h4 className="md:text-xs-medium mb-0.5 text-sm-medium leading-snug text-ink-gray-8 truncate">
+                                    {title}
+                                </h4>
+                                <p className="md:text-xs text-sm text-ink-gray-5 truncate">{document.doctype}</p>
+                            </div>
+                        </div>
+                    </HoverCardTrigger>
+                    <HoverCardContent side="top" align="start" className="w-96 max-w-[90vw]">
+                        <DocumentPreviewSummary doctype={document.doctype} docname={document.docname} />
+                    </HoverCardContent>
+                </HoverCard>
+                {onRemove && (
                     <div className="flex size-9 items-center justify-center">
                         <Button
                             type="button"
@@ -209,12 +209,12 @@ const LinkedDocumentChip = ({ channelID, document }: { channelID: string; docume
                             size={isMobile ? "lg" : "sm"}
                             isIconButton
                             title={_("Remove document")}
-                            onClick={() => setLinkedDocument(null)}
+                            onClick={onRemove}
                         >
                             <Trash2Icon />
                         </Button>
                     </div>
-                </div>
+                )}
             </div>
         </div>
     )

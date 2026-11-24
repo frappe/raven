@@ -11,6 +11,7 @@ import { useAtomValue } from "jotai"
 import { timeFormatAtom } from "@utils/preferences"
 import _ from "@lib/translate"
 import { getAvailableTimeOptions, toServerDatetime, formatDateTimeLabel, type SchedulePick } from "@lib/timeUtils"
+import { cn } from "@lib/utils"
 import { DatePickerPopover } from "@components/features/reminders/DatePickerPopover"
 
 type ScheduleTimePickerProps = {
@@ -31,7 +32,6 @@ type ScheduleTimePickerProps = {
  */
 export const ScheduleTimePicker = ({ onConfirm, onCancel, onPickChange, defaultSendSilently = false, busy }: ScheduleTimePickerProps) => {
     const isMobile = useIsMobile()
-    const silentId = useId()
     const [sendSilently, setSendSilently] = useState(defaultSendSilently)
     const timeFormat = useAtomValue(timeFormatAtom)
     const [date, setDate] = useState<Date>(() => new Date())
@@ -89,10 +89,7 @@ export const ScheduleTimePicker = ({ onConfirm, onCancel, onPickChange, defaultS
                 {quietHint === "auto" && _("Lands outside working hours, so it sends without notification (your quiet hours setting).")}
                 {quietHint === "nudge" && _("Lands outside working hours.")}
             </p>
-            <div className="flex items-center justify-between gap-3 pt-1 md:w-1/2">
-                <Label htmlFor={silentId}>{_("Send without notification")}</Label>
-                <Switch id={silentId} size={isMobile ? "md" : "sm"} checked={sendSilently} onCheckedChange={setSendSilently} />
-            </div>
+            <SilentSwitch checked={sendSilently} onCheckedChange={setSendSilently} className="pt-1 md:w-1/2" />
             {/* Standard footer; mobile buttons share the row edge-to-edge. */}
             <div className={isMobile ? "flex gap-2 pt-2 [&>*]:flex-1" : "flex justify-end gap-2 pt-2"}>
                 {onCancel && (
@@ -111,6 +108,18 @@ export const ScheduleTimePicker = ({ onConfirm, onCancel, onPickChange, defaultS
                     {_("Schedule")}
                 </Button>
             </div>
+        </div>
+    )
+}
+
+/** Labelled switch for silent delivery, shared by the custom picker and the edit surfaces. */
+export const SilentSwitch = ({ checked, onCheckedChange, className }: { checked: boolean; onCheckedChange: (checked: boolean) => void; className?: string }) => {
+    const isMobile = useIsMobile()
+    const id = useId()
+    return (
+        <div className={cn("flex items-center justify-between gap-3", className)}>
+            <Label htmlFor={id}>{_("Send without notification")}</Label>
+            <Switch id={id} size={isMobile ? "md" : "sm"} checked={checked} onCheckedChange={onCheckedChange} />
         </div>
     )
 }

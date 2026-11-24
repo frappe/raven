@@ -9,7 +9,10 @@ import { useIsMobile } from "@hooks/use-mobile"
 import _ from "@lib/translate"
 import { DatePickerPopover } from "@components/features/reminders/DatePickerPopover"
 import { formatDateTimeLabel } from "@lib/timeUtils"
+import { AddFileButton } from "@components/features/ChatInput/InputFiles"
 import { useScheduledMessageEdit } from "./useScheduledMessageEdit"
+import { EditPayload } from "./ScheduledMessageParts"
+import { SilentSwitch } from "./ScheduleTimePicker"
 import type { ScheduledMessageRow } from "./ScheduledMessagesList"
 
 type InlineScheduledMessageEditorProps = {
@@ -28,8 +31,8 @@ type InlineScheduledMessageEditorProps = {
  */
 export const InlineScheduledMessageEditor = ({ row, onDone, onCancel }: InlineScheduledMessageEditorProps) => {
     const isMobile = useIsMobile()
-    const { editor, date, setDate, time, setTime, allTimeOptions, timeFormat, picked, pastPick, canSave, loading, onSave, linkSignal, onLinkConsumed } =
-        useScheduledMessageEdit(row, { onDone, onCancel })
+    const edit = useScheduledMessageEdit(row, { onDone, onCancel })
+    const { editor, date, setDate, time, setTime, allTimeOptions, timeFormat, picked, pastPick, canSave, loading, onSave, linkSignal, onLinkConsumed } = edit
 
     return (
         <div data-raven-editor className="relative w-full py-1 select-text">
@@ -43,6 +46,7 @@ export const InlineScheduledMessageEditor = ({ row, onDone, onCancel }: InlineSc
                             onLinkConsumed={onLinkConsumed}
                         />
                     )}
+                    <EditPayload row={row} edit={edit} showFormatting={!isMobile} />
                     <div className={EDITOR_MIN_H}>
                         <EditorContent editor={editor} />
                     </div>
@@ -75,7 +79,9 @@ export const InlineScheduledMessageEditor = ({ row, onDone, onCancel }: InlineSc
                                 {pastPick ? _("Delivery time is in the past") : formatDateTimeLabel(picked, timeFormat)}
                             </span>
                         </div>
+                        <SilentSwitch checked={edit.sendSilently} onCheckedChange={edit.setSendSilently} className="px-1 md:w-1/2" />
                         <div className="flex items-center md:justify-start justify-end gap-2">
+                            <AddFileButton channelID={edit.editKey} onAfterAttach={() => editor?.commands.focus()} />
                             <span className="mr-auto px-1 text-xs text-ink-gray-4 hidden md:block">{_("Esc to cancel")}</span>
                             <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
                                 {_("Cancel")}

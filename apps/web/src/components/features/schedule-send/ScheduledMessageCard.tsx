@@ -15,16 +15,14 @@ import {
 import { Drawer, DrawerContent, DrawerTitle } from "@components/ui/drawer"
 import { Badge } from "@components/ui/badge"
 import { Button } from "@components/ui/button"
-import { MessageBody } from "@components/features/message/renderers/MessageContent"
 import { useMessageTimes } from "@components/features/message/renderers/MessageRow"
-import { ChannelIcon } from "@components/common/ChannelIcon/ChannelIcon"
-import { UserAvatar } from "@components/features/message/UserAvatar"
 import { useIsMobile } from "@hooks/use-mobile"
 import { cn } from "@lib/utils"
 import _ from "@lib/translate"
 import { DRAWER_EXIT_MS } from "@utils/drawer"
 import { fromServerDatetime } from "@lib/timeUtils"
 import { InlineScheduledMessageEditor } from "./InlineScheduledMessageEditor"
+import { ScheduledMessageBody, ScheduledMessageDestination, SilentMark } from "./ScheduledMessageParts"
 import type { ScheduledMessageRow } from "./ScheduledMessagesList"
 import type { ChannelListItem, DMChannelListItem } from "@raven/types/common/ChannelListItem"
 import type { WorkspaceFields } from "@hooks/useWorkspaces"
@@ -32,11 +30,11 @@ import type { UserData } from "@db"
 
 type ScheduledMessageCardProps = {
     row: ScheduledMessageRow
-    /** Channel context — non-null for channel messages. */
+    /** Channel context — non-null for channel messages; the parent channel for a thread row. */
     channel?: ChannelListItem
     /** The channel's workspace, for the context band. */
     workspace?: WorkspaceFields
-    /** DM channel context — non-null for DM messages. */
+    /** DM channel context — non-null for DM messages; the parent DM for a thread row. */
     dmChannel?: DMChannelListItem
     /** Peer user when the message lives in a DM. */
     peer?: UserData
@@ -110,10 +108,13 @@ export const ScheduledMessageCard = ({
         setActionsOpen(next)
     }
 
-    // One source for the kebab dropdown AND the right-click menu.
+    // One source for the kebab dropdown AND the right-click menu. Without its
+    // channel, a row can only be deleted.
     const actions = [
-        { icon: SendHorizontalIcon, label: _("Send now"), onClick: () => setSendNowOpen(true) },
-        { icon: Edit3Icon, label: _("Edit"), onClick: () => onEditingChange(row.name) },
+        ...(row.channel_deleted ? [] : [
+            { icon: SendHorizontalIcon, label: _("Send now"), onClick: () => setSendNowOpen(true) },
+            { icon: Edit3Icon, label: _("Edit"), onClick: () => onEditingChange(row.name) },
+        ]),
         { icon: Trash2Icon, label: _("Delete"), onClick: () => setDeleteOpen(true), destructive: true },
     ]
 
@@ -138,23 +139,8 @@ export const ScheduledMessageCard = ({
                         <div className="flex items-center gap-1.5 bg-surface-gray-1 px-3 py-2.5 md:py-1 text-sm text-ink-gray-6">
                             <DayNightIcon className="size-3.5 shrink-0 text-ink-gray-6" />
                             <span className="shrink-0 tabular-nums text-sm">{shortTime}</span>
-                            {channel && (
-                                <>
-                                    <span className="shrink-0 text-ink-gray-4">·</span>
-                                    <ChannelIcon type={channel.type} className="size-3.5 shrink-0 text-ink-gray-6" />
-                                    <span className="text-sm min-w-0 -ml-0.5">{channel.channel_name}</span>
-                                    <span className="shrink-0 text-ink-gray-4">·</span>
-                                    {workspace && <span className="truncate text-xs text-ink-gray-4">{workspace.workspace_name}</span>}
-                                </>
-                            )}
-                            {dmChannel && (
-                                <>
-                                    <span className="shrink-0 text-ink-gray-4">·</span>
-                                    {/* The person's avatar, the way DMs are shown everywhere else. */}
-                                    {peer && <UserAvatar user={peer} size="xs" showStatusIndicator={false} />}
-                                    <span className="truncate min-w-0">{peerName}</span>
-                                </>
-                            )}
+                            {!!row.send_silently && <SilentMark />}
+                            <ScheduledMessageDestination row={row} channel={channel} workspace={workspace} dmChannel={dmChannel} peer={peer} />
                             {!isEditing && !isMobile && (
                                 <DropdownMenu onOpenChange={setMenuOpen}>
                                     <DropdownMenuTrigger asChild>
@@ -198,9 +184,7 @@ export const ScheduledMessageCard = ({
                                             {row.error && <p className="whitespace-pre-line text-sm text-ink-red-6">{row.error}</p>}
                                         </div>
                                     )}
-                                    <div className="[&_p]:my-0">
-                                        <MessageBody content={row.text} />
-                                    </div>
+                                    <ScheduledMessageBody row={row} />
                                 </>
                             )}
                         </div>
@@ -218,42 +202,46 @@ export const ScheduledMessageCard = ({
                                         <DrawerTitle className="sr-only">{_("Scheduled message actions")}</DrawerTitle>
                                         {/* MessageActionMenu's SheetActionRow anatomy. */}
                                         <div className="flex flex-col px-2 pb-6">
-                                            <Button
-                                                variant="ghost"
-                                                size="lg"
-                                                theme="gray"
-                                                className="w-full justify-start gap-3 active:bg-surface-gray-2"
-                                                onClick={() => {
-                                                    setActionsOpen(false)
-                                                    setSendNowOpen(true)
-                                                }}
-                                            >
-                                                <SendHorizontalIcon />
-                                                {_("Send now")}
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="lg"
-                                                theme="gray"
-                                                className="w-full justify-start gap-3 active:bg-surface-gray-2"
-                                                onClick={() => {
-                                                    setActionsOpen(false)
-                                                    // Wait out the sheet's exit animation — flipping
-                                                    // isEditing in the same commit would unmount it
-                                                    // mid-animation while the edit Drawer mounts.
-                                                    if (editDeferRef.current !== null) {
-                                                        window.clearTimeout(editDeferRef.current)
-                                                    }
-                                                    editDeferRef.current = window.setTimeout(() => {
-                                                        editDeferRef.current = null
-                                                        onEditingChange(row.name)
-                                                    }, DRAWER_EXIT_MS)
-                                                }}
-                                            >
-                                                <Edit3Icon />
-                                                {_("Edit")}
-                                            </Button>
-                                            <div className="my-1 border-t border-outline-gray-2" />
+                                            {!row.channel_deleted && (
+                                                <>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="lg"
+                                                        theme="gray"
+                                                        className="w-full justify-start gap-3 active:bg-surface-gray-2"
+                                                        onClick={() => {
+                                                            setActionsOpen(false)
+                                                            setSendNowOpen(true)
+                                                        }}
+                                                    >
+                                                        <SendHorizontalIcon />
+                                                        {_("Send now")}
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="lg"
+                                                        theme="gray"
+                                                        className="w-full justify-start gap-3 active:bg-surface-gray-2"
+                                                        onClick={() => {
+                                                            setActionsOpen(false)
+                                                            // Wait out the sheet's exit animation — flipping
+                                                            // isEditing in the same commit would unmount it
+                                                            // mid-animation while the edit Drawer mounts.
+                                                            if (editDeferRef.current !== null) {
+                                                                window.clearTimeout(editDeferRef.current)
+                                                            }
+                                                            editDeferRef.current = window.setTimeout(() => {
+                                                                editDeferRef.current = null
+                                                                onEditingChange(row.name)
+                                                            }, DRAWER_EXIT_MS)
+                                                        }}
+                                                    >
+                                                        <Edit3Icon />
+                                                        {_("Edit")}
+                                                    </Button>
+                                                    <div className="my-1 border-t border-outline-gray-2" />
+                                                </>
+                                            )}
                                             <Button
                                                 variant="ghost"
                                                 size="lg"

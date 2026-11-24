@@ -22,7 +22,7 @@ import { ScheduleSendDialog } from "@components/features/schedule-send/ScheduleS
 import { ScheduledMessagesBanner } from "@components/features/schedule-send/ScheduledMessagesBanner"
 import { SCHEDULED_MESSAGES_KEY } from "@components/features/schedule-send/ScheduledMessagesList"
 import type { SchedulePick } from "@lib/timeUtils"
-import { ReplyPreviewBanner } from "./ReplyPreviewBanner"
+import { ReplyPreviewBanner, toReplyDetails } from "./ReplyPreviewBanner"
 import { MentionWarningBanner } from "./MentionWarningBanner"
 import { QuietHoursBanner } from "./QuietHoursBanner"
 import { MobileComposerActions } from "./MobileComposerActions"
@@ -481,7 +481,7 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                             the banner keeps its content while collapsing out. */}
                         <div className={cn("grid transition-[grid-template-rows] duration-200 ease-out", replyTo ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}>
                             <div className="min-h-0 overflow-hidden">
-                                {replyDisplay && <ReplyPreviewBanner message={replyDisplay} onCancel={cancelReply} showFormatting={showFormatting} />}
+                                {replyDisplay && <ReplyPreviewBanner details={toReplyDetails(replyDisplay)} onCancel={cancelReply} showFormatting={showFormatting} />}
                             </div>
                         </div>
                         <LinkedDocumentBanner channelID={channelID} />

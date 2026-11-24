@@ -9,6 +9,9 @@ import { TooltipProvider } from "@components/ui/tooltip"
 import _ from "@lib/translate"
 import { formatDateTimeLabel } from "@lib/timeUtils"
 import { useScheduledMessageEdit } from "./useScheduledMessageEdit"
+import { EditPayload } from "./ScheduledMessageParts"
+import { SilentSwitch } from "./ScheduleTimePicker"
+import { AddFileButton } from "@components/features/ChatInput/InputFiles"
 import { DatePickerPopover } from "@components/features/reminders/DatePickerPopover"
 import type { ScheduledMessageRow } from "./ScheduledMessagesList"
 
@@ -29,8 +32,8 @@ type EditScheduledMessageSheetProps = {
  * editor. Dismissing the sheet cancels the edit.
  */
 export const EditScheduledMessageSheet = ({ row, open, onOpenChange, onDone }: EditScheduledMessageSheetProps) => {
-    const { editor, date, setDate, time, setTime, allTimeOptions, timeFormat, picked, pastPick, canSave, loading, onSave, linkSignal, onLinkConsumed } =
-        useScheduledMessageEdit(row, { onDone, onCancel: () => onOpenChange(false) })
+    const edit = useScheduledMessageEdit(row, { onDone, onCancel: () => onOpenChange(false) })
+    const { editor, date, setDate, time, setTime, allTimeOptions, timeFormat, picked, pastPick, canSave, loading, onSave, linkSignal, onLinkConsumed } = edit
 
     // repositionInputs={false}: vaul's keyboard handling would shrink the sheet
     // and squish the editor — off, the keyboard just overlays the lower part.
@@ -64,12 +67,20 @@ export const EditScheduledMessageSheet = ({ row, open, onOpenChange, onDone }: E
                                     </div>
                                 )}
                             </TooltipProvider>
+                            <div className="shrink-0">
+                                <EditPayload row={row} edit={edit} showFormatting />
+                            </div>
                             {/* The one scroller. max-h-none neutralizes .tiptap's own
                                 max-h-[40vh] scroll (nested scrollers fight on touch);
                                 min-h-24 keeps a ~4-line floor when squeezed. */}
                             <div className="min-h-24 overflow-y-auto [&_.tiptap]:max-h-none [&_.tiptap]:min-h-24">
                                 <EditorContent editor={editor} />
                             </div>
+                            <TooltipProvider>
+                                <div className="shrink-0 px-1.5 pb-1.5">
+                                    <AddFileButton channelID={edit.editKey} />
+                                </div>
+                            </TooltipProvider>
                         </div>
                     </div>
                     {/* Delivery time: date + time side by side on one row, preview underneath. */}
@@ -104,6 +115,7 @@ export const EditScheduledMessageSheet = ({ row, open, onOpenChange, onDone }: E
                             {pastPick ? _("Delivery time is in the past") : formatDateTimeLabel(picked, timeFormat)}
                         </p>
                     </div>
+                    <SilentSwitch checked={edit.sendSilently} onCheckedChange={edit.setSendSilently} className="shrink-0" />
                 </div>
                 <DrawerFooter className="flex-row gap-2 [&>*]:flex-1">
                     <Button type="button" variant="outline" size="lg" disabled={loading} onClick={() => onOpenChange(false)}>

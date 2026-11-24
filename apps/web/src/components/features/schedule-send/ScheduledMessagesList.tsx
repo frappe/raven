@@ -165,8 +165,10 @@ const ScheduledMessagesList = ({ editingRowId, onEditingChange, onRowSaved, refr
                         )
                     }
                     const { row } = item
-                    const channelData = channelById.get(row.channel_id)
-                    const dmChannel = dmById.get(row.channel_id)
+                    // Thread channels aren't in the sidebar lists; a thread row shows its parent.
+                    const contextID = row.thread_parent_channel ?? row.channel_id
+                    const channelData = channelById.get(contextID)
+                    const dmChannel = dmById.get(contextID)
                     const peer = dmChannel ? usersById.get(dmChannel.peer_user_id) : undefined
                     return (
                         <ScheduledMessageCard
@@ -187,6 +189,7 @@ const ScheduledMessagesList = ({ editingRowId, onEditingChange, onRowSaved, refr
             {/* Outside the virtualizer so row recycling can't unmount a mid-edit editor. */}
             {isMobile && editingRow && (
                 <EditScheduledMessageSheet
+                    key={editingRow.name}
                     row={editingRow}
                     open
                     onOpenChange={(open) => { if (!open) onEditingChange(null) }}

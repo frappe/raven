@@ -7,7 +7,7 @@ import { RepliedMessagePreview, type RepliedMessageDetails } from "@components/f
 import { useIsMobile } from "@hooks/use-mobile"
 
 /** Map the live target Message to the snapshot shape the shared preview expects. */
-const toDetails = (message: Message): RepliedMessageDetails => ({
+export const toReplyDetails = (message: Message): RepliedMessageDetails => ({
     content: message.content ?? "",
     file: (message as Message & { file?: string }).file ?? "",
     message_type: message.message_type,
@@ -16,16 +16,17 @@ const toDetails = (message: Message): RepliedMessageDetails => ({
 })
 
 /**
- * Shown at the top of the composer while replying — the shared replied-message
- * preview plus a ✕ to cancel. The composer threads the target through the send as
- * linked_message; this is purely the contextual header.
+ * Shown at the top of the composer (and a scheduled message's editor) while
+ * replying — the shared replied-message preview plus a ✕ to cancel. The send
+ * carries the target as linked_message; this is purely the contextual header.
+ * Null details: the target is deleted or out of reach, and the ✕ drops it.
  */
 export const ReplyPreviewBanner = ({
-    message,
+    details,
     onCancel,
     showFormatting,
 }: {
-    message: Message
+    details: RepliedMessageDetails | null
     onCancel: () => void
     showFormatting: boolean
 }) => {
@@ -34,7 +35,9 @@ export const ReplyPreviewBanner = ({
     return (
         <div className={cn("flex items-center gap-2 bg-surface-gray-1 md:px-3 md:py-2.5", showFormatting && "m-2 rounded")}>
             <div className="min-w-0 flex-1 md:border-l-2 border-l-4 md:py-0 py-2 md:border-outline-gray-3 border-outline-gray-4 pl-2">
-                <RepliedMessagePreview details={toDetails(message)} />
+                {details
+                    ? <RepliedMessagePreview details={details} />
+                    : <p className="text-p-sm text-ink-gray-5">{_("The message you replied to is unavailable.")}</p>}
             </div>
             <Button type="button" variant="ghost" size={isMobile ? "lg" : "md"}
                 className="active:bg-transparent"
