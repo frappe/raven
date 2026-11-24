@@ -1,6 +1,8 @@
+from datetime import datetime
+
 import frappe
 from frappe import _
-from frappe.utils import add_days, getdate, now_datetime
+from frappe.utils import add_days, get_datetime, getdate, now_datetime
 
 from raven.api.raven_message import create_message_batch
 from raven.quiet_hours import is_in_quiet_hours
@@ -138,15 +140,21 @@ def send_now(name: str):
 		frappe.throw(_("This message has already been sent."))
 
 
-def deliver_if_pending(name: str, allowed: tuple[str, ...] = ("Scheduled",)) -> bool:
-	"""Deliver the row if its status is still in `allowed`. The row lock makes a concurrent
-	Send now and cron sweep take turns; the second sees Sent and skips."""
+def deliver_if_pending(
+	name: str, allowed: tuple[str, ...] = ("Scheduled",), due_by: datetime | None = None
+) -> bool:
+	"""Deliver the row if its status is still in `allowed` and, when `due_by` is given, it is
+	still due by then. The row lock makes a concurrent Send now and cron sweep take turns;
+	the second sees Sent and skips."""
 	try:
 		doc = frappe.get_doc("Raven Scheduled Message", name, for_update=True)
 	except frappe.DoesNotExistError:
 		# Deleted after the caller found it.
 		return False
 	if doc.status not in allowed:
+		return False
+	# An edit may have moved the time later after the sweep found the row due.
+	if due_by and get_datetime(doc.scheduled_time) > due_by:
 		return False
 	deliver(doc)
 	return True

@@ -328,6 +328,16 @@ class TestRavenScheduledMessage(IntegrationTestCase):
 		self.assertFalse(deliver_if_pending(row.name))
 		self.assertEqual(len(self._batch(row)), 1)
 
+	def test_sweep_skips_row_moved_later_after_it_was_found_due(self):
+		from raven.api.scheduled_message import deliver_if_pending
+
+		# The sweep found the row due at `due_by`; an edit then moved it an hour later.
+		row = self._schedule(minutes=60)
+		self.assertFalse(deliver_if_pending(row.name, due_by=now_datetime()))
+		row.reload()
+		self.assertEqual(row.status, "Scheduled")
+		self.assertEqual(len(self._batch(row)), 0)
+
 	def test_deliver_if_pending_skips_deleted_row(self):
 		from raven.api.scheduled_message import deliver_if_pending
 
@@ -439,6 +449,30 @@ class TestRavenScheduledMessage(IntegrationTestCase):
 		self.assertEqual(bad.status, "Failed")
 		self.assertTrue(bad.error)
 		self.assertEqual(after.status, "Sent")
+
+	def test_failure_handler_leaves_a_delivered_row_alone(self):
+		from unittest.mock import patch
+
+		from raven.scheduler.send_scheduled_messages import send_due_messages
+
+		row = self._schedule()
+		self._due(row, minutes=-1)
+
+		def delivered_elsewhere_then_timeout(name, **kwargs):
+			# A concurrent Send now commits the delivery; the sweep's own attempt then times out.
+			frappe.db.set_value("Raven Scheduled Message", name, "status", "Sent")
+			frappe.db.commit()  # nosemgrep
+			raise frappe.QueryTimeoutError("Lock wait timeout exceeded")
+
+		frappe.set_user("Administrator")
+		with patch(
+			"raven.api.scheduled_message.deliver_if_pending", side_effect=delivered_elsewhere_then_timeout
+		):
+			send_due_messages()
+
+		row.reload()
+		self.assertEqual(row.status, "Sent")
+		self.assertFalse(row.error)
 
 	def test_create_with_payload(self):
 		from raven.api.scheduled_message import create_scheduled_message
