@@ -3,7 +3,7 @@ import dayjs, { type Dayjs } from "dayjs"
 import { Clock } from "lucide-react"
 import { Button } from "@components/ui/button"
 import { Label } from "@components/ui/label"
-import { Switch } from "@components/ui/switch"
+import { Checkbox } from "@components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@components/ui/select"
 import { useIsMobile } from "@hooks/use-mobile"
 import { useScheduleQuietHint } from "@hooks/useQuietHours"
@@ -87,7 +87,7 @@ export const ScheduleTimePicker = ({ onConfirm, onCancel, onPickChange, busy }: 
                 {quietHint === "auto" && _("Lands outside working hours, so it sends without notification (your quiet hours setting).")}
                 {quietHint === "nudge" && _("Lands outside working hours.")}
             </p>
-            <SilentSwitch checked={sendSilently} onCheckedChange={setSendSilently} className="pt-1 md:w-1/2" />
+            <SilentCheckbox checked={sendSilently} onCheckedChange={setSendSilently} className="pt-1" />
             {/* Standard footer; mobile buttons share the row edge-to-edge. */}
             <div className={isMobile ? "flex gap-2 pt-2 [&>*]:flex-1" : "flex justify-end gap-2 pt-2"}>
                 {onCancel && (
@@ -110,14 +110,13 @@ export const ScheduleTimePicker = ({ onConfirm, onCancel, onPickChange, busy }: 
     )
 }
 
-/** Labelled switch for silent delivery, shared by the custom picker and the edit surfaces. */
-export const SilentSwitch = ({ checked, onCheckedChange, className }: { checked: boolean; onCheckedChange: (checked: boolean) => void; className?: string }) => {
-    const isMobile = useIsMobile()
+/** Labelled checkbox for silent delivery, shared by the custom picker and the edit surfaces. */
+export const SilentCheckbox = ({ checked, onCheckedChange, className }: { checked: boolean; onCheckedChange: (checked: boolean) => void; className?: string }) => {
     const id = useId()
     return (
-        <div className={cn("flex items-center justify-between gap-3", className)}>
-            <Label htmlFor={id}>{_("Send without notification")}</Label>
-            <Switch id={id} size={isMobile ? "md" : "sm"} checked={checked} onCheckedChange={onCheckedChange} />
+        <div className={cn("flex items-center gap-2", className)}>
+            <Checkbox id={id} checked={checked} onCheckedChange={(value) => onCheckedChange(value === true)} />
+            <Label htmlFor={id} className="cursor-pointer">{_("Send without notification")}</Label>
         </div>
     )
 }

@@ -12,7 +12,7 @@ import { formatDateTimeLabel } from "@lib/timeUtils"
 import { AddFileButton } from "@components/features/ChatInput/InputFiles"
 import { useScheduledMessageEdit } from "./useScheduledMessageEdit"
 import { EditPayload } from "./ScheduledMessageParts"
-import { SilentSwitch } from "./ScheduleTimePicker"
+import { SilentCheckbox } from "./ScheduleTimePicker"
 import type { ScheduledMessageRow } from "./ScheduledMessagesList"
 
 type InlineScheduledMessageEditorProps = {
@@ -55,7 +55,7 @@ export const InlineScheduledMessageEditor = ({ row, onDone, onCancel }: InlineSc
                         <div className="flex flex-wrap items-center gap-2">
                             <DatePickerPopover value={date} onChange={setDate} className="w-40" />
                             <Select value={time} onValueChange={setTime}>
-                                <SelectTrigger aria-label={_("Time")} inputSize="sm" className="w-28">
+                                <SelectTrigger aria-label={_("Time")} inputSize="sm" className="w-32">
                                     {/* Clock INSIDE SelectValue: the trigger is justify-between, so a
                                         third child would strand the time in the middle. */}
                                     <SelectValue>
@@ -79,7 +79,7 @@ export const InlineScheduledMessageEditor = ({ row, onDone, onCancel }: InlineSc
                                 {pastPick ? _("Delivery time is in the past") : formatDateTimeLabel(picked, timeFormat)}
                             </span>
                         </div>
-                        <SilentSwitch checked={edit.sendSilently} onCheckedChange={edit.setSendSilently} className="px-1 md:w-1/2" />
+                        <SilentCheckbox checked={edit.sendSilently} onCheckedChange={edit.setSendSilently} className="px-1" />
                         <div className="flex items-center md:justify-start justify-end gap-2">
                             <AddFileButton channelID={edit.editKey} onAfterAttach={() => editor?.commands.focus()} />
                             <span className="mr-auto px-1 text-xs text-ink-gray-4 hidden md:block">{_("Esc to cancel")}</span>

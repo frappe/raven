@@ -445,9 +445,15 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                 open={scheduleOpen}
                 onOpenChange={setScheduleOpen}
                 onConfirm={handleSchedulePick}
-                // Only read the editor while the dialog is up — getHTML() on every
-                // composer keystroke would be wasted work.
-                text={scheduleOpen && editor && editorHasContent ? editor.getHTML() : undefined}
+                // Built only while the dialog is up — getHTML() on every composer
+                // keystroke would be wasted work.
+                preview={scheduleOpen ? {
+                    text: editor && editorHasContent ? editor.getHTML() : undefined,
+                    files: toOutgoingFiles(files),
+                    reply_preview: replyTo ? toReplyDetails(replyTo) : null,
+                    link_doctype: linkedDocument?.doctype,
+                    link_document: linkedDocument?.docname,
+                } : undefined}
                 busy={scheduleBusy}
             />
             <QuietHoursBanner mode={quietSendMode} />
@@ -512,6 +518,7 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                                         onScheduleSend={openScheduleDialog}
                                         scheduleDisabled={scheduleDisabled}
                                         loading={!!pendingSend || scheduleBusy}
+                                        loadingText={scheduleBusy ? _("Scheduling...") : undefined}
                                         disabled={nothingToSend}
                                     />
                                 </div>
@@ -560,6 +567,7 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                                         onScheduleSend={openScheduleDialog}
                                         scheduleDisabled={scheduleDisabled}
                                         loading={!!pendingSend || scheduleBusy}
+                                        loadingText={scheduleBusy ? _("Scheduling...") : undefined}
                                         disabled={nothingToSend}
                                     />
                                 </div>

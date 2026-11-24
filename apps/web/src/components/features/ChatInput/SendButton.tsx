@@ -37,6 +37,8 @@ type SendButtonProps = {
     disabled?: boolean
     /** Send is held while attachments finish uploading or a schedule is in flight — show a spinner. */
     loading?: boolean
+    /** The desktop spinner's label; "Sending..." unless the caller says otherwise. */
+    loadingText?: string
 }
 
 /**
@@ -55,6 +57,7 @@ const SendButton = ({
     scheduleDisabled,
     disabled,
     loading,
+    loadingText,
 }: SendButtonProps) => {
     const isMobile = useIsMobile()
     const [menuOpen, setMenuOpen] = useState(false)
@@ -166,7 +169,7 @@ const SendButton = ({
                 disabled={disabled}
                 variant="subtle"
                 loading={loading}
-                loadingText={_("Sending...")}
+                loadingText={loadingText ?? _("Sending...")}
                 className="rounded-e-none"
                 aria-label={autoSilent ? _("Send message silently") : _("Send message")}
                 title={autoSilent ? _("Quiet hours - sending silently") : undefined}

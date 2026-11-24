@@ -5,11 +5,12 @@ import { MessageBody } from "@components/features/message/renderers/MessageConte
 import { RepliedMessagePreview } from "@components/features/message/renderers/RepliedMessagePreview"
 import { ChannelIcon } from "@components/common/ChannelIcon/ChannelIcon"
 import { UserAvatar } from "@components/features/message/UserAvatar"
-import { FileSummary } from "@components/features/ChatInput/InputFiles"
+import { FileSummary, InputFileList } from "@components/features/ChatInput/InputFiles"
 import { LinkedDocumentChip } from "@components/features/ChatInput/AttachFrappeDocumentDialog"
 import { ReplyPreviewBanner } from "@components/features/ChatInput/ReplyPreviewBanner"
-import { InputFileList } from "@components/features/ChatInput/InputFiles"
-import { getAttachmentKind } from "@utils/attachmentPreview"
+import { attachmentPreviewAtom, getAttachmentKind, stagedFilesToAttachments } from "@utils/attachmentPreview"
+import { useUserCookieData } from "@hooks/useUserCookieData"
+import { fromServerDatetime } from "@lib/timeUtils"
 import { getFileName } from "@raven/lib/utils/operations"
 import _ from "@lib/translate"
 import { scheduledMessagesDialogOpenAtom } from "./useScheduledMessages"
@@ -19,7 +20,7 @@ import type { ChannelListItem, DMChannelListItem } from "@raven/types/common/Cha
 import type { WorkspaceFields } from "@hooks/useWorkspaces"
 import type { UserData } from "@db"
 
-const Dot = () => <span className="shrink-0 text-ink-gray-4">·</span>
+const Dot = () => <span className="shrink-0 text-ink-gray-4" aria-hidden>·</span>
 
 /** Bell-off beside the delivery time when the row sends without notification. */
 export const SilentMark = () => (
@@ -44,12 +45,12 @@ export const ScheduledMessageDestination = ({ row, channel, workspace, dmChannel
     const setDialogOpen = useSetAtom(scheduledMessagesDialogOpenAtom)
 
     if (row.channel_deleted) {
-        return <><Dot /><span className="truncate min-w-0 text-ink-gray-5">{_("Deleted channel")}</span></>
+        return <><Dot /><span className="truncate min-w-0">{_("Deleted channel")}</span></>
     }
 
     const peerName = peer?.full_name ?? dmChannel?.peer_user_id ?? ""
     const workspaceLabel = channel && workspace && (
-        <><Dot /><span className="truncate text-xs text-ink-gray-4">{workspace.workspace_name}</span></>
+        <><Dot /><span className="truncate text-xs">{workspace.workspace_name}</span></>
     )
 
     if (row.thread_parent_channel) {
@@ -57,16 +58,18 @@ export const ScheduledMessageDestination = ({ row, channel, workspace, dmChannel
             ? `/${encodeURIComponent(channel.workspace ?? "")}/${encodeURIComponent(channel.name)}`
             : dmChannel && `/dm-channel/${encodeURIComponent(dmChannel.name)}`
         const threadID = encodeURIComponent(row.channel_id)
-        const parentName = channel ? channel.channel_name : peerName
         // The parent can be missing from your lists, e.g. after leaving it.
-        const label = parentName ? _("Thread in {0}", [parentName]) : _("Thread")
+        const label = channel
+            ? _("Thread in {0}", [channel.channel_name])
+            : peerName ? _("Thread with {0}", [peerName]) : _("Thread")
         return (
             <>
                 <Dot />
                 {base ? (
                     <button
                         type="button"
-                        className="flex min-w-0 items-center gap-1 rounded-sm hover:text-ink-gray-8 hover:underline"
+                        // The after: layer stretches the tap target to the band's full height.
+                        className="relative flex min-w-0 cursor-pointer items-center gap-1 rounded-sm hover:text-ink-gray-8 hover:underline after:absolute after:inset-x-0 after:-inset-y-2.5 md:after:-inset-y-1"
                         onClick={(event) => {
                             // The mobile row tap opens the action sheet; this tap opens the thread instead.
                             event.stopPropagation()
@@ -106,8 +109,12 @@ export const ScheduledMessageDestination = ({ row, channel, workspace, dmChannel
     ) : null
 }
 
+/** What a scheduled message carries; the custom picker's preview builds one from the composer. */
+export type ScheduledPayload = Pick<ScheduledMessageRow, "text" | "files" | "reply_preview" | "link_doctype" | "link_document">
+    & { scheduled_time?: string }
+
 /** The scheduled payload in message order: reply quote, text, files, linked document. */
-export const ScheduledMessageBody = ({ row }: { row: ScheduledMessageRow }) => (
+export const ScheduledMessageBody = ({ row }: { row: ScheduledPayload }) => (
     <div className="flex flex-col gap-2">
         {row.reply_preview && (
             // ReplyMessage's quote look, without its jump-to-original click.
@@ -120,27 +127,51 @@ export const ScheduledMessageBody = ({ row }: { row: ScheduledMessageRow }) => (
                 <MessageBody content={row.text} />
             </div>
         )}
-        {row.files.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-                {row.files.map((file, index) => {
-                    const name = getFileName(file.file_url)
-                    return (
-                        <div key={index} className="flex items-center gap-2 rounded-md border border-outline-gray-2 p-2 md:w-64 w-full">
-                            <FileSummary
-                                name={name}
-                                size={file.file_size ?? 0}
-                                imageSrc={getAttachmentKind(file.file_url) === "image" ? file.file_url : undefined}
-                            />
-                        </div>
-                    )
-                })}
-            </div>
-        )}
+        {row.files.length > 0 && <ScheduledFiles row={row} />}
         {row.link_doctype && row.link_document && (
             <LinkedDocumentChip document={{ doctype: row.link_doctype, docname: row.link_document }} />
         )}
     </div>
 )
+
+/** The row's files as chips; each opens the attachment viewer, which also shows a truncated name in full. */
+const ScheduledFiles = ({ row }: { row: ScheduledPayload }) => {
+    const setPreview = useSetAtom(attachmentPreviewAtom)
+    const { name: currentUser } = useUserCookieData()
+    // The viewer header's time: a card's delivery time; the picker preview has none, so now.
+    const timestamp = row.scheduled_time ? fromServerDatetime(row.scheduled_time).valueOf() : Date.now()
+    const files = row.files.map((file, index) => ({
+        id: `${index}:${file.file_url}`,
+        fileName: getFileName(file.file_url),
+        fileURL: file.file_url,
+        size: file.file_size ?? 0,
+        timestamp,
+    }))
+    return (
+        <div className="flex flex-wrap gap-2">
+            {files.map((file, index) => (
+                <div key={file.id} className="relative flex items-center gap-2 rounded-md border border-outline-gray-2 p-2 hover:bg-surface-gray-1 md:w-64 w-full">
+                    <FileSummary
+                        name={file.fileName}
+                        size={file.size}
+                        imageSrc={getAttachmentKind(file.fileURL) === "image" ? file.fileURL : undefined}
+                    />
+                    {/* A stretched button, not a wrapper: FileSummary's heading can't sit inside a <button>. */}
+                    <button
+                        type="button"
+                        aria-label={_("Preview {0}", [file.fileName])}
+                        className="absolute inset-0 cursor-pointer rounded-md"
+                        onClick={(event) => {
+                            // The mobile row tap opens the action sheet; this tap opens the file.
+                            event.stopPropagation()
+                            setPreview({ attachments: stagedFilesToAttachments(files, currentUser), index, mode: "preview" })
+                        }}
+                    />
+                </div>
+            ))}
+        </div>
+    )
+}
 
 type EditPayloadProps = {
     row: ScheduledMessageRow

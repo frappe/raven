@@ -7,7 +7,6 @@ import {
 import {
     Drawer, DrawerContent, DrawerHeader, DrawerTitle,
 } from "@components/ui/drawer"
-import { MessageBody } from "@components/features/message/renderers/MessageContent"
 import { UserAvatar } from "@components/features/message/UserAvatar"
 import { useUsersById } from "@hooks/useMessageRowLookups"
 import { useUserCookieData } from "@hooks/useUserCookieData"
@@ -16,23 +15,24 @@ import { useAtomValue } from "jotai"
 import { timeFormatAtom } from "@utils/preferences"
 import _ from "@lib/translate"
 import { ScheduleTimePicker } from "./ScheduleTimePicker"
+import { ScheduledMessageBody, type ScheduledPayload } from "./ScheduledMessageParts"
 import { formatDateTimeLabel, type SchedulePick } from "@lib/timeUtils"
 
 type ScheduleSendDialogProps = {
     open: boolean
     onOpenChange: (open: boolean) => void
     onConfirm: (pick: SchedulePick) => void
-    /** The composer's current HTML — shown as a live preview pane (desktop only). */
-    text?: string
+    /** What the composer will schedule, shown above the picker. */
+    preview?: ScheduledPayload
     /** Confirm in-flight — disables the buttons. */
     busy?: boolean
 }
 
 /**
- * Overlay around ScheduleTimePicker: Dialog on desktop (with a live message
- * preview on top) / Drawer on mobile. The caller owns the POST.
+ * Overlay around ScheduleTimePicker with a live message preview on top: Dialog on
+ * desktop, Drawer on mobile. The caller owns the POST.
  */
-export const ScheduleSendDialog = ({ open, onOpenChange, onConfirm, text, busy }: ScheduleSendDialogProps) => {
+export const ScheduleSendDialog = ({ open, onOpenChange, onConfirm, preview, busy }: ScheduleSendDialogProps) => {
     const isMobile = useIsMobile()
     const [picked, setPicked] = useState<Dayjs | null>(null)
 
@@ -44,7 +44,7 @@ export const ScheduleSendDialog = ({ open, onOpenChange, onConfirm, text, busy }
                         <DrawerTitle>{_("Schedule message")}</DrawerTitle>
                     </DrawerHeader>
                     <div className="flex flex-col gap-4 px-4 pb-2">
-                        {text && <SchedulePreview text={text} picked={picked} />}
+                        {preview && <SchedulePreview preview={preview} picked={picked} />}
                         <ScheduleTimePicker
                             onConfirm={onConfirm}
                             onCancel={() => onOpenChange(false)}
@@ -64,7 +64,7 @@ export const ScheduleSendDialog = ({ open, onOpenChange, onConfirm, text, busy }
                     <DialogTitle>{_("Schedule message")}</DialogTitle>
                 </DialogHeader>
                 <div className="flex flex-col gap-4">
-                    {text && <SchedulePreview text={text} picked={picked} />}
+                    {preview && <SchedulePreview preview={preview} picked={picked} />}
                     <ScheduleTimePicker
                         onConfirm={onConfirm}
                         onCancel={() => onOpenChange(false)}
@@ -81,7 +81,7 @@ export const ScheduleSendDialog = ({ open, onOpenChange, onConfirm, text, busy }
  * The message as it will land, under the live-picked delivery time — the
  * chat-stream message shape (mirrors ScheduledMessageCard).
  */
-const SchedulePreview = ({ text, picked }: { text: string; picked: Dayjs | null }) => {
+const SchedulePreview = ({ preview, picked }: { preview: ScheduledPayload; picked: Dayjs | null }) => {
     const { name: currentUser } = useUserCookieData()
     const user = useUsersById().get(currentUser)
     const timeFormat = useAtomValue(timeFormatAtom)
@@ -98,8 +98,8 @@ const SchedulePreview = ({ text, picked }: { text: string; picked: Dayjs | null 
                     </span>
                 </div>
                 {/* Long messages scroll inside the pane — the picker row sets the dialog's height. */}
-                <div className="mt-1 max-h-72 overflow-y-auto [&_p]:my-0">
-                    <MessageBody content={text} />
+                <div className="mt-1 max-h-72 overflow-y-auto">
+                    <ScheduledMessageBody row={preview} />
                 </div>
             </div>
         </div>

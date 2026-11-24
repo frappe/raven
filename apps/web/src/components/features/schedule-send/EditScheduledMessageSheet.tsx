@@ -10,7 +10,7 @@ import _ from "@lib/translate"
 import { formatDateTimeLabel } from "@lib/timeUtils"
 import { useScheduledMessageEdit } from "./useScheduledMessageEdit"
 import { EditPayload } from "./ScheduledMessageParts"
-import { SilentSwitch } from "./ScheduleTimePicker"
+import { SilentCheckbox } from "./ScheduleTimePicker"
 import { AddFileButton } from "@components/features/ChatInput/InputFiles"
 import { DatePickerPopover } from "@components/features/reminders/DatePickerPopover"
 import type { ScheduledMessageRow } from "./ScheduledMessagesList"
@@ -115,7 +115,7 @@ export const EditScheduledMessageSheet = ({ row, open, onOpenChange, onDone }: E
                             {pastPick ? _("Delivery time is in the past") : formatDateTimeLabel(picked, timeFormat)}
                         </p>
                     </div>
-                    <SilentSwitch checked={edit.sendSilently} onCheckedChange={edit.setSendSilently} className="shrink-0" />
+                    <SilentCheckbox checked={edit.sendSilently} onCheckedChange={edit.setSendSilently} className="shrink-0" />
                 </div>
                 <DrawerFooter className="flex-row gap-2 [&>*]:flex-1">
                     <Button type="button" variant="outline" size="lg" disabled={loading} onClick={() => onOpenChange(false)}>
