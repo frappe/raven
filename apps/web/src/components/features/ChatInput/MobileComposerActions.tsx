@@ -1,7 +1,7 @@
 import { useRef, useState } from "react"
 import { Plus, Camera, Images, FileBox, type LucideIcon, FilesIcon, ChartBar, Video } from "lucide-react"
 import { Button } from "@components/ui/button"
-import { Drawer, DrawerContent, DrawerDescription, DrawerTitle, DrawerTrigger } from "@components/ui/drawer"
+import { Drawer, DrawerContent, DrawerDescription, DrawerNested, DrawerTitle, DrawerTrigger } from "@components/ui/drawer"
 import { useSetAtom } from "jotai"
 import { preparingFilesAtom, useAttachFile, type PreparingFile } from "./useFileInput"
 import { CreatePollDialog } from "./CreatePollDialog"
@@ -38,10 +38,16 @@ let pickCount = 0
  */
 export const MobileComposerActions = ({
     channelID,
+    inEditor = false,
 }: {
     channelID: string
+    /** Inside a scheduled message's editor box: file tiles only (it can't add a poll or a
+     *  document) and a toolbar-sized "+" instead of the composer row's large one. */
+    inEditor?: boolean
 }) => {
     const [sheetOpen, setSheetOpen] = useState(false)
+    // In the edit sheet this sheet stacks on top of it, pushing it back like the other nested sheets.
+    const Sheet = inEditor ? DrawerNested : Drawer
     const [pollOpen, setPollOpen] = useState(false)
     const [docOpen, setDocOpen] = useState(false)
     const onAddFile = useAttachFile(channelID)
@@ -86,8 +92,10 @@ export const MobileComposerActions = ({
         ...(isAndroid ? [{ icon: Video, label: _("Video"), onSelect: () => videoCaptureRef.current?.click() }] : []),
         { icon: Images, label: _("Photos"), onSelect: () => (iosApp ? pickNative("photos") : galleryInputRef.current?.click()) },
         { icon: FilesIcon, label: _("Files"), onSelect: () => (iosApp ? pickNative("files") : fileInputRef.current?.click()) },
-        { icon: ChartBar, label: _("Poll"), onSelect: () => setPollOpen(true) },
-        { icon: FileBox, label: _("Document"), onSelect: () => setDocOpen(true) },
+        ...(inEditor ? [] : [
+            { icon: ChartBar, label: _("Poll"), onSelect: () => setPollOpen(true) },
+            { icon: FileBox, label: _("Document"), onSelect: () => setDocOpen(true) },
+        ]),
     ]
 
     return (
@@ -103,15 +111,15 @@ export const MobileComposerActions = ({
             <input type="file" accept="image/*,video/*" multiple ref={galleryInputRef} className="hidden" onChange={onPicked} />
             <input type="file" multiple ref={fileInputRef} className="hidden" onChange={onPicked} />
 
-            <Drawer open={sheetOpen} onOpenChange={setSheetOpen}>
+            <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
                 <DrawerTrigger asChild>
-                    <Button type="button" variant="ghost" size="lg" isIconButton aria-label={_("More actions")} className="rounded-full">
-                        <Plus className="size-8" />
+                    <Button type="button" variant="ghost" size={inEditor ? "sm" : "lg"} isIconButton aria-label={_("More actions")} className={inEditor ? undefined : "rounded-full"}>
+                        <Plus className={inEditor ? undefined : "size-8"} />
                     </Button>
                 </DrawerTrigger>
                 <DrawerContent>
                     <DrawerTitle className="sr-only">{_("Composer actions")}</DrawerTitle>
-                    <DrawerDescription className="sr-only">{_("Attach files, polls and more")}</DrawerDescription>
+                    <DrawerDescription className="sr-only">{inEditor ? _("Attach files") : _("Attach files, polls and more")}</DrawerDescription>
                     {/* Circle icon tiles, WhatsApp-style — every option is an icon */}
                     <div className="grid grid-cols-4 gap-x-2 gap-y-6 px-4 pt-6 pb-10">
                         {tiles.map((tile) => (
@@ -132,11 +140,15 @@ export const MobileComposerActions = ({
                         ))}
                     </div>
                 </DrawerContent>
-            </Drawer>
+            </Sheet>
 
             {/* Controlled dialogs opened from the sheet rows (triggers hidden). */}
-            <CreatePollDialog channelID={channelID} open={pollOpen} onOpenChange={setPollOpen} hideTrigger />
-            <AttachFrappeDocumentDialog channelID={channelID} open={docOpen} onOpenChange={setDocOpen} hideTrigger />
+            {!inEditor && (
+                <>
+                    <CreatePollDialog channelID={channelID} open={pollOpen} onOpenChange={setPollOpen} hideTrigger />
+                    <AttachFrappeDocumentDialog channelID={channelID} open={docOpen} onOpenChange={setDocOpen} hideTrigger />
+                </>
+            )}
         </>
     )
 }

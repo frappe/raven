@@ -13,8 +13,7 @@ import { scheduledMessagesDialogOpenAtom, useChannelScheduledMessages } from "./
  * Heads-up above the composer when this channel has messages scheduled for later,
  * so nobody sends the same thing twice or wonders whether it went out. Same idiom as
  * the quiet hours banner. View opens the scheduled messages dialog on desktop and
- * the scheduled messages page on mobile. Not rendered for thread composers, which
- * cannot schedule.
+ * the scheduled messages page on mobile.
  */
 export const ScheduledMessagesBanner = ({ channelID }: { channelID: string }) => {
     const rows = useChannelScheduledMessages(channelID)

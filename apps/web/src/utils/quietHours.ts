@@ -14,6 +14,15 @@ const toSeconds = (hms: string): number | null => {
     return hours * 3600 + minutes * 60 + (Number.isNaN(seconds) ? 0 : seconds)
 }
 
+/** `time` on the org's clock; the device clock when the timezone name doesn't resolve. */
+const toOrgClock = (time: dayjs.Dayjs): dayjs.Dayjs => {
+    try {
+        return time.tz(SYSTEM_TIMEZONE)
+    } catch {
+        return time
+    }
+}
+
 /** A stored Time ("9:00:00" / "09:00:00") in the user's chosen time format —
  *  "9:00 AM" or "09:00". Empty string when unparseable. */
 export const formatStoredTime = (stored: string | undefined, timeFormat: TimeFormat): string => {
@@ -48,19 +57,14 @@ export const currentQuietPeriodStartMs = (): number | null => {
     const end = toSeconds(config.working_hours_end)
     if (end === null) return null
 
-    let orgClock: dayjs.Dayjs
-    try {
-        orgClock = dayjs().tz(SYSTEM_TIMEZONE)
-    } catch {
-        orgClock = dayjs()
-    }
+    const orgClock = toOrgClock(dayjs())
     const endToday = orgClock.startOf("day").add(end, "second")
     const periodStart = orgClock.isBefore(endToday) ? endToday.subtract(1, "day") : endToday
     return periodStart.valueOf()
 }
 
 /**
- * Whether it is currently OUTSIDE the org's working hours (= quiet hours).
+ * Whether `time` falls OUTSIDE the org's working hours (= quiet hours).
  *
  * Measured on the org's clock — dayjs in SYSTEM_TIMEZONE (the site timezone
  * from boot) — so every member sees the same quiet window regardless of
@@ -69,7 +73,7 @@ export const currentQuietPeriodStartMs = (): number | null => {
  * (degenerate) or an unparseable value all read as NOT quiet — the feature
  * fails toward normal sends, never toward surprise silence.
  */
-export const isInQuietHours = (): boolean => {
+export const isInQuietHoursAt = (time: dayjs.Dayjs): boolean => {
     const config = getQuietHoursConfig()
     if (!config) return false
 
@@ -77,15 +81,12 @@ export const isInQuietHours = (): boolean => {
     const end = toSeconds(config.working_hours_end)
     if (start === null || end === null || start === end) return false
 
-    let orgClock: dayjs.Dayjs
-    try {
-        orgClock = dayjs().tz(SYSTEM_TIMEZONE)
-    } catch {
-        // Unresolvable timezone name — fall back to the device clock.
-        orgClock = dayjs()
-    }
+    const orgClock = toOrgClock(time)
     const now = orgClock.hour() * 3600 + orgClock.minute() * 60 + orgClock.second()
 
     const isWorking = start < end ? now >= start && now < end : now >= start || now < end
     return !isWorking
 }
+
+/** Whether it is quiet hours right now. */
+export const isInQuietHours = (): boolean => isInQuietHoursAt(dayjs())

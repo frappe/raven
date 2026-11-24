@@ -8,8 +8,11 @@ import { TooltipProvider } from "@components/ui/tooltip"
 import { useIsMobile } from "@hooks/use-mobile"
 import _ from "@lib/translate"
 import { DatePickerPopover } from "@components/features/reminders/DatePickerPopover"
-import { formatDateTimeLabel } from "@lib/timeUtils"
+import { AddFileButton } from "@components/features/ChatInput/InputFiles"
 import { useScheduledMessageEdit } from "./useScheduledMessageEdit"
+import { useScheduleQuietHint } from "@hooks/useQuietHours"
+import { EditPayload } from "./ScheduledMessageParts"
+import { QuietHint, SilentCheckbox } from "./ScheduleTimePicker"
 import type { ScheduledMessageRow } from "./ScheduledMessagesList"
 
 type InlineScheduledMessageEditorProps = {
@@ -28,8 +31,9 @@ type InlineScheduledMessageEditorProps = {
  */
 export const InlineScheduledMessageEditor = ({ row, onDone, onCancel }: InlineScheduledMessageEditorProps) => {
     const isMobile = useIsMobile()
-    const { editor, date, setDate, time, setTime, allTimeOptions, timeFormat, picked, pastPick, canSave, loading, onSave, linkSignal, onLinkConsumed } =
-        useScheduledMessageEdit(row, { onDone, onCancel })
+    const edit = useScheduledMessageEdit(row, { onDone, onCancel })
+    const { editor, date, setDate, time, setTime, allTimeOptions, picked, pastPick, canSave, loading, onSave, linkSignal, onLinkConsumed } = edit
+    const quietHint = useScheduleQuietHint(pastPick ? null : picked)
 
     return (
         <div data-raven-editor className="relative w-full py-1 select-text">
@@ -43,15 +47,16 @@ export const InlineScheduledMessageEditor = ({ row, onDone, onCancel }: InlineSc
                             onLinkConsumed={onLinkConsumed}
                         />
                     )}
+                    <EditPayload row={row} edit={edit} showFormatting={!isMobile} />
                     <div className={EDITOR_MIN_H}>
                         <EditorContent editor={editor} />
                     </div>
                     <div className="flex flex-col gap-2 px-1.5 pb-1.5">
-                        {/* Delivery-time row: compact date popover + time Select + preview. */}
+                        {/* Delivery-time row: compact date popover + time Select + quiet-hours hint. */}
                         <div className="flex flex-wrap items-center gap-2">
                             <DatePickerPopover value={date} onChange={setDate} className="w-40" />
                             <Select value={time} onValueChange={setTime}>
-                                <SelectTrigger aria-label={_("Time")} inputSize="sm" className="w-28">
+                                <SelectTrigger aria-label={_("Time")} inputSize="sm" className="w-32">
                                     {/* Clock INSIDE SelectValue: the trigger is justify-between, so a
                                         third child would strand the time in the middle. */}
                                     <SelectValue>
@@ -71,11 +76,13 @@ export const InlineScheduledMessageEditor = ({ row, onDone, onCancel }: InlineSc
                             </Select>
                             {/* Clock race: the picked time can pass while the editor sits
                                 open — say why Save is off instead of silently disabling it. */}
-                            <span className={pastPick ? "text-p-sm text-ink-red-5" : "text-p-sm text-ink-gray-5"}>
-                                {pastPick ? _("Delivery time is in the past") : formatDateTimeLabel(picked, timeFormat)}
-                            </span>
+                            {pastPick
+                                ? <span className="text-p-sm text-ink-red-5">{_("Delivery time is in the past")}</span>
+                                : <QuietHint hint={quietHint} />}
                         </div>
+                        <SilentCheckbox checked={edit.sendSilently} onCheckedChange={edit.setSendSilently} className="px-1" />
                         <div className="flex items-center md:justify-start justify-end gap-2">
+                            <AddFileButton channelID={edit.editKey} onAfterAttach={() => editor?.commands.focus()} />
                             <span className="mr-auto px-1 text-xs text-ink-gray-4 hidden md:block">{_("Esc to cancel")}</span>
                             <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
                                 {_("Cancel")}

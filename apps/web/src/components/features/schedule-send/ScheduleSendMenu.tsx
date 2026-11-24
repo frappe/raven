@@ -1,13 +1,14 @@
 import { useRef, useState } from "react"
-import dayjs from "dayjs"
+import dayjs, { type Dayjs } from "dayjs"
 import { useFrappeGetCall } from "frappe-react-sdk"
 import { useAtomValue } from "jotai"
 import {
     DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
     DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger,
 } from "@components/ui/dropdown-menu"
-import { CalendarClockIcon, SunIcon, SunriseIcon, SunsetIcon, type LucideIcon } from "lucide-react"
+import { BellOffIcon, CalendarClockIcon, MoonIcon, SunIcon, SunriseIcon, SunsetIcon, type LucideIcon } from "lucide-react"
 import { timeFormatAtom } from "@utils/preferences"
+import { useScheduleQuietHint } from "@hooks/useQuietHours"
 import _ from "@lib/translate"
 import { getScheduleMenuSections, toServerDatetime, formatDateTimeLabel, formatTimeLabel } from "@lib/timeUtils"
 import type { SchedulePick, ScheduleMenuSlot, ScheduleSlotId } from "@lib/timeUtils"
@@ -33,12 +34,29 @@ export const useScheduleMenuSections = () => {
     return getScheduleMenuSections(dayjs(), data?.message ? dayjs(data.message) : null)
 }
 
-/** Turn a picked slot into the payload the composer posts. Null if the slot has passed. */
+/** Turn a picked slot into the payload the composer posts. Null if the slot has passed.
+ *  Presets leave silent to delivery: quiet hours decide. */
 export const pickFromSlot = (slot: ScheduleMenuSlot, timeFormat: "12-hour" | "24-hour"): SchedulePick | null => {
     // The menu may have sat open across the slot's boundary. Re-check at click time
     // so we never post a time the server will reject as past.
     if (!slot.time.isAfter(dayjs())) return null
-    return { serverTime: toServerDatetime(slot.time), label: formatDateTimeLabel(slot.time, timeFormat) }
+    return { serverTime: toServerDatetime(slot.time), label: formatDateTimeLabel(slot.time, timeFormat), sendSilently: false }
+}
+
+/** Marks a preset that lands outside working hours: a moon, or a bell-off when the
+ *  user's Auto Silent preference will deliver it silently. */
+export const QuietSlotMark = ({ time }: { time: Dayjs }) => {
+    const hint = useScheduleQuietHint(time)
+    if (!hint) return null
+    const Icon = hint === "auto" ? BellOffIcon : MoonIcon
+    return (
+        <>
+            <Icon className="size-3.5 text-ink-gray-5" aria-hidden />
+            <span className="sr-only">
+                {hint === "auto" ? _("Outside working hours, sends without notification") : _("Outside working hours")}
+            </span>
+        </>
+    )
 }
 
 type ScheduleSendMenuProps = {
@@ -46,7 +64,7 @@ type ScheduleSendMenuProps = {
     onSchedulePick: (pick: SchedulePick) => void
     /** Open the custom date & time dialog. */
     onScheduleSend: () => void
-    /** Scheduling needs text and no attachments (v1) — disable the submenu otherwise. */
+    /** Nothing to schedule, or uploads still running — disable the submenu. */
     scheduleDisabled?: boolean
 }
 
@@ -123,7 +141,10 @@ const ScheduleMenuSections = ({ onSchedulePick }: { onSchedulePick: (pick: Sched
                                     <Icon />
                                     {slot.label}
                                 </span>
-                                <span className="tabular-nums text-ink-gray-5">{formatTimeLabel(slot.time.format("HH:mm"), timeFormat)}</span>
+                                <span className="flex items-center gap-1.5 tabular-nums text-ink-gray-5">
+                                    <QuietSlotMark time={slot.time} />
+                                    {formatTimeLabel(slot.time.format("HH:mm"), timeFormat)}
+                                </span>
                             </DropdownMenuItem>
                         )
                     })}

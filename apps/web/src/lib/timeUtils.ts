@@ -95,8 +95,9 @@ export type ScheduleSlotId = "morning" | "afternoon" | "evening"
 export type ScheduleMenuSlot = { id: ScheduleSlotId; label: string; time: Dayjs }
 export type ScheduleMenuSection = { label: string; slots: ScheduleMenuSlot[] }
 
-/** A confirmed custom pick: server-side naive datetime + human label for toasts. */
-export type SchedulePick = { serverTime: string; label: string }
+/** A confirmed pick: server-side naive datetime, human label for toasts, and
+ *  whether to deliver without notification. */
+export type SchedulePick = { serverTime: string; label: string; sendSilently: boolean }
 
 /** Preset slot times-of-day (local tz). Labels are thunks: _() at module scope
  *  would resolve before i18n loads. */

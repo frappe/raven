@@ -98,7 +98,7 @@ export const useRavenEditor = ({ mode = "chat", onUpdate, submitRef, linkRef, fi
     // are disabled — not wanted in chat.
     //
     // FileHandler (paste/drop → upload as attachments) is added only when the caller
-    // wires filesRef — the composer does, inline edit doesn't.
+    // wires filesRef — the composer and scheduled-message edit do, message edit doesn't.
     //
     // Deliberately NOT added: text-align + headings (not wanted), code-block-lowlight
     // (StarterKit's code block is enough; the renderer highlights on display — avoids

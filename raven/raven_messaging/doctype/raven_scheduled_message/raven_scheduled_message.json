@@ -7,6 +7,11 @@
  "field_order": [
   "channel_id",
   "text",
+  "send_silently",
+  "linked_message",
+  "link_doctype",
+  "link_document",
+  "files",
   "scheduled_time",
   "status",
   "sent_message",
@@ -25,8 +30,37 @@
   {
    "fieldname": "text",
    "fieldtype": "Long Text",
-   "label": "Text",
-   "reqd": 1
+   "label": "Text"
+  },
+  {
+   "default": "0",
+   "fieldname": "send_silently",
+   "fieldtype": "Check",
+   "label": "Send Silently"
+  },
+  {
+   "fieldname": "linked_message",
+   "fieldtype": "Link",
+   "label": "Reply To",
+   "options": "Raven Message"
+  },
+  {
+   "fieldname": "link_doctype",
+   "fieldtype": "Link",
+   "label": "Link Document Type",
+   "options": "DocType"
+  },
+  {
+   "fieldname": "link_document",
+   "fieldtype": "Dynamic Link",
+   "label": "Link Document",
+   "options": "link_doctype"
+  },
+  {
+   "fieldname": "files",
+   "fieldtype": "Table",
+   "label": "Files",
+   "options": "Raven Scheduled Message File"
   },
   {
    "fieldname": "scheduled_time",
@@ -47,6 +81,7 @@
   },
   {
    "fieldname": "sent_message",
+   "search_index": 1,
    "fieldtype": "Link",
    "label": "Sent Message",
    "options": "Raven Message",
@@ -61,7 +96,7 @@
  ],
  "index_web_pages_for_search": 0,
  "links": [],
- "modified": "2026-08-10 00:00:00.000000",
+ "modified": "2026-11-23 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Raven Messaging",
  "name": "Raven Scheduled Message",

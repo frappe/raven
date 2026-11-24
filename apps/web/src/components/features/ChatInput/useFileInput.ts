@@ -1,4 +1,4 @@
-import { atomWithStorage } from 'jotai/utils'
+import { atomWithStorage, createJSONStorage } from 'jotai/utils'
 import { siteStorage } from '@lib/site'
 import { atomFamily } from 'jotai-family'
 import { atom, getDefaultStore, useSetAtom } from 'jotai'
@@ -78,8 +78,21 @@ export const preparingFilesAtom = atomFamily((_channelID: string) => atom<Prepar
 /** Atom to track files that are being uploaded per channel */
 export const uploadingFilesAtom = atomFamily((_channelID: string) => atom<QueuedFileType[]>([]))
 
+/** Keys with this prefix keep their uploaded files in memory: not restored on refresh, not synced across tabs. */
+export const EPHEMERAL_UPLOADS_PREFIX = 'ephemeral:'
+
+// A real store, not a no-op: atomWithStorage re-reads storage when the atom first mounts.
+const memory = new Map<string, string>()
+const memoryStorage = createJSONStorage<UploadedFile[]>(() => ({
+    getItem: (key) => memory.get(key) ?? null,
+    setItem: (key, value) => { memory.set(key, value) },
+    removeItem: (key) => { memory.delete(key) },
+}))
+
 /** Atom to track files that are uploaded per channel */
-export const uploadedFilesAtom = atomFamily((channelID: string) => atomWithStorage<UploadedFile[]>(`uploaded-files-${channelID}`, [], siteStorage()))
+export const uploadedFilesAtom = atomFamily((channelID: string) => atomWithStorage<UploadedFile[]>(
+    `uploaded-files-${channelID}`, [], channelID.startsWith(EPHEMERAL_UPLOADS_PREFIX) ? memoryStorage : siteStorage(),
+))
 
 /**
  * A send that arrived while files were still uploading — held, then dispatched once every

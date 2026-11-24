@@ -144,7 +144,11 @@ class RavenUser(Document):
 		# Scheduled messages are owned by the frappe user. Left behind, the sweep would
 		# try to send them as a user who no longer exists on every run. Bots have no user.
 		if self.user:
-			frappe.db.delete("Raven Scheduled Message", {"owner": self.user})
+			from raven.raven_messaging.doctype.raven_scheduled_message.raven_scheduled_message import (
+				delete_scheduled_messages,
+			)
+
+			delete_scheduled_messages({"owner": self.user})
 
 	def after_delete(self):
 		"""

@@ -15,7 +15,7 @@ function Switch({
       data-slot="switch"
       data-size={size}
       className={cn(
-        "peer cursor-pointer group/switch inline-flex shrink-0 items-center rounded-full transition-colors outline-none disabled:cursor-not-allowed",
+        "peer cursor-pointer group/switch inline-flex shrink-0 items-center rounded-full transition-colors disabled:cursor-not-allowed",
         "data-[state=unchecked]:bg-surface-gray-4 data-[state=unchecked]:hover:bg-surface-gray-5 data-[state=unchecked]:active:bg-surface-gray-6 data-[state=unchecked]:disabled:bg-surface-gray-3",
         "data-[state=checked]:bg-surface-gray-10 data-[state=checked]:hover:bg-surface-gray-9 data-[state=checked]:active:bg-surface-gray-8 data-[state=checked]:disabled:bg-surface-gray-3",
         "data-[size=sm]:h-4 data-[size=sm]:w-6.5 data-[size=md]:h-5 data-[size=md]:w-8",

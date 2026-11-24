@@ -8,7 +8,7 @@ import { DRAWER_EXIT_MS } from "@utils/drawer"
 import { formatTimeLabel, type SchedulePick } from "@lib/timeUtils"
 import { cn } from "@lib/utils"
 import _ from "@lib/translate"
-import { SLOT_ICONS, pickFromSlot, useScheduleMenuSections } from "./ScheduleSendMenu"
+import { QuietSlotMark, SLOT_ICONS, pickFromSlot, useScheduleMenuSections } from "./ScheduleSendMenu"
 
 type ScheduleSendSheetProps = {
     open: boolean
@@ -19,7 +19,7 @@ type ScheduleSendSheetProps = {
     onSchedulePick: (pick: SchedulePick) => void
     /** Open the custom date & time picker. Called after this sheet has closed. */
     onScheduleSend: () => void
-    /** Scheduling needs text and no attachments (v1) — hide the row otherwise. */
+    /** Nothing to schedule, or uploads still running — hide the row. */
     scheduleDisabled?: boolean
 }
 
@@ -111,7 +111,12 @@ const SheetBody = ({
                                 return (
                                     <SheetRow
                                         key={slot.id}
-                                        trailing={formatTimeLabel(slot.time.format("HH:mm"), timeFormat)}
+                                        trailing={
+                                            <span className="flex items-center gap-1.5">
+                                                <QuietSlotMark time={slot.time} />
+                                                {formatTimeLabel(slot.time.format("HH:mm"), timeFormat)}
+                                            </span>
+                                        }
                                         onClick={() => {
                                             const pick = pickFromSlot(slot, timeFormat)
                                             close()
