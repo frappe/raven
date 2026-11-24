@@ -203,6 +203,9 @@ export const EditPayload = ({ row, edit, showFormatting }: EditPayloadProps) => 
                 <LinkedDocumentChip document={{ doctype: row.link_doctype, docname: row.link_document }} onRemove={edit.dropDoc} />
             </div>
         )}
-        <InputFileList channelID={edit.editKey} />
+        {/* Locked while saving: removing a file deletes it on the server while the save still sends it. */}
+        <div inert={edit.loading} className="contents">
+            <InputFileList channelID={edit.editKey} />
+        </div>
     </>
 )

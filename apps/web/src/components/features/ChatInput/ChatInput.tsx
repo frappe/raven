@@ -485,7 +485,10 @@ const ChatInput = forwardRef<HTMLFormElement, ChatInputProps>(({ channelID, isDi
                             </div>
                         </div>
                         <LinkedDocumentBanner channelID={channelID} />
-                        <InputFileList channelID={channelID} />
+                        {/* Locked while scheduling: removing a file deletes it on the server while the request still sends it. */}
+                        <div inert={scheduleBusy} className="contents">
+                            <InputFileList channelID={channelID} />
+                        </div>
                         {/* Reserve the editor's min-height before it mounts (EditorContent is
                             empty until `editor` is ready) so the composer — and the stream's
                             height — don't jump on channel open. Same class as the editor surface. */}
