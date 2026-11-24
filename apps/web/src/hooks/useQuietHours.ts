@@ -85,9 +85,9 @@ export const useQuietSendMode = (): QuietSendMode => {
 
 /** The hint for a picked send time: "auto" when Auto Silent will deliver it silently,
  *  "nudge" when it lands outside working hours, null when there's nothing to say. */
-export const useScheduleQuietHint = (time: Dayjs | null, sendSilently: boolean): "nudge" | "auto" | null => {
+export const useScheduleQuietHint = (time: Dayjs | null): "nudge" | "auto" | null => {
     const config = useAtomValue(quietHoursConfigAtom)
     const preference = useAtomValue(quietHoursNudgeAtom)
-    if (!config || !time || sendSilently || preference === "No Nudge" || !isInQuietHoursAt(time)) return null
+    if (!config || !time || preference === "No Nudge" || !isInQuietHoursAt(time)) return null
     return preference === "Auto Silent" ? "auto" : "nudge"
 }

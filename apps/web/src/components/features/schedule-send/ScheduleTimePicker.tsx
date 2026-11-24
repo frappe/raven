@@ -1,6 +1,6 @@
 import { useEffect, useId, useState } from "react"
 import dayjs, { type Dayjs } from "dayjs"
-import { Clock } from "lucide-react"
+import { BellOffIcon, Clock, MoonIcon } from "lucide-react"
 import { Button } from "@components/ui/button"
 import { Label } from "@components/ui/label"
 import { Checkbox } from "@components/ui/checkbox"
@@ -46,7 +46,9 @@ export const ScheduleTimePicker = ({ onConfirm, onCancel, onPickChange, busy }: 
     const [hours, minutes] = effectiveTime ? effectiveTime.split(":").map(Number) : [0, 0]
     const picked = effectiveTime ? dayjs(date).hour(hours).minute(minutes).second(0).millisecond(0) : null
     const pick = picked && picked.isAfter(dayjs()) ? picked : null
-    const quietHint = useScheduleQuietHint(pick, sendSilently)
+    const quietHint = useScheduleQuietHint(pick)
+    // The same marks as the preset rows: bell-off when Auto Silent will deliver it silently.
+    const QuietIcon = quietHint === "auto" ? BellOffIcon : MoonIcon
 
     // Live pick for the preview pane — keyed on epoch ms, `pick` is rebuilt every render.
     const pickMs = pick ? pick.valueOf() : null
@@ -57,36 +59,40 @@ export const ScheduleTimePicker = ({ onConfirm, onCancel, onPickChange, busy }: 
     return (
         <div className="flex w-full flex-col gap-2">
             <Label>{_("Delivery time")}</Label>
-            {/* Grid, not flex — exact equal halves for the two fields. The pair
-                spans half the dialog; mobile keeps full width for touch. */}
-            <div className="grid grid-cols-2 items-center gap-3 md:w-1/2">
-                <DatePickerPopover value={date} onChange={setDate} size={isMobile ? "lg" : "md"} />
-                <Select value={effectiveTime ?? undefined} onValueChange={setTime} disabled={availableOptions.length === 0}>
-                    <SelectTrigger aria-label={_("Time")} inputSize={isMobile ? "lg" : "md"} className="w-full min-w-0">
-                        {/* Clock INSIDE SelectValue: the trigger is justify-between, so a
-                            third child would strand the time in the middle. */}
-                        <SelectValue>
-                            <Clock />
-                            {/* Late tonight every slot may already be past — say so instead of crashing. */}
-                            {effectiveOption?.label ?? _("No times left today")}
-                        </SelectValue>
-                    </SelectTrigger>
-                    {/* Panel width locked to the trigger's. */}
-                    <SelectContent className="w-[var(--radix-select-trigger-width)] min-w-0 max-h-62 overflow-y-auto">
-                        {availableOptions.map((option) => (
-                            <SelectItem key={option.value} value={option.value} className="px-3 py-2 md:py-1.5 tabular-nums">
-                                {option.label}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+            <div className="flex items-center gap-3">
+                {/* Grid, not flex — exact equal halves for the two fields. The pair
+                    spans half the dialog; mobile keeps full width for touch. */}
+                <div className="grid w-full grid-cols-2 items-center gap-3 md:w-1/2 md:shrink-0">
+                    <DatePickerPopover value={date} onChange={setDate} size={isMobile ? "lg" : "md"} />
+                    <Select value={effectiveTime ?? undefined} onValueChange={setTime} disabled={availableOptions.length === 0}>
+                        <SelectTrigger aria-label={_("Time")} inputSize={isMobile ? "lg" : "md"} className="w-full min-w-0">
+                            {/* Clock INSIDE SelectValue: the trigger is justify-between, so a
+                                third child would strand the time in the middle. */}
+                            <SelectValue>
+                                {/* On a phone the quiet-hours mark takes the clock's place: a trailing icon gets clipped on narrow screens. */}
+                                {isMobile && quietHint ? <QuietIcon className="text-ink-gray-6" aria-hidden /> : <Clock />}
+                                {/* Late tonight every slot may already be past — say so instead of crashing. */}
+                                {effectiveOption?.label ?? _("No times left today")}
+                            </SelectValue>
+                        </SelectTrigger>
+                        {/* Panel width locked to the trigger's. */}
+                        <SelectContent className="w-[var(--radix-select-trigger-width)] min-w-0 max-h-62 overflow-y-auto">
+                            {availableOptions.map((option) => (
+                                <SelectItem key={option.value} value={option.value} className="px-3 py-2 md:py-1.5 tabular-nums">
+                                    {option.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                {/* Beside the fields, so it adds no row. Mounted while empty, so screen readers
+                    announce it; on a phone the fields fill the row and the time field carries the icon. */}
+                <p role="status" className="flex min-w-0 items-center gap-1.5 text-p-sm text-ink-gray-6 max-md:sr-only">
+                    {quietHint && <QuietIcon className="size-3.5 shrink-0" aria-hidden />}
+                    {quietHint === "auto" && _("Outside working hours, sends silently")}
+                    {quietHint === "nudge" && _("Outside working hours")}
+                </p>
             </div>
-            {/* Always mounted so screen readers announce the hint when a time change brings it in.
-                While empty, -mt-2 cancels the column gap instead of hiding it from them. */}
-            <p role="status" className="text-p-sm text-ink-gray-5 empty:-mt-2">
-                {quietHint === "auto" && _("Lands outside working hours, so it sends without notification (your quiet hours setting).")}
-                {quietHint === "nudge" && _("Lands outside working hours.")}
-            </p>
             <SilentCheckbox checked={sendSilently} onCheckedChange={setSendSilently} className="pt-1" />
             {/* Standard footer; mobile buttons share the row edge-to-edge. */}
             <div className={isMobile ? "flex gap-2 pt-2 [&>*]:flex-1" : "flex justify-end gap-2 pt-2"}>

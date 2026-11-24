@@ -46,7 +46,7 @@ export const pickFromSlot = (slot: ScheduleMenuSlot, timeFormat: "12-hour" | "24
 /** Marks a preset that lands outside working hours: a moon, or a bell-off when the
  *  user's Auto Silent preference will deliver it silently. */
 export const QuietSlotMark = ({ time }: { time: Dayjs }) => {
-    const hint = useScheduleQuietHint(time, false)
+    const hint = useScheduleQuietHint(time)
     if (!hint) return null
     const Icon = hint === "auto" ? BellOffIcon : MoonIcon
     return (
