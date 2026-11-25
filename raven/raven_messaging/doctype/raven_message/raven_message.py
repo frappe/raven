@@ -201,19 +201,19 @@ class RavenMessage(Document):
 		"""
 		Extract all user mentions from the HTML content
 		"""
-		# On an edit, a mention that survives keeps its is_read and gets no new
-		# realtime ping — rebuilding the rows from scratch re-notified users who
-		# had already viewed the mention. A mention removed and added back later
-		# is a fresh row again.
+		# On an edit, a surviving mention keeps its row (name + is_read) and gets
+		# no realtime ping. The notifications feed keys rows by that name.
 		before = self.get_doc_before_save()
-		previous = {mention.user: mention.is_read for mention in before.mentions} if before else {}
+		previous = (
+			{m.user: {"name": m.name, "is_read": m.is_read} for m in before.mentions} if before else {}
+		)
 
 		self.mentions = []
 		unique_mentions = set()
 		for d in soup.find_all("span", attrs={"data-type": "userMention"}):
 			mention_id = d.get("data-id")
 			if mention_id and mention_id not in unique_mentions:
-				self.append("mentions", {"user": mention_id, "is_read": previous.get(mention_id, 0)})
+				self.append("mentions", {"user": mention_id, "is_read": 0, **previous.get(mention_id, {})})
 
 				# The owner's own mentions never notify (the queries exclude them).
 				if mention_id not in previous and mention_id != self.owner:

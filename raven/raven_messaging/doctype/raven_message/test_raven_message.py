@@ -38,7 +38,7 @@ class TestRavenMessage(FrappeTestCase):
 	def test_gif_only_message(self):
 		self.assertEqual(content_of('<p><img src="https://media.tenor.com/a.gif"></p>'), "Sent a GIF")
 
-	def test_editing_keeps_read_state_of_unchanged_mentions(self):
+	def test_editing_keeps_row_and_read_state_of_unchanged_mentions(self):
 		channel = frappe.get_doc(
 			{
 				"doctype": "Raven Channel",
@@ -58,6 +58,7 @@ class TestRavenMessage(FrappeTestCase):
 			}
 		).insert()
 
+		original_row = message.mentions[0].name
 		# The user viewed the mention, then the message gets edited.
 		frappe.db.set_value("Raven Mention", message.mentions[0].name, "is_read", 1)
 		message.reload()
@@ -69,3 +70,5 @@ class TestRavenMessage(FrappeTestCase):
 		read_by_user = {mention.user: mention.is_read for mention in message.mentions}
 		self.assertEqual(read_by_user["test@example.com"], 1)
 		self.assertEqual(read_by_user["test1@example.com"], 0)
+		# The notifications feed keys rows by name, so an edit keeps it.
+		self.assertIn(original_row, [mention.name for mention in message.mentions])
