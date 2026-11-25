@@ -300,7 +300,11 @@ export const discardSend = (channelID: string, batchId: string) => {
  */
 export const injectOutboxRecord = (record: OutboxMessage) => {
     if (isSettling(record.client_id)) return
-    if (channelMessagesStore.getOptimisticMessages(record.channel_id, record.client_id).length > 0) return
+    // Skip a send already on screen, as placeholders or as its real message
+    // (its broadcast can land before the sending tab deletes the record).
+    for (const message of channelMessagesStore.getState(record.channel_id).byId.values()) {
+        if (message.message_batch_id === record.client_id) return
+    }
     const placeholders = buildOptimisticMessages(
         record.channel_id,
         record.client_id,
