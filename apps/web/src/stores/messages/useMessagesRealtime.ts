@@ -26,9 +26,8 @@ export const useMessagesRealtime = () => {
     useFrappeEventListener("message_created", (event: CreatedEvent) => {
         if (!event?.message_details) return
         // Rebroadcast for in-app subscribers (see messageEvents) — BEFORE the
-        // store guards below: those exist for the message window (hydration,
-        // own-send dedupe), and subscribers like the files tab want every
-        // event, own sends included.
+        // hydration guard below: subscribers like the files tab want every
+        // event, including channels the store isn't holding.
         broadcastMessageEvent({
             kind: "created",
             channelID: event.channel_id,
@@ -36,10 +35,7 @@ export const useMessagesRealtime = () => {
             messageType: event.message_details.message_type,
         })
         if (!channelMessagesStore.isHydrated(event.channel_id)) return
-        // This is our own send coming back over the broadcast (the server sends every
-        // new message to everyone in the channel, us included). It's already on screen,
-        // so ignore this copy — the server's direct response to our send handles it.
-        if (channelMessagesStore.isPendingSend(event.message_details.message_batch_id ?? "")) return
+        // Also replaces this send's placeholders, if any are on screen.
         channelMessagesStore.messageCreated(event.channel_id, event.message_details)
     })
 
