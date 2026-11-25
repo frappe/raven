@@ -46,6 +46,7 @@ const REFRESH_DEBOUNCE_MS = 300
 /** UserData fields to fetch — must match what get_list returns for the store's diff. */
 const USER_FIELDS: (keyof UserData)[] = [
     "name",
+    "email",
     "full_name",
     "user_image",
     "first_name",
