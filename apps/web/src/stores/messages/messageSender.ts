@@ -153,7 +153,7 @@ export const enqueueSend = (
     const reply = linkedMessage ? { linkedMessage, repliedMessageDetails } : undefined
 
     const placeholders = buildOptimisticMessages(channelID, batchId, owner, content, files, creation, reply, linkedDocument)
-    channelMessagesStore.addOptimisticMessages(channelID, batchId, placeholders)
+    channelMessagesStore.addOptimisticMessages(channelID, placeholders)
 
     // Sending means you're caught up — clear the unread badge instantly (the read tracker
     // still posts track_visit to the server when the message scrolls into view).
@@ -181,12 +181,6 @@ export const enqueueSend = (
  * The ids of sends whose request to the server is currently running (waiting for a
  * response). Auto-retry checks this so it never sends the same message twice — for
  * example if "back online" and "socket reconnected" both happen at once.
- *
- * This is a different list from the store's `pendingSends`. `pendingSends` is about
- * the server broadcasting our own message back to us (it broadcasts to everyone in
- * the channel) — we ignore that copy so the message doesn't show twice. A message we
- * queued while offline is NOT being sent right now (so it's not in this list), but we
- * still want to ignore its broadcast later — so the two lists aren't the same.
  */
 const inFlight = new Set<string>()
 
@@ -306,7 +300,11 @@ export const discardSend = (channelID: string, batchId: string) => {
  */
 export const injectOutboxRecord = (record: OutboxMessage) => {
     if (isSettling(record.client_id)) return
-    if (channelMessagesStore.getOptimisticMessages(record.channel_id, record.client_id).length > 0) return
+    // Skip a send already on screen, as placeholders or as its real message
+    // (its broadcast can land before the sending tab deletes the record).
+    for (const message of channelMessagesStore.getState(record.channel_id).byId.values()) {
+        if (message.message_batch_id === record.client_id) return
+    }
     const placeholders = buildOptimisticMessages(
         record.channel_id,
         record.client_id,
@@ -317,7 +315,7 @@ export const injectOutboxRecord = (record: OutboxMessage) => {
         record.linked_message ? { linkedMessage: record.linked_message, repliedMessageDetails: record.replied_message_details } : undefined,
         linkedDocumentOf(record),
     )
-    channelMessagesStore.addOptimisticMessages(record.channel_id, record.client_id, placeholders)
+    channelMessagesStore.addOptimisticMessages(record.channel_id, placeholders)
     // failed AND rejected both render as a failed bubble (Retry / Discard).
     if (record.status !== "sending") channelMessagesStore.failOptimisticSend(record.channel_id, record.client_id)
 }
@@ -348,7 +346,7 @@ export const retryOutboxRecord = (client: PostClient, record: OutboxMessage): Pr
             record.linked_message ? { linkedMessage: record.linked_message, repliedMessageDetails: record.replied_message_details } : undefined,
             linkedDocumentOf(record),
         )
-        channelMessagesStore.addOptimisticMessages(record.channel_id, record.client_id, placeholders)
+        channelMessagesStore.addOptimisticMessages(record.channel_id, placeholders)
     } else {
         channelMessagesStore.retryOptimisticSend(record.channel_id, record.client_id)
     }

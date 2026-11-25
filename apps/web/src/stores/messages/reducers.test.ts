@@ -9,7 +9,7 @@ import {
     removeMessage,
     upsertMessage,
 } from "./reducers"
-import { ChannelMessagesState, MAX_WINDOW_SIZE, initialChannelState } from "./types"
+import { ChannelMessagesState, MAX_WINDOW_SIZE, OptimisticMessage, initialChannelState } from "./types"
 
 /** Builds a minimal text message; `at` is minutes past a fixed base time. */
 const msg = (name: string, at: number, overrides: Partial<Message> = {}): Message => {
@@ -252,5 +252,24 @@ describe("applyWindowRefresh", () => {
         const state = readyState([msg("a", 1), msg("b", 2)])
         expect(applyWindowRefresh(state, { messages: [msg("b", 2), msg("a", 1)] }, ids(state))).toBe(state)
         expect(applyWindowRefresh(state, { messages: [] }, ids(state))).toBe(state)
+    })
+})
+
+describe("a delivered send replaces its placeholders", () => {
+    const placeholder = (name: string, at: number, batch: string) =>
+        ({ ...msg(name, at, { message_batch_id: batch }), _status: "sending" }) as OptimisticMessage
+    const delivered = (name: string, at: number, batch: string) => msg(name, at, { message_batch_id: batch })
+
+    it("upsertMessage drops the batch's placeholders when its real message arrives", () => {
+        const state = readyState([msg("a", 1), placeholder("b1-text", 2, "b1")])
+        const next = upsertMessage(state, delivered("real", 2, "b1"))
+        expect(next.order).toEqual(["a", "real"])
+        expect(next.byId.has("b1-text")).toBe(false)
+    })
+
+    it("applyWindowRefresh drops the batch's placeholders when its real message comes back", () => {
+        const state = readyState([msg("a", 1), placeholder("b1-text", 2, "b1"), placeholder("b2-text", 3, "b2")])
+        const next = applyWindowRefresh(state, { messages: [delivered("real", 2, "b1"), msg("a", 1)] }, ["a"])
+        expect(next.order).toEqual(["a", "real", "b2-text"])
     })
 })

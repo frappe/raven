@@ -222,9 +222,9 @@ def send_message_with_attachments(
 	`send_silently` suppresses notifications for the whole batch (the flag is set on
 	every message before insert).
 
-	Returns the created messages in order. The client reconciles its optimistic
-	insert against this response — the ack, not the realtime echo, is authoritative
-	for the sender.
+	Returns the created messages in order. The client replaces its optimistic
+	placeholders with whichever arrives first: this response or the realtime
+	broadcast (sent after commit).
 
 	`client_id` is a client-generated id used as the batch id AND the idempotency
 	key: a retried send (same client_id) returns the already-created messages

@@ -63,7 +63,7 @@ describe("reconcileStaleWindow", () => {
 
     it("leaves room for sends still in flight", async () => {
         const channelID = seedWindow(20)
-        channelMessagesStore.addOptimisticMessages(channelID, "batch-1", [
+        channelMessagesStore.addOptimisticMessages(channelID, [
             { ...msg("tmp", 900), _status: "sending" } as never,
         ])
         const { client, calls, state } = fakeClient()

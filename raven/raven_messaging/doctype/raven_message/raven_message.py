@@ -947,16 +947,8 @@ class RavenMessage(Document):
 				docname=self.channel_id,
 			)
 		else:
-			after_commit = False
-			if self.message_type == "File" or self.message_type == "Image":
-				# If the message is a file or an image, then we need to wait for the file to be uploaded
-				after_commit = True
-				if not self.file:
-					return
-
-			if self.message_type == "Poll" or (self.link_doctype and self.link_document):
-				# If the message is a poll, then we need to wait for the poll to be created
-				after_commit = True
+			if self.message_type in ("File", "Image") and not self.file:
+				return
 
 			frappe.publish_realtime(
 				"message_created",
@@ -1007,7 +999,9 @@ class RavenMessage(Document):
 				doctype="Raven Channel",
 				# Adding this to automatically add the room for the event via Frappe
 				docname=self.channel_id,
-				after_commit=after_commit,
+				# Clients take this event as proof the message is saved, so never
+				# send it for a transaction that can still roll back.
+				after_commit=True,
 			)
 
 			# If this is a new messagge (only applicable for files in on_update), then handle the AI message

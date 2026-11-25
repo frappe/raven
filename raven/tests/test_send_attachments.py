@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import frappe
 from frappe.tests import IntegrationTestCase
 
@@ -100,3 +102,12 @@ class TestSendAttachments(IntegrationTestCase):
 		)[0]
 		self.assertEqual(copy.file, self.file_url)
 		self.assertFalse(copy.is_bot_message)
+
+	def test_text_message_is_broadcast_after_commit(self):
+		# Clients treat the broadcast as proof the message was saved.
+		frappe.set_user("test1@example.com")
+		with patch("frappe.publish_realtime") as publish:
+			send_message_with_attachments(channel_id=self.channel.name, content="hi", client_id="batch-1")
+		created = [c for c in publish.call_args_list if c.args and c.args[0] == "message_created"]
+		self.assertEqual(len(created), 1)
+		self.assertTrue(created[0].kwargs["after_commit"])
