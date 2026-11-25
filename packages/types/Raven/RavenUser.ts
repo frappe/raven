@@ -18,6 +18,8 @@ export interface RavenUser {
 	type: "User" | "Bot"
 	/**	User : Link - User	*/
 	user?: string
+	/**	Email : Data	*/
+	email?: string
 	/**	Bot : Link - Raven Bot	*/
 	bot?: string
 	/**	Enabled : Check	*/

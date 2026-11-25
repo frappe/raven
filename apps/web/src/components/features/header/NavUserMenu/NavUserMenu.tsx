@@ -103,7 +103,7 @@ const NavUserMenu = () => {
                         <UserAvatar user={userData} size="md" className="rounded-lg" showStatusIndicator={true} showBotIndicator={false} addColoredFallback={false} />
                         <div className="flex flex-col gap-0.5 text-left text-sm">
                             <span className="truncate font-semibold text-ink-gray-8">{userData.full_name}</span>
-                            <span className="truncate text-xs text-ink-gray-5">{userData.name}</span>
+                            <span className="truncate text-xs text-ink-gray-5">{userData.email ?? userData.name}</span>
                         </div>
                     </div>
                 </DropdownMenuLabel>

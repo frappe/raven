@@ -41,7 +41,7 @@ const UserList = ({ text }: { text: string }) => {
     const filteredUsers = useMemo(() => {
         if (!text) return []
         // Pre-rank with cmdk's scorer over the same string its customFilter sees
-        // (keywords = [full_name, name]) so fuzzy matches survive, then cap.
+        // (keywords = [full_name, email ?? name]) so fuzzy matches survive, then cap.
         const scored: { user: UserData; score: number }[] = []
         for (const user of usersById.values()) {
             // A disabled user with no existing DM has no useful row: you can't
@@ -50,7 +50,7 @@ const UserList = ({ text }: { text: string }) => {
             // the item says why they can't reply). Filtered HERE, before the
             // cap, so dead rows don't eat result slots.
             if (user.enabled === 0 && !dmByPeer.has(user.name)) continue
-            const score = defaultFilter(`${user.full_name} ${user.name}`, text)
+            const score = defaultFilter(`${user.full_name} ${user.email ?? user.name}`, text)
             if (score > 0) scored.push({ user, score })
         }
         return scored
@@ -110,7 +110,7 @@ const DMChannelItem = ({ user, channel }: { user: UserData; channel: DMChannelLi
     return (
         <CommandItem
             value={channel.name}
-            keywords={[displayName, channel.peer_user_id]}
+            keywords={[displayName, user?.email ?? channel.peer_user_id]}
             onSelect={() => {
                 prefetchChannel(call as FrappeCallClient, channel.name)
                 navigateFromDrawer(`/dm-channel/${channel.name}`)
@@ -157,7 +157,7 @@ const UserItem = ({ user }: { user: UserData }) => {
         // DMChannelItem above. So this row is always a live "start a DM" action.
         <CommandItem
             value={user.name}
-            keywords={[user.full_name, user.name]}
+            keywords={[user.full_name, user.email ?? user.name]}
             onSelect={onSelect}
             className='cursor-pointer'
         >

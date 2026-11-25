@@ -39,6 +39,7 @@ class RavenUser(Document):
 		chat_style: DF.Literal["Simple", "Left-Right"]
 		contact_number: DF.Data | None
 		custom_status: DF.Data | None
+		email: DF.Data | None
 		enabled: DF.Check
 		filter_joined_channels: DF.Check
 		filter_recent_activity: DF.Check

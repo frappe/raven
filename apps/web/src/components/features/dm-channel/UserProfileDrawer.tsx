@@ -55,7 +55,7 @@ export function UserProfileDrawer({ user }: UserProfileDrawerProps) {
                 <ContactRow
                     icon={<MailIcon />}
                     label={_("Email")}
-                    value={user.name}
+                    value={user.email ?? ""}
                     emptyText={_("No email added")}
                     copyLabel={_("Email")}
                 />

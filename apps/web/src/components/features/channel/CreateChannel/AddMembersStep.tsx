@@ -75,7 +75,7 @@ export const AddMembersStep = ({ selectedUsers, onSelectUsers, workspace, exclud
             .and((user) => workspaceUserIds === "all" || workspaceUserIds.has(user.name))
             .and((user) => user.name !== myProfile?.name)
             .and((user) => !excludedIds.has(user.name))
-            .and((user) => user.name.toLowerCase().includes(filterText.toLowerCase()) || user.full_name.toLowerCase().includes(filterText.toLowerCase()))
+            .and((user) => (user.email ?? user.name).toLowerCase().includes(filterText.toLowerCase()) || user.full_name.toLowerCase().includes(filterText.toLowerCase()))
             .toArray()
             // Alphabetical by DISPLAY name — toArray() alone comes back in primary-key
             // order, which is the user ID, not what anyone scans the list by.
@@ -245,7 +245,7 @@ export const AddMembersStep = ({ selectedUsers, onSelectUsers, workspace, exclud
                                                 {user.full_name}
                                             </div>
                                             <div className="truncate text-xs text-ink-gray-4 leading-tight">
-                                                {user.name}
+                                                {user.email ?? user.name}
                                             </div>
                                         </div>
                                         {/* Visual state only — the whole row button is the control

@@ -68,6 +68,7 @@ def get_users():
 			"full_name",
 			"user_image",
 			"name",
+			"email",
 			"first_name",
 			"enabled",
 			"type",
