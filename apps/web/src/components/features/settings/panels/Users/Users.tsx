@@ -84,7 +84,7 @@ export const Users = () => {
     // Match on name or email.
     const visibleUsers = useMemo(
         () => query
-            ? humanUsers.filter((user) => user.full_name?.toLowerCase().includes(query) || user.name.toLowerCase().includes(query))
+            ? humanUsers.filter((user) => user.full_name?.toLowerCase().includes(query) || (user.email ?? user.name).toLowerCase().includes(query))
             : humanUsers,
         [humanUsers, query],
     )
@@ -155,10 +155,10 @@ const userColumns = (): ColumnDef<UserData>[] => [
     },
     {
         id: "email",
-        accessorKey: "name",
+        accessorKey: "email",
         header: _("Email"),
         meta: { gridWidth: "minmax(180px,2fr)" } satisfies ListViewColumnMeta,
-        cell: ({ row }) => <span className="text-ink-gray-5">{row.original.name}</span>,
+        cell: ({ row }) => <span className="text-ink-gray-5">{row.original.email}</span>,
     },
     {
         id: "custom_status",
