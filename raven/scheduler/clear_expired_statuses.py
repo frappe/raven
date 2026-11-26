@@ -13,11 +13,8 @@ STATUS_FIELDS = (
 
 def clear_expired_statuses():
 	"""Cron entrypoint: clears availability and written statuses past their end time."""
-	now = now_datetime()
-	expired = _expired_user_names(now)
-
 	# One transaction per user, like the reminder sweep: a failure stays with its row.
-	for name in expired:
+	for name in _expired_user_names(now_datetime()):
 		try:
 			# Locked and freshly read: a status renewed since the query stays, and one set
 			# during this write waits for it instead of being overwritten.

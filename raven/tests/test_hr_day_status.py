@@ -64,6 +64,11 @@ class TestHRDayStatus(IntegrationTestCase):
 		self._attendance("Work From Home", date=add_days(today(), -1))
 		self.assertNotIn(WFH_USER, self._status()["work_from_home"])
 
+	def test_employee_without_user_not_listed(self):
+		frappe.db.set_value("Employee", self.employee, "user_id", None)
+		self._attendance("Work From Home")
+		self.assertNotIn(None, self._status()["work_from_home"])
+
 	def test_leave_listed_separately(self):
 		self._attendance("On Leave")
 		status = self._status()

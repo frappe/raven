@@ -38,7 +38,7 @@ export const MentionWarningBanner = ({ channelID, mentionedIds, isThread = false
         const onLeave: string[] = []
         const outside: string[] = []
         for (const id of mentionedIds) {
-            const away = leaveStore.isOnLeave(id)
+            const away = leaveStore.has(id)
             const notMember = membersKnown && !memberSet.has(id)
             if (away && notMember) onLeaveAndOutside.push(id)
             else if (away) onLeave.push(id)

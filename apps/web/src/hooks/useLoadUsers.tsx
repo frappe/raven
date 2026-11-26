@@ -52,7 +52,9 @@ const USER_FIELDS: (keyof UserData)[] = [
     "enabled",
     "type",
     "availability_status",
+    "availability_expires_at",
     "custom_status",
+    "custom_status_expires_at",
 ]
 
 /**

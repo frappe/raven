@@ -112,7 +112,7 @@ const AppListeners = ({ children }: { children: React.ReactNode }) => {
     usePresenceSync()
     // Reports OUR own online state (app open / focus / 10-min idle) to the server
     useReportActiveState()
-    // Seeds the set of users on leave today (read via useIsUserOnLeave)
+    // Seeds who is on leave / working from home today (useIsUserOnLeave, useIsUserWorkingFromHome)
     useLeaveSync()
     // Patches thread reply counts (thread_reply) + the unread-threads set (participant-scoped
     // raven:unread_thread_count_updated) live

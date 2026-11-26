@@ -1,20 +1,19 @@
 type Listener = () => void
 
 /**
- * Tracks which users are on leave TODAY, keyed per user.
+ * A set of users that holds for TODAY (on leave, working from home), keyed per user.
  *
- * Mirrors presenceStore (per-user subscriptions so a leave change re-renders only
- * the avatars/badges watching THAT user), but simpler: leave is a daily fact with
- * no realtime event, so there's a single authoritative input — setUsersOnLeave()
- * from get_all_users_on_leave (seeded by useLeaveSync, re-fetched on reconnect).
+ * Per-user subscriptions like presenceStore, so a change re-renders only the badges
+ * watching that user. A daily HR fact has no realtime event: setUsers() from
+ * get_users_hr_day_status (useLeaveSync) is its only input.
  */
-class LeaveStore {
-    private onLeave = new Set<string>()
+export class DailyUserSetStore {
+    private users = new Set<string>()
     private listeners = new Map<string, Set<Listener>>()
 
-    /** Whether a user is on leave today — primitive snapshot, safe to read per render. */
-    isOnLeave(userID: string): boolean {
-        return this.onLeave.has(userID)
+    /** Primitive snapshot, safe to read per render. */
+    has(userID: string): boolean {
+        return this.users.has(userID)
     }
 
     subscribe(userID: string, listener: Listener): () => void {
@@ -30,14 +29,14 @@ class LeaveStore {
         }
     }
 
-    /** Replace the on-leave set with the authoritative list; notify only users who flipped. */
-    setUsersOnLeave(userIDs: string[]) {
+    /** Replace the set with the authoritative list; notify only users who flipped. */
+    setUsers(userIDs: string[]) {
         const next = new Set(userIDs)
         const changed: string[] = []
-        for (const userID of next) if (!this.onLeave.has(userID)) changed.push(userID)
-        for (const userID of this.onLeave) if (!next.has(userID)) changed.push(userID)
+        for (const userID of next) if (!this.users.has(userID)) changed.push(userID)
+        for (const userID of this.users) if (!next.has(userID)) changed.push(userID)
         if (changed.length === 0) return
-        this.onLeave = next
+        this.users = next
         for (const userID of changed) this.notify(userID)
     }
 
@@ -46,4 +45,5 @@ class LeaveStore {
     }
 }
 
-export const leaveStore = new LeaveStore()
+export const leaveStore = new DailyUserSetStore()
+export const wfhStore = new DailyUserSetStore()

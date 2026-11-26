@@ -72,7 +72,9 @@ def get_users():
 			"enabled",
 			"type",
 			"availability_status",
+			"availability_expires_at",
 			"custom_status",
+			"custom_status_expires_at",
 			"contact_number",
 		],
 		order_by="full_name",
@@ -81,23 +83,19 @@ def get_users():
 
 
 @frappe.whitelist(methods=["GET"])
-def get_all_users_on_leave():
-	if "hrms" not in frappe.get_installed_apps():
-		return []
-
-	_require_raven_user()
-	if not frappe.get_single_value("Raven Settings", "show_if_a_user_is_on_leave"):
-		return []
-	return _users_by_attendance_status(["On Leave"]).get("On Leave", [])
-
-
-@frappe.whitelist(methods=["GET"])
 def get_users_hr_day_status():
 	"""User ids on leave and working from home today, each gated by its Raven Setting."""
 	if "hrms" not in frappe.get_installed_apps():
 		return {"on_leave": [], "work_from_home": []}
 
-	_require_raven_user()
+	if not frappe.has_permission("Raven User"):
+		frappe.throw(
+			_(
+				"You do not have a <b>Raven User</b> role. Please contact your administrator to add your user profile as a <b>Raven User</b>."
+			),
+			title=_("Insufficient permissions. Please contact your administrator."),
+		)
+
 	statuses = []
 	if frappe.get_single_value("Raven Settings", "show_if_a_user_is_on_leave"):
 		statuses.append("On Leave")
@@ -109,16 +107,6 @@ def get_users_hr_day_status():
 		"on_leave": users.get("On Leave", []),
 		"work_from_home": users.get("Work From Home", []),
 	}
-
-
-def _require_raven_user():
-	if not frappe.has_permission("Raven User"):
-		frappe.throw(
-			_(
-				"You do not have a <b>Raven User</b> role. Please contact your administrator to add your user profile as a <b>Raven User</b>."
-			),
-			title=_("Insufficient permissions. Please contact your administrator."),
-		)
 
 
 def _users_by_attendance_status(statuses: list[str]) -> dict[str, list[str]]:
@@ -135,6 +123,7 @@ def _users_by_attendance_status(statuses: list[str]) -> dict[str, list[str]]:
 		.on(attendance.employee == employee.name)
 		.select(employee.user_id, attendance.status)
 		.where(attendance.status.isin(statuses))
+		.where(employee.user_id.isnotnull())
 		.where(attendance.attendance_date == frappe.utils.today())
 		.where(attendance.docstatus == 1)
 	).run()

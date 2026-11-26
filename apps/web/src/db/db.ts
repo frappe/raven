@@ -2,7 +2,7 @@ import { RavenUser } from "@raven/types/Raven/RavenUser"
 import { siteKey } from "@lib/site"
 import { Dexie, type EntityTable } from "dexie"
 
-export type UserData = Pick<RavenUser, 'name' | 'full_name' | 'user_image' | 'first_name' | 'enabled' | 'type' | 'availability_status' | 'custom_status' | 'contact_number'>
+export type UserData = Pick<RavenUser, 'name' | 'full_name' | 'user_image' | 'first_name' | 'enabled' | 'type' | 'availability_status' | 'availability_expires_at' | 'custom_status' | 'custom_status_expires_at' | 'contact_number'>
 
 /** An already-uploaded attachment going out with a send (its stable URL + size). */
 export interface OutboxFile {

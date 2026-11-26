@@ -11,7 +11,9 @@ const sameUser = (a: UserData, b: UserData): boolean =>
     a.enabled === b.enabled &&
     a.type === b.type &&
     a.availability_status === b.availability_status &&
-    a.custom_status === b.custom_status
+    a.availability_expires_at === b.availability_expires_at &&
+    a.custom_status === b.custom_status &&
+    a.custom_status_expires_at === b.custom_status_expires_at
 
 /**
  * Singleton users lookup — ONE Dexie observable maintaining ONE immutable Map
