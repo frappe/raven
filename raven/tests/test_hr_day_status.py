@@ -19,7 +19,6 @@ class TestHRDayStatus(IntegrationTestCase):
 		self.employee = make_employee(WFH_USER)
 		self.company = frappe.db.get_value("Employee", self.employee, "company")
 		frappe.db.set_single_value("Raven Settings", "show_if_a_user_is_on_leave", 1)
-		frappe.db.set_single_value("Raven Settings", "show_if_a_user_is_working_from_home", 1)
 
 	def tearDown(self):
 		frappe.db.rollback()
@@ -50,10 +49,10 @@ class TestHRDayStatus(IntegrationTestCase):
 		self.assertIn(WFH_USER, status["work_from_home"])
 		self.assertNotIn(WFH_USER, status["on_leave"])
 
-	def test_wfh_setting_off_returns_empty(self):
+	def test_setting_off_hides_leave_and_wfh(self):
 		self._attendance("Work From Home")
-		frappe.db.set_single_value("Raven Settings", "show_if_a_user_is_working_from_home", 0)
-		self.assertEqual(self._status()["work_from_home"], [])
+		frappe.db.set_single_value("Raven Settings", "show_if_a_user_is_on_leave", 0)
+		self.assertEqual(self._status(), {"on_leave": [], "work_from_home": []})
 
 	def test_half_day_not_listed(self):
 		self._attendance("Half Day")
@@ -94,27 +93,6 @@ class TestHRDayStatus(IntegrationTestCase):
 		self._attendance("Work From Home")
 		self.assertEqual(self._attendance_queries(), 1)
 
-	def test_no_attendance_query_when_both_settings_off(self):
+	def test_no_attendance_query_when_setting_off(self):
 		frappe.db.set_single_value("Raven Settings", "show_if_a_user_is_on_leave", 0)
-		frappe.db.set_single_value("Raven Settings", "show_if_a_user_is_working_from_home", 0)
 		self.assertEqual(self._attendance_queries(), 0)
-		self.assertEqual(self._status(), {"on_leave": [], "work_from_home": []})
-
-
-class TestWFHSettingPatch(IntegrationTestCase):
-	def tearDown(self):
-		frappe.db.rollback()
-
-	def test_patch_copies_leave_setting(self):
-		from raven.patches.v3_0.set_work_from_home_indicator import execute
-
-		for leave_value in (1, 0):
-			frappe.db.set_single_value("Raven Settings", "show_if_a_user_is_on_leave", leave_value)
-			frappe.db.delete(
-				"Singles", {"doctype": "Raven Settings", "field": "show_if_a_user_is_working_from_home"}
-			)
-			execute()
-			self.assertEqual(
-				frappe.db.get_single_value("Raven Settings", "show_if_a_user_is_working_from_home"),
-				leave_value,
-			)

@@ -42,8 +42,8 @@ export const FrappeHRFields = () => {
 
             <SwitchFormField
                 name="show_if_a_user_is_on_leave"
-                label={_("Show if a user is on leave")}
-                formDescription={_("Display a leave indicator on users who are off today.")}
+                label={_("Show if a user is on leave or working from home")}
+                formDescription={_("Display an indicator on users who are off or working remotely today.")}
                 disabled={hrMissing}
             />
 

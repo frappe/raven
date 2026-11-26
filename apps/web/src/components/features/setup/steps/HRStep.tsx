@@ -53,12 +53,12 @@ export const HRStep = ({ isLast, finishing, onDone, onSkip, onPreview, onBusyCha
                     <X className="size-4 text-ink-gray-5 animate-setup-join-mark" aria-hidden />
                     <img src="/assets/raven/raven_logo.svg" alt={_("Raven")} className="size-10 animate-setup-join-right" />
                 </div>
-                <p className="text-p-base text-ink-gray-7">{_("Let the two talk: Raven can show who's on leave, so no one chases a teammate who's away.")}</p>
+                <p className="text-p-base text-ink-gray-7">{_("Let the two talk: Raven can show who's on leave or working from home, so no one chases a teammate who's away.")}</p>
                 {error && <ErrorBanner error={error} />}
                 <SwitchFormField
                     name="show_if_a_user_is_on_leave"
-                    label={_("Show who's on leave")}
-                    formDescription={_("A badge on their profile, and a heads-up when you mention them.")}
+                    label={_("Show who's on leave or working from home")}
+                    formDescription={_("A badge on their profile, and a heads-up when you mention someone on leave.")}
                 />
                 <StepFooter>
                     <Button type="submit" variant="solid" size="md" loading={loading || finishing} disabled={!ravenSettings}>

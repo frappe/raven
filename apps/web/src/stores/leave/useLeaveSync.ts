@@ -46,8 +46,8 @@ let lastSync: { at: number; day: string } | null = null
  * focus path. (A tab left visible and untouched across midnight gets no event; it
  * catches up on the first interaction.)
  *
- * Skipped entirely when HRMS isn't installed. The backend gates each list on its
- * Raven Setting; a list that's off comes back empty.
+ * Skipped entirely when HRMS isn't installed. One Raven Setting gates both lists;
+ * with it off they come back empty.
  */
 export const useLeaveSync = () => {
     const { data, mutate } = useFrappeGetCall<{ message: HRDayStatus }>(

@@ -82,9 +82,12 @@ def get_users():
 	return users
 
 
+HR_DAY_STATUS_KEYS = {"On Leave": "on_leave", "Work From Home": "work_from_home"}
+
+
 @frappe.whitelist(methods=["GET"])
 def get_users_hr_day_status():
-	"""User ids on leave and working from home today, each gated by its Raven Setting."""
+	"""User ids on leave and working from home today. One Raven Setting shows or hides both."""
 	if "hrms" not in frappe.get_installed_apps():
 		return {"on_leave": [], "work_from_home": []}
 
@@ -96,41 +99,26 @@ def get_users_hr_day_status():
 			title=_("Insufficient permissions. Please contact your administrator."),
 		)
 
-	statuses = []
-	if frappe.get_single_value("Raven Settings", "show_if_a_user_is_on_leave"):
-		statuses.append("On Leave")
-	if frappe.get_single_value("Raven Settings", "show_if_a_user_is_working_from_home"):
-		statuses.append("Work From Home")
-
-	users = _users_by_attendance_status(statuses)
-	return {
-		"on_leave": users.get("On Leave", []),
-		"work_from_home": users.get("Work From Home", []),
-	}
-
-
-def _users_by_attendance_status(statuses: list[str]) -> dict[str, list[str]]:
-	"""User ids with a submitted Attendance today, grouped by status. One query for all."""
-	if not statuses:
-		return {}
+	if not frappe.get_single_value("Raven Settings", "show_if_a_user_is_on_leave"):
+		return {"on_leave": [], "work_from_home": []}
 
 	attendance = frappe.qb.DocType("Attendance")
 	employee = frappe.qb.DocType("Employee")
-
+	# Submitted Attendance today; one query for both lists.
 	rows = (
 		frappe.qb.from_(attendance)
 		.join(employee)
 		.on(attendance.employee == employee.name)
 		.select(employee.user_id, attendance.status)
-		.where(attendance.status.isin(statuses))
+		.where(attendance.status.isin(list(HR_DAY_STATUS_KEYS)))
 		.where(employee.user_id.isnotnull())
 		.where(attendance.attendance_date == frappe.utils.today())
 		.where(attendance.docstatus == 1)
 	).run()
 
-	users: dict[str, list[str]] = {}
+	users = {"on_leave": [], "work_from_home": []}
 	for user_id, status in rows:
-		users.setdefault(status, []).append(user_id)
+		users[HR_DAY_STATUS_KEYS[status]].append(user_id)
 	return users
 
 

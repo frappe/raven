@@ -2,6 +2,9 @@ import { Badge } from "@components/ui/badge"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip"
 import { UserAvatar } from "@components/features/message/UserAvatar"
 import { OnLeaveBadge } from "@components/common/OnLeaveBadge"
+import { WorkFromHomeBadge } from "@components/common/WorkFromHomeBadge"
+import { StatusUntil } from "@components/common/StatusUntil"
+import { useEffectiveStatus } from "@hooks/useEffectiveStatus"
 import { MailIcon, PhoneIcon, UserX } from "lucide-react"
 import { toast } from "sonner"
 import type { UserData } from "@db"
@@ -18,7 +21,8 @@ export function UserProfileDrawer({ user }: UserProfileDrawerProps) {
 
     const { name } = useUserCookieData()
     const displayName = user.full_name || user.first_name || user.name
-    const customStatus = user.custom_status?.trim() || ""
+    const status = useEffectiveStatus(user)
+    const customStatus = status?.customStatus.trim() || ""
 
     const isDisabled = user.enabled === 0
 
@@ -36,7 +40,10 @@ export function UserProfileDrawer({ user }: UserProfileDrawerProps) {
                         {displayName} {name === user.name ? <span className="text-base text-ink-gray-6">({_("You")})</span> : ""}
                     </span>
                     {customStatus && (
-                        <span className="text-p-xs text-ink-gray-6">{customStatus}</span>
+                        <div className="flex flex-col">
+                            <span className="text-p-xs text-ink-gray-6">{customStatus}</span>
+                            <StatusUntil endsAt={status?.customStatusEndsAt} className="text-xs text-ink-gray-5" />
+                        </div>
                     )}
                     <div className="flex items-center gap-2 pt-0.5">
                         {isDisabled && (
@@ -46,6 +53,7 @@ export function UserProfileDrawer({ user }: UserProfileDrawerProps) {
                             </Badge>
                         )}
                         <OnLeaveBadge userID={user.name} />
+                        <WorkFromHomeBadge userID={user.name} />
                     </div>
 
                 </div>

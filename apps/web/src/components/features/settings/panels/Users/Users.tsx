@@ -25,6 +25,7 @@ import { hasRole } from "@lib/permissions"
 import { isRavenSettingsAdmin } from "../AdminSettingsForm"
 import _ from "@lib/translate"
 import type { UserData } from "@db"
+import { useEffectiveStatus } from "@hooks/useEffectiveStatus"
 import AddUserDialog from "./AddUserDialog"
 import ManageAccessDialog from "./ManageAccessDialog"
 import DisableUserDialog from "./DisableUserDialog"
@@ -170,14 +171,19 @@ const userColumns = (): ColumnDef<UserData>[] => [
         // ellipsis. max-w-full caps `fit-content` at the cell — a shrink factor does nothing
         // here, since the ListView cell is a block, not a flex container — and the inner
         // span carries the ellipsis, which the badge's own inline-flex box can't render.
-        cell: ({ row }) =>
-            row.original.custom_status ? (
-                <Badge variant="subtle" className="max-w-full">
-                    <span className="truncate">{row.original.custom_status}</span>
-                </Badge>
-            ) : null,
+        cell: ({ row }) => <CustomStatusCell user={row.original} />,
     },
 ]
+
+/** The written status, empty once past its end time. */
+const CustomStatusCell = ({ user }: { user: UserData }) => {
+    const customStatus = useEffectiveStatus(user)?.customStatus
+    return customStatus ? (
+        <Badge variant="subtle" className="max-w-full">
+            <span className="truncate">{customStatus}</span>
+        </Badge>
+    ) : null
+}
 
 type RowActions = {
     onManageAccess: (user: UserData) => void

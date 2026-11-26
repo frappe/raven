@@ -8,6 +8,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover"
 import { Badge } from "@components/ui/badge"
 import { Button } from "@components/ui/button"
 import { OnLeaveBadge } from "@components/common/OnLeaveBadge"
+import { WorkFromHomeBadge } from "@components/common/WorkFromHomeBadge"
+import { StatusUntil } from "@components/common/StatusUntil"
+import { useEffectiveStatus } from "@hooks/useEffectiveStatus"
 import { UserAvatar, getStatusIndicatorColor } from "@components/features/message/UserAvatar"
 import { cn } from "@lib/utils"
 import _ from "@lib/translate"
@@ -63,11 +66,14 @@ const UserProfileCard = ({ id, fallbackLabel, isSelf }: { id: string; fallbackLa
     const user = useUser(id)
     const { createDM, loading } = useCreateDM()
 
+    const status = useEffectiveStatus(user)
+
     const fullName = user?.full_name || fallbackLabel
-    const availability = user?.availability_status
     const isBot = user?.type === "Bot"
 
-    const hasStatus = (availability && availability !== "Invisible") || !!user?.custom_status
+    // Others see no availability, and so no end time, for an Invisible user.
+    const availability = status?.availability !== "Invisible" ? status?.availability : ""
+    const hasStatus = !!availability || !!status?.customStatus
 
     return (
         <div className="flex flex-col gap-3">
@@ -101,6 +107,7 @@ const UserProfileCard = ({ id, fallbackLabel, isSelf }: { id: string; fallbackLa
                             </Badge>
                         )}
                         <OnLeaveBadge userID={id} />
+                        <WorkFromHomeBadge userID={id} />
                     </div>
                 </div>
             </div>
@@ -109,14 +116,25 @@ const UserProfileCard = ({ id, fallbackLabel, isSelf }: { id: string; fallbackLa
                 separated from the identity block (availability hidden when Invisible). */}
             {hasStatus && (
                 <div className="flex flex-col gap-1">
-                    {availability && availability !== "Invisible" && (
+                    {availability && (
                         <span className="flex items-center gap-1.5 text-xs text-ink-gray-6">
                             <span className={cn("size-2 rounded-full", getStatusIndicatorColor(availability))} />
                             {availability}
+                            {status?.availabilityEndsAt && (
+                                <>
+                                    <span aria-hidden="true" className="text-ink-gray-4">·</span>
+                                    <StatusUntil endsAt={status.availabilityEndsAt} className="text-ink-gray-5" />
+                                </>
+                            )}
                         </span>
                     )}
                     {/* A status can be one long URL: it wraps inside the card's fixed width. */}
-                    {user?.custom_status && <p className="wrap-anywhere text-p-sm text-ink-gray-7">{user.custom_status}</p>}
+                    {status?.customStatus && (
+                        <div className="flex flex-col gap-0.5">
+                            <p className="wrap-anywhere text-p-sm text-ink-gray-7">{status.customStatus}</p>
+                            <StatusUntil endsAt={status.customStatusEndsAt} className="text-xs text-ink-gray-5" />
+                        </div>
+                    )}
                 </div>
             )}
 

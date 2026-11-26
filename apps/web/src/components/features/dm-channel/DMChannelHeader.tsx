@@ -9,6 +9,9 @@ import {
 } from "@components/ui/dropdown-menu"
 import { UserAvatar } from "@components/features/message/UserAvatar"
 import { OnLeaveBadge } from "@components/common/OnLeaveBadge"
+import { WorkFromHomeBadge } from "@components/common/WorkFromHomeBadge"
+import { useStatusUntilLabel } from "@components/common/StatusUntil"
+import { useEffectiveStatus } from "@hooks/useEffectiveStatus"
 import { ArrowUpRight, Bot, ChevronDown, ChevronLeft, Files, Link, MessageSquareText, Pin, User, UserX } from "lucide-react"
 import { useLocation } from "react-router-dom"
 import { PANE_HOSTS, useMobileBack } from "@hooks/useMobileBack"
@@ -50,7 +53,9 @@ export function DMChannelHeader({ peer, channelID, showActions = true, onOpenCha
     const setDrawerType = useOpenChannelDrawer(channelID)
     const { dmChannel } = useChannel(channelID)
     const pinnedCount = dmChannel?.pinned_messages_string ? dmChannel.pinned_messages_string.split("\n").length : 0
-    const customStatus = peer.custom_status?.trim() || ""
+    const status = useEffectiveStatus(peer)
+    const customStatus = status?.customStatus.trim() || ""
+    const customStatusUntil = useStatusUntilLabel(status?.customStatusEndsAt)
     const isBot = peer.type === "Bot"
     const isDisabled = peer.enabled === 0
 
@@ -159,9 +164,10 @@ export function DMChannelHeader({ peer, channelID, showActions = true, onOpenCha
                             </Badge>
                         )}
                         <OnLeaveBadge userID={peer.name} size="md" />
+                        <WorkFromHomeBadge userID={peer.name} size="md" />
                         {customStatus && !isMobile && (
                             // The text needs its own box: an ellipsis doesn't apply to a flex container's bare text.
-                            <Badge size="md" variant="subtle" theme="gray" title={customStatus} className="hidden min-w-0 max-w-96 shrink justify-start md:flex">
+                            <Badge size="md" variant="subtle" theme="gray" title={customStatusUntil ? `${customStatus} · ${customStatusUntil}` : customStatus} className="hidden min-w-0 max-w-96 shrink justify-start md:flex">
                                 <span className="truncate">{customStatus}</span>
                             </Badge>
                         )}

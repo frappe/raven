@@ -48,7 +48,7 @@ export interface RavenSettings{
 	department_channel_type?: "Public" | "Private"
 	/**	Company Workspace Mapping : Table - Raven HR Company Workspace	*/
 	company_workspace_mapping?: RavenHRCompanyWorkspace[]
-	/**	Show if a user is on leave : Check	*/
+	/**	Show if a user is on leave or working from home : Check	*/
 	show_if_a_user_is_on_leave?: 0 | 1
 	/**	OAuth Client : Link - OAuth Client	*/
 	oauth_client?: string

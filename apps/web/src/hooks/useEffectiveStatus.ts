@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useLayoutEffect, useState } from "react"
 import dayjs from "dayjs"
 import type { UserData } from "@db"
 import { getEffectiveStatus, type EffectiveStatus } from "@lib/statusExpiry"
@@ -26,12 +26,17 @@ export function useEffectiveStatus(user: UserData | undefined): EffectiveStatus 
     const b = status?.customStatusEndsAt
     const nextEnd = a && b ? (a < b ? a : b) : a || b || null
 
-    useEffect(() => {
+    // Layout effect: data arriving already expired is re-checked before paint, never shown.
+    useLayoutEffect(() => {
         if (!nextEnd) return
+        const msToEnd = fromServerDatetime(nextEnd).diff(dayjs())
+        if (msToEnd <= -1000) {
+            setNow(serverNow())
+            return
+        }
         // A second past the end: the clock has whole seconds, so firing inside the end's own
         // second (fractional end, early timer) would read unexpired and never re-arm.
-        const delay = Math.min(Math.max(fromServerDatetime(nextEnd).diff(dayjs()), 0) + 1000, MAX_TIMER_MS)
-        const timer = setTimeout(() => setNow(serverNow()), delay)
+        const timer = setTimeout(() => setNow(serverNow()), Math.min(msToEnd + 1000, MAX_TIMER_MS))
         return () => clearTimeout(timer)
         // `now` re-arms the timer after a capped wait that changed nothing else.
     }, [nextEnd, now])

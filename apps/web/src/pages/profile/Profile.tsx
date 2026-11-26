@@ -17,6 +17,8 @@ import { ProfileImageMenu } from "@components/features/profile/ProfileImageMenu"
 import { PageHeader } from "@components/layout/PageHeader"
 import AppMobileFooter from "@components/features/header/AppMobileFooter"
 import { getStatusIndicatorColor } from "@components/features/message/UserAvatar"
+import { StatusUntil } from "@components/common/StatusUntil"
+import { useEffectiveStatus } from "@hooks/useEffectiveStatus"
 import { cn } from "@lib/utils"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@components/ui/dropdown-menu"
 import { Switch } from "@components/ui/switch"
@@ -31,6 +33,7 @@ import { Badge } from "@components/ui/badge"
 
 const Profile = () => {
     const { myProfile } = useCurrentRavenUser()
+    const status = useEffectiveStatus(myProfile)
     const { theme, setTheme } = useTheme()
     const { logout, isLoggingOut } = useLogout()
     const isMobile = useIsMobile()
@@ -77,14 +80,24 @@ const Profile = () => {
                             <ProfileImageMenu />
                             <div className="flex w-full min-w-0 flex-1 flex-col gap-2">
                                 <span className="truncate text-4xl-semibold text-center text-ink-gray-9">{myProfile.full_name}</span>
-                                {myProfile.availability_status && (
+                                {/* Invisible hides your status from others, not from you, so its end time shows here. */}
+                                {status?.availability && (
                                     <span className="flex items-center justify-center gap-1.5 text-base md:text-sm text-ink-gray-5">
-                                        <span className={cn("size-2 shrink-0 rounded-full", getStatusIndicatorColor(myProfile.availability_status))} />
-                                        <span className="truncate">{myProfile.availability_status}</span>
+                                        <span className={cn("size-2 shrink-0 rounded-full", getStatusIndicatorColor(status.availability))} />
+                                        <span className="truncate">{status.availability}</span>
+                                        {status.availabilityEndsAt && (
+                                            <>
+                                                <span aria-hidden="true" className="text-ink-gray-4">·</span>
+                                                <StatusUntil endsAt={status.availabilityEndsAt} className="shrink-0" />
+                                            </>
+                                        )}
                                     </span>
                                 )}
-                                {myProfile.custom_status && (
-                                    <p className="text-center text-lg md:text-sm text-ink-gray-6 break-words line-clamp-2">{myProfile.custom_status}</p>
+                                {status?.customStatus && (
+                                    <div className="flex flex-col items-center gap-0.5">
+                                        <p className="text-center text-lg md:text-sm text-ink-gray-6 break-words line-clamp-2">{status.customStatus}</p>
+                                        <StatusUntil endsAt={status.customStatusEndsAt} className="text-base md:text-sm text-ink-gray-5" />
+                                    </div>
                                 )}
                             </div>
 

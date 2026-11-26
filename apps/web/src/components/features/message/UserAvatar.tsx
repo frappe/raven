@@ -6,6 +6,7 @@ import { UserData } from "@db"
 import { BotIcon, TreePalm } from 'lucide-react'
 import { useIsUserOnline } from '@stores/presence/useUserPresence'
 import { useIsUserOnLeave } from '@hooks/useIsUserOnLeave'
+import { useEffectiveStatus } from '@hooks/useEffectiveStatus'
 import _ from '@lib/translate'
 
 type AvatarSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl'
@@ -128,7 +129,7 @@ const getSizeClasses = (size: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl') => {
 const StatusIndicator = memo<{ user: UserData; size: AvatarSize }>(({ user, size }) => {
     const isOnline = useIsUserOnline(user.name)
     const isOnLeave = useIsUserOnLeave(user.name)
-    const availabilityStatus = user.availability_status
+    const availabilityStatus = useEffectiveStatus(user)?.availability
     const sizeClasses = getSizeClasses(size)
 
     // On leave takes precedence over the online/availability dot — the user's vacation
