@@ -48,15 +48,24 @@ const useChannelRoomSubscriptions = (channelIDs: readonly string[]) => {
         }
     }, [socket, channelIDs])
 
-    // Rooms are dropped on disconnect — rejoin the whole set on reconnect.
+    // Rooms are dropped on disconnect — rejoin the whole set on reconnect. A join
+    // also fails silently when the server's permission check errors, so rejoin on
+    // focus and on becoming visible too: the server skips rooms we're already in.
     useEffect(() => {
         if (!socket) return
-        const onReconnect = () => {
+        const rejoin = () => {
             for (const id of subscribed.current) socket.emit("doc_subscribe", ROOM_DOCTYPE, id)
         }
-        socket.io.on("reconnect", onReconnect)
+        const rejoinIfVisible = () => {
+            if (socket.connected && document.visibilityState === "visible") rejoin()
+        }
+        socket.io.on("reconnect", rejoin)
+        window.addEventListener("focus", rejoinIfVisible)
+        document.addEventListener("visibilitychange", rejoinIfVisible)
         return () => {
-            socket.io.off("reconnect", onReconnect)
+            socket.io.off("reconnect", rejoin)
+            window.removeEventListener("focus", rejoinIfVisible)
+            document.removeEventListener("visibilitychange", rejoinIfVisible)
         }
     }, [socket])
 
