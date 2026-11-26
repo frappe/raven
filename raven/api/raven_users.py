@@ -82,11 +82,36 @@ def get_users():
 
 @frappe.whitelist(methods=["GET"])
 def get_all_users_on_leave():
-
-	if not "hrms" in frappe.get_installed_apps():
+	if "hrms" not in frappe.get_installed_apps():
 		return []
 
-	# Check if user has Raven User role
+	_require_raven_user()
+	if not frappe.get_single_value("Raven Settings", "show_if_a_user_is_on_leave"):
+		return []
+	return _users_by_attendance_status(["On Leave"]).get("On Leave", [])
+
+
+@frappe.whitelist(methods=["GET"])
+def get_users_hr_day_status():
+	"""User ids on leave and working from home today, each gated by its Raven Setting."""
+	if "hrms" not in frappe.get_installed_apps():
+		return {"on_leave": [], "work_from_home": []}
+
+	_require_raven_user()
+	statuses = []
+	if frappe.get_single_value("Raven Settings", "show_if_a_user_is_on_leave"):
+		statuses.append("On Leave")
+	if frappe.get_single_value("Raven Settings", "show_if_a_user_is_working_from_home"):
+		statuses.append("Work From Home")
+
+	users = _users_by_attendance_status(statuses)
+	return {
+		"on_leave": users.get("On Leave", []),
+		"work_from_home": users.get("Work From Home", []),
+	}
+
+
+def _require_raven_user():
 	if not frappe.has_permission("Raven User"):
 		frappe.throw(
 			_(
@@ -95,29 +120,29 @@ def get_all_users_on_leave():
 			title=_("Insufficient permissions. Please contact your administrator."),
 		)
 
-	show_if_a_user_is_on_leave = frappe.get_single_value(
-		"Raven Settings", "show_if_a_user_is_on_leave"
-	)
 
-	if not show_if_a_user_is_on_leave:
-		return []
+def _users_by_attendance_status(statuses: list[str]) -> dict[str, list[str]]:
+	"""User ids with a submitted Attendance today, grouped by status. One query for all."""
+	if not statuses:
+		return {}
 
-	# Join attendance table with user table on user_id
 	attendance = frappe.qb.DocType("Attendance")
 	employee = frappe.qb.DocType("Employee")
 
-	query = (
+	rows = (
 		frappe.qb.from_(attendance)
 		.join(employee)
 		.on(attendance.employee == employee.name)
-		.select(employee.user_id)
-		.where(attendance.status == "On Leave")
+		.select(employee.user_id, attendance.status)
+		.where(attendance.status.isin(statuses))
 		.where(attendance.attendance_date == frappe.utils.today())
 		.where(attendance.docstatus == 1)
-	)
+	).run()
 
-	# Return an array of user IDs
-	return query.run(pluck=True)
+	users: dict[str, list[str]] = {}
+	for user_id, status in rows:
+		users.setdefault(status, []).append(user_id)
+	return users
 
 
 @frappe.whitelist(methods=["POST"])

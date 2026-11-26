@@ -8,7 +8,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.model.rename_doc import rename_doc
 from frappe.query_builder.functions import Replace
-from frappe.utils.data import get_url
+from frappe.utils.data import get_datetime, get_url, now_datetime
 
 from raven.utils import delete_member_caches
 
@@ -33,12 +33,14 @@ class RavenUser(Document):
 			RavenChannelGroups,
 		)
 
+		availability_expires_at: DF.Datetime | None
 		availability_status: DF.Literal["", "Available", "Away", "Do not disturb", "Invisible"]
 		bot: DF.Link | None
 		channel_groups: DF.Table[RavenChannelGroups]
 		chat_style: DF.Literal["Simple", "Left-Right"]
 		contact_number: DF.Data | None
 		custom_status: DF.Data | None
+		custom_status_expires_at: DF.Datetime | None
 		enabled: DF.Check
 		filter_joined_channels: DF.Check
 		filter_recent_activity: DF.Check
@@ -90,6 +92,35 @@ class RavenUser(Document):
 			frappe.throw(_("User is mandatory"))
 
 		self.validate_channel_group_names()
+		self.validate_status_expiry()
+
+	def validate_status_expiry(self):
+		now = now_datetime()
+		for value_field, expiry_field, untimed in (
+			("availability_status", "availability_expires_at", ("", "Available")),
+			("custom_status", "custom_status_expires_at", ("",)),
+		):
+			# A status set by hand without a new end time never inherits the old one.
+			if self.has_value_changed(value_field) and not self.has_value_changed(expiry_field):
+				self.set(expiry_field, None)
+			if (self.get(value_field) or "") in untimed:
+				self.set(expiry_field, None)
+			expiry = self.get(expiry_field)
+			if not expiry:
+				continue
+			try:
+				expiry = get_datetime(expiry)
+			except (ValueError, TypeError, OverflowError):
+				expiry = None
+			# Datetime fields hold naive server time; an offset can't be compared to now.
+			if not expiry or expiry.tzinfo:
+				frappe.throw(
+					_("{0} is not a valid date and time.").format(_(self.meta.get_label(expiry_field)))
+				)
+			# Past its end time: cleared on any save, so resending the old end time can't revive it.
+			if expiry <= now:
+				self.set(value_field, "")
+				self.set(expiry_field, None)
 
 	def validate_channel_group_names(self):
 		"""

@@ -193,6 +193,7 @@ scheduler_events = {
 			"raven.scheduler.close_expired_polls.close_expired_polls",
 			"raven.scheduler.send_reminders.send_due_reminders",
 			"raven.scheduler.send_scheduled_messages.send_due_messages",
+			"raven.scheduler.clear_expired_statuses.clear_expired_statuses",
 		],
 	},
 }

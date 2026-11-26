@@ -39,6 +39,7 @@
   "company_workspace_mapping",
   "attendance_and_leaves_section",
   "show_if_a_user_is_on_leave",
+  "show_if_a_user_is_working_from_home",
   "raven_mobile_tab",
   "oauth_client",
   "push_notifications_tab",
@@ -106,6 +107,11 @@
    "fieldname": "show_if_a_user_is_on_leave",
    "fieldtype": "Check",
    "label": "Show if a user is on leave"
+  },
+  {
+   "fieldname": "show_if_a_user_is_working_from_home",
+   "fieldtype": "Check",
+   "label": "Show if a user is working from home"
   },
   {
    "fieldname": "ai_section",
@@ -343,7 +349,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-10-28 12:00:00.000000",
+ "modified": "2026-11-26 17:40:38.297319",
  "modified_by": "Administrator",
  "module": "Raven",
  "name": "Raven Settings",

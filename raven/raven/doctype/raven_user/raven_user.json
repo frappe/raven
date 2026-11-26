@@ -26,7 +26,9 @@
   "grouped_channels",
   "user_status_section",
   "availability_status",
+  "availability_expires_at",
   "custom_status",
+  "custom_status_expires_at",
   "chat_style_section",
   "chat_style",
   "filter_recent_activity",
@@ -129,9 +131,19 @@
    "options": "\nAvailable\nAway\nDo not disturb\nInvisible"
   },
   {
+   "fieldname": "availability_expires_at",
+   "fieldtype": "Datetime",
+   "label": "Availability Expires At"
+  },
+  {
    "fieldname": "custom_status",
    "fieldtype": "Data",
    "label": "Custom Status"
+  },
+  {
+   "fieldname": "custom_status_expires_at",
+   "fieldtype": "Datetime",
+   "label": "Custom Status Expires At"
   },
   {
    "fieldname": "user_status_section",
@@ -239,7 +251,7 @@
  "grid_page_length": 50,
  "image_field": "user_image",
  "links": [],
- "modified": "2026-10-22 12:00:00.000000",
+ "modified": "2026-11-26 17:37:31.861916",
  "modified_by": "Administrator",
  "module": "Raven",
  "name": "Raven User",

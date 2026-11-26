@@ -40,8 +40,12 @@ export interface RavenUser {
 	grouped_channels?: RavenGroupedChannels[]
 	/**	Availability Status : Select	*/
 	availability_status?: "" | "Available" | "Away" | "Do not disturb" | "Invisible"
+	/**	Availability Expires At : Datetime	*/
+	availability_expires_at?: string
 	/**	Custom Status : Data	*/
 	custom_status?: string
+	/**	Custom Status Expires At : Datetime	*/
+	custom_status_expires_at?: string
 	/**	Chat Style : Select	*/
 	chat_style?: "Simple" | "Left-Right"
 	/**	Contact Number : Data	*/

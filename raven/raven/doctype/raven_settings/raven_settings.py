@@ -48,6 +48,7 @@ class RavenSettings(Document):
 		push_notification_service: DF.Literal["Frappe Cloud", "Raven"]
 		setup_completed: DF.Check
 		show_if_a_user_is_on_leave: DF.Check
+		show_if_a_user_is_working_from_home: DF.Check
 		tenor_api_key: DF.Data | None
 		use_website_favicon: DF.Check
 		vapid_public_key: DF.Data | None

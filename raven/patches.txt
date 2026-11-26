@@ -28,3 +28,4 @@ raven.patches.v3_0.mark_existing_users_onboarded
 raven.patches.v3_0.mark_existing_sites_set_up
 raven.patches.v3_0.create_role_profiles
 raven.patches.v3_0.add_unique_constraint_on_workspace_members
+raven.patches.v3_0.set_work_from_home_indicator
