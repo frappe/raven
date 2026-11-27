@@ -111,6 +111,8 @@ class TestSetupPush(IntegrationTestCase):
 
 	def test_refused_keys_are_fetched_again_at_most_once_an_hour(self):
 		setup_push()
+		self.assertEqual(frappe.db.get_default(REGISTERED_HOST_KEY), SITE)
+		self.sync_tokens.reset_mock()
 		with patch("raven.frappe_cloud_push.frappe.enqueue") as enqueue:
 			retry_after_refusal()
 			enqueue.assert_not_called()
@@ -124,7 +126,7 @@ class TestSetupPush(IntegrationTestCase):
 		setup_push()
 		settings = frappe.get_single("Raven Settings")
 		self.assertEqual(settings.get_password("push_notification_api_secret"), "rotated-secret")
-		self.sync_tokens.assert_called_once()
+		self.sync_tokens.assert_not_called()
 
 	def test_a_failed_registration_is_retried_after_an_hour(self):
 		self.register.side_effect = requests.ConnectionError("Unavailable")
