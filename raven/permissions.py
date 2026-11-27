@@ -1,4 +1,5 @@
 import frappe
+from frappe import _
 
 from raven.utils import (
 	get_channel_member,
@@ -309,6 +310,8 @@ def message_has_permission(doc, user=None, ptype=None):
 	if ptype in ["create", "write", "delete"]:
 		channel_member = get_channel_member(doc.channel_id, user)
 		if not channel_member:
+			if ptype == "create":
+				throw_if_thread_can_be_joined(doc.channel_id, user)
 			return False
 
 		if doc.owner == user:
@@ -317,6 +320,19 @@ def message_has_permission(doc, user=None, ptype=None):
 		return bool(ptype == "delete" and doc.is_bot_message and channel_member.get("is_admin"))
 
 	return False
+
+
+def throw_if_thread_can_be_joined(channel_id: str | None, user: str | None) -> None:
+	"""A user who can join the thread gets the next step to take, not a bare PermissionError."""
+	if not channel_id or not frappe.get_cached_value("Raven Channel", channel_id, "is_thread"):
+		return
+	user = user or frappe.session.user
+	member = frappe.get_doc({"doctype": "Raven Channel Member", "channel_id": channel_id, "user_id": user})
+	if frappe.has_permission("Raven Channel Member", "create", doc=member, user=user):
+		frappe.throw(
+			_("Join this thread before you send a message in it."),
+			title=_("Not a Thread Member"),
+		)
 
 
 def raven_poll_vote_has_permission(doc, user=None, ptype=None):

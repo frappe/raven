@@ -2,6 +2,7 @@ import frappe
 from frappe.tests import IntegrationTestCase
 
 from raven.api.raven_channel import create_channel, create_direct_message_channel
+from raven.api.raven_message import send_message
 from raven.api.threads import create_thread
 from raven.api.workspaces import join_workspace
 from raven.utils import get_channel_member, get_workspace_member
@@ -607,6 +608,34 @@ class TestPermissions(IntegrationTestCase):
 		frappe.set_user("test1@example.com")
 		with self.assertRaises(frappe.PermissionError):
 			create_thread(message_id=test_message.name)
+
+	def test_thread_reply_before_join(self):
+		"""A user who can join a thread gets a ValidationError, so they know to join first."""
+		frappe.set_user("test@example.com")
+		self.create_test_workspace().insert()
+		test_channel = self.create_test_channel(channel_type="Public")
+		test_channel.insert()
+		frappe.get_doc(
+			{"doctype": "Raven Channel Member", "channel_id": test_channel.name, "user_id": "test1@example.com"}
+		).insert(ignore_permissions=True)
+		test_message = self.create_test_message(channel_id=test_channel.name)
+		test_message.insert()
+		thread_id = create_thread(message_id=test_message.name)["thread_id"]
+
+		frappe.set_user("test1@example.com")
+		with self.assertRaises(frappe.ValidationError) as context:
+			send_message(channel_id=thread_id, text="<p>Hi</p>")
+		self.assertNotIsInstance(context.exception, frappe.PermissionError)
+
+		frappe.get_doc(
+			{"doctype": "Raven Channel Member", "channel_id": thread_id, "user_id": "test1@example.com"}
+		).insert()
+		self.assertEqual(send_message(channel_id=thread_id, text="<p>Hi</p>").channel_id, thread_id)
+
+		# test3 is not in the parent channel, so they cannot join the thread
+		frappe.set_user("test3@example.com")
+		with self.assertRaises(frappe.PermissionError):
+			send_message(channel_id=thread_id, text="<p>Hi</p>")
 
 	def test_channel_create_needs_workspace_membership(self):
 		"""
