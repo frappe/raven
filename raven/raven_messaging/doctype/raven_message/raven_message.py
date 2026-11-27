@@ -945,9 +945,11 @@ class RavenMessage(Document):
 				doctype="Raven Channel",
 				# Adding this to automatically add the room for the event via Frappe
 				docname=self.channel_id,
+				after_commit=bool(self.flags.publish_after_commit),
 			)
 		else:
-			after_commit = False
+			# Set by a sender whose request may still roll back after this insert
+			after_commit = bool(self.flags.publish_after_commit)
 			if self.message_type == "File" or self.message_type == "Image":
 				# If the message is a file or an image, then we need to wait for the file to be uploaded
 				after_commit = True

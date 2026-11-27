@@ -329,7 +329,7 @@ def make_thread(thread_message, creator: str, ignore_permissions: bool = False):
 
 		if channel_doc.is_direct_message == 1 and not channel_doc.is_self_message:
 			# Get the peer of the DM channel (from dm_user fields — no member lookup)
-			peer_user_id = get_peer_user_id_from_dm_users(channel_doc)
+			peer_user_id = get_peer_user_id_from_dm_users(channel_doc, relative_to=creator)
 
 			if peer_user_id:
 				peer_member = frappe.get_doc(
