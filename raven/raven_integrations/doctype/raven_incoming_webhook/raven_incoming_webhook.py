@@ -37,7 +37,6 @@ class RavenIncomingWebhook(Document):
 		self.name = f"{secrets.token_urlsafe(3 * 16)[:64]}"
 
 
-# nosemgrep: guest-whitelisted-method (the secret webhook id in the URL authenticates the caller)
 @frappe.whitelist(allow_guest=True, methods=["POST", "GET"])
 def handle_incoming_webhook(*args, **kwargs):
 	if frappe.request.method == "GET":
