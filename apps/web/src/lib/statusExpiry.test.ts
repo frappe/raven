@@ -2,7 +2,10 @@ import dayjs from "dayjs"
 import { beforeAll, describe, expect, it, vi } from "vitest"
 import type { UserData } from "@db"
 import {
+    durationEndsAt,
+    formatStatusEnd,
     formatStatusUntil,
+    getAvailabilityDurations,
     getDurationEnd,
     getEffectiveStatus,
     getStatusDurations,
@@ -34,6 +37,34 @@ describe("getStatusDurations", () => {
             "custom",
             "never",
         ])
+    })
+})
+
+describe("getAvailabilityDurations", () => {
+    it("offers the same durations with availability wording", () => {
+        expect(getAvailabilityDurations().map((duration) => duration.id)).toEqual(
+            getStatusDurations().map((duration) => duration.id),
+        )
+        expect(getAvailabilityDurations().map((duration) => duration.label)).toEqual([
+            "For 30 minutes",
+            "For 1 hour",
+            "For 4 hours",
+            "Until tonight",
+            "Until end of week",
+            "Choose date and time…",
+            "Until I change it",
+        ])
+    })
+})
+
+describe("durationEndsAt", () => {
+    it("is null for a status that doesn't clear", () => {
+        expect(durationEndsAt("never", NOW)).toBeNull()
+    })
+
+    it("is the duration's end in the server's datetime format", () => {
+        expect(durationEndsAt("30m", NOW)).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
+        expect(dayjs.tz(durationEndsAt("30m", NOW)!, "Asia/Kolkata").valueOf()).toBe(NOW.add(30, "minute").valueOf())
     })
 })
 
@@ -78,6 +109,14 @@ describe("formatStatusUntil", () => {
     it("shows the date for an end a week or more away", () => {
         expect(formatStatusUntil(dayjs("2026-12-02 09:00:00"), "12-hour", NOW)).toBe("Until 2 Dec")
         expect(formatStatusUntil(dayjs("2026-12-05 09:00:00"), "12-hour", NOW)).toBe("Until 5 Dec")
+    })
+})
+
+describe("formatStatusEnd", () => {
+    it("is the bare end, for use inside a sentence", () => {
+        expect(formatStatusEnd(dayjs("2026-11-25 15:30:00"), "12-hour", NOW)).toBe("3:30 PM")
+        expect(formatStatusEnd(dayjs("2026-11-28 09:00:00"), "12-hour", NOW)).toBe("Sat")
+        expect(formatStatusEnd(dayjs("2026-12-05 09:00:00"), "12-hour", NOW)).toBe("5 Dec")
     })
 })
 

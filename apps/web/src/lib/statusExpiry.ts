@@ -1,6 +1,6 @@
 import dayjs, { type Dayjs } from "dayjs"
 import type { UserData } from "@db"
-import { formatTimeLabel } from "@lib/timeUtils"
+import { formatTimeLabel, toServerDatetime } from "@lib/timeUtils"
 import _ from "@lib/translate"
 import type { TimeFormat } from "@utils/preferences"
 
@@ -20,8 +20,21 @@ export const getStatusDurations = (): { id: StatusDurationId; label: string }[] 
     { id: "never", label: _("Don't clear") },
 ]
 
+/** The same choices worded for availability ("For 1 hour", "Until tonight"), in menu order. */
+export const getAvailabilityDurations = (): { id: StatusDurationId; label: string }[] => [
+    { id: "30m", label: _("For 30 minutes") },
+    { id: "1h", label: _("For 1 hour") },
+    { id: "4h", label: _("For 4 hours") },
+    { id: "today", label: _("Until tonight") },
+    { id: "week", label: _("Until end of week") },
+    { id: "custom", label: _("Choose date and time…") },
+    { id: "never", label: _("Until I change it") },
+]
+
+type FixedDurationId = Exclude<StatusDurationId, "custom" | "never">
+
 /** Local end time for a fixed duration. "This week" ends Sunday night, including on Sunday. */
-export const getDurationEnd = (id: Exclude<StatusDurationId, "custom" | "never">, now: Dayjs = dayjs()): Dayjs => {
+export const getDurationEnd = (id: FixedDurationId, now: Dayjs = dayjs()): Dayjs => {
     switch (id) {
         case "30m":
             return now.add(30, "minute")
@@ -36,13 +49,21 @@ export const getDurationEnd = (id: Exclude<StatusDurationId, "custom" | "never">
     }
 }
 
-/** "Until 3:30 PM" later today, "Until Fri" within 6 days, "Until 3 Dec" beyond. */
-export const formatStatusUntil = (end: Dayjs, timeFormat: TimeFormat, now: Dayjs = dayjs()): string => {
+/** The end to send for a duration: server datetime, or null for one that doesn't clear. */
+export const durationEndsAt = (id: Exclude<StatusDurationId, "custom">, now: Dayjs = dayjs()): string | null =>
+    id === "never" ? null : toServerDatetime(getDurationEnd(id, now))
+
+/** "3:30 PM" later today, "Fri" within 6 days, "3 Dec" beyond. */
+export const formatStatusEnd = (end: Dayjs, timeFormat: TimeFormat, now: Dayjs = dayjs()): string => {
     const days = end.startOf("day").diff(now.startOf("day"), "day")
-    if (days === 0) return _("Until {0}", [formatTimeLabel(end.format("HH:mm"), timeFormat)])
-    if (days <= 6) return _("Until {0}", [end.format("ddd")])
-    return _("Until {0}", [end.format("D MMM")])
+    if (days === 0) return formatTimeLabel(end.format("HH:mm"), timeFormat)
+    if (days <= 6) return end.format("ddd")
+    return end.format("D MMM")
 }
+
+/** "Until 3:30 PM", "Until Fri", "Until 3 Dec". */
+export const formatStatusUntil = (end: Dayjs, timeFormat: TimeFormat, now: Dayjs = dayjs()): string =>
+    _("Until {0}", [formatStatusEnd(end, timeFormat, now)])
 
 /** At or past its end time, matching the server sweep. No end time never expires. */
 export const isExpired = (expiresAt: string | null | undefined, nowServer: string) =>

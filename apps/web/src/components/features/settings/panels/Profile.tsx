@@ -1,4 +1,5 @@
-import { useForm } from "react-hook-form"
+import dayjs from "dayjs"
+import { useForm, useWatch } from "react-hook-form"
 import { SAVE_TOAST_ID } from "@lib/toast"
 import useSaveHotkey from "@hooks/useSaveHotkey"
 import { FrappeError, useFrappeUpdateDoc } from "frappe-react-sdk"
@@ -18,23 +19,19 @@ import {
     SettingsPanelTitle,
 } from "@components/ui/settings-dialog"
 import { errorResponseToast } from "@components/ui/error-banner"
+import { useStatusUntilLabel } from "@components/common/StatusUntil"
+import { ClearAfterField } from "@components/features/profile/ClearAfterField"
+import { getStatusFormValues, getStatusPayload, type StatusFormValues } from "@components/features/profile/statusForm"
+import { toServerDatetime } from "@lib/timeUtils"
+import { availabilityOptions } from "@hooks/useSetAvailability"
 import { cn } from "@lib/utils"
 import _ from "@lib/translate"
 
 /** Lets the Save button live in the panel HEADER, outside the <form>. */
 const FORM_ID = "settings-profile-form"
 
-const statusOptions = () => [
-    { value: "Available", label: _("Available") },
-    { value: "Away", label: _("Away") },
-    { value: "Do not disturb", label: _("Do not disturb") },
-    { value: "Invisible", label: _("Invisible") },
-] as const
-
-type ProfileFormValues = {
+type ProfileFormValues = StatusFormValues & {
     full_name: string
-    availability_status: string
-    custom_status: string
     contact_number: string
 }
 
@@ -60,23 +57,38 @@ const ProfileForm = ({ myProfile }: { myProfile: RavenUser }) => {
 
     const form = useForm<ProfileFormValues>({
         defaultValues: {
+            ...getStatusFormValues(myProfile, toServerDatetime(dayjs())),
             full_name: myProfile.full_name ?? "",
-            availability_status: myProfile.availability_status ?? "",
-            custom_status: myProfile.custom_status ?? "",
             contact_number: myProfile.contact_number ?? "",
         },
     })
 
+    const [availability, availabilityEndsAt] = useWatch({ control: form.control, name: ["availability_status", "availability_expires_at"] })
+    const seededAvailability = form.formState.defaultValues?.availability_status
+    const availabilityUntil = useStatusUntilLabel(availability === seededAvailability ? availabilityEndsAt : null)
+
     const onSubmit = async (values: ProfileFormValues) => {
+        const status = getStatusPayload(values, seededAvailability)
         updateDoc("Raven User", myProfile.name, {
             full_name: values.full_name,
-            availability_status: values.availability_status,
-            custom_status: values.custom_status,
             contact_number: values.contact_number,
+            ...status,
         })
             .then(() => {
                 toast.success(_("Profile updated"), { id: SAVE_TOAST_ID })
                 mutate()
+                // The saved ends become the form's own: a second save resends them as they
+                // are, instead of restarting a duration from then.
+                const savedEnds = {
+                    availability_expires_at: status.availability_expires_at,
+                    clear_after: status.custom_status_expires_at ? "at" : "never",
+                    clear_after_at: status.custom_status_expires_at,
+                } as const
+                form.setValue("availability_expires_at", savedEnds.availability_expires_at)
+                form.setValue("clear_after", savedEnds.clear_after)
+                form.setValue("clear_after_at", savedEnds.clear_after_at)
+                // The submitted values, not live ones: edits typed during the request stay unsaved.
+                const saved = { ...values, ...savedEnds }
                 // The saved values become the new PRISTINE state (Save disables
                 // again) — via keepValues, which only swaps the defaults under
                 // the untouched inputs. A full reset(values) rewires the mounted
@@ -84,7 +96,7 @@ const ProfileForm = ({ myProfile }: { myProfile: RavenUser }) => {
                 // keystrokes fired input events but the controllers snapped the
                 // value back every time. keepValues never touches the fields, so
                 // there is nothing to rewire.
-                form.reset(values, { keepValues: true })
+                form.reset(saved, { keepValues: true })
             }).catch((e) => {
                 errorResponseToast(_("Could not update profile"), e as FrappeError, { id: SAVE_TOAST_ID })
             })
@@ -136,8 +148,8 @@ const ProfileForm = ({ myProfile }: { myProfile: RavenUser }) => {
                                 }}
                             />
 
-                            <SelectFormField name="availability_status" label={_("Availability")}>
-                                {statusOptions().map((option) => (
+                            <SelectFormField name="availability_status" label={_("Availability")} formDescription={availabilityUntil}>
+                                {availabilityOptions().map((option) => (
                                     <SelectItem key={option.value} value={option.value}>
                                         <span className="flex items-center gap-2">
                                             <span className={cn("size-2 rounded-full", getStatusIndicatorColor(option.value))} />
@@ -156,6 +168,7 @@ const ProfileForm = ({ myProfile }: { myProfile: RavenUser }) => {
                                     maxLength: { value: 140, message: _("Status cannot be more than 140 characters.") },
                                 }}
                             />
+                            <ClearAfterField />
 
                             <DataField
                                 name="contact_number"

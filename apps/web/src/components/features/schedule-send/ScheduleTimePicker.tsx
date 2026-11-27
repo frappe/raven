@@ -8,6 +8,7 @@ import { useIsMobile } from "@hooks/use-mobile"
 import { useAtomValue } from "jotai"
 import { timeFormatAtom } from "@utils/preferences"
 import _ from "@lib/translate"
+import { cn } from "@lib/utils"
 import { getAvailableTimeOptions, toServerDatetime, formatDateTimeLabel, type SchedulePick } from "@lib/timeUtils"
 import { DatePickerPopover } from "@components/features/reminders/DatePickerPopover"
 
@@ -19,13 +20,18 @@ type ScheduleTimePickerProps = {
     /** Live pick updates (null while incomplete/past) — the dialog's preview pane follows these. */
     onPickChange?: (picked: Dayjs | null) => void
     busy?: boolean
+    /** Field label and confirm text; default to schedule-send's. */
+    label?: string
+    confirmLabel?: string
+    /** Width of the date + time pair; half the dialog by default, beside the preview pane. */
+    fieldsClassName?: string
 }
 
 /**
  * Date + time row for picking a future delivery time, seeded to today + the
  * next open slot. Pure content — the caller owns the overlay and the POST.
  */
-export const ScheduleTimePicker = ({ onConfirm, onCancel, onPickChange, busy }: ScheduleTimePickerProps) => {
+export const ScheduleTimePicker = ({ onConfirm, onCancel, onPickChange, busy, label, confirmLabel, fieldsClassName = "md:w-1/2" }: ScheduleTimePickerProps) => {
     const isMobile = useIsMobile()
     const timeFormat = useAtomValue(timeFormatAtom)
     const [date, setDate] = useState<Date>(() => new Date())
@@ -51,10 +57,9 @@ export const ScheduleTimePicker = ({ onConfirm, onCancel, onPickChange, busy }: 
 
     return (
         <div className="flex w-full flex-col gap-2">
-            <Label>{_("Delivery time")}</Label>
-            {/* Grid, not flex — exact equal halves for the two fields. The pair
-                spans half the dialog; mobile keeps full width for touch. */}
-            <div className="grid grid-cols-2 items-center gap-3 md:w-1/2">
+            <Label>{label ?? _("Delivery time")}</Label>
+            {/* Grid, not flex — exact equal halves for the two fields. */}
+            <div className={cn("grid grid-cols-2 items-center gap-3", fieldsClassName)}>
                 <DatePickerPopover value={date} onChange={setDate} size={isMobile ? "lg" : "md"} />
                 <Select value={effectiveTime ?? undefined} onValueChange={setTime} disabled={availableOptions.length === 0}>
                     <SelectTrigger aria-label={_("Time")} inputSize={isMobile ? "lg" : "md"} className="w-full min-w-0">
@@ -91,7 +96,7 @@ export const ScheduleTimePicker = ({ onConfirm, onCancel, onPickChange, busy }: 
                     disabled={!pick}
                     onClick={() => pick && onConfirm({ serverTime: toServerDatetime(pick), label: formatDateTimeLabel(pick, timeFormat) })}
                 >
-                    {_("Schedule")}
+                    {confirmLabel ?? _("Schedule")}
                 </Button>
             </div>
         </div>

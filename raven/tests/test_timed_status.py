@@ -74,16 +74,22 @@ class TestTimedStatus(IntegrationTestCase):
 		self.assertEqual(doc.custom_status, "")
 		self.assertIsNone(doc.custom_status_expires_at)
 
-	def test_hand_set_status_drops_old_timer(self):
-		self._save(availability_status="Do not disturb", availability_expires_at=_future())
-		doc = self._save(availability_status="Away")
-		self.assertEqual(doc.availability_status, "Away")
-		self.assertIsNone(doc.availability_expires_at)
-
-		self._save(custom_status="Out sick", custom_status_expires_at=_future())
-		doc = self._save(custom_status="Back soon")
-		self.assertEqual(doc.custom_status, "Back soon")
-		self.assertIsNone(doc.custom_status_expires_at)
+	def test_new_status_with_the_same_end_keeps_it(self):
+		end = _future()
+		self._save(
+			availability_status="Do not disturb",
+			availability_expires_at=end,
+			custom_status="Lunch",
+			custom_status_expires_at=end,
+		)
+		doc = self._save(
+			availability_status="Away",
+			availability_expires_at=end,
+			custom_status="In a meeting",
+			custom_status_expires_at=end,
+		)
+		self.assertEqual(str(doc.availability_expires_at), str(end))
+		self.assertEqual(str(doc.custom_status_expires_at), str(end))
 
 	def test_unchanged_status_resent_after_expiry_is_cleared(self):
 		# set_value skips validate: an expired row the sweep hasn't reached yet.

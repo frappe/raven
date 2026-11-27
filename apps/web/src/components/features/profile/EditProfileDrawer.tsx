@@ -1,13 +1,14 @@
 import { useEffect, useRef } from "react"
+import dayjs from "dayjs"
 import { SAVE_TOAST_ID } from "@lib/toast"
-import { useForm } from "react-hook-form"
+import { useForm, useWatch } from "react-hook-form"
 import { useFrappePostCall } from "frappe-react-sdk"
 import { toast } from "sonner"
 import useCurrentRavenUser from "@raven/lib/hooks/useCurrentRavenUser"
 import { getStatusIndicatorColor } from "@components/features/message/UserAvatar"
 import { Button } from "@components/ui/button"
 import { Input } from "@components/ui/input"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@components/ui/form"
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@components/ui/form"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@components/ui/select"
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from "@components/ui/drawer"
 import { FrappeError } from "frappe-react-sdk"
@@ -15,11 +16,13 @@ import { cn } from "@lib/utils"
 import _ from "@lib/translate"
 import { errorResponseToast } from "@components/ui/error-banner"
 import { availabilityOptions } from "@hooks/useSetAvailability"
+import { useStatusUntilLabel } from "@components/common/StatusUntil"
+import { toServerDatetime } from "@lib/timeUtils"
+import { ClearAfterField } from "./ClearAfterField"
+import { getStatusFormValues, getStatusPayload, type StatusFormValues } from "./statusForm"
 
-type ProfileFormValues = {
+type ProfileFormValues = StatusFormValues & {
     full_name: string
-    availability_status: string
-    custom_status: string
 }
 
 /**
@@ -35,7 +38,7 @@ export function EditProfileDrawer({ open, onOpenChange }: { open: boolean; onOpe
     const { call } = useFrappePostCall("frappe.client.set_value")
 
     const form = useForm<ProfileFormValues>({
-        defaultValues: { full_name: "", availability_status: "", custom_status: "" },
+        defaultValues: { full_name: "", availability_status: "", availability_expires_at: null, custom_status: "", clear_after: "never", clear_after_at: null },
     })
 
     // Latest profile in a ref so the seed effect below can read it without depending on
@@ -48,17 +51,21 @@ export function EditProfileDrawer({ open, onOpenChange }: { open: boolean; onOpe
     useEffect(() => {
         const profile = profileRef.current
         if (!open || !profile) return
-        form.reset({
-            full_name: profile.full_name ?? "",
-            availability_status: profile.availability_status ?? "",
-            custom_status: profile.custom_status ?? "",
-        })
+        form.reset({ ...getStatusFormValues(profile, toServerDatetime(dayjs())), full_name: profile.full_name ?? "" })
     }, [open, form])
+
+    const [availability, availabilityEndsAt] = useWatch({ control: form.control, name: ["availability_status", "availability_expires_at"] })
+    const seededAvailability = form.formState.defaultValues?.availability_status
+    const availabilityUntil = useStatusUntilLabel(availability === seededAvailability ? availabilityEndsAt : null)
 
     const onSubmit = async (values: ProfileFormValues) => {
         if (!myProfile?.name) return
         try {
-            await call({ doctype: "Raven User", name: myProfile.name, fieldname: values })
+            await call({
+                doctype: "Raven User",
+                name: myProfile.name,
+                fieldname: { full_name: values.full_name, ...getStatusPayload(values, seededAvailability) },
+            })
             await mutate()
             toast.success(_("Profile updated"), { id: SAVE_TOAST_ID })
             onOpenChange(false)
@@ -115,6 +122,7 @@ export function EditProfileDrawer({ open, onOpenChange }: { open: boolean; onOpe
                                             ))}
                                         </SelectContent>
                                     </Select>
+                                    {availabilityUntil && <FormDescription>{availabilityUntil}</FormDescription>}
                                     <FormMessage />
                                 </FormItem>
                             )}
@@ -134,6 +142,8 @@ export function EditProfileDrawer({ open, onOpenChange }: { open: boolean; onOpe
                                 </FormItem>
                             )}
                         />
+
+                        <ClearAfterField triggerClassName="h-9 text-xl md:text-base" />
 
                         <div className="flex gap-2 pt-4">
                             <Button type="button" variant="outline" size="lg" className="flex-1" onClick={() => onOpenChange(false)}>{_("Cancel")}</Button>

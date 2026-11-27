@@ -100,9 +100,6 @@ class RavenUser(Document):
 			("availability_status", "availability_expires_at", ("", "Available")),
 			("custom_status", "custom_status_expires_at", ("",)),
 		):
-			# A status set by hand without a new end time never inherits the old one.
-			if self.has_value_changed(value_field) and not self.has_value_changed(expiry_field):
-				self.set(expiry_field, None)
 			if (self.get(value_field) or "") in untimed:
 				self.set(expiry_field, None)
 			expiry = self.get(expiry_field)

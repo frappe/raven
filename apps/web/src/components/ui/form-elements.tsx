@@ -1,6 +1,7 @@
 import { FieldValues, RegisterOptions, useFormContext } from "react-hook-form"
 import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, FormRequiredIndicator } from "@components/ui/form"
 import _ from "@lib/translate"
+import { cn } from "@lib/utils"
 import ClearFieldButton from "@components/common/ClearFieldButton"
 import { Input } from "./input"
 import { ComponentProps, useState } from "react"
@@ -64,10 +65,14 @@ interface SelectFieldProps extends FormElementProps {
     /** Cap/style the dropdown, e.g. "max-w-[360px]" for long option labels. */
     dropdownClassName?: string
     dropdownAlign?: "start" | "center" | "end"
+    /** Size the trigger to match its form, e.g. a sheet's larger fields. */
+    triggerClassName?: string
+    /** Runs on the person's own pick, after the field updates; `setValue` doesn't call it. */
+    onValueChange?: (value: string) => void
     children: React.ReactNode
 }
 
-export const SelectFormField = ({ name, rules, label, isRequired, formDescription, hideLabel, children, disabled, readOnly, clearable, placeholder, dropdownClassName, dropdownAlign }: SelectFieldProps) => {
+export const SelectFormField = ({ name, rules, label, isRequired, formDescription, hideLabel, children, disabled, readOnly, clearable, placeholder, dropdownClassName, dropdownAlign, triggerClassName, onValueChange }: SelectFieldProps) => {
 
     const { control } = useFormContext()
 
@@ -84,10 +89,15 @@ export const SelectFormField = ({ name, rules, label, isRequired, formDescriptio
                 {/* The inner FormControl (around SelectTrigger) carries the a11y wiring; no outer one.
                     min-w-0: FormItem is a grid — without it a long nowrap value widens the column. */}
                 <div className="relative min-w-0">
-                    <Select onValueChange={field.onChange} value={field.value} disabled={disabled || readOnly} aria-readonly={readOnly}>
+                    <Select
+                        onValueChange={(value) => {
+                            field.onChange(value)
+                            onValueChange?.(value)
+                        }}
+                        value={field.value} disabled={disabled || readOnly} aria-readonly={readOnly}>
                         <FormControl>
                             {/* svg:last-child = Radix's chevron; the clear × takes its slot. */}
-                            <SelectTrigger className={showClear ? "w-full pr-7 [&>svg:last-child]:hidden" : "w-full"}>
+                            <SelectTrigger className={cn(showClear ? "w-full pr-7 [&>svg:last-child]:hidden" : "w-full", triggerClassName)}>
                                 <SelectValue placeholder={placeholder} />
                             </SelectTrigger>
                         </FormControl>
