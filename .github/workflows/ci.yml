@@ -6,9 +6,11 @@ on:
       - main
     paths:
       - raven/**
+      - .github/workflows/ci.yml
   pull_request:
     paths:
       - raven/**
+      - .github/workflows/ci.yml
 
 jobs:
   tests:
@@ -16,43 +18,31 @@ jobs:
     name: Server
 
     services:
-      redis-cache:
-        image: redis:alpine
-        ports:
-          - 13000:6379
-      redis-queue:
-        image: redis:alpine
-        ports:
-          - 11000:6379
-      redis-socketio:
-        image: redis:alpine
-        ports:
-          - 12000:6379
       mariadb:
-        image: anandology/mariadb-utf8mb4:10.3
+        image: mariadb:11.8
         env:
-          MYSQL_ROOT_PASSWORD: root
+          MARIADB_ROOT_PASSWORD: root
         ports:
           - 3306:3306
-        options: --health-cmd="mysqladmin ping" --health-interval=5s --health-timeout=2s --health-retries=3
+        options: --health-cmd="mariadb-admin ping" --health-interval=5s --health-timeout=2s --health-retries=3
 
     steps:
       - name: Clone
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: "3.14"
 
       - name: Setup Node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v6
         with:
           node-version: 24
           check-latest: true
 
       - name: Cache pip
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/*requirements.txt', '**/pyproject.toml', '**/setup.py', '**/setup.cfg') }}
@@ -64,7 +54,7 @@ jobs:
         id: yarn-cache-dir-path
         run: 'echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT'
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         id: yarn-cache
         with:
           path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
@@ -72,29 +62,44 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-yarn-
 
-      - name: Setup
-        run: |
-          bash ${GITHUB_WORKSPACE}/.github/helper/install_dependencies.sh
-          pip install frappe-bench
-          bench init --skip-redis-config-generation --skip-assets --python "$(which python)" ~/frappe-bench
-          mysql --host 127.0.0.1 --port 3306 -u root -proot -e "SET GLOBAL character_set_server = 'utf8mb4'"
-          mysql --host 127.0.0.1 --port 3306 -u root -proot -e "SET GLOBAL collation_server = 'utf8mb4_unicode_ci'"
-
       - name: Install
-        working-directory: /home/runner/frappe-bench
         run: |
-          bench get-app https://github.com/frappe/Raven.git $GITHUB_WORKSPACE
-          bench setup requirements
-          bench new-site --db-root-password root --admin-password admin test_site
-          bench --site test_site install-app raven
-          bench build
-        env:
-          CI: "Yes"
+          bash "$GITHUB_WORKSPACE/.github/helper/install_dependencies.sh"
+          curl -fsSL https://raw.githubusercontent.com/frappe/pilot/develop/install.sh | sh -s -- --ci
+          export PATH="$HOME/pilot/bin:$HOME/.local/bin:$PATH"
+          printf '%s\n' "$HOME/pilot/bin" "$HOME/.local/bin" >> "$GITHUB_PATH"
+          pilot new frappe-bench --frappe-branch develop
+          pilot -b frappe-bench set-bench-config python 3.14
+          pilot -b frappe-bench set-bench-config watch_apps_js false
+          pilot -b frappe-bench set-bench-config admin_allow_site_to_pilot_communication false
+          pilot -b frappe-bench set-bench-config mariadb_existing true
+          pilot -b frappe-bench set-bench-config mariadb_host 127.0.0.1
+          pilot -b frappe-bench set-bench-config mariadb_port 3306
+          pilot -b frappe-bench set-bench-config mariadb_admin_user root
+          pilot -b frappe-bench set-bench-config mariadb_password root
+          pilot -b frappe-bench init
+          cd "$HOME/pilot/benches/frappe-bench"
+          printf '[client]\nskip-ssl\n' > "$HOME/.my.cnf"
+          mariadb -h 127.0.0.1 -u root -proot -e "SET GLOBAL character_set_server = 'utf8mb4', GLOBAL collation_server = 'utf8mb4_unicode_ci'"
+          pilot get-app "$GITHUB_WORKSPACE" --branch "$GITHUB_SHA" --skip-assets
+          pilot start > "$RUNNER_TEMP/pilot.log" 2>&1 &
+          curl --fail --silent --show-error --retry 30 --retry-connrefused --retry-delay 1 \
+            http://127.0.0.1:7000/api/v1/health
+          pilot new-site test_site --admin-password admin --apps raven --skip-assets
+          pilot build --apps frappe
+          pilot build --apps raven --force
 
       - name: Run Tests
-        working-directory: /home/runner/frappe-bench
         run: |
-          bench --site test_site set-config allow_tests true
-          bench --site test_site run-tests --app raven
+          pilot -b frappe-bench frappe --site test_site set-config -p allow_tests True
+          pilot -b frappe-bench frappe --site test_site run-tests --app raven
         env:
           TYPE: server
+
+      - name: Show Pilot output
+        if: ${{ failure() }}
+        run: cat "$RUNNER_TEMP/pilot.log" || true
+
+      - name: Stop Pilot
+        if: ${{ always() }}
+        run: ~/pilot/bin/pilot -b frappe-bench stop || true
