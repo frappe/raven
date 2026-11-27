@@ -98,7 +98,7 @@ jobs:
 
       - name: Show Pilot output
         if: ${{ failure() }}
-        run: cat "$RUNNER_TEMP/pilot.log"
+        run: cat "$RUNNER_TEMP/pilot.log" || true
 
       - name: Stop Pilot
         if: ${{ always() }}
