@@ -3,7 +3,12 @@ import datetime
 import frappe
 from frappe.tests import IntegrationTestCase
 
-from raven.api.chat_stream import get_messages, get_newer_messages, get_older_messages
+from raven.api.chat_stream import (
+	get_messages,
+	get_messages_for_agent,
+	get_newer_messages,
+	get_older_messages,
+)
 
 # Channel autoname slugs the workspace: "Public Workspace" + "Test Channel".
 CHANNEL_ID = "public-workspace-test-channel"
@@ -302,3 +307,17 @@ class TestChatStream(IntegrationTestCase):
 
 		self.assertEqual(response["messages"], [])
 		self.assertEqual(response["has_new_messages"], False)
+
+	def test_get_messages_for_agent(self):
+		"""The agent API pages like get_messages, with fewer fields and a cap of 50."""
+		response = get_messages_for_agent(CHANNEL_ID, limit=500)
+		self.assertEqual(len(response["messages"]), 50)
+		self.assertTrue(response["has_old_messages"])
+
+		latest = response["messages"][0]
+		self.assertEqual(latest["content"], "Test Message 99")
+		self.assertNotIn("text", latest)
+		self.assertNotIn("is_thread", latest)  # empty fields are left out
+
+		older = get_messages_for_agent(CHANNEL_ID, before_message=response["messages"][-1]["name"])
+		self.assertEqual(older["messages"][0]["content"], "Test Message 49")

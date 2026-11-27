@@ -3,6 +3,7 @@ import datetime
 import frappe
 from frappe import _
 from frappe.query_builder import Order
+from frappe.utils import cint
 
 from raven.utils import track_channel_visit
 
@@ -293,6 +294,54 @@ def get_older_messages(channel_id: str, from_message: str, limit: int = 20):
 	from_timestamp = frappe.get_cached_value("Raven Message", from_message, "creation")
 
 	return fetch_older_messages(channel_id, from_message, from_timestamp, limit)
+
+
+# What an AI agent needs to follow a conversation. The rest is for rendering.
+AGENT_MESSAGE_FIELDS = (
+	"name",
+	"owner",
+	"creation",
+	"message_type",
+	"content",
+	"is_thread",
+	"is_reply",
+	"linked_message",
+	"poll_id",
+	"file",
+	"link_doctype",
+	"link_document",
+	"is_bot_message",
+	"bot",
+	"is_edited",
+	"is_forwarded",
+)
+
+AGENT_MAX_MESSAGES = 50
+
+
+@frappe.whitelist(methods=["GET"])
+@frappe.read_only()
+def get_messages_for_agent(
+	channel_id: str, limit: int = AGENT_MAX_MESSAGES, before_message: str | None = None
+):
+	"""Messages of a channel, DM or thread for AI agents, newest first. Does not mark them as read.
+
+	Gives only the fields an agent needs and leaves out empty ones. `content` is plain text.
+	To read older messages, pass the `name` of the oldest message as `before_message`.
+	"""
+	limit = min(max(cint(limit), 1), AGENT_MAX_MESSAGES)
+	if before_message:
+		result = get_older_messages(channel_id, before_message, limit)
+	else:
+		result = get_messages(channel_id, limit, update_last_visit=False)
+	return {
+		"messages": [_agent_message(message) for message in result["messages"]],
+		"has_old_messages": result["has_old_messages"],
+	}
+
+
+def _agent_message(message: dict) -> dict:
+	return {field: message[field] for field in AGENT_MESSAGE_FIELDS if message.get(field)}
 
 
 def fetch_older_messages(
