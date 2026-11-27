@@ -19,6 +19,11 @@ def send_message(
 	json_content: dict | str | None = None,
 	send_silently: bool = False,
 ):
+	"""Send a text message to a channel, DM or thread.
+
+	`text` is HTML. Set `is_reply` and `linked_message` to quote a message.
+	`send_silently` sends no notifications.
+	"""
 	if is_reply:
 		doc = frappe.get_doc(
 			{
@@ -418,6 +423,7 @@ def save_message(message_id: str, add: str | bool = False):
 
 @frappe.whitelist()
 def get_pinned_messages(channel_id: str):
+	"""Pinned messages of a channel."""
 
 	# check if the user has permission to view the channel
 	frappe.has_permission("Raven Channel", doc=channel_id, ptype="read", throw=True)

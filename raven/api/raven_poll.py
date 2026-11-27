@@ -135,6 +135,7 @@ def get_poll(message_id: str):
 
 @frappe.whitelist(methods=["POST"])
 def add_vote(message_id: str, option_id: str | list):
+	"""Vote on the poll in a message. `option_id` is a Raven Poll Option name, or a list for a multi-choice poll."""
 
 	# Check if the current user has access to the message.
 	if not frappe.has_permission(doctype="Raven Message", doc=message_id, ptype="read"):
