@@ -12,6 +12,7 @@ from raven.utils import get_workspace_members, set_channel_unread, track_channel
 
 @frappe.whitelist()
 def remove_channel_member(user_id: str, channel_id: str):
+	"""Remove a user from a channel. Throws if the user is not a member."""
 	# Get raven channel member name where user_id and channel_id match
 	member = get_channel_member(channel_id, user_id)
 	# Delete raven channel member

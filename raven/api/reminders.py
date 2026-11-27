@@ -28,6 +28,7 @@ def _owned_reminder(reminder: str):
 
 @frappe.whitelist(methods=["POST"])
 def create_reminder(message_id: str, remind_at: str, description: str | None = None) -> str:
+	"""Remind the current user about a message at `remind_at`. Returns the reminder name."""
 	channel_id = frappe.db.get_value("Raven Message", message_id, "channel_id")
 	if not channel_id:
 		frappe.throw(_("Message not found."))

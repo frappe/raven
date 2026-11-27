@@ -8,9 +8,7 @@ from raven.utils import get_workspace_members
 
 @frappe.whitelist(methods=["GET"])
 def get_channel_members(channel_id: str):
-	# Check if the user has permission to view the channel
-	# fetch all channel members
-	# get member details from user table, such as name, full_name, user_image, first_name
+	"""Members of a channel with their user details, keyed by user. An Open channel gives every workspace member."""
 
 	frappe.has_permission("Raven Channel", doc=channel_id, throw=True)
 
