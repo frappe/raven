@@ -148,12 +148,14 @@ class RavenChannel(Document):
 				unique_raven_users = list(set(raven_users))
 				self.add_members(unique_raven_users)
 			else:
+				# A thread made for a bot (incoming webhook) names its creator; Guest must not join.
+				creator = self.flags.get("creator") or frappe.session.user
 				# Can ignore permissions here because the user who creates the channel should be an admin of the channel
 				creator_member = frappe.get_doc(
 					{
 						"doctype": "Raven Channel Member",
 						"channel_id": self.name,
-						"user_id": frappe.session.user,
+						"user_id": creator,
 						"is_admin": 1,
 					}
 				)
@@ -162,7 +164,7 @@ class RavenChannel(Document):
 				creator_member.flags.ignore_system_message = True
 				creator_member.insert(ignore_permissions=True)
 
-				creator_name = frappe.get_cached_value("Raven User", frappe.session.user, "full_name")
+				creator_name = frappe.get_cached_value("Raven User", creator, "full_name")
 				if self.is_thread:
 					# Threads get their own creation message (not the channel one).
 					frappe.get_doc(
@@ -171,7 +173,7 @@ class RavenChannel(Document):
 							"channel_id": self.name,
 							"message_type": "System",
 							"text": f"{creator_name} created this thread.",
-							"json": frappe.as_json({"event": "thread_created", "user": frappe.session.user}),
+							"json": frappe.as_json({"event": "thread_created", "user": creator}),
 						}
 					).insert(ignore_permissions=True)
 				elif self.type != "Open":
@@ -186,7 +188,7 @@ class RavenChannel(Document):
 							"json": frappe.as_json(
 								{
 									"event": "channel_created",
-									"user": frappe.session.user,
+									"user": creator,
 									"channel_name": self.channel_name,
 								}
 							),

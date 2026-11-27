@@ -278,9 +278,15 @@ def create_thread(message_id: str):
 	The thread will be created with this user as the first participant.
 	(If the user is not the sender of the message, the sender will be added as the second participant)
 	"""
+	return make_thread(frappe.get_doc("Raven Message", message_id), creator=frappe.session.user)
 
-	thread_message = frappe.get_doc("Raven Message", message_id)
 
+def make_thread(thread_message, creator: str, ignore_permissions: bool = False):
+	"""
+	Convert a message to a thread with `creator` (a Raven User) as its first participant and admin.
+	`create_thread` passes the session user; an incoming webhook passes its bot, so Guest never joins.
+	"""
+	message_id = thread_message.name
 	channel_doc = frappe.get_cached_doc("Raven Channel", thread_message.channel_id)
 
 	# Convert the message to a thread
@@ -294,24 +300,26 @@ def create_thread(message_id: str):
 			"is_dm_thread": channel_doc.is_direct_message,
 			"description": thread_message.content,
 		}
-	).insert()
+	)
+	thread_channel.flags.creator = creator
+	thread_channel.insert(ignore_permissions=ignore_permissions)
 
 	users_added_to_thread = []
 
 	# Add the author of the original message as a participant. For a bot message that is
 	# the bot: its owner is whoever ran the code, or Guest for an incoming webhook.
-	creator = thread_message.owner
+	author = thread_message.owner
 	if thread_message.is_bot_message and thread_message.bot:
-		creator = frappe.get_cached_value("Raven Bot", thread_message.bot, "raven_user")
+		author = frappe.get_cached_value("Raven Bot", thread_message.bot, "raven_user")
 
-	if creator != frappe.session.user:
-		creator_member = frappe.get_doc(
-			{"doctype": "Raven Channel Member", "channel_id": thread_channel.name, "user_id": creator}
+	if author != creator:
+		author_member = frappe.get_doc(
+			{"doctype": "Raven Channel Member", "channel_id": thread_channel.name, "user_id": author}
 		)
 		# One combined system message for everyone added is sent below.
-		creator_member.flags.ignore_system_message = True
-		creator_member.insert(ignore_permissions=True)
-		users_added_to_thread.append(creator)
+		author_member.flags.ignore_system_message = True
+		author_member.insert(ignore_permissions=True)
+		users_added_to_thread.append(author)
 
 	else:
 		# By now, the creator of the thread and the creator of the original message should be added as participants
@@ -321,7 +329,7 @@ def create_thread(message_id: str):
 
 		if channel_doc.is_direct_message == 1 and not channel_doc.is_self_message:
 			# Get the peer of the DM channel (from dm_user fields — no member lookup)
-			peer_user_id = get_peer_user_id_from_dm_users(channel_doc)
+			peer_user_id = get_peer_user_id_from_dm_users(channel_doc, relative_to=creator)
 
 			if peer_user_id:
 				peer_member = frappe.get_doc(
